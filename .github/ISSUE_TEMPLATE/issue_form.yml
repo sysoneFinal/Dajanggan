@@ -38,4 +38,3 @@ body:
         - [ ] Task2
     validations:
       required: true
-출처: https://lamerry.tistory.com/entry/프로젝트에서-Jira-사용하기-3-Github-Actions로-GithubJira-이슈-자동화 [시니유의 개발 블로그:티스토리]
