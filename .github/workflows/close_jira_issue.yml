@@ -4,11 +4,13 @@ on:
     types:
       - closed
 
+permissions:
+  issues: read
+
 jobs:
   close-issue:
     name: Close Jira issue
     runs-on: ubuntu-latest
-
     steps:
       - name: Login to Jira
         uses: atlassian/gajira-login@v3
@@ -21,12 +23,12 @@ jobs:
         id: extract-key
         run: |
           ISSUE_TITLE="${{ github.event.issue.title }}"
-          JIRA_KEY=$(echo "$ISSUE_TITLE" | grep -oE '[A-Z]+-[0-9]+')
+          JIRA_KEY=$(echo "$ISSUE_TITLE" | grep -oE '[A-Za-z]+-[0-9]+')
           echo "JIRA_KEY=$JIRA_KEY" >> $GITHUB_ENV
 
       - name: Close Jira issue
-        if: env.JIRA_KEY != ''
+        if: ${{ env.JIRA_KEY != '' }}
         uses: atlassian/gajira-transition@v3
         with:
           issue: ${{ env.JIRA_KEY }}
-          transition: Done
+          transition: Done   # <- Jira 워크플로에서 실제 트랜지션 이름 확인 필요
