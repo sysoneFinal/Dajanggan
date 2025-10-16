@@ -22,3 +22,13 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# 환경변수 
+.env
+
+# Local config files (Vite / ESLint / Prettier cache)
+.eslintcache
+.prettiercache
+
+# TypeScript build outputs
+*.tsbuildinfo
