@@ -87,8 +87,20 @@ jobs:
           
           BRANCH_PREFIX="feature"
           
-          # 한글/공백 안전하게 변환
-          SANITIZED_TITLE=$(echo "${ISSUE_TITLE}" | iconv -c -t ascii//TRANSLIT | sed 's/ /-/g' | tr '[:upper:]' '[:lower:]')
+          # 한글 및 특수문자 제거, 영문/숫자/하이픈만 남기기
+          SANITIZED_TITLE=$(echo "${ISSUE_TITLE}" | \
+            sed 's/\[//g; s/\]//g' | \
+            sed 's/[^a-zA-Z0-9가-힣 _-]//g' | \
+            sed 's/[가-힣]//g' | \
+            sed 's/ \+/-/g' | \
+            sed 's/^-\+//; s/-\+$//' | \
+            tr '[:upper:]' '[:lower:]' | \
+            sed 's/-\+/-/g')
+          
+          # 제목이 완전히 비었으면 기본값 사용
+          if [ -z "$SANITIZED_TITLE" ]; then
+            SANITIZED_TITLE="issue"
+          fi
           
           BRANCH_NAME="${BRANCH_PREFIX}/${ISSUE_NUMBER}-${SANITIZED_TITLE}"
           
