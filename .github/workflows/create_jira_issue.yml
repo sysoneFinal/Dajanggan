@@ -53,7 +53,6 @@ jobs:
           mode: md2jira
 
       # 5. Jira 이슈 생성
-      
       - name: Create Jira Issue
         id: create
         uses: atlassian/gajira-create@v3
@@ -66,22 +65,28 @@ jobs:
       - name: Log created issue
         run: echo "Jira Issue Created: ${{ steps.create.outputs.issue }}"
 
-   
-      # 6. develop 브랜치 체크아웃
+      # 6. develop 브랜치 최신 상태로 체크아웃
       - name: Checkout develop branch
         uses: actions/checkout@v4
         with:
           ref: develop
+          fetch-depth: 0
 
-    
-      # 7. 브랜치 생성 (feature prefix 추가)
-   
+      # 7. 브랜치 생성 (feature prefix 자동 추가)
       - name: Create branch with Ticket number
         run: |
           ISSUE_NUMBER="${{ steps.create.outputs.issue }}"
           ISSUE_TITLE="${{ steps.issue-parser.outputs.issueparser_branch }}"
+          
+          # issueparser_branch가 비어있을 때 이슈 제목으로 대체
+          if [ -z "$ISSUE_TITLE" ]; then
+            ISSUE_TITLE="${{ github.event.issue.title }}"
+          fi
+
           BRANCH_PREFIX="feature"
-          SANITIZED_TITLE=$(echo "${ISSUE_TITLE}" | sed 's/ /-/g' | tr '[:upper:]' '[:lower:]')
+
+          # 한글/공백 안전하게 변환
+          SANITIZED_TITLE=$(echo "${ISSUE_TITLE}" | iconv -c -t ascii//TRANSLIT | sed 's/ /-/g' | tr '[:upper:]' '[:lower:]')
           BRANCH_NAME="${BRANCH_PREFIX}/${ISSUE_NUMBER}-${SANITIZED_TITLE}"
 
           echo "Creating branch: ${BRANCH_NAME}"
@@ -93,7 +98,6 @@ jobs:
           git push origin "refs/heads/${BRANCH_NAME}"
 
       # 8. GitHub Issue 제목 업데이트
-
       - name: Update GitHub Issue title
         uses: actions-cool/issues-helper@v3
         with:
@@ -101,13 +105,12 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           title: '[${{ steps.create.outputs.issue }}] ${{ github.event.issue.title }}'
 
-
       # 9. Jira 링크 코멘트 추가
-    
       - name: Add comment with Jira issue link
         uses: actions-cool/issues-helper@v3
         with:
           actions: 'create-comment'
           token: ${{ secrets.GITHUB_TOKEN }}
           issue-number: ${{ github.event.issue.number }}
-          body: 'Jira Issue Created: [${{ steps.create.outputs.issue }}](${{ secrets.JIRA_BASE_URL }}/browse/${{ steps.create.outputs.issue }})'
+          body: |
+          Jira Issue Created: [${{ steps.create.outputs.issue }}](${{ secrets.JIRA_BASE_URL }}/browse/${{ steps.create.outputs.issue }})
