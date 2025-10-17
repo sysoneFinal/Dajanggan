@@ -1,4 +1,5 @@
 name: Create Jira issue
+
 on:
   issues:
     types:
@@ -12,6 +13,7 @@ jobs:
   create-issue:
     name: Create Jira issue
     runs-on: ubuntu-latest
+    
     steps:
       # 1. Jira 로그인
       - name: Login to Jira
@@ -37,8 +39,8 @@ jobs:
       - name: Log Issue Parser
         run: |
           echo "parentKey: ${{ steps.issue-parser.outputs.issueparser_parentKey }}"
-          echo "branch:    ${{ steps.issue-parser.outputs.issueparser_branch }}"
-          echo "json:      ${{ steps.issue-parser.outputs.jsonString }}"
+          echo "branch: ${{ steps.issue-parser.outputs.issueparser_branch }}"
+          echo "json: ${{ steps.issue-parser.outputs.jsonString }}"
 
       # 4. Markdown → Jira Syntax 변환
       - name: Convert markdown to Jira Syntax
@@ -48,7 +50,7 @@ jobs:
           input-text: |
             ### Github Issue Link
             - ${{ github.event.issue.html_url }}
-
+            
             ${{ github.event.issue.body }}
           mode: md2jira
 
@@ -63,7 +65,7 @@ jobs:
           description: '${{ steps.md2jira.outputs.output-text }}'
 
       - name: Log created issue
-        run: echo "Jira Issue Created: ${{ steps.create.outputs.issue }}"
+        run: echo "Jira Issue Created - ${{ steps.create.outputs.issue }}"
 
       # 6. develop 브랜치 최신 상태로 체크아웃
       - name: Checkout develop branch
@@ -77,23 +79,23 @@ jobs:
         run: |
           ISSUE_NUMBER="${{ steps.create.outputs.issue }}"
           ISSUE_TITLE="${{ steps.issue-parser.outputs.issueparser_branch }}"
-
+          
           # issueparser_branch가 비어있을 때 이슈 제목으로 대체
           if [ -z "$ISSUE_TITLE" ]; then
             ISSUE_TITLE="${{ github.event.issue.title }}"
           fi
-
+          
           BRANCH_PREFIX="feature"
-
+          
           # 한글/공백 안전하게 변환
           SANITIZED_TITLE=$(echo "${ISSUE_TITLE}" | iconv -c -t ascii//TRANSLIT | sed 's/ /-/g' | tr '[:upper:]' '[:lower:]')
+          
           BRANCH_NAME="${BRANCH_PREFIX}/${ISSUE_NUMBER}-${SANITIZED_TITLE}"
-
+          
           echo "Creating branch: ${BRANCH_NAME}"
-
+          
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-
           git checkout -b "${BRANCH_NAME}"
           git push origin "refs/heads/${BRANCH_NAME}"
 
@@ -112,6 +114,5 @@ jobs:
           actions: 'create-comment'
           token: ${{ secrets.GITHUB_TOKEN }}
           issue-number: ${{ github.event.issue.number }}
-          body: >
-            Jira Issue Created:
-            [${{ steps.create.outputs.issue }}](${{ secrets.JIRA_BASE_URL }}/browse/${{ steps.create.outputs.issue }})
+          body: |
+            Jira Issue Created: [${{ steps.create.outputs.issue }}](${{ secrets.JIRA_BASE_URL }}/browse/${{ steps.create.outputs.issue }})
