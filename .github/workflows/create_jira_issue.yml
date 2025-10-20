@@ -15,7 +15,7 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
-      # 🔍 0. Debug payload (이슈 이벤트 전체 구조 확인)
+      # 0. Debug payload
       - name: Debug issue payload
         run: echo '${{ toJSON(github.event.issue) }}'
 
@@ -49,7 +49,7 @@ jobs:
           echo "=== JSON Output ==="
           echo '${{ steps.issue-parser.outputs.jsonString }}'
 
-      # 4. Markdown → Jira Syntax 변환
+      # 4. Markdown to Jira Syntax 변환
       - name: Convert markdown to Jira Syntax
         id: md2jira
         uses: peter-evans/jira2md@v1
@@ -81,61 +81,70 @@ jobs:
           ref: develop
           fetch-depth: 0
 
-           # 7. 브랜치 생성
+      # 7. 브랜치 생성
       - name: Create branch with Ticket number
         run: |
           ISSUE_NUMBER="${{ steps.create.outputs.issue }}"
           
-          # 1️⃣ parser 시도
+          # Issue body를 파일로 저장 (특수문자 처리 안전)
+          cat << 'EOF' > issue_body.txt
+          ${{ github.event.issue.body }}
+          EOF
+          
+          # Parser 출력값 먼저 시도
           BRANCH_TYPE="${{ steps.issue-parser.outputs.issueparser_branchtype }}"
           BRANCH_NAME_INPUT="${{ steps.issue-parser.outputs.issueparser_branchname }}"
-
-          # 2️⃣ fallback (parser가 비었을 때)
-          ISSUE_BODY=$(echo "${{ github.event.issue.body }}" | tr -d '\r' | tr '\n' ' ')
-
+          
+          # Parser가 비어있으면 파일에서 직접 파싱
           if [ -z "$BRANCH_TYPE" ] || [ "$BRANCH_TYPE" = "_No response_" ]; then
-            echo "Parser branchtype empty — fallback to regex"
-            BRANCH_TYPE=$(echo "$ISSUE_BODY" | grep -oP '(?<=### 브랜치 타입 선택\s*)[^\#]+' | xargs)
+            echo "Parser branchtype empty - parsing from file"
+            BRANCH_TYPE=$(grep -A1 "### 브랜치 타입 선택" issue_body.txt | tail -n1 | xargs)
           fi
-
+          
           if [ -z "$BRANCH_NAME_INPUT" ] || [ "$BRANCH_NAME_INPUT" = "_No response_" ]; then
-            echo "Parser branchname empty — fallback to regex"
-            BRANCH_NAME_INPUT=$(echo "$ISSUE_BODY" | grep -oP '(?<=### 작업 요약\s*)[^\#]+' | xargs)
+            echo "Parser branchname empty - parsing from file"
+            BRANCH_NAME_INPUT=$(grep -A1 "### 작업 요약" issue_body.txt | tail -n1 | xargs)
           fi
-
-          echo "DEBUG: ISSUE_NUMBER=${ISSUE_NUMBER}"
-          echo "DEBUG: BRANCH_TYPE=${BRANCH_TYPE}"
-          echo "DEBUG: BRANCH_NAME_INPUT=${BRANCH_NAME_INPUT}"
-
+          
+          echo "=== Parsed Values ==="
+          echo "ISSUE_NUMBER: ${ISSUE_NUMBER}"
+          echo "BRANCH_TYPE: ${BRANCH_TYPE}"
+          echo "BRANCH_NAME_INPUT: ${BRANCH_NAME_INPUT}"
+          
           # 기본값 처리
-          if [ -z "$BRANCH_TYPE" ]; then
+          if [ -z "$BRANCH_TYPE" ] || [ "$BRANCH_TYPE" = "_No response_" ]; then
             BRANCH_TYPE="feature"
-            echo "BRANCH_TYPE was empty, using default: feature"
+            echo "WARNING: BRANCH_TYPE empty, using default: feature"
           fi
-          if [ -z "$BRANCH_NAME_INPUT" ]; then
+          
+          if [ -z "$BRANCH_NAME_INPUT" ] || [ "$BRANCH_NAME_INPUT" = "_No response_" ]; then
             BRANCH_NAME_INPUT="issue"
-            echo "BRANCH_NAME_INPUT was empty, using default: issue"
+            echo "WARNING: BRANCH_NAME_INPUT empty, using default: issue"
           fi
-
+          
           # 브랜치명 정리
           SANITIZED_NAME=$(echo "$BRANCH_NAME_INPUT" | \
-            sed 's/[^a-zA-Z0-9 _-]//g' | \
+            sed 's/[^a-zA-Z0-9가-힣 _-]//g' | \
             sed 's/ \+/-/g' | \
             sed 's/^-\+//; s/-\+$//' | \
             tr '[:upper:]' '[:lower:]' | \
             sed 's/-\+/-/g')
-
+          
           if [ -z "$SANITIZED_NAME" ]; then
             SANITIZED_NAME="issue"
+            echo "WARNING: SANITIZED_NAME empty after cleaning"
           fi
-
+          
           BRANCH_NAME="${BRANCH_TYPE}/${ISSUE_NUMBER}-${SANITIZED_NAME}"
           echo "Creating branch: ${BRANCH_NAME}"
-
+          
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git checkout -b "${BRANCH_NAME}"
           git push origin "refs/heads/${BRANCH_NAME}"
+          
+          # 정리
+          rm -f issue_body.txt
 
       # 8. GitHub Issue 제목 업데이트
       - name: Update GitHub Issue title
