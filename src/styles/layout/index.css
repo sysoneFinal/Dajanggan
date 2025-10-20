@@ -1,0 +1,88 @@
+/* 전역 스타일  */
+html,
+body,
+#root {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
+  overflow: hidden; 
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: inherit;
+}
+
+/* 배경 */
+.app-background {
+  width: 100%;
+  height: 100vh;
+  display: flex;
+  background:
+    /* 블루 계열 은은한 빛 */
+    radial-gradient(
+      circle at 4% 63%,
+      rgba(99, 102, 241, 0.10) 0%,   /* 기존 0.18 → 0.10 */
+      rgba(255, 255, 255, 0) 25%
+    ),
+    /* 핑크 계열 은은한 빛 */
+    radial-gradient(
+      circle at 85% 8%,
+      rgba(255, 0, 85, 0.06) 0%,    /* 기존 0.12 → 0.06 */
+      rgba(255, 255, 255, 0) 30%
+    ),
+    #f8f9fb;
+  background-repeat: no-repeat;
+  background-size: cover;
+}
+
+
+/* 전체 레이아웃 */
+.app-layout {
+  display: flex;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+/* 사이드바 위치 및 크기만 */
+.sidebar {
+  position: fixed;
+  left: 1rem;
+  top: 0.5rem;
+  width: 260px;
+  height: calc(100vh - 1rem);
+  z-index: 100;
+}
+
+/* 메인 콘텐츠 */
+.app-main {
+  flex: 1;
+  flex: 1;
+  padding-left: 1.5rem;
+  padding-top: 0.9rem;
+  padding-right: 0.5rem;
+  height: 100vh;
+  overflow-y: auto;
+  overflow-x: hidden;  height: 100vh;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+/* 반응형 */
+@media (max-width: 1024px) {
+  .sidebar {
+    width: 220px;
+    left: 1rem;
+    top: 1rem;
+    height: calc(100vh - 2rem);
+  }
+
+  .app-main {
+    margin-left: calc(220px + 2rem);
+    padding: 1.5rem;
+  }
+}
