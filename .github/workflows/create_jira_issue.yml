@@ -68,7 +68,7 @@ jobs:
           description: '${{ steps.md2jira.outputs.output-text }}'
 
       - name: Log created Jira issue
-        run: echo "Jira Issue Created: ${{ steps.create.outputs.issue }}"
+        run: echo 'Jira Issue Created: ${{ steps.create.outputs.issue }}'
 
       # 6️⃣ develop 브랜치 체크아웃
       - name: Checkout develop branch
@@ -88,7 +88,6 @@ jobs:
           echo "DEBUG: BRANCH_TYPE=${BRANCH_TYPE}"
           echo "DEBUG: BRANCH_NAME_INPUT=${BRANCH_NAME_INPUT}"
 
-          # 기본값 처리
           if [ -z "$BRANCH_TYPE" ] || [ "$BRANCH_TYPE" = "_No response_" ]; then
             BRANCH_TYPE="feature"
             echo "BRANCH_TYPE was empty → default: feature"
@@ -99,7 +98,6 @@ jobs:
             echo "BRANCH_NAME_INPUT was empty → default: issue"
           fi
 
-          # 브랜치명 정리
           SANITIZED_NAME=$(echo "$BRANCH_NAME_INPUT" | \
             sed 's/[^a-zA-Z0-9 _-]//g' | \
             sed 's/ \+/-/g' | \
@@ -135,4 +133,4 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           issue-number: ${{ github.event.issue.number }}
           body: |
-            ✅ Jira Issue Created: [${{ steps.create.outputs.issue }}](${{ secrets.JIRA_BASE_URL }}/browse/${{ steps.create.outputs.issue }})
+            Jira Issue Created: [${{ steps.create.outputs.issue }}](${{ secrets.JIRA_BASE_URL }}/browse/${{ steps.create.outputs.issue }})
