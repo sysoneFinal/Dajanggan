@@ -81,49 +81,57 @@ jobs:
           ref: develop
           fetch-depth: 0
 
-      # 7. 브랜치 생성
+           # 7. 브랜치 생성
       - name: Create branch with Ticket number
         run: |
           ISSUE_NUMBER="${{ steps.create.outputs.issue }}"
+          
+          # 우선 parser 값 시도
           BRANCH_TYPE="${{ steps.issue-parser.outputs.issueparser_branchtype }}"
           BRANCH_NAME_INPUT="${{ steps.issue-parser.outputs.issueparser_branchname }}"
-          
+
+          # parser 값이 비거나 No response면 body에서 직접 추출
+          if [ -z "$BRANCH_TYPE" ] || [ "$BRANCH_TYPE" = "_No response_" ]; then
+            echo "Parser branchtype empty — fallback to grep"
+            ISSUE_BODY=$(echo "${{ github.event.issue.body }}" | tr -d '\r')
+            BRANCH_TYPE=$(echo "$ISSUE_BODY" | grep -A 1 "브랜치 타입 선택" | tail -1 | xargs)
+          fi
+
+          if [ -z "$BRANCH_NAME_INPUT" ] || [ "$BRANCH_NAME_INPUT" = "_No response_" ]; then
+            echo "Parser branchname empty — fallback to grep"
+            ISSUE_BODY=$(echo "${{ github.event.issue.body }}" | tr -d '\r')
+            BRANCH_NAME_INPUT=$(echo "$ISSUE_BODY" | grep -A 1 "작업 요약" | tail -1 | xargs)
+          fi
+
           echo "DEBUG: ISSUE_NUMBER=${ISSUE_NUMBER}"
           echo "DEBUG: BRANCH_TYPE=${BRANCH_TYPE}"
           echo "DEBUG: BRANCH_NAME_INPUT=${BRANCH_NAME_INPUT}"
-          
-          # 브랜치 타입이 비어있으면 기본값 사용
+
+          # 기본값 처리
           if [ -z "$BRANCH_TYPE" ]; then
             BRANCH_TYPE="feature"
             echo "BRANCH_TYPE was empty, using default: feature"
           fi
-          
-          # 브랜치명이 비어있으면 "issue" 사용
           if [ -z "$BRANCH_NAME_INPUT" ]; then
             BRANCH_NAME_INPUT="issue"
             echo "BRANCH_NAME_INPUT was empty, using default: issue"
           fi
-          
-          # 영문/숫자/하이픈/언더스코어만 남기고 정리
-          SANITIZED_NAME=$(echo "${BRANCH_NAME_INPUT}" | \
+
+          # 영문/숫자/하이픈만 남기고 정리
+          SANITIZED_NAME=$(echo "$BRANCH_NAME_INPUT" | \
             sed 's/[^a-zA-Z0-9 _-]//g' | \
             sed 's/ \+/-/g' | \
             sed 's/^-\+//; s/-\+$//' | \
             tr '[:upper:]' '[:lower:]' | \
             sed 's/-\+/-/g')
-          
-          echo "DEBUG: SANITIZED_NAME=${SANITIZED_NAME}"
-          
-          # 정리 후에도 비어있으면 기본값
+
           if [ -z "$SANITIZED_NAME" ]; then
             SANITIZED_NAME="issue"
-            echo "SANITIZED_NAME was empty after cleaning, using default: issue"
           fi
-          
+
           BRANCH_NAME="${BRANCH_TYPE}/${ISSUE_NUMBER}-${SANITIZED_NAME}"
-          
           echo "Creating branch: ${BRANCH_NAME}"
-          
+
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git checkout -b "${BRANCH_NAME}"
