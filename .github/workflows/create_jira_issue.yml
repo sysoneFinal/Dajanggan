@@ -81,8 +81,10 @@ jobs:
       - name: Create branch with Ticket number
         run: |
           ISSUE_NUMBER="${{ steps.create.outputs.issue }}"
-          BRANCH_TYPE="${{ steps.issue-parser.outputs.issueparser_branchtype }}"
-          BRANCH_NAME_INPUT="${{ steps.issue-parser.outputs.issueparser_branchname }}"
+          
+          # JSON에서 직접 파싱
+          BRANCH_TYPE=$(echo '${{ steps.issue-parser.outputs.jsonString }}' | jq -r '.branchtype // "feature"')
+          BRANCH_NAME_INPUT=$(echo '${{ steps.issue-parser.outputs.jsonString }}' | jq -r '.branchname // "issue"')
           
           echo "DEBUG: ISSUE_NUMBER=${ISSUE_NUMBER}"
           echo "DEBUG: BRANCH_TYPE=${BRANCH_TYPE}"
