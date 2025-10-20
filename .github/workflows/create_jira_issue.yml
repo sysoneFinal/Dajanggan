@@ -86,21 +86,21 @@ jobs:
         run: |
           ISSUE_NUMBER="${{ steps.create.outputs.issue }}"
           
-          # 우선 parser 값 시도
+          # 1️⃣ parser 시도
           BRANCH_TYPE="${{ steps.issue-parser.outputs.issueparser_branchtype }}"
           BRANCH_NAME_INPUT="${{ steps.issue-parser.outputs.issueparser_branchname }}"
 
-          # parser 값이 비거나 No response면 body에서 직접 추출
+          # 2️⃣ fallback (parser가 비었을 때)
+          ISSUE_BODY=$(echo "${{ github.event.issue.body }}" | tr -d '\r' | tr '\n' ' ')
+
           if [ -z "$BRANCH_TYPE" ] || [ "$BRANCH_TYPE" = "_No response_" ]; then
-            echo "Parser branchtype empty — fallback to grep"
-            ISSUE_BODY=$(echo "${{ github.event.issue.body }}" | tr -d '\r')
-            BRANCH_TYPE=$(echo "$ISSUE_BODY" | grep -A 1 "브랜치 타입 선택" | tail -1 | xargs)
+            echo "Parser branchtype empty — fallback to regex"
+            BRANCH_TYPE=$(echo "$ISSUE_BODY" | grep -oP '(?<=### 브랜치 타입 선택\s*)[^\#]+' | xargs)
           fi
 
           if [ -z "$BRANCH_NAME_INPUT" ] || [ "$BRANCH_NAME_INPUT" = "_No response_" ]; then
-            echo "Parser branchname empty — fallback to grep"
-            ISSUE_BODY=$(echo "${{ github.event.issue.body }}" | tr -d '\r')
-            BRANCH_NAME_INPUT=$(echo "$ISSUE_BODY" | grep -A 1 "작업 요약" | tail -1 | xargs)
+            echo "Parser branchname empty — fallback to regex"
+            BRANCH_NAME_INPUT=$(echo "$ISSUE_BODY" | grep -oP '(?<=### 작업 요약\s*)[^\#]+' | xargs)
           fi
 
           echo "DEBUG: ISSUE_NUMBER=${ISSUE_NUMBER}"
@@ -117,7 +117,7 @@ jobs:
             echo "BRANCH_NAME_INPUT was empty, using default: issue"
           fi
 
-          # 영문/숫자/하이픈만 남기고 정리
+          # 브랜치명 정리
           SANITIZED_NAME=$(echo "$BRANCH_NAME_INPUT" | \
             sed 's/[^a-zA-Z0-9 _-]//g' | \
             sed 's/ \+/-/g' | \
