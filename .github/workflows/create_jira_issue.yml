@@ -68,7 +68,7 @@ jobs:
           description: '${{ steps.md2jira.outputs.output-text }}'
 
       - name: Log created Jira issue
-        run: echo "✅ Jira Issue Created: ${{ steps.create.outputs.issue }}"
+        run: echo "Jira Issue Created: ${{ steps.create.outputs.issue }}"
 
       # 6️⃣ develop 브랜치 체크아웃
       - name: Checkout develop branch
