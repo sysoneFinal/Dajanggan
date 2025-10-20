@@ -102,13 +102,13 @@ jobs:
           # Parser가 비어있으면 파일에서 직접 파싱
           if [ -z "$BRANCH_TYPE" ] || [ "$BRANCH_TYPE" = "_No response_" ]; then
             echo "Parser branchtype empty - parsing from file"
-            BRANCH_TYPE=$(grep -A 1 "브랜치 타입 선택" issue_body.txt | tail -n 1 | tr -d '\r' | xargs)
+            BRANCH_TYPE=$(awk '/### 브랜치 타입 선택/{getline; getline; print}' issue_body.txt | tr -d '\r' | xargs)
             echo "Extracted BRANCH_TYPE: '$BRANCH_TYPE'"
           fi
           
           if [ -z "$BRANCH_NAME_INPUT" ] || [ "$BRANCH_NAME_INPUT" = "_No response_" ]; then
             echo "Parser branchname empty - parsing from file"
-            BRANCH_NAME_INPUT=$(grep -A 1 "작업 요약" issue_body.txt | tail -n 1 | tr -d '\r' | xargs)
+            BRANCH_NAME_INPUT=$(awk '/### 작업 요약/{getline; getline; print}' issue_body.txt | tr -d '\r' | xargs)
             echo "Extracted BRANCH_NAME_INPUT: '$BRANCH_NAME_INPUT'"
           fi
           
