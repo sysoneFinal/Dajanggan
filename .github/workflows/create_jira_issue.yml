@@ -15,6 +15,10 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
+      # 🔍 0. Debug payload (이슈 이벤트 전체 구조 확인)
+      - name: Debug issue payload
+        run: echo '${{ toJSON(github.event.issue) }}'
+
       # 1. Jira 로그인
       - name: Login to Jira
         uses: atlassian/gajira-login@v3
@@ -64,8 +68,8 @@ jobs:
         with:
           project: DJ
           issuetype: Task
-          summary: '${{ github.event.issue.title }}'
-          description: '${{ steps.md2jira.outputs.output-text }}'
+          summary: "${{ github.event.issue.title }}"
+          description: "${{ steps.md2jira.outputs.output-text }}"
 
       - name: Log created issue
         run: echo "Jira Issue Created - ${{ steps.create.outputs.issue }}"
@@ -131,7 +135,7 @@ jobs:
         with:
           actions: 'update-issue'
           token: ${{ secrets.GITHUB_TOKEN }}
-          title: '[${{ steps.create.outputs.issue }}] ${{ github.event.issue.title }}'
+          title: "[${{ steps.create.outputs.issue }}] ${{ github.event.issue.title }}"
 
       # 9. Jira 링크 코멘트 추가
       - name: Add comment with Jira issue link
