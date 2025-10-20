@@ -86,10 +86,14 @@ jobs:
         run: |
           ISSUE_NUMBER="${{ steps.create.outputs.issue }}"
           
-          # Issue body를 파일로 저장 (특수문자 처리 안전)
+          # Issue body를 파일로 저장
           cat << 'EOF' > issue_body.txt
           ${{ github.event.issue.body }}
           EOF
+          
+          echo "=== Issue Body Content ==="
+          cat issue_body.txt
+          echo "=== End of Issue Body ==="
           
           # Parser 출력값 먼저 시도
           BRANCH_TYPE="${{ steps.issue-parser.outputs.issueparser_branchtype }}"
@@ -98,18 +102,20 @@ jobs:
           # Parser가 비어있으면 파일에서 직접 파싱
           if [ -z "$BRANCH_TYPE" ] || [ "$BRANCH_TYPE" = "_No response_" ]; then
             echo "Parser branchtype empty - parsing from file"
-            BRANCH_TYPE=$(grep -A1 "### 브랜치 타입 선택" issue_body.txt | tail -n1 | xargs)
+            BRANCH_TYPE=$(grep -A 1 "브랜치 타입 선택" issue_body.txt | tail -n 1 | tr -d '\r' | xargs)
+            echo "Extracted BRANCH_TYPE: '$BRANCH_TYPE'"
           fi
           
           if [ -z "$BRANCH_NAME_INPUT" ] || [ "$BRANCH_NAME_INPUT" = "_No response_" ]; then
             echo "Parser branchname empty - parsing from file"
-            BRANCH_NAME_INPUT=$(grep -A1 "### 작업 요약" issue_body.txt | tail -n1 | xargs)
+            BRANCH_NAME_INPUT=$(grep -A 1 "작업 요약" issue_body.txt | tail -n 1 | tr -d '\r' | xargs)
+            echo "Extracted BRANCH_NAME_INPUT: '$BRANCH_NAME_INPUT'"
           fi
           
           echo "=== Parsed Values ==="
           echo "ISSUE_NUMBER: ${ISSUE_NUMBER}"
-          echo "BRANCH_TYPE: ${BRANCH_TYPE}"
-          echo "BRANCH_NAME_INPUT: ${BRANCH_NAME_INPUT}"
+          echo "BRANCH_TYPE: '${BRANCH_TYPE}'"
+          echo "BRANCH_NAME_INPUT: '${BRANCH_NAME_INPUT}'"
           
           # 기본값 처리
           if [ -z "$BRANCH_TYPE" ] || [ "$BRANCH_TYPE" = "_No response_" ]; then
@@ -122,13 +128,27 @@ jobs:
             echo "WARNING: BRANCH_NAME_INPUT empty, using default: issue"
           fi
           
-          # 브랜치명 정리
+          # 브랜치명 정리 (한글 제거, 영문/숫자/하이픈/언더스코어만 허용)
           SANITIZED_NAME=$(echo "$BRANCH_NAME_INPUT" | \
-            sed 's/[^a-zA-Z0-9가-힣 _-]//g' | \
-            sed 's/ \+/-/g' | \
+            iconv -f utf-8 -t ascii//TRANSLIT 2>/dev/null | \
+            sed 's/[^a-zA-Z0-9 _-]//g' | \
+            sed 's/  */ /g' | \
+            sed 's/ /-/g' | \
             sed 's/^-\+//; s/-\+$//' | \
             tr '[:upper:]' '[:lower:]' | \
             sed 's/-\+/-/g')
+          
+          # iconv 실패 시 대체 방법
+          if [ -z "$SANITIZED_NAME" ]; then
+            echo "iconv failed, using alternative method"
+            SANITIZED_NAME=$(echo "$BRANCH_NAME_INPUT" | \
+              sed 's/[^a-zA-Z0-9 _-]//g' | \
+              sed 's/  */ /g' | \
+              sed 's/ /-/g' | \
+              sed 's/^-\+//; s/-\+$//' | \
+              tr '[:upper:]' '[:lower:]' | \
+              sed 's/-\+/-/g')
+          fi
           
           if [ -z "$SANITIZED_NAME" ]; then
             SANITIZED_NAME="issue"
