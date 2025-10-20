@@ -13,9 +13,9 @@ jobs:
   create-issue:
     name: Create Jira issue
     runs-on: ubuntu-latest
-    
+
     steps:
-      # 1. Jira 로그인
+      # 1️⃣ Jira 로그인
       - name: Login to Jira
         uses: atlassian/gajira-login@v3
         env:
@@ -23,43 +23,41 @@ jobs:
           JIRA_API_TOKEN: ${{ secrets.JIRA_API_TOKEN }}
           JIRA_USER_EMAIL: ${{ secrets.JIRA_USER_EMAIL }}
 
-      # 2. 메인 코드 체크아웃
+      # 2️⃣ 메인 브랜치 체크아웃
       - name: Checkout main branch
         uses: actions/checkout@v4
         with:
           ref: main
 
-      # 3. GitHub Issue 내용 파싱
-      - name: Issue Parser
+      # 3️⃣ GitHub Issue 내용 파싱
+      - name: Parse GitHub Issue form
         id: issue-parser
         uses: stefanbuck/github-issue-parser@v3
         with:
           template-path: .github/ISSUE_TEMPLATE/issue-form.yml
 
-      - name: Log Issue Parser
+      - name: Log parsed issue fields
         run: |
-          echo "=== All Issue Parser Outputs ==="
+          echo "=== Issue Parser Outputs ==="
           echo "branchtype: ${{ steps.issue-parser.outputs.issueparser_branchtype }}"
           echo "branchname: ${{ steps.issue-parser.outputs.issueparser_branchname }}"
           echo "description: ${{ steps.issue-parser.outputs.issueparser_description }}"
-          echo "=== JSON Output ==="
-          echo '${{ steps.issue-parser.outputs.jsonString }}'
-          echo "=== Issue Body ==="
-          echo '${{ github.event.issue.body }}'
+          echo "=== Raw Issue Body ==="
+          echo "${{ github.event.issue.body }}"
 
-      # 4. Markdown → Jira Syntax 변환
-      - name: Convert markdown to Jira Syntax
+      # 4️⃣ Markdown → Jira 변환
+      - name: Convert markdown to Jira syntax
         id: md2jira
         uses: peter-evans/jira2md@v1
         with:
           input-text: |
-            ### Github Issue Link
-            - ${{ github.event.issue.html_url }}
-            
+            ### GitHub Issue
+            - [${{ github.event.issue.title }}](${{ github.event.issue.html_url }})
+
             ${{ github.event.issue.body }}
           mode: md2jira
 
-      # 5. Jira 이슈 생성
+      # 5️⃣ Jira 이슈 생성
       - name: Create Jira Issue
         id: create
         uses: atlassian/gajira-create@v3
@@ -69,67 +67,59 @@ jobs:
           summary: '${{ github.event.issue.title }}'
           description: '${{ steps.md2jira.outputs.output-text }}'
 
-      - name: Log created issue
-        run: echo "Jira Issue Created - ${{ steps.create.outputs.issue }}"
+      - name: Log created Jira issue
+        run: echo "✅ Jira Issue Created: ${{ steps.create.outputs.issue }}"
 
-      # 6. develop 브랜치 최신 상태로 체크아웃
+      # 6️⃣ develop 브랜치 체크아웃
       - name: Checkout develop branch
         uses: actions/checkout@v4
         with:
           ref: develop
           fetch-depth: 0
 
-      # 7. 브랜치 생성
-      - name: Create branch with Ticket number
+      # 7️⃣ 브랜치 생성
+      - name: Create branch from Jira ticket
         run: |
           ISSUE_NUMBER="${{ steps.create.outputs.issue }}"
-          ISSUE_BODY='${{ github.event.issue.body }}'
-          
-          # Issue body에서 값 추출
-          BRANCH_TYPE=$(echo "$ISSUE_BODY" | grep -A 1 "### 브랜치 타입 선택" | tail -1 | tr -d '\r\n' | xargs)
-          BRANCH_NAME_INPUT=$(echo "$ISSUE_BODY" | grep -A 1 "### 작업 요약" | tail -1 | tr -d '\r\n' | xargs)
-          
+          BRANCH_TYPE="${{ steps.issue-parser.outputs.issueparser_branchtype }}"
+          BRANCH_NAME_INPUT="${{ steps.issue-parser.outputs.issueparser_branchname }}"
+
           echo "DEBUG: ISSUE_NUMBER=${ISSUE_NUMBER}"
           echo "DEBUG: BRANCH_TYPE=${BRANCH_TYPE}"
           echo "DEBUG: BRANCH_NAME_INPUT=${BRANCH_NAME_INPUT}"
-          
+
           # 기본값 처리
           if [ -z "$BRANCH_TYPE" ] || [ "$BRANCH_TYPE" = "_No response_" ]; then
             BRANCH_TYPE="feature"
-            echo "BRANCH_TYPE was empty, using default: feature"
+            echo "BRANCH_TYPE was empty → default: feature"
           fi
-          
+
           if [ -z "$BRANCH_NAME_INPUT" ] || [ "$BRANCH_NAME_INPUT" = "_No response_" ]; then
             BRANCH_NAME_INPUT="issue"
-            echo "BRANCH_NAME_INPUT was empty, using default: issue"
+            echo "BRANCH_NAME_INPUT was empty → default: issue"
           fi
-          
-          # 영문/숫자/하이픈/언더스코어/공백만 남기고 정리
-          SANITIZED_NAME=$(echo "${BRANCH_NAME_INPUT}" | \
+
+          # 브랜치명 정리
+          SANITIZED_NAME=$(echo "$BRANCH_NAME_INPUT" | \
             sed 's/[^a-zA-Z0-9 _-]//g' | \
             sed 's/ \+/-/g' | \
             sed 's/^-\+//; s/-\+$//' | \
             tr '[:upper:]' '[:lower:]' | \
             sed 's/-\+/-/g')
-          
-          echo "DEBUG: SANITIZED_NAME=${SANITIZED_NAME}"
-          
-          # 정리 후에도 비어있으면 기본값
+
           if [ -z "$SANITIZED_NAME" ]; then
             SANITIZED_NAME="issue"
-            echo "SANITIZED_NAME was empty after cleaning, using default: issue"
           fi
-          
+
           BRANCH_NAME="${BRANCH_TYPE}/${ISSUE_NUMBER}-${SANITIZED_NAME}"
-          
           echo "Creating branch: ${BRANCH_NAME}"
-          
+
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git checkout -b "${BRANCH_NAME}"
           git push origin "refs/heads/${BRANCH_NAME}"
 
-      # 8. GitHub Issue 제목 업데이트
+      # 8️⃣ GitHub Issue 제목 업데이트
       - name: Update GitHub Issue title
         uses: actions-cool/issues-helper@v3
         with:
@@ -137,12 +127,12 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           title: '[${{ steps.create.outputs.issue }}] ${{ github.event.issue.title }}'
 
-      # 9. Jira 링크 코멘트 추가
-      - name: Add comment with Jira issue link
+      # 9️⃣ Jira 링크 코멘트 추가
+      - name: Add comment with Jira link
         uses: actions-cool/issues-helper@v3
         with:
           actions: 'create-comment'
           token: ${{ secrets.GITHUB_TOKEN }}
           issue-number: ${{ github.event.issue.number }}
           body: |
-            Jira Issue Created: [${{ steps.create.outputs.issue }}](${{ secrets.JIRA_BASE_URL }}/browse/${{ steps.create.outputs.issue }})
+            ✅ Jira Issue Created: [${{ steps.create.outputs.issue }}](${{ secrets.JIRA_BASE_URL }}/browse/${{ steps.create.outputs.issue }})
