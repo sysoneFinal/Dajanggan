@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from "react";
-import "../styles/instance.css";
+import "/src/styles/instance.css";
+import apiClient from "../../api/apiClient"; // ✅ 공통 axios 인스턴스 사용
 
 export type NewInstance = {
   host: string;
@@ -30,7 +31,24 @@ const fieldLabel = {
 
 const requiredMsg = (k: keyof typeof fieldLabel) => `${fieldLabel[k]} 값이 필요합니다.`;
 
-export default function NewInstanceForm({
+// ✅ 백엔드 DTO로 매핑
+const toInstanceDto = (f: NewInstance) => ({
+  host: f.host,
+  instanceName: f.instance,
+  dbname: f.database,
+  port: Number(f.port),
+  username: f.username,
+  secretRef: f.password,
+  sslmode: "require",
+  isEnabled: true,
+  slackEnabled: false,
+  slackChannel: undefined,
+  slackMention: undefined,
+  slackWebhookUrl: undefined,
+  collectionInterval: 5,
+});
+
+export default function NewInstancePage({
   initialValue,
   onSubmit,
   onTest,
@@ -50,14 +68,13 @@ export default function NewInstanceForm({
   const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState<null | { ok: boolean; message?: string }>(null);
 
-
   const validate = (): boolean => {
     const next: Partial<Record<keyof NewInstance, string>> = {};
     if (!form.host.trim()) next.host = requiredMsg("host");
     if (!form.instance.trim()) next.instance = requiredMsg("instance");
     if (!form.database.trim()) next.database = requiredMsg("database");
     if (!form.port || Number(form.port) < 1 || Number(form.port) > 65535)
-        next.port = "1~65535 사이 정수를 입력하세요.";
+      next.port = "1~65535 사이 정수를 입력하세요.";
     if (!form.username.trim()) next.username = requiredMsg("username");
     if (!form.password) next.password = requiredMsg("password");
     setErrors(next);
@@ -79,31 +96,48 @@ export default function NewInstanceForm({
     setErrors((prev) => ({ ...prev, [key]: undefined }));
   };
 
+  // ✅ 등록: 백엔드에 POST /api/instances
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setTestResult(null);
     if (!validate()) return;
     try {
       setSubmitting(true);
-      await onSubmit?.(form);
+
+      if (onSubmit) {
+        await onSubmit(form);
+      } else {
+        const payload = toInstanceDto(form);
+        const res = await apiClient.post("/instances", payload); // { id }
+        alert(`등록 성공! ID: ${res.data?.id ?? "unknown"}`);
+      }
+    } catch (err: any) {
+      console.error(err);
+      alert(`등록 실패: ${err?.response?.data?.message ?? err.message}`);
     } finally {
       setSubmitting(false);
     }
   };
 
+  // ✅ 테스트: 실제 엔드포인트 있으면 호출, 없으면 기존 mock
   const handleTest = async () => {
     setTestResult(null);
     if (!validate()) return;
     try {
       setTesting(true);
-      const res = await onTest?.(form);
-      if (res) setTestResult(res);
-      else {
+
+      if (onTest) {
+        const res = await onTest(form);
+        setTestResult(res);
+      } else {
+        // 실제로는 여길 구현 (예: POST /api/instances/test)
+        // const res = await apiClient.post('/instances/test', toInstanceDto(form));
+        // setTestResult(res.data);
         await new Promise((r) => setTimeout(r, 800));
         setTestResult({ ok: true, message: "연결 성공 (mock)" });
       }
-    } catch (e) {
-      setTestResult({ ok: false, message: (e as Error).message });
+    } catch (e: any) {
+      setTestResult({ ok: false, message: e?.message ?? "테스트 실패" });
     } finally {
       setTesting(false);
     }
