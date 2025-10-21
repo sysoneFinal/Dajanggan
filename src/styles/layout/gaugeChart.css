@@ -1,0 +1,19 @@
+.gauge-container {
+  width: 200px;
+  text-align: center;
+  user-select: none;
+  margin: 0 auto;
+}
+
+.gauge-value {
+  margin-top: -10px;
+  font-size: 26px;
+  font-weight: 700;
+  color: #4f46e5;
+}
+
+.gauge-desc {
+  font-size: 12px;
+  color: #9ca3af;
+  margin-top: 2px;
+}
