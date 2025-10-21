@@ -15,6 +15,10 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
+      # 0. Debug payload
+      - name: Debug issue payload
+        run: echo '${{ toJSON(github.event.issue) }}'
+
       # 1. Jira 로그인
       - name: Login to Jira
         uses: atlassian/gajira-login@v3
@@ -45,7 +49,7 @@ jobs:
           echo "=== JSON Output ==="
           echo '${{ steps.issue-parser.outputs.jsonString }}'
 
-      # 4. Markdown → Jira Syntax 변환
+      # 4. Markdown to Jira Syntax 변환
       - name: Convert markdown to Jira Syntax
         id: md2jira
         uses: peter-evans/jira2md@v1
@@ -64,8 +68,8 @@ jobs:
         with:
           project: DJ
           issuetype: Task
-          summary: '${{ github.event.issue.title }}'
-          description: '${{ steps.md2jira.outputs.output-text }}'
+          summary: "${{ github.event.issue.title }}"
+          description: "${{ steps.md2jira.outputs.output-text }}"
 
       - name: Log created issue
         run: echo "Jira Issue Created - ${{ steps.create.outputs.issue }}"
@@ -81,49 +85,86 @@ jobs:
       - name: Create branch with Ticket number
         run: |
           ISSUE_NUMBER="${{ steps.create.outputs.issue }}"
+          
+          # Issue body를 파일로 저장
+          cat << 'EOF' > issue_body.txt
+          ${{ github.event.issue.body }}
+          EOF
+          
+          echo "=== Issue Body Content ==="
+          cat issue_body.txt
+          echo "=== End of Issue Body ==="
+          
+          # Parser 출력값 먼저 시도
           BRANCH_TYPE="${{ steps.issue-parser.outputs.issueparser_branchtype }}"
           BRANCH_NAME_INPUT="${{ steps.issue-parser.outputs.issueparser_branchname }}"
           
-          echo "DEBUG: ISSUE_NUMBER=${ISSUE_NUMBER}"
-          echo "DEBUG: BRANCH_TYPE=${BRANCH_TYPE}"
-          echo "DEBUG: BRANCH_NAME_INPUT=${BRANCH_NAME_INPUT}"
+          # Parser가 비어있으면 파일에서 직접 파싱
+          if [ -z "$BRANCH_TYPE" ] || [ "$BRANCH_TYPE" = "_No response_" ]; then
+            echo "Parser branchtype empty - parsing from file"
+            BRANCH_TYPE=$(awk '/### 브랜치 타입 선택/{getline; getline; print}' issue_body.txt | tr -d '\r' | xargs)
+            echo "Extracted BRANCH_TYPE: '$BRANCH_TYPE'"
+          fi
           
-          # 브랜치 타입이 비어있으면 기본값 사용
-          if [ -z "$BRANCH_TYPE" ]; then
+          if [ -z "$BRANCH_NAME_INPUT" ] || [ "$BRANCH_NAME_INPUT" = "_No response_" ]; then
+            echo "Parser branchname empty - parsing from file"
+            BRANCH_NAME_INPUT=$(awk '/### 작업 요약/{getline; getline; print}' issue_body.txt | tr -d '\r' | xargs)
+            echo "Extracted BRANCH_NAME_INPUT: '$BRANCH_NAME_INPUT'"
+          fi
+          
+          echo "=== Parsed Values ==="
+          echo "ISSUE_NUMBER: ${ISSUE_NUMBER}"
+          echo "BRANCH_TYPE: '${BRANCH_TYPE}'"
+          echo "BRANCH_NAME_INPUT: '${BRANCH_NAME_INPUT}'"
+          
+          # 기본값 처리
+          if [ -z "$BRANCH_TYPE" ] || [ "$BRANCH_TYPE" = "_No response_" ]; then
             BRANCH_TYPE="feature"
-            echo "BRANCH_TYPE was empty, using default: feature"
+            echo "WARNING: BRANCH_TYPE empty, using default: feature"
           fi
           
-          # 브랜치명이 비어있으면 "issue" 사용
-          if [ -z "$BRANCH_NAME_INPUT" ]; then
+          if [ -z "$BRANCH_NAME_INPUT" ] || [ "$BRANCH_NAME_INPUT" = "_No response_" ]; then
             BRANCH_NAME_INPUT="issue"
-            echo "BRANCH_NAME_INPUT was empty, using default: issue"
+            echo "WARNING: BRANCH_NAME_INPUT empty, using default: issue"
           fi
           
-          # 영문/숫자/하이픈/언더스코어만 남기고 정리
-          SANITIZED_NAME=$(echo "${BRANCH_NAME_INPUT}" | \
+          # 브랜치명 정리 (한글 제거, 영문/숫자/하이픈/언더스코어만 허용)
+          SANITIZED_NAME=$(echo "$BRANCH_NAME_INPUT" | \
+            iconv -f utf-8 -t ascii//TRANSLIT 2>/dev/null | \
             sed 's/[^a-zA-Z0-9 _-]//g' | \
-            sed 's/ \+/-/g' | \
+            sed 's/  */ /g' | \
+            sed 's/ /-/g' | \
             sed 's/^-\+//; s/-\+$//' | \
             tr '[:upper:]' '[:lower:]' | \
             sed 's/-\+/-/g')
           
-          echo "DEBUG: SANITIZED_NAME=${SANITIZED_NAME}"
+          # iconv 실패 시 대체 방법
+          if [ -z "$SANITIZED_NAME" ]; then
+            echo "iconv failed, using alternative method"
+            SANITIZED_NAME=$(echo "$BRANCH_NAME_INPUT" | \
+              sed 's/[^a-zA-Z0-9 _-]//g' | \
+              sed 's/  */ /g' | \
+              sed 's/ /-/g' | \
+              sed 's/^-\+//; s/-\+$//' | \
+              tr '[:upper:]' '[:lower:]' | \
+              sed 's/-\+/-/g')
+          fi
           
-          # 정리 후에도 비어있으면 기본값
           if [ -z "$SANITIZED_NAME" ]; then
             SANITIZED_NAME="issue"
-            echo "SANITIZED_NAME was empty after cleaning, using default: issue"
+            echo "WARNING: SANITIZED_NAME empty after cleaning"
           fi
           
           BRANCH_NAME="${BRANCH_TYPE}/${ISSUE_NUMBER}-${SANITIZED_NAME}"
-          
           echo "Creating branch: ${BRANCH_NAME}"
           
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git checkout -b "${BRANCH_NAME}"
           git push origin "refs/heads/${BRANCH_NAME}"
+          
+          # 정리
+          rm -f issue_body.txt
 
       # 8. GitHub Issue 제목 업데이트
       - name: Update GitHub Issue title
@@ -131,7 +172,7 @@ jobs:
         with:
           actions: 'update-issue'
           token: ${{ secrets.GITHUB_TOKEN }}
-          title: '[${{ steps.create.outputs.issue }}] ${{ github.event.issue.title }}'
+          title: "[${{ steps.create.outputs.issue }}] ${{ github.event.issue.title }}"
 
       # 9. Jira 링크 코멘트 추가
       - name: Add comment with Jira issue link
