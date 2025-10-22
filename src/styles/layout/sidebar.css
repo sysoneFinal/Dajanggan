@@ -335,3 +335,35 @@
     transform: translateX(0);
   }
 }
+
+/* 기본 접힘 상태 */
+.sidebar {
+  width: 60px;
+  min-width: 60px;
+  transition: all 0.3s ease;
+}
+
+.sidebar--expanded {
+  width: 260px;
+  min-width: 260px;
+}
+
+/* 접혔을 때 로고만 가운데 정렬 */
+.sidebar__header--collapsed {
+  justify-content: center;
+  padding: 1rem 0;
+}
+
+/* 메뉴 fade-in/out 효과 */
+.sidebar__nav,
+.sidebar__footer {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s ease;
+}
+
+.sidebar--expanded .sidebar__nav,
+.sidebar--expanded .sidebar__footer {
+  opacity: 1;
+  pointer-events: auto;
+}

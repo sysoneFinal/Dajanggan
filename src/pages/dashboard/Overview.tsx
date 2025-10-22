@@ -1,7 +1,12 @@
 import Chart from "../../components/chart/ChartComponent";
 import GuageChart from "../../components/chart/GaugeChart";
+import { useSearchParams } from "react-router-dom";
+
 
 export default function Dashboard() {
+  const [searchParams] = useSearchParams();
+  const instanceId = searchParams.get("instanceId");
+  
   const salesSeries = [
     { name: "세션 활성 수", data: [1, 4, 5, 8, 12, 10] },
   ];
@@ -31,6 +36,7 @@ export default function Dashboard() {
 
   return (
     <div>
+      <h2 style={{ marginBottom: "20px" }}>Instance ID: {instanceId}</h2>
       <div className="line-chart-container">
           <Chart
         type="line"
