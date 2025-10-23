@@ -10,21 +10,15 @@ import type { AxiosInstance } from 'axios';
  * - 공통 baseURL 및 timeout 설정
  */
 const apiClient: AxiosInstance = axios.create({
-  baseURL: 'http://localhost:8080/api', // 하드코딩
+  baseURL: import.meta.env.VITE_API_BASE_URL ,
   timeout: 5000,
   headers: {
     'Content-Type': 'application/json',
-  },
-});
-
-/**
- * 요청 인터셉터
+	@@ -22,7 +22,9 @@ const apiClient: AxiosInstance = axios.create({
  */
 apiClient.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
-    const full = `${config.baseURL ?? ''}${config.url ?? ''}`;
-    console.log('[REQ]', config.method?.toUpperCase(), full);
-    return config;  
+    return config;
   },
   (error: AxiosError) => {
     console.error('요청 에러:', error.message);
