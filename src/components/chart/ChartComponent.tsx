@@ -1,16 +1,25 @@
 import { useMemo } from "react";
 import ReactApexChart from "react-apexcharts";
-import type {
-  ApexOptions
-} from "apexcharts";
 
-export type ChartType = "column" | "line" | "area" | "bar" | "donut" | "pie" | "scatter";
+// 지원 차트 타입 정의
+export type ChartType =
+  | "column" // 세로 막대
+  | "line" // 선
+  | "area" // 면적이 채워진 선
+  | "bar" // 가로 막대
+  | "donut" // 도넛
+  | "pie" // 파이
+  | "scatter"; // 산점도
 
 interface ChartProps {
+  /** 차트 타입 */
   type: ChartType;
+  /** 데이터 시리즈 */
   series: ApexAxisChartSeries | ApexNonAxisChartSeries;
+  /** X축 카테고리 */
   categories?: string[] | number[];
 
+  /** 제목 설정 */
   titleOptions?: {
     text?: string;
     align?: "left" | "center" | "right";
@@ -19,23 +28,33 @@ interface ChartProps {
     fontWeight?: number;
   };
 
+  /** 색상 팔레트 */
   colors?: string[];
-  customOptions?: ApexOptions;
+  /** 사용자 지정 Apex 옵션 */
+  customOptions?: ApexCharts.ApexOptions;
 
+  /** 크기 설정 */
   width?: number | string;
   height?: number | string;
 
+  /** 표시 설정 */
   showGrid?: boolean;
   showLegend?: boolean;
   showToolbar?: boolean;
+  /** 스택형 차트 여부 (쌓는 바) */
   isStacked?: boolean;
-
+  /** 축 옵션 */
   xaxisOptions?: ApexXAxis;
   yaxisOptions?: ApexYAxis | ApexYAxis[];
 
+  /** 툴팁 포맷터 */
   tooltipFormatter?: (value: number) => string;
 }
 
+/**
+ * 통합 Chart 컴포넌트
+ * - line, area, bar, column, pie, donut, scatter
+ */
 export default function Chart({
   type,
   series,
@@ -53,10 +72,19 @@ export default function Chart({
   yaxisOptions,
   tooltipFormatter,
 }: ChartProps) {
-  const normalizedType: "line" | "area" | "bar" | "donut" | "pie" | "scatter" =
-    type === "column" ? "bar" : (type as any);
-
-  const baseOptions = useMemo<ApexOptions>(() => {
+  // ApexCharts는 column 타입이 없어서 bar로 매핑 후 변환 처리
+  const normalizedType =
+    type === "column"
+      ? "bar"
+      : (type as
+          | "line"
+          | "area"
+          | "bar"
+          | "donut"
+          | "pie"
+          | "scatter");
+  
+  const baseOptions = useMemo(() => {
     // 🔒 title/subtitle 기본객체를 항상 넣어 offsetY 접근 이슈 방지
     const safeTitle = {
       text: titleOptions?.text,
@@ -70,13 +98,12 @@ export default function Chart({
     };
     const safeSubtitle = { text: undefined as any, offsetY: 0 };
 
-    const options: ApexOptions = {
+    const options: ApexCharts.ApexOptions = {
       chart: {
         type: normalizedType,
         toolbar: { show: showToolbar },
         background: "transparent",
-        fontFamily:
-          "Pretendard, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, sans-serif",
+        fontFamily: "Pretendard, sans-serif",
         animations: { enabled: true },
         stacked: isStacked,
         redrawOnParentResize: true,
@@ -99,7 +126,9 @@ export default function Chart({
       },
       tooltip: {
         theme: "light",
-        y: { formatter: tooltipFormatter ?? ((v: number) => (v ?? 0).toLocaleString()) },
+        y: { 
+          formatter: tooltipFormatter ?? ((v: number) => (v ?? 0).toLocaleString()) 
+        },
       },
       dataLabels: { enabled: false },
       stroke: {
@@ -135,11 +164,17 @@ export default function Chart({
       case "column":
         options.plotOptions = {
           bar: {
-            horizontal: type === "bar",
+            horizontal: type === "bar", // column은 세로 막대
             borderRadius: 4,
             columnWidth: "60%",
             dataLabels: {
-              total: { enabled: isStacked, style: { fontSize: "13px", fontWeight: 900 } },
+              total: { 
+                enabled: isStacked, // 스택형일 때만 합계 표시
+              style: {
+                fontSize: "13px",
+                fontWeight: 900
+                },
+              },
             },
           },
         };
@@ -154,30 +189,48 @@ export default function Chart({
         options.stroke = { curve: "smooth", width: 2 };
         options.fill = {
           type: "gradient",
-          gradient: { shadeIntensity: 0.4, opacityFrom: 0.7, opacityTo: 0.1, stops: [0, 90, 100] },
+          gradient: {
+            shadeIntensity: 0.4,
+            opacityFrom: 0.7,
+            opacityTo: 0.1,
+            stops: [0, 90, 100],
+          },
         };
         break;
 
       case "donut":
       case "pie":
-        options.labels = categories as string[]; // labels 필요
-        options.plotOptions = { pie: { donut: { size: type === "donut" ? "60%" : "0%" } } };
-        options.legend = { show: true, position: "right", labels: { colors: "#374151" } };
+        options.labels = categories as string[];
+        options.plotOptions = {
+          pie: {
+            donut: {
+              size: type === "donut" ? "60%" : "0%",
+            },
+          },
+        };
+        options.legend = {
+          show: true,
+          position: "bottom",
+          labels: { colors: "#374151" },
+        };
         break;
-
       case "scatter":
-        options.chart = { ...(options.chart ?? {}), zoom: { enabled: true, type: "xy" } };
+        options.chart = {
+          ...(options.chart ?? {}),
+          zoom: { enabled: true, type: "xy" },
+        };
         options.xaxis = {
-          ...(options.xaxis ?? {}),
+          ...options.xaxis,
           tickAmount: 10,
           labels: { formatter: (v) => Number(v).toFixed(1) },
         };
-        options.yaxis = { labels: { formatter: (v: number) => Number(v).toFixed(1) } } as ApexYAxis;
+        options.yaxis = { 
+          labels: { formatter: (v: number) => Number(v).toFixed(1) } } as ApexYAxis;
         break;
     }
 
     // 사용자 옵션 병합
-    const merged: ApexOptions = {
+    const merged: ApexCharts.ApexOptions = {
       ...options,
       ...customOptions,
       chart: { ...options.chart, ...customOptions?.chart },
@@ -208,17 +261,12 @@ export default function Chart({
     isStacked,
   ]);
 
-  const outerStyle: React.CSSProperties = {
-    width,
-    height,
-    minHeight: typeof height === "number" ? `${height}px` : height,
-  };
 
   return (
-    <div style={outerStyle}>
+    <div style={{ width, height }}>
       <ReactApexChart
         options={baseOptions}
-        series={series as any}
+        series={series}
         type={normalizedType}
         height={height}
       />
