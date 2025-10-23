@@ -14,7 +14,11 @@ const apiClient: AxiosInstance = axios.create({
   timeout: 5000,
   headers: {
     'Content-Type': 'application/json',
-	@@ -22,7 +22,9 @@ const apiClient: AxiosInstance = axios.create({
+	  },
+});
+
+/**
+ * 요청 인터셉터
  */
 apiClient.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
