@@ -73,13 +73,16 @@ export default function Chart({
   tooltipFormatter,
 }: ChartProps) {
   // ApexCharts는 column 타입이 없어서 bar로 매핑 후 변환 처리
-   const normalizedType = (type === "column" ? "bar" : type) as
-    | "line"
-    | "area"
-    | "bar"
-    | "donut"
-    | "pie"
-    | "scatter";
+   const normalizedType =
+    type === "column"
+      ? "bar"
+      : (type as
+          | "line"
+          | "area"
+          | "bar"
+          | "donut"
+          | "pie"
+          | "scatter");
   
   const baseOptions = useMemo(() => {
     // 🔒 title/subtitle 기본객체를 항상 넣어 offsetY 접근 이슈 방지
@@ -123,7 +126,9 @@ export default function Chart({
       },
       tooltip: {
         theme: "light",
-        y: { formatter: tooltipFormatter ?? ((v: number) => (v ?? 0).toLocaleString()) },
+        y: { 
+          formatter: tooltipFormatter ?? ((v: number) => (v ?? 0).toLocaleString()) 
+        },
       },
       dataLabels: { enabled: false },
       stroke: {
@@ -163,8 +168,13 @@ export default function Chart({
             borderRadius: 4,
             columnWidth: "60%",
             dataLabels: {
-              total: { enabled: isStacked, // 스택형일 때만 합계 표시
-              style: { fontSize: "13px", fontWeight: 900 } },
+              total: { 
+                enabled: isStacked, // 스택형일 때만 합계 표시
+              style: { 
+                fontSize: "13px", 
+                fontWeight: 900 
+                }, 
+              },
             },
           },
         };
@@ -179,25 +189,44 @@ export default function Chart({
         options.stroke = { curve: "smooth", width: 2 };
         options.fill = {
           type: "gradient",
-          gradient: { shadeIntensity: 0.4, opacityFrom: 0.7, opacityTo: 0.1, stops: [0, 90, 100] },
+          gradient: { 
+            shadeIntensity: 0.4, 
+            opacityFrom: 0.7, 
+            opacityTo: 0.1, 
+            stops: [0, 90, 100] 
+          },
         };
         break;
 
       case "donut":
       case "pie":
-        options.labels = categories as string[]; // labels 필요
-        options.plotOptions = { pie: { donut: { size: type === "donut" ? "60%" : "0%" } } };
-        options.legend = { show: true, position: "right", labels: { colors: "#374151" } };
+        options.labels = categories as string[];
+        options.plotOptions = { 
+          pie: { 
+            donut: { 
+              size: type === "donut" ? "60%" : "0%" 
+            }, 
+          }, 
+        };
+        options.legend = { 
+          show: true, 
+          position: "right", 
+          labels: { colors: "#374151" },
+        };
         break;
 
       case "scatter":
-        options.chart = { ...(options.chart ?? {}), zoom: { enabled: true, type: "xy" } };
+        options.chart = { 
+          ...(options.chart ?? {}), 
+          zoom: { enabled: true, type: "xy" },
+         };
         options.xaxis = {
-          ...(options.xaxis ?? {}),
+          ...options.xaxis,
           tickAmount: 10,
           labels: { formatter: (v) => Number(v).toFixed(1) },
         };
-        options.yaxis = { labels: { formatter: (v: number) => Number(v).toFixed(1) } } as ApexYAxis;
+        options.yaxis = { 
+          labels: { formatter: (v: number) => Number(v).toFixed(1) } } as ApexYAxis;
         break;
     }
 
@@ -233,17 +262,12 @@ export default function Chart({
     isStacked,
   ]);
 
-  const outerStyle: React.CSSProperties = {
-    width,
-    height,
-    minHeight: typeof height === "number" ? `${height}px` : height,
-  };
 
   return (
-    <div style={outerStyle}>
+    <div style={{ width, height }}>
       <ReactApexChart
         options={baseOptions}
-        series={series as any}
+        series={series}
         type={normalizedType}
         height={height}
       />
