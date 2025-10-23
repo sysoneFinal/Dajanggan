@@ -73,19 +73,15 @@ export default function Chart({
   tooltipFormatter,
 }: ChartProps) {
   // ApexCharts는 column 타입이 없어서 bar로 매핑 후 변환 처리
-  const normalizedType =
-    type === "column"
-      ? "bar"
-      : (type as
-          | "line"
-          | "area"
-          | "bar"
-          | "donut"
-          | "pie"
-          | "scatter" "scatter" =
-    type === "column" ? "bar" : (type as any);
+   const normalizedType = (type === "column" ? "bar" : type) as
+    | "line"
+    | "area"
+    | "bar"
+    | "donut"
+    | "pie"
+    | "scatter";
   
-  const baseOptions = useMemo<ApexCharts.ApexOptions>(() => {
+  const baseOptions = useMemo(() => {
     // 🔒 title/subtitle 기본객체를 항상 넣어 offsetY 접근 이슈 방지
     const safeTitle = {
       text: titleOptions?.text,
@@ -206,7 +202,7 @@ export default function Chart({
     }
 
     // 사용자 옵션 병합
-    const merged: ApexOptions = {
+    const merged: ApexCharts.ApexOptions = {
       ...options,
       ...customOptions,
       chart: { ...options.chart, ...customOptions?.chart },
