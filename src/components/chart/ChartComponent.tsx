@@ -73,7 +73,7 @@ export default function Chart({
   tooltipFormatter,
 }: ChartProps) {
   // ApexCharts는 column 타입이 없어서 bar로 매핑 후 변환 처리
-   const normalizedType =
+  const normalizedType =
     type === "column"
       ? "bar"
       : (type as
@@ -170,10 +170,10 @@ export default function Chart({
             dataLabels: {
               total: { 
                 enabled: isStacked, // 스택형일 때만 합계 표시
-              style: { 
-                fontSize: "13px", 
-                fontWeight: 900 
-                }, 
+              style: {
+                fontSize: "13px",
+                fontWeight: 900
+                },
               },
             },
           },
@@ -189,11 +189,11 @@ export default function Chart({
         options.stroke = { curve: "smooth", width: 2 };
         options.fill = {
           type: "gradient",
-          gradient: { 
-            shadeIntensity: 0.4, 
-            opacityFrom: 0.7, 
-            opacityTo: 0.1, 
-            stops: [0, 90, 100] 
+          gradient: {
+            shadeIntensity: 0.4,
+            opacityFrom: 0.7,
+            opacityTo: 0.1,
+            stops: [0, 90, 100],
           },
         };
         break;
@@ -201,25 +201,24 @@ export default function Chart({
       case "donut":
       case "pie":
         options.labels = categories as string[];
-        options.plotOptions = { 
-          pie: { 
-            donut: { 
-              size: type === "donut" ? "60%" : "0%" 
-            }, 
-          }, 
+        options.plotOptions = {
+          pie: {
+            donut: {
+              size: type === "donut" ? "60%" : "0%",
+            },
+          },
         };
-        options.legend = { 
-          show: true, 
-          position: "right", 
+        options.legend = {
+          show: true,
+          position: "bottom",
           labels: { colors: "#374151" },
         };
         break;
-
       case "scatter":
-        options.chart = { 
-          ...(options.chart ?? {}), 
+        options.chart = {
+          ...(options.chart ?? {}),
           zoom: { enabled: true, type: "xy" },
-         };
+        };
         options.xaxis = {
           ...options.xaxis,
           tickAmount: 10,
