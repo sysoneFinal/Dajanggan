@@ -83,29 +83,36 @@ export default function Chart({
           | "donut"
           | "pie"
           | "scatter");
+  
+  const baseOptions = useMemo(() => {
+    // 🔒 title/subtitle 기본객체를 항상 넣어 offsetY 접근 이슈 방지
+    const safeTitle = {
+      text: titleOptions?.text,
+      align: titleOptions?.align ?? "left",
+      offsetY: 0,
+      style: {
+        color: titleOptions?.color ?? "#111827",
+        fontSize: titleOptions?.fontSize ?? "15px",
+        fontWeight: titleOptions?.fontWeight ?? 600,
+      },
+    };
+    const safeSubtitle = { text: undefined as any, offsetY: 0 };
 
-  const baseOptions = useMemo<ApexCharts.ApexOptions>(() => {
-    // 기본 공통 옵션
     const options: ApexCharts.ApexOptions = {
       chart: {
         type: normalizedType,
         toolbar: { show: showToolbar },
         background: "transparent",
         fontFamily: "Pretendard, sans-serif",
+        animations: { enabled: true },
         stacked: isStacked,
+        redrawOnParentResize: true,
+        redrawOnWindowResize: true,
       },
       theme: { mode: "light" },
-      title: titleOptions
-        ? {
-            text: titleOptions.text,
-            align: titleOptions.align ?? "left",
-            style: {
-              color: titleOptions.color ?? "#111827",
-              fontSize: titleOptions.fontSize ?? "15px",
-              fontWeight: titleOptions.fontWeight ?? 600,
-            },
-          }
-        : undefined,
+      // ✅ 항상 객체를 넣어줌
+      title: safeTitle,
+      subtitle: safeSubtitle,
       colors,
       grid: {
         show: showGrid,
@@ -119,8 +126,8 @@ export default function Chart({
       },
       tooltip: {
         theme: "light",
-        y: {
-          formatter: tooltipFormatter ?? ((v) => v.toLocaleString()),
+        y: { 
+          formatter: tooltipFormatter ?? ((v: number) => (v ?? 0).toLocaleString()) 
         },
       },
       dataLabels: { enabled: false },
@@ -133,20 +140,22 @@ export default function Chart({
         labels: { style: { colors: "#6B7280" } },
         axisBorder: { color: "#D1D5DB" },
         axisTicks: { color: "#D1D5DB" },
-        ...xaxisOptions,
+        ...(xaxisOptions ?? {}),
       },
-      yaxis: {
-        labels: {
-          style: { colors: "#6B7280" },
-          formatter: (val: number) =>
-            val >= 1_000_000
-              ? `${(val / 1_000_000).toFixed(1)}M`
-              : val >= 1_000
-              ? `${(val / 1_000).toFixed(0)}K`
-              : val.toLocaleString(),
-        },
-        ...yaxisOptions,
-      },
+      yaxis:
+        (yaxisOptions as any) ??
+        ({
+          labels: {
+            style: { colors: "#6B7280" },
+            formatter: (val: number) =>
+              val >= 1_000_000
+                ? `${(val / 1_000_000).toFixed(1)}M`
+                : val >= 1_000
+                ? `${(val / 1_000).toFixed(0)}K`
+                : (val ?? 0).toLocaleString(),
+          },
+        } as ApexYAxis),
+      noData: { text: "Loading...", align: "center", style: { fontSize: "12px" } },
     };
 
     // 타입별 세부 설정
@@ -159,17 +168,16 @@ export default function Chart({
             borderRadius: 4,
             columnWidth: "60%",
             dataLabels: {
-              total: {
+              total: { 
                 enabled: isStacked, // 스택형일 때만 합계 표시
-                style: {
-                  fontSize: "13px",
-                  fontWeight: 900,
+              style: {
+                fontSize: "13px",
+                fontWeight: 900
                 },
               },
             },
           },
         };
-        options.dataLabels = { enabled: false };
         options.stroke = { show: false };
         break;
 
@@ -214,27 +222,32 @@ export default function Chart({
         options.xaxis = {
           ...options.xaxis,
           tickAmount: 10,
-          labels: { formatter: (val) => Number(val).toFixed(1) },
+          labels: { formatter: (v) => Number(v).toFixed(1) },
         };
-        options.yaxis = {
-          labels: { formatter: (val) => Number(val).toFixed(1) },
-        };
+        options.yaxis = { 
+          labels: { formatter: (v: number) => Number(v).toFixed(1) } } as ApexYAxis;
         break;
     }
 
-    
-    return {
+    // 사용자 옵션 병합
+    const merged: ApexCharts.ApexOptions = {
       ...options,
+      ...customOptions,
       chart: { ...options.chart, ...customOptions?.chart },
       plotOptions: { ...options.plotOptions, ...customOptions?.plotOptions },
       fill: { ...options.fill, ...customOptions?.fill },
       stroke: { ...options.stroke, ...customOptions?.stroke },
       grid: { ...options.grid, ...customOptions?.grid },
-      ...customOptions,
+      xaxis: { ...(options.xaxis ?? {}), ...(customOptions?.xaxis ?? {}) },
+      yaxis: (customOptions?.yaxis as any) ?? options.yaxis,
+      // 🔒 title/subtitle는 최소 구조 유지
+      title: { ...safeTitle, ...(customOptions?.title ?? {}) },
+      subtitle: { ...safeSubtitle, ...(customOptions?.subtitle ?? {}) },
     };
+
+    return merged;
   }, [
     type,
-    normalizedType,
     titleOptions,
     colors,
     categories,
@@ -245,7 +258,9 @@ export default function Chart({
     xaxisOptions,
     yaxisOptions,
     customOptions,
+    isStacked,
   ]);
+
 
   return (
     <div style={{ width, height }}>
