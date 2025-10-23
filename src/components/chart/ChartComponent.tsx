@@ -72,9 +72,19 @@ export default function Chart({
   yaxisOptions,
   tooltipFormatter,
 }: ChartProps) {
-  const normalizedType: "line" | "area" | "bar" | "donut" | "pie" | "scatter" =
+   // ApexCharts는 column 타입이 없어서 bar로 매핑 후 변환 처리
+  const normalizedType =
+    type === "column"
+      ? "bar"
+      : (type as
+          | "line"
+          | "area"
+          | "bar"
+          | "donut"
+          | "pie"
+          | "scatter" "scatter" =
     type === "column" ? "bar" : (type as any);
-
+  
   const baseOptions = useMemo<ApexCharts.ApexOptions>(() => {
     // 🔒 title/subtitle 기본객체를 항상 넣어 offsetY 접근 이슈 방지
     const safeTitle = {
