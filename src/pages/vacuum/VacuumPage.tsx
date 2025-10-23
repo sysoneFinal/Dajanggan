@@ -68,7 +68,6 @@ function Kpi({ label, value, sub }: { label: string; value: string | number; sub
 }
 
 function ProgressMini({ series }: { series: number[] }) {
-  const last = series.at(-1) ?? 0;
   return (
     <div className="vd-progress">
       <div className="vd-progress__spark">
