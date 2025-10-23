@@ -31,7 +31,7 @@ interface ChartProps {
   /** 색상 팔레트 */
   colors?: string[];
   /** 사용자 지정 Apex 옵션 */
-    customOptions?: ApexCharts.ApexOptions;
+  customOptions?: ApexCharts.ApexOptions;
 
   /** 크기 설정 */
   width?: number | string;
@@ -72,7 +72,7 @@ export default function Chart({
   yaxisOptions,
   tooltipFormatter,
 }: ChartProps) {
-   // ApexCharts는 column 타입이 없어서 bar로 매핑 후 변환 처리
+  // ApexCharts는 column 타입이 없어서 bar로 매핑 후 변환 처리
   const normalizedType =
     type === "column"
       ? "bar"
@@ -104,8 +104,7 @@ export default function Chart({
         type: normalizedType,
         toolbar: { show: showToolbar },
         background: "transparent",
-        fontFamily:
-          "Pretendard, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, sans-serif",
+        fontFamily: "Pretendard, sans-serif",
         animations: { enabled: true },
         stacked: isStacked,
         redrawOnParentResize: true,
