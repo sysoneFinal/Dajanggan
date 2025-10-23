@@ -16,7 +16,6 @@
   box-sizing: border-box;
 }
 
-/* 상단 메트릭 카드 섹션 */
 .metrics-section {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
@@ -83,7 +82,6 @@
   transition: color 0.3s ease;
 }
 
-/* 경고 상태 스타일 */
 .metric-card.warning {
   border-color: rgba(251, 191, 36, 0.6);
   background: linear-gradient(
@@ -129,7 +127,6 @@
   }
 }
 
-/* 메트릭 툴팁 */
 .metric-tooltip {
   position: absolute;
   top: 100%;
@@ -205,7 +202,6 @@
   }
 }
 
-/* TPS/QPS 차트 섹션 */
 .chart-section {
   background: linear-gradient(
     180deg,
@@ -219,6 +215,7 @@
   box-shadow: 0px 10px 30px 0px rgba(0, 0, 0, 0.08);
   backdrop-filter: blur(3px);
   position: relative;
+  overflow: visible;
   z-index: 1;
 }
 
@@ -245,26 +242,15 @@
   display: flex;
   align-items: center;
   gap: 8px;
-}
-
-.legend-color {
-  width: 14px;
-  height: 14px;
-  border-radius: 2px;
-}
-
-.tps-color {
-  background: #6366f1;
-}
-
-.qps-color {
-  background: rgba(255, 182, 46, 0.78);
-}
-
-.legend-text {
-  color: #000000;
-  font-size: 12px;
+  font-size: 13px;
+  color: #6b7280;
   font-weight: 500;
+}
+
+.legend-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
 }
 
 .chart-wrapper {
@@ -272,16 +258,14 @@
   overflow: visible;
 }
 
-/* 하단 섹션 */
 .bottom-section {
   display: grid;
-  grid-template-columns: 1fr 380px;
-  gap: 26px;
+  grid-template-columns: 2fr 1fr;
+  gap: 20px;
   position: relative;
   z-index: 1;
 }
 
-/* 슬로우 쿼리 카드 */
 .slow-query-card {
   background: linear-gradient(
     180deg,
@@ -357,15 +341,7 @@
   border-radius: 10px;
   padding: 10px 16px;
   transition: background 0.2s ease;
-  animation: slideInLeft 0.5s ease;
-  animation-fill-mode: backwards;
 }
-
-.query-item:nth-child(1) { animation-delay: 0.1s; }
-.query-item:nth-child(2) { animation-delay: 0.2s; }
-.query-item:nth-child(3) { animation-delay: 0.3s; }
-.query-item:nth-child(4) { animation-delay: 0.4s; }
-.query-item:nth-child(5) { animation-delay: 0.5s; }
 
 .query-item:hover {
   background: rgba(236, 234, 234, 0.6);
@@ -403,7 +379,6 @@
   white-space: nowrap;
 }
 
-/* 리소스 사용률 카드 */
 .resource-card {
   background: linear-gradient(
     180deg,
@@ -436,69 +411,28 @@
   font-weight: 600;
 }
 
-.resource-list {
+.gauge-wrapper {
   display: flex;
   flex-direction: column;
   gap: 20px;
+  padding: 10px 0;
 }
 
-.resource-item {
-  animation: fadeInRight 0.6s ease;
-  animation-fill-mode: backwards;
-}
-
-.resource-item:nth-child(1) { animation-delay: 0.2s; }
-.resource-item:nth-child(2) { animation-delay: 0.3s; }
-.resource-item:nth-child(3) { animation-delay: 0.4s; }
-
-.resource-info {
+.gauge-item {
   display: flex;
-  justify-content: space-between;
+  flex-direction: column;
   align-items: center;
-  margin-bottom: 8px;
+  justify-content: center;
 }
 
-.resource-label {
-  color: #374151;
+.gauge-label {
+  margin-top: 8px;
   font-size: 14px;
-  font-weight: 500;
+  font-weight: 600;
+  color: #374151;
+  text-align: center;
 }
 
-.resource-value {
-  color: #111827;
-  font-size: 16px;
-  font-weight: 700;
-}
-
-.resource-bar {
-  width: 100%;
-  height: 12px;
-  background: rgba(229, 231, 235, 0.5);
-  border-radius: 6px;
-  overflow: hidden;
-  position: relative;
-}
-
-.resource-progress {
-  height: 100%;
-  border-radius: 6px;
-  transition: width 0.8s ease-in-out;
-  animation: progressAnimation 1.2s ease-in-out;
-}
-
-.cpu-progress {
-  background: linear-gradient(90deg, #6366f1 0%, #818cf8 100%);
-}
-
-.memory-progress {
-  background: linear-gradient(90deg, #ef4444 0%, #f87171 100%);
-}
-
-.disk-progress {
-  background: linear-gradient(90deg, #f59e0b 0%, #fbbf24 100%);
-}
-
-/* 애니메이션 */
 @keyframes fadeIn {
   from {
     opacity: 0;
@@ -530,24 +464,6 @@
   }
 }
 
-@keyframes fadeInRight {
-  from {
-    opacity: 0;
-    transform: translateX(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateX(0);
-  }
-}
-
-@keyframes progressAnimation {
-  from {
-    width: 0;
-  }
-}
-
-/* 반응형 디자인 */
 @media (max-width: 1400px) {
   .bottom-section {
     grid-template-columns: 1fr;

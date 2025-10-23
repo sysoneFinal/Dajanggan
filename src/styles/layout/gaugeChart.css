@@ -1,3 +1,4 @@
+/* 반원 게이지 스타일 */
 .gauge-container {
   width: 200px;
   text-align: center;
@@ -16,4 +17,43 @@
   font-size: 12px;
   color: #9ca3af;
   margin-top: 2px;
+}
+
+/* 바(bar) 게이지 스타일 */
+.gauge-bar-container {
+  width: 100%;
+  padding: 8px 0;
+}
+
+.gauge-bar-label {
+  color: #6b7280;
+  font-size: 14px;
+  font-weight: 500;
+  margin-bottom: 8px;
+}
+
+.gauge-bar-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.gauge-bar-track {
+  flex: 1;
+  height: 10px;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.gauge-bar-progress {
+  height: 100%;
+  border-radius: 10px;
+}
+
+.gauge-bar-value {
+  color: #111827;
+  font-size: 15px;
+  font-weight: 700;
+  min-width: 45px;
+  text-align: right;
 }
