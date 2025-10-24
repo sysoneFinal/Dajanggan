@@ -1,32 +1,59 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import "/src/styles/instance-register.css";
-import apiClient from "../../api/apiClient"; // ✅ 공통 axios 인스턴스 사용
-
+import apiClient from "../../api/apiClient";
 
 // ------------------ Types ------------------
-export type DbStatus = "active" | "idle" | "down";
-
 export interface DatabaseSummary {
-  name: string;
-  status: DbStatus;
+  databaseName: string;
+  isEnabled: boolean;
   connections: number;
   sizeBytes: number; // bytes
   cacheHitRate: number; // 0~1
-  lastUpdatedAt: string; // ISO string
+  updatedAt: string; // ISO string
 }
 
 export interface InstanceRow {
-  id: string;
-  name: string;
-  ip: string;
+  instanceId: string;
+  instanceName: string;
+  host: string;
   port: number;
-  status: "up" | "down" | "warning";
+  isEnabled: boolean;
   version: string;
-  uptimeMs: number; // ms
+  createdAt: string; // ms
   updatedAt: string; // ISO string
+  uptimeMs: number;    
   databases?: DatabaseSummary[];
 }
+
+// 가동 시간 계산 함수
+export const calculateUptimeMs = (createdAt: string): number => {
+  const created = new Date(createdAt).getTime();
+  const now = Date.now();
+  return now - created; // ms 단위로 반환
+};
+
+// --------백엔드 응답--------
+type InstanceDto = {
+    id: number | string;
+    instanceName?: string;
+    host: string;                 // 또는 ip
+    port: number;
+    isEnabled?: boolean;
+    status?: "active" | "inactive";  
+    version?: string;             
+    updatedAt?: string;           // OffsetDateTime -> ISO
+    createdAt: string;           // 백업 용
+    databases?: Array<{
+        name: string;
+        isEnabled: boolean;
+        status?: "active" | "inactive";  
+        connections: number;
+        sizeBytes: number;
+        cacheHitRate: number;
+        updatedAt: string;
+  }>;
+};
 
 // ------------------ Utils ------------------
 const formatBytes = (bytes: number) => {
@@ -55,64 +82,175 @@ const formatDateTime = (iso: string) => {
   }
 };
 
-// ------------------ Mock Data ------------------
-const MOCK: InstanceRow[] = [
-  {
-    id: "newPost1",
-    name: "newPost1",
-    ip: "120.155.234.1",
-    port: 1541,
-    status: "down",
-    version: "10.2.1",
-    uptimeMs: 1223141,
-    updatedAt: "2025-10-11T10:11:23",
-    databases: [
-      {
-        name: "DBNAME",
-        status: "active",
-        connections: 3,
-        sizeBytes: 5.3 * 1024 ** 3,
-        cacheHitRate: 0.942,
-        lastUpdatedAt: "2025-10-11T10:11:23",
-      },
-    ],
-  },
-  {
-    id: "postgres",
-    name: "postgres",
-    ip: "10.10.10",
-    port: 101010, // 렌더링시 표시만 "10.10.10"
-    status: "up",
-    version: "PostgreSQL 10",
-    uptimeMs:
-      150 * 24 * 60 * 60 * 1000 +
-      20 * 60 * 60 * 1000 +
-      57 * 60 * 1000 +
-      54 * 1000,
-    updatedAt: "2025-10-10T10:10:10",
-  },
-];
+// 상태 변환: (문자열/불린) → 불린
+export const toBooleanStatus = (s?: string | boolean): boolean => {
+  if (typeof s === "boolean") return s;
+  if (!s) return false;
+  return s.toLowerCase() === "active";
+};
+
+// 불린 → "active"/"inactive" (UI 표기용)
+export const toStatusLabel = (b: boolean) => (b ? "active" : "inactive");
+
+// ------------------ Mapping ------------------
+const pickId = (i: any) =>
+  i?.id ?? i?.instanceId ?? i?.instance_id ?? i?.instance_id_pk; // 가능성 모두 커버
+const pickDbName = (d: any) =>
+  d?.name ?? d?.databaseName ?? d?.database_name;
+
+export const mapInstance = (i: InstanceDto): InstanceRow => {
+  const id = pickId(i);
+  const dbs = Array.isArray(i.databases)
+    ? i.databases
+        .map((d) => ({
+          databaseName: String(pickDbName(d) ?? ""),
+          isEnabled: toBooleanStatus(d.isEnabled ?? d.status),
+          connections: Number(d.connections ?? 0),
+          sizeBytes:
+            typeof d.sizeBytes === "number"
+              ? d.sizeBytes
+              : Number(d.sizeBytes ?? 0),
+          cacheHitRate:
+            typeof d.cacheHitRate === "number"
+              ? d.cacheHitRate
+              : Number(d.cacheHitRate ?? 0),
+          updatedAt: d.updatedAt ?? d.updatedAt ?? "",
+        }))
+        // DB 키값 없는 항목 제거
+        .filter((d) => !!d.databaseName)
+    : undefined;
+
+  return {
+    instanceId: String(id ?? ""), // 일단 문자열화
+    instanceName: i.instanceName ?? i.host ?? String(id ?? "-"),
+    host: i.host,
+    port: Number(i.port),
+    isEnabled: toBooleanStatus(i.isEnabled ?? i.status),
+    version: i.version ?? "-",
+    uptimeMs: Date.now() - Date.parse(i.createdAt),
+    updatedAt: i.updatedAt ?? i.createdAt ?? new Date().toISOString(),
+    createdAt: i.createdAt,
+    databases: dbs,
+  };
+};
 
 // ------------------ Component ------------------
 const InstancePage: React.FC = () => {
+  const navigate = useNavigate();
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
-  const navigate = useNavigate(); // ✅ 추가
-  const rows = useMemo(() => MOCK, []);
-  const handleAddClick = () => {
-    navigate("/instance-resister"); // 이동할 경로 지정
+  const [rows, setRows] = useState<InstanceRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const extractInstanceList = (data: any): InstanceDto[] => {
+        if (Array.isArray(data)) return data;
+        if (Array.isArray(data?.items)) return data.items;
+        if (Array.isArray(data?.content)) return data.content;
+        if (Array.isArray(data?.data)) return data.data;
+        if (Array.isArray(data?.records)) return data.records;
+        return [];
+    };
+
+  // 🔍 목록 조회
+  useEffect(() => {
+    let ignore = false;
+    (async () => {
+      try {
+        setLoading(true);
+        setError(null);
+
+        const res = await apiClient.get("/api/instances");
+        const list: InstanceDto[] = extractInstanceList(res.data);
+
+        console.log("res.data =", res.data);
+        console.log("extracted list length =", list.length);
+
+        const mapped = (Array.isArray(list) ? list : [])
+          .map(mapInstance)
+          .filter((r) => !!r.instanceId);
+
+        if (!ignore) setRows(mapped);   // ✅ 중복 setRows 제거
+      } catch (e: any) {
+        if (!ignore) setError(e?.response?.data?.message ?? e?.message ?? "목록 조회 실패");
+      } finally {
+        if (!ignore) setLoading(false);
+      }
+    })();
+    return () => { ignore = true; };
+  }, []);
+
+  // ✅ 클릭 핸들러: 열려있으면 닫고, 닫혀있으면 (미로딩 시) fetch 후 열기
+  const fetchAndToggle = async (row: InstanceRow) => {
+    const key = row.instanceId;
+    const isOpen = !!expanded[key];
+
+    if (isOpen) {
+      setExpanded((p) => ({ ...p, [key]: false }));
+      return;
+    }
+
+    // 이미 로딩된 DB가 있으면 바로 열기
+    if (row.databases && row.databases.length > 0) {
+      setExpanded((p) => ({ ...p, [key]: true }));
+      return;
+    }
+
+    try {
+      const res = await apiClient.get(`/api/instances/${key}/databases`);
+      const arr = Array.isArray(res.data) ? res.data : [res.data];
+
+      const mappedDbs: DatabaseSummary[] = arr
+        .filter(Boolean)
+        .map((d: any) => ({
+          databaseName: String(d.databaseName ?? d.name ?? d.database_name ?? ""),
+          isEnabled: toBooleanStatus(d.isEnabled ?? d.status),
+          connections: Number(d.connections ?? 0),
+          sizeBytes: Number(d.sizeBytes ?? d.size_bytes ?? 0),              // "4" → 4
+          cacheHitRate:
+            typeof d.cacheHitRate === "number"
+              ? d.cacheHitRate
+              : Number(d.cacheHitRate ?? d.cache_hit_rate ?? 0) / 100,      // "23" → 0.23
+          updatedAt: d.updatedAt ?? d.updated_at ?? "",
+        }))
+        .filter((d) => d.databaseName);
+
+      setRows((prev) =>
+        prev.map((r) => (r.instanceId === key ? { ...r, databases: mappedDbs } : r))
+      );
+      setExpanded((p) => ({ ...p, [key]: true }));
+      console.log(`DB loaded for instance ${key}:`, mappedDbs);
+    } catch (e) {
+      console.error("DB 목록 조회 실패:", e);
+    }
   };
+  
+
+  const handleAddClick = () => {
+    navigate("/instance-register");
+  };
+
+  const visibleRows = useMemo(() => rows, [rows]);
 
   return (
     <div className="il-root">
       <div className="il-topbar">
         <button className="il-add-btn" onClick={handleAddClick}>
           + 인스턴스 등록
-        </button>      </div>
+        </button>
+      </div>
+
+      {/* 로딩/에러 배너 */}
+      {loading && <div className="il-banner il-banner--muted">로딩 중…</div>}
+      {error && (
+        <div className="il-banner il-banner--error">
+          {error}
+        </div>
+      )}
 
       <div className="il-card">
         <div className="il-header-row">
           <div>Instance</div>
-          <div>IP</div>
+          <div>Host</div>
           <div>Port</div>
           <div>Status</div>
           <div>Version</div>
@@ -120,27 +258,29 @@ const InstancePage: React.FC = () => {
           <div>업데이트시간</div>
         </div>
 
-        {rows.map((r) => (
-          <div key={r.id} className="il-row-wrap">
+        {visibleRows.map((r) => (
+          <div key={r.instanceId} className="il-row-wrap">
             <div
               className="il-row"
               role="button"
-              onClick={() => setExpanded((e) => ({ ...e, [r.id]: !e[r.id] }))}
-            >
-              <div className="il-cell il-strong">{r.name}</div>
-              <div className="il-cell">{r.ip}</div>
-              <div className="il-cell">{r.port === 101010 ? "10.10.10" : r.port}</div>
-              <div className="il-cell">
-                {r.status === "up" && <span className="il-dot il-dot--indigo" />}
-                {r.status === "down" && <span className="il-dot il-dot--red" />}
-                {r.status === "warning" && <span className="il-dot il-dot--amber" />}
-              </div>
+            onClick={() => fetchAndToggle(r)} > 
+              <div className="il-cell il-strong">{r.instanceName}</div>
+              <div className="il-cell">{r.host}</div>
+              <div className="il-cell">{r.port}</div>
+             <div className="il-cell">
+            <span
+                className={`il-dot ${r.isEnabled ? "il-dot--indigo" : "il-dot--red"}`}
+            />
+            <span className="il-status-label">
+                {r.isEnabled ? "active" : "inactive"}
+            </span>
+            </div>
               <div className="il-cell">{r.version}</div>
               <div className="il-cell">{formatMs(r.uptimeMs)}</div>
               <div className="il-cell">{formatDateTime(r.updatedAt)}</div>
             </div>
 
-            {r.databases && r.databases.length > 0 && expanded[r.id] && (
+            {r.databases && r.databases.length > 0 && expanded[r.instanceId] && (
               <div className="il-db">
                 <div className="il-db-title">Database</div>
                 <div className="il-db-header">
@@ -152,21 +292,25 @@ const InstancePage: React.FC = () => {
                   <div className="center">마지막 업데이트</div>
                 </div>
                 {r.databases.map((db) => (
-                  <div key={db.name} className="il-db-row">
-                    <div className="il-cell">{db.name}</div>
-                    <div className="il-cell center">
-                      <span className="il-badge il-badge--indigo">{db.status}</span>
-                    </div>
+                  <div key={db.databaseName} className="il-db-row">
+                    <div className="il-cell">{db.databaseName}</div>
+                    <span className={`il-badge ${db.isEnabled ? "il-badge--indigo" : "il-badge--red"}`}>
+                        {db.isEnabled ? "active" : "inactive"}
+                    </span> 
                     <div className="il-cell center">{db.connections}</div>
                     <div className="il-cell right">{formatBytes(db.sizeBytes)}</div>
                     <div className="il-cell center">{(db.cacheHitRate * 100).toFixed(1)}%</div>
-                    <div className="il-cell center">{formatDateTime(db.lastUpdatedAt)}</div>
+                    <div className="il-cell center">{formatDateTime(db.updatedAt)}</div>
                   </div>
                 ))}
               </div>
             )}
           </div>
         ))}
+
+        {!loading && !error && visibleRows.length === 0 && (
+          <div className="il-empty">등록된 인스턴스가 없습니다.</div>
+        )}
       </div>
     </div>
   );

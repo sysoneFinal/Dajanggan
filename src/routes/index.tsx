@@ -2,7 +2,7 @@ import { Routes, Route } from "react-router-dom";
 import Home from "../pages/Home";
 import Overview from "../pages/dashboard/Overview";
 import EventPage from "../pages/eventlog/EventLogPage";
-import InstanceResister from "../pages/instance/InstanceResister";
+import InstanceRegister from "../pages/instance/InstanceRegister";
 import InstancePage from "../pages/instance/InstancePage";
 import SessionPage from "../pages/session/SessionPage";
 import CheckpointPage from "../pages/engine/CheckPointPage";
@@ -19,7 +19,7 @@ const routeList = [
   // Instance 단위
   { path: "/cpu", element: <CpuPage /> },
   { path: "/instance-management", element: <InstancePage /> },
-  { path: "/instance-resister", element: <InstanceResister /> },
+  { path: "/instance-register", element: <InstanceRegister /> },
   { path: "/checkpoint", element: <CheckpointPage /> },
 
   // DB 단위 
