@@ -1,268 +1,319 @@
-import React, { useMemo, useState } from "react";
-import "/src/styles/instance.css";
-import apiClient from "../../api/apiClient"; // ✅ 공통 axios 인스턴스 사용
+import React, { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import "/src/styles/instance-register.css";
+import apiClient from "../../api/apiClient";
 
-export type NewInstance = {
+// ------------------ Types ------------------
+export interface DatabaseSummary {
+  databaseName: string;
+  isEnabled: boolean;
+  connections: number;
+  sizeBytes: number; // bytes
+  cacheHitRate: number; // 0~1
+  updatedAt: string; // ISO string
+}
+
+export interface InstanceRow {
+  instanceId: string;
+  instanceName: string;
   host: string;
-  instance: string;
-  database: string;
-  port: number | string;
-  username: string;
-  password: string;
+  port: number;
+  isEnabled: boolean;
+  version: string;
+  createdAt: string; // ms
+  updatedAt: string; // ISO string
+  uptimeMs: number;    
+  databases?: DatabaseSummary[];
+}
+
+// 가동 시간 계산 함수
+export const calculateUptimeMs = (createdAt: string): number => {
+  const created = new Date(createdAt).getTime();
+  const now = Date.now();
+  return now - created; // ms 단위로 반환
 };
 
-type Props = {
-  initialValue?: Partial<NewInstance>;
-  onSubmit?: (payload: NewInstance) => Promise<void> | void;
-  onTest?: (
-    payload: NewInstance
-  ) => Promise<{ ok: boolean; message?: string }> | { ok: boolean; message?: string };
-  className?: string;
+// --------백엔드 응답--------
+type InstanceDto = {
+    id: number | string;
+    instanceName?: string;
+    host: string;                 // 또는 ip
+    port: number;
+    isEnabled?: boolean;
+    status?: "active" | "inactive";  
+    version?: string;             
+    updatedAt?: string;           // OffsetDateTime -> ISO
+    createdAt: string;           // 백업 용
+    databases?: Array<{
+        name: string;
+        isEnabled: boolean;
+        status?: "active" | "inactive";  
+        connections: number;
+        sizeBytes: number;
+        cacheHitRate: number;
+        updatedAt: string;
+  }>;
 };
 
-const fieldLabel = {
-  host: "Host",
-  instance: "Instance",
-  database: "Database",
-  port: "Port",
-  username: "Username",
-  password: "Password",
-} as const;
+// ------------------ Utils ------------------
+const formatBytes = (bytes: number) => {
+  if (bytes === 0) return "0 B";
+  const k = 1024;
+  const sizes = ["B", "KB", "MB", "GB", "TB"];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  const value = bytes / Math.pow(k, i);
+  return `${value % 1 === 0 ? value : value.toFixed(1)}${sizes[i]}`;
+};
 
-const requiredMsg = (k: keyof typeof fieldLabel) => `${fieldLabel[k]} 값이 필요합니다.`;
+const formatMs = (ms: number) => new Intl.NumberFormat().format(ms) + "/ms";
 
-// ✅ 백엔드 DTO로 매핑
-const toInstanceDto = (f: NewInstance) => ({
-  host: f.host,
-  instanceName: f.instance,
-  dbname: f.database,
-  port: Number(f.port),
-  username: f.username,
-  secretRef: f.password,
-  sslmode: "require",
-  isEnabled: true,
-  slackEnabled: false,
-  slackChannel: undefined,
-  slackMention: undefined,
-  slackWebhookUrl: undefined,
-  collectionInterval: 5,
-});
+const formatDateTime = (iso: string) => {
+  try {
+    const d = new Date(iso);
+    const y = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, "0");
+    const dd = String(d.getDate()).padStart(2, "0");
+    const hh = String(d.getHours()).padStart(2, "0");
+    const mi = String(d.getMinutes()).padStart(2, "0");
+    const ss = String(d.getSeconds()).padStart(2, "0");
+    return `${y}.${mm}.${dd} ${hh}:${mi}:${ss}`;
+  } catch {
+    return iso;
+  }
+};
 
-export default function NewInstancePage({
-  initialValue,
-  onSubmit,
-  onTest,
-  className = "",
-}: Props) {
-  const [form, setForm] = useState<NewInstance>({
-    host: initialValue?.host ?? "",
-    instance: initialValue?.instance ?? "",
-    database: initialValue?.database ?? "",
-    port: initialValue?.port ?? "",
-    username: initialValue?.username ?? "",
-    password: initialValue?.password ?? "",
-  });
+// 상태 변환: (문자열/불린) → 불린
+export const toBooleanStatus = (s?: string | boolean): boolean => {
+  if (typeof s === "boolean") return s;
+  if (!s) return false;
+  return s.toLowerCase() === "active";
+};
 
-  const [errors, setErrors] = useState<Partial<Record<keyof NewInstance, string>>>({});
-  const [submitting, setSubmitting] = useState(false);
-  const [testing, setTesting] = useState(false);
-  const [testResult, setTestResult] = useState<null | { ok: boolean; message?: string }>(null);
+// 불린 → "active"/"inactive" (UI 표기용)
+export const toStatusLabel = (b: boolean) => (b ? "active" : "inactive");
 
-  const validate = (): boolean => {
-    const next: Partial<Record<keyof NewInstance, string>> = {};
-    if (!form.host.trim()) next.host = requiredMsg("host");
-    if (!form.instance.trim()) next.instance = requiredMsg("instance");
-    if (!form.database.trim()) next.database = requiredMsg("database");
-    if (!form.port || Number(form.port) < 1 || Number(form.port) > 65535)
-      next.port = "1~65535 사이 정수를 입력하세요.";
-    if (!form.username.trim()) next.username = requiredMsg("username");
-    if (!form.password) next.password = requiredMsg("password");
-    setErrors(next);
-    return Object.keys(next).length === 0;
+// ------------------ Mapping ------------------
+const pickId = (i: any) =>
+  i?.id ?? i?.instanceId ?? i?.instance_id ?? i?.instance_id_pk; // 가능성 모두 커버
+const pickDbName = (d: any) =>
+  d?.name ?? d?.databaseName ?? d?.database_name;
+
+export const mapInstance = (i: InstanceDto): InstanceRow => {
+  const id = pickId(i);
+  const dbs = Array.isArray(i.databases)
+    ? i.databases
+        .map((d) => ({
+          databaseName: String(pickDbName(d) ?? ""),
+          isEnabled: toBooleanStatus(d.isEnabled ?? d.status),
+          connections: Number(d.connections ?? 0),
+          sizeBytes:
+            typeof d.sizeBytes === "number"
+              ? d.sizeBytes
+              : Number(d.sizeBytes ?? 0),
+          cacheHitRate:
+            typeof d.cacheHitRate === "number"
+              ? d.cacheHitRate
+              : Number(d.cacheHitRate ?? 0),
+          updatedAt: d.updatedAt ?? d.updatedAt ?? "",
+        }))
+        // DB 키값 없는 항목 제거
+        .filter((d) => !!d.databaseName)
+    : undefined;
+
+  return {
+    instanceId: String(id ?? ""), // 일단 문자열화
+    instanceName: i.instanceName ?? i.host ?? String(id ?? "-"),
+    host: i.host,
+    port: Number(i.port),
+    isEnabled: toBooleanStatus(i.isEnabled ?? i.status),
+    version: i.version ?? "-",
+    uptimeMs: Date.now() - Date.parse(i.createdAt),
+    updatedAt: i.updatedAt ?? i.createdAt ?? new Date().toISOString(),
+    createdAt: i.createdAt,
+    databases: dbs,
   };
+};
 
-  const connectionString = useMemo(() => {
-    const user = encodeURIComponent(form.username);
-    const host = form.host || "";
-    const db = form.database || "";
-    return `postgresql://${user}:••••••••@${host}:${form.port}/${db}`;
-  }, [form]);
+// ------------------ Component ------------------
+const InstancePage: React.FC = () => {
+  const navigate = useNavigate();
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+  const [rows, setRows] = useState<InstanceRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleChange = (key: keyof NewInstance, value: string) => {
-    setForm((prev) => ({
-      ...prev,
-      [key]: key === "port" ? Number(value.replace(/[^0-9]/g, "")) : value,
-    }));
-    setErrors((prev) => ({ ...prev, [key]: undefined }));
-  };
+  const extractInstanceList = (data: any): InstanceDto[] => {
+        if (Array.isArray(data)) return data;
+        if (Array.isArray(data?.items)) return data.items;
+        if (Array.isArray(data?.content)) return data.content;
+        if (Array.isArray(data?.data)) return data.data;
+        if (Array.isArray(data?.records)) return data.records;
+        return [];
+    };
 
-  // ✅ 등록: 백엔드에 POST /api/instances
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setTestResult(null);
-    if (!validate()) return;
-    try {
-      setSubmitting(true);
+  // 🔍 목록 조회
+  useEffect(() => {
+    let ignore = false;
+    (async () => {
+      try {
+        setLoading(true);
+        setError(null);
 
-      if (onSubmit) {
-        await onSubmit(form);
-      } else {
-        const payload = toInstanceDto(form);
-        const res = await apiClient.post("/instances", payload); // { id }
-        alert(`등록 성공! ID: ${res.data?.id ?? "unknown"}`);
+        const res = await apiClient.get("/api/instances");
+        const list: InstanceDto[] = extractInstanceList(res.data);
+
+        console.log("res.data =", res.data);
+        console.log("extracted list length =", list.length);
+
+        const mapped = (Array.isArray(list) ? list : [])
+          .map(mapInstance)
+          .filter((r) => !!r.instanceId);
+
+        if (!ignore) setRows(mapped);   // ✅ 중복 setRows 제거
+      } catch (e: any) {
+        if (!ignore) setError(e?.response?.data?.message ?? e?.message ?? "목록 조회 실패");
+      } finally {
+        if (!ignore) setLoading(false);
       }
-    } catch (err: any) {
-      console.error(err);
-      alert(`등록 실패: ${err?.response?.data?.message ?? err.message}`);
-    } finally {
-      setSubmitting(false);
+    })();
+    return () => { ignore = true; };
+  }, []);
+
+  // ✅ 클릭 핸들러: 열려있으면 닫고, 닫혀있으면 (미로딩 시) fetch 후 열기
+  const fetchAndToggle = async (row: InstanceRow) => {
+    const key = row.instanceId;
+    const isOpen = !!expanded[key];
+
+    if (isOpen) {
+      setExpanded((p) => ({ ...p, [key]: false }));
+      return;
+    }
+
+    // 이미 로딩된 DB가 있으면 바로 열기
+    if (row.databases && row.databases.length > 0) {
+      setExpanded((p) => ({ ...p, [key]: true }));
+      return;
+    }
+
+    try {
+      const res = await apiClient.get(`/api/instances/${key}/databases`);
+      const arr = Array.isArray(res.data) ? res.data : [res.data];
+
+      const mappedDbs: DatabaseSummary[] = arr
+        .filter(Boolean)
+        .map((d: any) => ({
+          databaseName: String(d.databaseName ?? d.name ?? d.database_name ?? ""),
+          isEnabled: toBooleanStatus(d.isEnabled ?? d.status),
+          connections: Number(d.connections ?? 0),
+          sizeBytes: Number(d.sizeBytes ?? d.size_bytes ?? 0),              // "4" → 4
+          cacheHitRate:
+            typeof d.cacheHitRate === "number"
+              ? d.cacheHitRate
+              : Number(d.cacheHitRate ?? d.cache_hit_rate ?? 0) / 100,      // "23" → 0.23
+          updatedAt: d.updatedAt ?? d.updated_at ?? "",
+        }))
+        .filter((d) => d.databaseName);
+
+      setRows((prev) =>
+        prev.map((r) => (r.instanceId === key ? { ...r, databases: mappedDbs } : r))
+      );
+      setExpanded((p) => ({ ...p, [key]: true }));
+      console.log(`DB loaded for instance ${key}:`, mappedDbs);
+    } catch (e) {
+      console.error("DB 목록 조회 실패:", e);
     }
   };
+  
 
-  // ✅ 테스트: 실제 엔드포인트 있으면 호출, 없으면 기존 mock
-  const handleTest = async () => {
-    setTestResult(null);
-    if (!validate()) return;
-    try {
-      setTesting(true);
-
-      if (onTest) {
-        const res = await onTest(form);
-        setTestResult(res);
-      } else {
-        // 실제로는 여길 구현 (예: POST /api/instances/test)
-        // const res = await apiClient.post('/instances/test', toInstanceDto(form));
-        // setTestResult(res.data);
-        await new Promise((r) => setTimeout(r, 800));
-        setTestResult({ ok: true, message: "연결 성공 (mock)" });
-      }
-    } catch (e: any) {
-      setTestResult({ ok: false, message: e?.message ?? "테스트 실패" });
-    } finally {
-      setTesting(false);
-    }
+  const handleAddClick = () => {
+    navigate("/instance-register");
   };
+
+  const visibleRows = useMemo(() => rows, [rows]);
 
   return (
-    <div className={["nif-root", className].join(" ")}>
-      <div className="nif-card">
-        <div className="nif-header">
-          <h1 className="nif-title">New Instance</h1>
-          <p className="nif-sub">Instance 등록을 위한 정보를 입력해주세요.</p>
+    <div className="il-root">
+      <div className="il-topbar">
+        <button className="il-add-btn" onClick={handleAddClick}>
+          + 인스턴스 등록
+        </button>
+      </div>
+
+      {/* 로딩/에러 배너 */}
+      {loading && <div className="il-banner il-banner--muted">로딩 중…</div>}
+      {error && (
+        <div className="il-banner il-banner--error">
+          {error}
+        </div>
+      )}
+
+      <div className="il-card">
+        <div className="il-header-row">
+          <div>Instance</div>
+          <div>Host</div>
+          <div>Port</div>
+          <div>Status</div>
+          <div>Version</div>
+          <div>가동시간</div>
+          <div>업데이트시간</div>
         </div>
 
-        <form onSubmit={handleSubmit} className="nif-form">
-          <div className="nif-grid">
-            <Field label="Host" error={errors.host}>
-              <input
-                className={inputCls(!!errors.host)}
-                placeholder="호스트 명을 입력하세요"
-                value={form.host}
-                onChange={(e) => handleChange("host", e.target.value)}
-              />
-            </Field>
-
-            <Field label="Instance" error={errors.instance}>
-              <input
-                className={inputCls(!!errors.instance)}
-                value={form.instance}
-                onChange={(e) => handleChange("instance", e.target.value)}
-              />
-            </Field>
-
-            <Field label="Database" error={errors.database}>
-              <input
-                className={inputCls(!!errors.database)}
-                value={form.database}
-                onChange={(e) => handleChange("database", e.target.value)}
-              />
-            </Field>
-
-            <Field label="Port" error={errors.port}>
-              <input
-                className={inputCls(!!errors.port)}
-                inputMode="numeric"
-                pattern="[0-9]*"
-                value={String(form.port)}
-                onChange={(e) => handleChange("port", e.target.value)}
-              />
-            </Field>
-
-            <Field label="Username" error={errors.username}>
-              <input
-                className={inputCls(!!errors.username)}
-                value={form.username}
-                onChange={(e) => handleChange("username", e.target.value)}
-              />
-            </Field>
-
-            <Field label="Password" error={errors.password}>
-              <input
-                type="password"
-                className={inputCls(!!errors.password)}
-                value={form.password}
-                onChange={(e) => handleChange("password", e.target.value)}
-              />
-            </Field>
-
-            <div className="nif-hint">
-              연결 문자열 미리보기: <span className="nif-code">{connectionString}</span>
+        {visibleRows.map((r) => (
+          <div key={r.instanceId} className="il-row-wrap">
+            <div
+              className="il-row"
+              role="button"
+            onClick={() => fetchAndToggle(r)} > 
+              <div className="il-cell il-strong">{r.instanceName}</div>
+              <div className="il-cell">{r.host}</div>
+              <div className="il-cell">{r.port}</div>
+             <div className="il-cell">
+            <span
+                className={`il-dot ${r.isEnabled ? "il-dot--indigo" : "il-dot--red"}`}
+            />
+            <span className="il-status-label">
+                {r.isEnabled ? "active" : "inactive"}
+            </span>
+            </div>
+              <div className="il-cell">{r.version}</div>
+              <div className="il-cell">{formatMs(r.uptimeMs)}</div>
+              <div className="il-cell">{formatDateTime(r.updatedAt)}</div>
             </div>
 
-            <div className="nif-actions">
-              <button
-                type="button"
-                onClick={handleTest}
-                className="btn btn-ghost"
-                disabled={submitting || testing}
-              >
-                {testing ? "Testing…" : "Test"}
-              </button>
-              <button
-                type="submit"
-                className="btn btn-primary"
-                disabled={submitting || testing}
-              >
-                {submitting ? "Submitting…" : "Submit"}
-              </button>
-            </div>
-
-            {testResult && (
-              <div
-                className={[
-                  "nif-alert",
-                  testResult.ok ? "is-ok" : "is-error",
-                ].join(" ")}
-              >
-                {testResult.ok ? "연결 테스트 성공" : "연결 테스트 실패"}
-                {testResult.message ? ` — ${testResult.message}` : null}
+            {r.databases && r.databases.length > 0 && expanded[r.instanceId] && (
+              <div className="il-db">
+                <div className="il-db-title">Database</div>
+                <div className="il-db-header">
+                  <div>DB</div>
+                  <div className="center">Status</div>
+                  <div className="center">연결수</div>
+                  <div className="right">크기</div>
+                  <div className="center">캐시 히트율</div>
+                  <div className="center">마지막 업데이트</div>
+                </div>
+                {r.databases.map((db) => (
+                  <div key={db.databaseName} className="il-db-row">
+                    <div className="il-cell">{db.databaseName}</div>
+                    <span className={`il-badge ${db.isEnabled ? "il-badge--indigo" : "il-badge--red"}`}>
+                        {db.isEnabled ? "active" : "inactive"}
+                    </span> 
+                    <div className="il-cell center">{db.connections}</div>
+                    <div className="il-cell right">{formatBytes(db.sizeBytes)}</div>
+                    <div className="il-cell center">{(db.cacheHitRate * 100).toFixed(1)}%</div>
+                    <div className="il-cell center">{formatDateTime(db.updatedAt)}</div>
+                  </div>
+                ))}
               </div>
             )}
           </div>
-        </form>
+        ))}
+
+        {!loading && !error && visibleRows.length === 0 && (
+          <div className="il-empty">등록된 인스턴스가 없습니다.</div>
+        )}
       </div>
     </div>
   );
-}
+};
 
-function Field({
-  label,
-  error,
-  children,
-}: {
-  label: string;
-  error?: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <label className="nif-field">
-      <span className="nif-label">{label}</span>
-      {children}
-      {error ? <span className="nif-error">{error}</span> : null}
-    </label>
-  );
-}
-
-function inputCls(hasError?: boolean) {
-  return ["nif-input", hasError ? "has-error" : ""].join(" ");
-}
+export default InstancePage;
