@@ -1,0 +1,66 @@
+:root{
+  --bg:#f3f5f7; --card:#ffffff; --text:#111827; --muted:#6b7280;
+  --border:#e5e7eb; --shadow:0 18px 50px rgba(8,15,23,.12);
+}
+
+.es-root{ padding:20px; max-width:100%; }
+
+/* 카드 헤더 내부 컨트롤 */
+.es-controls{ display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
+
+.es-time-filters{ display:flex; gap:4px; background:var(--bg); padding:4px; border-radius:10px; }
+.es-time-btn{ background:transparent; border:none; border-radius:8px; padding:8px 16px; font-size:14px; font-weight:600; color:var(--muted); cursor:pointer; transition:all 0.2s; }
+.es-time-btn:hover{ background:rgba(0,0,0,0.05); color:var(--text); }
+.es-time-btn--active{ background:#111827; color:#fff; }
+
+.es-csv-btn{ display:flex; align-items:center; gap:6px; background:var(--card); border:1px solid var(--border); border-radius:10px; padding:10px 16px; font-size:14px; font-weight:600; color:var(--text); cursor:pointer; transition:all 0.2s; }
+.es-csv-btn:hover{ border-color:#6366F1; color:#6366F1; }
+.es-csv-icon{ font-size:16px; }
+
+/* 카드 */
+.es-card{ background:var(--card); border-radius:18px; box-shadow:var(--shadow); padding:20px; margin-bottom:20px; }
+.es-card__header{ display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; }
+.es-card__header h3{ margin:0; font-size:18px; font-weight:700; }
+
+/* 테이블 */
+.es-tablewrap{ width:100%; overflow:auto; margin-bottom:16px; }
+.es-table{ width:100%; border-collapse:collapse; font-size:14px; }
+.es-table thead th{ text-align:left; color:var(--muted); font-weight:700; font-size:12px; padding:12px 16px; border-bottom:2px solid #eef0f3; }
+.es-th-sortable{ cursor:pointer; user-select:none; transition:all 0.2s; }
+.es-th-sortable:hover{ color:var(--text); background:rgba(0,0,0,0.02); }
+.es-sort{ margin-left:4px; font-size:10px; display:inline-block; }
+.es-sort--inactive{ opacity:0.3; }
+.es-sort--active{ opacity:1; color:#6366F1; font-weight:700; }
+.es-table tbody td{ padding:14px 16px; border-bottom:1px solid #f1f3f6; vertical-align:middle; }
+.es-table tbody tr:hover{ background:#f9fafb; }
+.es-td-id{ font-weight:700; color:#6366F1; }
+.es-td-query{ color:var(--text); font-weight:500; max-width:300px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+
+/* 페이지네이션 */
+.es-pagination{ display:flex; align-items:center; justify-content:center; gap:8px; padding-top:8px; }
+.es-page-btn, .es-page-num{ background:transparent; border:1px solid var(--border); border-radius:8px; padding:8px 12px; font-size:14px; font-weight:600; color:var(--text); cursor:pointer; transition:all 0.2s; min-width:40px; }
+.es-page-btn:hover:not(:disabled), .es-page-num:hover{ border-color:var(--muted); }
+.es-page-btn:disabled{ opacity:0.3; cursor:not-allowed; }
+.es-page-num--active{ background:#111827; color:white; border-color:#111827; }
+
+/* 차트 그리드 */
+.es-grid{ display:grid; grid-template-columns:1fr 1fr; gap:20px; }
+.es-card.es-chart { min-height:380px; }
+.es-card .apexcharts-canvas { min-height:300px; width:100% !important; }
+
+/* 반응형 */
+@media (max-width: 1024px){ 
+  .es-grid{ grid-template-columns:1fr; }
+}
+
+@media (max-width: 768px){
+  .es-root{ padding:12px; }
+  .es-card__header{ flex-direction:column; align-items:flex-start; gap:12px; }
+  .es-controls{ width:100%; justify-content:flex-start; }
+  .es-time-filters{ flex:1; }
+  .es-time-btn{ flex:1; padding:8px 12px; }
+  .es-csv-btn{ width:100%; justify-content:center; }
+  .es-table{ font-size:12px; }
+  .es-table thead th, .es-table tbody td{ padding:10px 12px; }
+  .es-td-query{ max-width:150px; }
+}

@@ -1,12 +1,12 @@
 import { useMemo, useState } from "react";
 import Chart from "../../components/chart/ChartComponent";
-import "/src/styles/layout/query-page.css";
+import "/src/styles/layout/execution-status.css";
 
 /**
- * 쿼리 모니터링 페이지
+ * 쿼리 실행 상태 페이지
  * - 실행 통계 테이블 및 차트 시각화
  * 
- * @author 팀명
+ * @author 이해든
  */
 
 /* ---------- 타입/데모데이터 ---------- */
@@ -122,14 +122,14 @@ type TimeFilter = "1h" | "6h" | "24h" | "7d";
 
 function TimeButton({ active, label, onClick }: { active: boolean; label: string; onClick: () => void }) {
   return (
-    <button className={`qp-time-btn ${active ? "qp-time-btn--active" : ""}`} onClick={onClick}>
+    <button className={`es-time-btn ${active ? "es-time-btn--active" : ""}`} onClick={onClick}>
       {label}
     </button>
   );
 }
 
 /* ---------- 페이지 ---------- */
-export default function QueryPage() {
+export default function ExecutionStatus() {
   const [timeFilter, setTimeFilter] = useState<TimeFilter>("24h");
   const [currentPage, setCurrentPage] = useState(1);
   const [sortConfig, setSortConfig] = useState<{
@@ -216,50 +216,50 @@ export default function QueryPage() {
   // 정렬 아이콘 렌더링
   const renderSortIcon = (key: keyof QueryStat) => {
     if (sortConfig.key !== key) {
-      return <span className="qp-sort qp-sort--inactive">⇅</span>;
+      return <span className="es-sort es-sort--inactive">⇅</span>;
     }
     return (
-      <span className="qp-sort qp-sort--active">
+      <span className="es-sort es-sort--active">
         {sortConfig.direction === "asc" ? "▲" : "▼"}
       </span>
     );
   };
 
   return (
-    <div className="qp-root">
+    <div className="es-root">
       {/* 전체 실행 통계 테이블 */}
-      <section className="qp-card">
-        <header className="qp-card__header">
+      <section className="es-card">
+        <header className="es-card__header">
           <h3>전체 실행 통계</h3>
-          <div className="qp-controls">
-            <div className="qp-time-filters">
+          <div className="es-controls">
+            <div className="es-time-filters">
               <TimeButton active={timeFilter === "1h"} label="1h" onClick={() => handleTimeFilterChange("1h")} />
               <TimeButton active={timeFilter === "6h"} label="6h" onClick={() => handleTimeFilterChange("6h")} />
               <TimeButton active={timeFilter === "24h"} label="24h" onClick={() => handleTimeFilterChange("24h")} />
               <TimeButton active={timeFilter === "7d"} label="7d" onClick={() => handleTimeFilterChange("7d")} />
             </div>
-            <button className="qp-csv-btn">
-              <span className="qp-csv-icon">📥</span>
+            <button className="es-csv-btn">
+              <span className="es-csv-icon">📥</span>
               CSV 내보내기
             </button>
           </div>
         </header>
-        <div className="qp-tablewrap">
-          <table className="qp-table">
+        <div className="es-tablewrap">
+          <table className="es-table">
             <thead>
               <tr>
                 <th>ID</th>
                 <th>SHORT QUERY</th>
-                <th className="qp-th-sortable" onClick={() => handleSort("executionCount")}>
+                <th className="es-th-sortable" onClick={() => handleSort("executionCount")}>
                   실행 횟수 {renderSortIcon("executionCount")}
                 </th>
-                <th className="qp-th-sortable" onClick={() => handleSort("avgTime")}>
+                <th className="es-th-sortable" onClick={() => handleSort("avgTime")}>
                   평균 시간 {renderSortIcon("avgTime")}
                 </th>
-                <th className="qp-th-sortable" onClick={() => handleSort("totalTime")}>
+                <th className="es-th-sortable" onClick={() => handleSort("totalTime")}>
                   호출 시간 {renderSortIcon("totalTime")}
                 </th>
-                <th className="qp-th-sortable" onClick={() => handleSort("callCount")}>
+                <th className="es-th-sortable" onClick={() => handleSort("callCount")}>
                   호출수 {renderSortIcon("callCount")}
                 </th>
               </tr>
@@ -267,8 +267,8 @@ export default function QueryPage() {
             <tbody>
               {currentStats.map((stat) => (
                 <tr key={stat.id}>
-                  <td className="qp-td-id">{stat.id}</td>
-                  <td className="qp-td-query">{stat.shortQuery}</td>
+                  <td className="es-td-id">{stat.id}</td>
+                  <td className="es-td-query">{stat.shortQuery}</td>
                   <td>{stat.executionCount.toLocaleString()}</td>
                   <td>{stat.avgTime}</td>
                   <td>{stat.totalTime}</td>
@@ -279,9 +279,9 @@ export default function QueryPage() {
           </table>
         </div>
         {/* 페이지네이션 */}
-        <div className="qp-pagination">
+        <div className="es-pagination">
           <button 
-            className="qp-page-btn" 
+            className="es-page-btn" 
             disabled={currentPage === 1}
             onClick={() => setCurrentPage(currentPage - 1)}
           >
@@ -290,14 +290,14 @@ export default function QueryPage() {
           {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
             <button
               key={page}
-              className={`qp-page-num ${currentPage === page ? "qp-page-num--active" : ""}`}
+              className={`es-page-num ${currentPage === page ? "es-page-num--active" : ""}`}
               onClick={() => setCurrentPage(page)}
             >
               {page}
             </button>
           ))}
           <button 
-            className="qp-page-btn" 
+            className="es-page-btn" 
             disabled={currentPage === totalPages}
             onClick={() => setCurrentPage(currentPage + 1)}
           >
@@ -307,9 +307,9 @@ export default function QueryPage() {
       </section>
 
       {/* 하단 차트 그리드 (VacuumPage와 동일한 구조) */}
-      <div className="qp-grid">
-        <section className="qp-card qp-chart">
-          <header className="qp-card__header">
+      <div className="es-grid">
+        <section className="es-card es-chart">
+          <header className="es-card__header">
             <h3>트랜잭션당 쿼리 수 분포</h3>
           </header>
           <Chart
@@ -366,8 +366,8 @@ export default function QueryPage() {
           />
         </section>
 
-        <section className="qp-card qp-chart">
-          <header className="qp-card__header">
+        <section className="es-card es-chart">
+          <header className="es-card__header">
             <h3>쿼리 타입별 분포</h3>
           </header>
           <Chart
