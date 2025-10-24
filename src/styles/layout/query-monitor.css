@@ -2,17 +2,6 @@
   padding: 20px;
   height: 100vh;
   overflow: hidden;
-  background: radial-gradient(
-      closest-side,
-      rgba(255, 0, 85, 0.06) 0%,
-      rgba(255, 0, 85, 0) 60%
-    ),
-    radial-gradient(
-      closest-side,
-      rgba(79, 70, 229, 0.06) 0%,
-      rgba(79, 70, 229, 0) 60%
-    ),
-    linear-gradient(to left, #f3f5f7, #f3f5f7);
   box-sizing: border-box;
 }
 

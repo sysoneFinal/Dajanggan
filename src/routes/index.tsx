@@ -10,6 +10,7 @@ import QueryMonitor from "../pages/query/QueryMonitor";
 import VacuumPage from "../pages/vacuum/VacuumPage";
 import CpuPage from "../pages/system/CpuPage";
 import AlarmPage from "../pages/alarm/AlarmPage";
+import ExecutionStatus from "../pages/query/ExecutionStatus";
 
 const routeList = [
   { path: "/", element: <Home /> },
@@ -25,6 +26,7 @@ const routeList = [
   // DB 단위 
   { path: "/session", element: <SessionPage /> },
   { path: "/query", element: <QueryMonitor /> },
+  { path: "/executionstatus", element: <ExecutionStatus /> },
   { path: "/vacuum", element: <VacuumPage /> },
 
   // 알람
