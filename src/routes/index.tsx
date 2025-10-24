@@ -6,6 +6,7 @@ import InstancePage from "../pages/instance/InstancePage";
 import SessionPage from "../pages/session/SessionPage";
 import CheckpointPage from "../pages/engine/CheckPointPage";
 import QueryMonitor from "../pages/query/QueryMonitor";
+import QueryPage from "../pages/query/QueryPage";
 import VacuumPage from "../pages/vacuum/VacuumPage";
 import CpuPage from "../pages/system/CpuPage";
 import AlarmPage from "../pages/alarm/AlarmPage";
@@ -23,6 +24,7 @@ const routeList = [
   // DB 단위 
   { path: "/session", element: <SessionPage /> },
   { path: "/query", element: <QueryMonitor /> },
+  { path: "/querypage", element: <QueryPage /> },
   { path: "/vacuum", element: <VacuumPage /> },
 
   // 알람
