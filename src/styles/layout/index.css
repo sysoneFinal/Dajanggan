@@ -1,4 +1,4 @@
-/* 전역 스타일  */
+
 html,
 body,
 #root {
@@ -7,7 +7,7 @@ body,
   width: 100%;
   height: 100%;
   box-sizing: border-box;
-  overflow: hidden; 
+  overflow: hidden;
 }
 
 *,
@@ -16,73 +16,75 @@ body,
   box-sizing: inherit;
 }
 
-/* 배경 */
+/*  전체 배경  */
 .app-background {
   width: 100%;
   height: 100vh;
   display: flex;
   background:
-    /* 블루 계열 은은한 빛 */
-    radial-gradient(
-      circle at 4% 63%,
-      rgba(99, 102, 241, 0.10) 0%,   /* 기존 0.18 → 0.10 */
-      rgba(255, 255, 255, 0) 25%
-    ),
-    /* 핑크 계열 은은한 빛 */
-    radial-gradient(
-      circle at 85% 8%,
-      rgba(255, 0, 85, 0.06) 0%,    /* 기존 0.12 → 0.06 */
-      rgba(255, 255, 255, 0) 30%
-    ),
+    radial-gradient(circle at 4% 63%, rgba(99, 102, 241, 0.1) 0%, rgba(255, 255, 255, 0) 25%),
+    radial-gradient(circle at 85% 8%, rgba(255, 0, 85, 0.06) 0%, rgba(255, 255, 255, 0) 30%),
     #f8f9fb;
   background-repeat: no-repeat;
   background-size: cover;
 }
 
-
-/* 전체 레이아웃 */
-.app-layout {
+/* 메인 레이아웃  */
+.app-main {
   display: flex;
+  height: 100vh;
   width: 100%;
-  height: 100%;
   overflow: hidden;
 }
 
-/* 사이드바 위치 및 크기만 */
+/*  사이드바  */
 .sidebar {
-  position: fixed;
-  left: 1rem;
+  flex-shrink: 0; /* 자동 줄이기 방지 대신 clamp로 제어 */
+  width: clamp(3.5rem, 5vw, 15rem); /* 최소 56px, 최대 240px 정도 */
+  transition: width 0.3s ease;
+  position: sticky;
   top: 0.5rem;
-  width: 260px;
-  height: calc(100vh - 1rem);
+  left : 0.79rem;
+  height: 98vh;
+  background: rgba(255, 255, 255, 0.3);
+  backdrop-filter: blur(12px);
+  border-right: 1px solid rgba(0, 0, 0, 0.05);
   z-index: 100;
 }
 
-/* 메인 콘텐츠 */
-.app-main {
-  flex: 1;
-  flex: 1;
-  padding-left: 1.5rem;
-  padding-top: 0.9rem;
-  padding-right: 0.5rem;
-  height: 100vh;
-  overflow-y: auto;
-  overflow-x: hidden;  height: 100vh;
-  overflow-y: auto;
-  overflow-x: hidden;
+/* hover 시 확장 */
+.sidebar:hover,
+.sidebar--expanded {
+  width: clamp(15rem, 18vw, 18rem); /
 }
 
-/* 반응형 */
+/* 확장 시 */
+.sidebar--expanded {
+  width: 260px;
+}
+
+/*  본문  */
+.app-content {
+  flex: 1;
+  min-width: 0; 
+  height: 100vh;
+  overflow-y: auto;
+  overflow-x: hidden;
+  transition: all 0.3s ease;
+  padding: 1rem 1.5rem;
+}
+
+/*  반응형 (작은 화면용)  */
 @media (max-width: 1024px) {
   .sidebar {
-    width: 220px;
-    left: 1rem;
-    top: 1rem;
-    height: calc(100vh - 2rem);
+    width: clamp(3rem, 4vw, 12rem);
   }
 
-  .app-main {
-    margin-left: calc(220px + 2rem);
-    padding: 1.5rem;
+  .sidebar:hover {
+    width: clamp(10rem, 20vw, 14rem);
+  }
+
+  .app-content {
+    padding: 0.75rem 1rem;
   }
 }

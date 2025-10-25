@@ -1,33 +1,41 @@
 import { Routes, Route } from "react-router-dom";
+
+// === Pages ===
 import Home from "../pages/Home";
 import Overview from "../pages/dashboard/Overview";
 import EventPage from "../pages/eventlog/EventLogPage";
 import InstancePage from "../pages/instance/InstancePage";
-import SessionPage from "../pages/session/SessionPage";
-import CheckpointPage from "../pages/engine/CheckPointPage";
-import QueryPage from "../pages/query/QueryPage";
-import VacuumPage from "../pages/vacuum/VacuumPage";
 import CpuPage from "../pages/system/CpuPage";
+import CheckpointPage from "../pages/engine/CheckPointPage";
+import SessionPage from "../pages/session/SessionPage";
+
+
 import AlarmPage from "../pages/alarm/AlarmPage";
+import LayoutBuilder from "../components/dashboard/Layout";
+
 
 const routeList = [
-  { path: "/", element: <Home /> },
+  // 헤더 없는 초기 페이지
+  { path: "/", element: <Home />, layout: "none" },
+
+  // 대시보드 메인
   { path: "/overview", element: <Overview /> },
-  { path: "/event", element: <EventPage /> },
 
   // Instance 단위
-  { path: "/cpu", element: <CpuPage /> },
+  { path: "/instance/cpu", element: <CpuPage /> },
+  { path: "/instance/checkpoint", element: <CheckpointPage /> },
+  { path: "/instance/event", element: <EventPage /> },
+
+
+  // Database 단위
+  { path: "/database/session", element: <SessionPage /> },
+
+
+  // 기타
   { path: "/instance-management", element: <InstancePage /> },
-  { path: "/checkpoint", element: <CheckpointPage /> },
-
-  // DB 단위 
-  { path: "/session", element: <SessionPage /> },
-  { path: "/query", element: <QueryPage /> },
-  { path: "/vacuum", element: <VacuumPage /> },
-
-  // 알람
   { path: "/alarm", element: <AlarmPage /> },
 ];
+
 
 export const AppRoutes = () => (
   <Routes>
