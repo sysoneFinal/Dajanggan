@@ -11,6 +11,7 @@ import CpuPage from "../pages/system/CpuPage";
 import AlarmPage from "../pages/alarm/AlarmPage";
 import ExecutionStatus from "../pages/query/ExecutionStatus";
 import QueryOverview from "../pages/query/QueryOverview";
+import TopQuery from "../pages/query/TopQuery";
 import BGWriterPage from "../pages/engine/BGWriterPage";
 
 const routeList = [
@@ -29,6 +30,7 @@ const routeList = [
   { path: "/session", element: <SessionPage /> },
   { path: "/query", element: <QueryOverview /> },
   { path: "/executionstatus", element: <ExecutionStatus /> },
+  { path: "/topquery", element: <TopQuery /> },
   { path: "/vacuum", element: <VacuumPage /> },
 
   // 알람
