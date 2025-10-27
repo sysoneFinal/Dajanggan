@@ -1,0 +1,112 @@
+/*  Dashboard 전체 영역 */
+.dashboard-wrapper {
+  background: transparent;
+  padding: 24px;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* 편집 모드 강조 상태 */
+.dashboard-wrapper.editing {
+  background: rgba(99, 102, 241, 0.03);
+  border: 1px solid rgba(99, 102, 241, 0.1);
+  transition: background 0.3s ease, border 0.3s ease;
+}
+
+/*  Grid 레이아웃 */
+.layout {
+  position: relative;
+  min-height: 500px;
+  transition: all 0.3s ease;
+}
+
+/* 상단 툴바*/
+.dashboard-toolbar {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.dashboard-toolbar button {
+  padding: 8px 14px;
+  background: #6366f1;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-weight: 600;
+  font-family: "Inter", sans-serif;
+  cursor: pointer;
+  transition: background 0.25s ease, transform 0.15s ease;
+}
+
+.dashboard-toolbar button:hover {
+  background: #4f46e5;
+  transform: translateY(-2px);
+}
+
+/* 개별 카드 */
+.grid-item {
+  position: relative;
+  background: rgba(99, 102, 241, 0.08);
+  border: 2px dashed rgba(99, 102, 241, 0.4);
+  border-radius: 12px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  font-family: "Inter", sans-serif;
+  transition: all 0.25s ease;
+}
+
+/* 카드 hover 시 살짝 떠오르는 효과 */
+.grid-item:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 14px rgba(99, 102, 241, 0.1);
+}
+
+/* 편집 모드 시 시각적 피드백 (드래그 가능 상태) */
+.dashboard-wrapper.editing .grid-item {
+  cursor: move;
+  border-style: solid;
+  border-color: rgba(99, 102, 241, 0.7);
+  box-shadow: 0 0 12px rgba(99, 102, 241, 0.15);
+}
+
+/* 카드 헤더 영역 */
+.grid-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+  font-weight: 600;
+  font-size: 14px;
+  color: #1f2937;
+}
+
+/* 삭제 버튼 */
+.remove-btn {
+  background: transparent;
+  border: none;
+  color: #ef4444;
+  font-size: 16px;
+  cursor: pointer;
+  transition: color 0.2s ease, transform 0.15s ease;
+}
+
+.remove-btn:hover {
+  color: #dc2626;
+  transform: scale(1.1);
+}
+
+/*  카드 본문 영역 */
+.grid-body {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #374151;
+  font-size: 14px;
+  text-align: center;
+}
