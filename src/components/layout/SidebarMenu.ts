@@ -43,15 +43,15 @@ export const SIDEBAR_MENU = [
       {
         label: "Hot Table",
         children: [
-          { label: "Dashboard", path: "/database/hot-table/dashboard" },
-          { label: "Table Detail", path: "/database/hot-table/detail" },
+          { label: "Dashboard", path: "/database/hottable/dashboard" },
+          { label: "Table Detail", path: "/database/hottable/detail" },
         ],
       }, 
       {
         label: "Hot Index",
         children: [
-          { label: "Dashboard", path: "/database/hot-index/dashboard" },
-          { label: "Index Detail", path: "/database/hot-index/detail" },
+          { label: "Dashboard", path: "/database/hotindex/dashboard" },
+          { label: "Index Detail", path: "/database/hotindex/detail" },
         ],
       },
       {
