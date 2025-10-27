@@ -1,7 +1,7 @@
 import { useState } from "react";
 import Chart from "../../components/chart/ChartComponent";
 import "../../styles/engine/checkpoint.css";
-import GaugeChart from "../../components/chart/GaugaeChart";
+import GaugeChart from "../../components/chart/GaugeChart";
 
 // API 응답 전체 구조
 interface CheckpointData {
@@ -136,7 +136,6 @@ const formatBytes = (bytes: number): string => {
 // 차트 카드 컴포넌트
 interface ChartCardProps {
     title: string;
-    info?: string;
     statusBadge?: string;
     children: React.ReactNode;
     footer?: React.ReactNode;
@@ -223,7 +222,6 @@ export default function CheckPointPage() {
 
                     <ChartCard
                         title="평균 블록 쓰기 시간"
-                        info="블록당 평균 쓰기 소요 시간 (ms)"
                         footer={
                             <>
                                 <StatItem label="평균" value={`${data.avgWriteTime.average}ms`} />
@@ -253,7 +251,6 @@ export default function CheckPointPage() {
 
                     <ChartCard
                         title="Checkpoint 발생 추이"
-                        info="Requested(요청) vs Timed(주기)"
                         footer={
                             <>
                                 <StatItem
@@ -297,7 +294,6 @@ export default function CheckPointPage() {
                 <div className="checkpoint-row">
                     <ChartCard
                         title="WAL 생성량 추이"
-                        info="트랜잭션 활동량"
                         footer={
                             <>
                                 <StatItem label="총 생성량" value={formatBytes(data.walGeneration.total)} />
@@ -327,7 +323,6 @@ export default function CheckPointPage() {
 
                     <ChartCard
                         title="Checkpoint 처리 시간 추세"
-                        info="Sync Time vs Write Time"
                         footer={
                             <>
                                 <StatItem
@@ -371,7 +366,6 @@ export default function CheckPointPage() {
 
                     <ChartCard
                         title="Checkpoint buffer 처리량"
-                        info="초당 처리되는 버퍼 수"
                         footer={
                             <>
                                 <StatItem label="평균" value={`${data.buffer.average.toLocaleString()} buffers/sec`} />

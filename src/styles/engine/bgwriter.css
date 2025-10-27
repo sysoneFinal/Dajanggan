@@ -1,6 +1,9 @@
-.checkpoint-page {
-    padding: 24px;
+*, *::before, *::after {
+    box-sizing: border-box;
+}
+.bgwriter-page {
     min-height: 100vh;
+    padding: 24px;
 }
 
 .instance-select,
@@ -8,11 +11,11 @@
     padding: 8px 12px;
     border: 1px solid #d1d5db;
     border-radius: 6px;
-    background: white;
+    background: #ffffff;
     font-size: 14px;
     color: #374151;
     cursor: pointer;
-    transition: border-color 0.2s;
+    transition: border-color 0.2s ease;
 }
 
 .instance-select:hover,
@@ -30,13 +33,13 @@
 .btn-refresh {
     padding: 8px 16px;
     background: #8b5cf6;
-    color: white;
+    color: #ffffff;
     border: none;
     border-radius: 6px;
     font-size: 14px;
     font-weight: 600;
     cursor: pointer;
-    transition: background 0.2s, transform 0.1s;
+    transition: background 0.2s ease, transform 0.15s ease;
 }
 
 .btn-refresh:hover {
@@ -47,24 +50,23 @@
     transform: scale(0.98);
 }
 
-.checkpoint-grid {
+.bgwriter-grid {
     display: flex;
     flex-direction: column;
     gap: 20px;
 }
 
-.checkpoint-row {
+.bgwriter-row {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
     gap: 20px;
 }
 
-
 .chart-card {
-    background: white;
+    background: #ffffff;
     border-radius: 12px;
     padding: 20px;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
     transition: box-shadow 0.2s;
     display: flex;
     flex-direction: column;
@@ -73,9 +75,10 @@
 }
 
 .chart-card:hover {
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
 }
 
+/* 차트 헤더 */
 .chart-header {
     display: flex;
     justify-content: space-between;
@@ -100,7 +103,7 @@
 .chart-info {
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: 8px;
 }
 
 .info-icon {
@@ -112,6 +115,7 @@
     color: #6b7280;
 }
 
+/* 상태 배지 */
 .status-badge {
     padding: 4px 12px;
     border-radius: 12px;
@@ -137,7 +141,7 @@
     color: #991b1b;
 }
 
-/* Chart Content */
+/* 차트 컨텐츠 */
 .chart-content {
     flex: 1;
     display: flex;
@@ -146,13 +150,13 @@
     min-height: 250px;
 }
 
-/* Chart Footer */
+/* 차트 푸터 */
 .chart-footer {
     display: flex;
     justify-content: space-around;
     padding-top: 12px;
     border-top: 1px solid #e5e7eb;
-    gap: 12px;
+    gap: 16px;
     flex-wrap: wrap;
 }
 
@@ -177,6 +181,7 @@
     font-weight: 700;
     text-align: center;
 }
+
 
 .chart-card .gauge-container {
     margin: 0 auto;

@@ -18,6 +18,8 @@ import LayoutBuilder from "../components/dashboard/Layout";
 import DashboardEditor from "../components/dashboard/DashboardEditor";
 import ExecutionStatus from "../pages/query/ExecutionStatus";
 import QueryOverview from "../pages/query/QueryOverview";
+import TopQuery from "../pages/query/TopQuery";
+import BGWriterPage from "../pages/engine/BGWriterPage";
 
 const routeList = [
   // 헤더 없는 초기 페이지
@@ -29,19 +31,24 @@ const routeList = [
   { path : "/editor", element : <DashboardEditor />},
 
   // Instance 단위
+  { path: "/instance/event", element: <EventPage /> },
   { path: "/instance/cpu", element: <CpuPage /> },
   { path: "/instance/checkpoint/dashboard", element: <CheckpointPage /> },
-  { path: "/instance/event", element: <EventPage /> },
-
+  { path: "/instance/bg-writer/dashboard", element: <BGWriterPage /> },
+  
 
   // Database 단위
   { path: "/database/summary", element: <DatabaseDashboard /> },
+
   // 세션
   { path: "/database/session/dashboard", element: <SessionPage /> },
   { path: "/database/session/active", element: <SessionListPage /> },
+
   // 쿼리
   { path: "/database/query/dashboard", element: <QueryOverview /> },
   { path: "/database/query/execution-stats", element: <ExecutionStatus /> },
+  { path: "/database/query/top-n-query", element: <TopQuery /> },
+  
   // Vacuum
   { path: "/database/vacuum/dashboard", element: <VacuumPage /> },
   
@@ -49,6 +56,16 @@ const routeList = [
   // 기타
   { path: "/instance-management", element: <InstancePage /> },
   { path: "/instance-register", element: <InstanceRegister /> },
+
+  { path: "/checkpoint", element: <CheckpointPage /> },
+  
+
+  // DB 단위 
+  { path: "/session", element: <SessionPage /> },
+  { path: "/query", element: <QueryOverview /> },
+  { path: "/executionstatus", element: <ExecutionStatus /> },
+  { path: "/topquery", element: <TopQuery /> },
+  { path: "/vacuum", element: <VacuumPage /> },
 
 
   // 알람
