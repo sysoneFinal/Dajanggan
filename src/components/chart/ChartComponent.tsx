@@ -1,25 +1,20 @@
 import { useMemo } from "react";
 import ReactApexChart from "react-apexcharts";
 
-// 지원 차트 타입 정의
 export type ChartType =
-  | "column" // 세로 막대
-  | "line" // 선
-  | "area" // 면적이 채워진 선
-  | "bar" // 가로 막대
-  | "donut" // 도넛
-  | "pie" // 파이
-  | "scatter"; // 산점도
+  | "column"
+  | "line"
+  | "area"
+  | "bar"
+  | "donut"
+  | "pie"
+  | "scatter"
+  | "radialBar";
 
 interface ChartProps {
-  /** 차트 타입 */
   type: ChartType;
-  /** 데이터 시리즈 */
   series: ApexAxisChartSeries | ApexNonAxisChartSeries;
-  /** X축 카테고리 */
   categories?: string[] | number[];
-
-  /** 제목 설정 */
   titleOptions?: {
     text?: string;
     align?: "left" | "center" | "right";
@@ -27,34 +22,19 @@ interface ChartProps {
     fontSize?: string;
     fontWeight?: number;
   };
-
-  /** 색상 팔레트 */
   colors?: string[];
-  /** 사용자 지정 Apex 옵션 */
   customOptions?: ApexCharts.ApexOptions;
-
-  /** 크기 설정 */
   width?: number | string;
   height?: number | string;
-
-  /** 표시 설정 */
   showGrid?: boolean;
   showLegend?: boolean;
   showToolbar?: boolean;
-  /** 스택형 차트 여부 (쌓는 바) */
   isStacked?: boolean;
-  /** 축 옵션 */
   xaxisOptions?: ApexXAxis;
   yaxisOptions?: ApexYAxis | ApexYAxis[];
-
-  /** 툴팁 포맷터 */
   tooltipFormatter?: (value: number) => string;
 }
 
-/**
- * 통합 Chart 컴포넌트
- * - line, area, bar, column, pie, donut, scatter
- */
 export default function Chart({
   type,
   series,
@@ -72,7 +52,6 @@ export default function Chart({
   yaxisOptions,
   tooltipFormatter,
 }: ChartProps) {
-  // ApexCharts는 column 타입이 없어서 bar로 매핑 후 변환 처리
   const normalizedType =
     type === "column"
       ? "bar"
@@ -82,10 +61,10 @@ export default function Chart({
           | "bar"
           | "donut"
           | "pie"
-          | "scatter");
+          | "scatter"
+          | "radialBar");
 
   const baseOptions = useMemo<ApexCharts.ApexOptions>(() => {
-    // 기본 공통 옵션
     const options: ApexCharts.ApexOptions = {
       chart: {
         type: normalizedType,
@@ -93,6 +72,14 @@ export default function Chart({
         background: "transparent",
         fontFamily: "Pretendard, sans-serif",
         stacked: isStacked,
+        dropShadow: {
+          enabled: true,
+          top: 0,
+          left: 0,
+          blur: 4,
+          color: colors?.[0] ?? "#6366F1",
+          opacity: 0.25,
+        },
       },
       theme: { mode: "light" },
       title: titleOptions
@@ -149,46 +136,80 @@ export default function Chart({
       },
     };
 
-    // 타입별 세부 설정
     switch (type) {
       case "bar":
       case "column":
         options.plotOptions = {
           bar: {
-            horizontal: type === "bar", // column은 세로 막대
+            horizontal: type === "bar",
             borderRadius: 4,
             columnWidth: "60%",
-            dataLabels: {
-              total: {
-                enabled: isStacked, // 스택형일 때만 합계 표시
-                style: {
-                  fontSize: "13px",
-                  fontWeight: 900,
-                },
-              },
-            },
           },
         };
-        options.dataLabels = { enabled: false };
-        options.stroke = { show: false };
         break;
 
       case "line":
-        options.stroke = { curve: "smooth", width: 3 };
+        options.stroke = { curve: "straight", width: 3 };
         break;
 
+      // case "area":
+      //   options.stroke = { curve: "smooth", width: 2 };
+      //   options.fill = {
+      //     type: "gradient",
+      //     gradient: {
+      //       shadeIntensity: 0.4,
+      //       opacityFrom: 0.7,
+      //       opacityTo: 0.1,
+      //       stops: [0, 90, 100],
+      //     },
+      //   };
+      //   break;
       case "area":
-        options.stroke = { curve: "smooth", width: 2 };
+        options.stroke = {
+          curve: "smooth",
+          width: 2,
+        };
+
         options.fill = {
-          type: "gradient",
-          gradient: {
-            shadeIntensity: 0.4,
-            opacityFrom: 0.7,
-            opacityTo: 0.1,
-            stops: [0, 90, 100],
+            type: "gradient",
+            gradient: {
+              shade: "light",
+              type: "vertical",
+              opacityFrom: 0.5, 
+              opacityTo: 0.05,
+              stops: [0, 100],
+            },
+          };
+
+        options.markers = {
+          size: 4,
+          strokeWidth: 2,
+          strokeColors: "#fff",
+          hover: { size: 6 },
+        };
+
+        options.colors = ["#7B61FF", "#FF928A"];
+
+        options.tooltip = {
+          theme: "light",
+          style: { fontSize: "13px", fontFamily: "Inter, sans-serif" },
+          marker: { show: true },
+        };
+
+        options.grid = {
+          borderColor: "rgba(0,0,0,0.06)",
+          strokeDashArray: 4,
+        };
+
+        options.yaxis = {
+          labels: {
+            style: { colors: "rgba(0,0,0,0.5)" },
+            formatter: (val: number) => `${Math.round(val / 1000)}K`,
           },
         };
+
         break;
+  
 
       case "donut":
       case "pie":
@@ -196,40 +217,78 @@ export default function Chart({
         options.plotOptions = {
           pie: {
             donut: {
-              size: type === "donut" ? "60%" : "0%",
+              size: type === "donut" ? "50%" : "0%",
             },
           },
         };
-        options.legend = {
-          show: true,
-          position: "bottom",
-          labels: { colors: "#374151" },
-        };
         break;
-      case "scatter":
-        options.chart = {
-          ...(options.chart ?? {}),
-          zoom: { enabled: true, type: "xy" },
+
+      case "radialBar":
+        options.plotOptions = {
+          radialBar: {
+            hollow: { size: "60%" },
+            track: {
+              background: "#E5E7EB",
+              strokeWidth: "100%",
+              margin: 4,
+            },
+            dataLabels: {
+              show: true,
+              name: {
+                show: true,
+                fontSize: "13px",
+                color: "#6B7280",
+                offsetY: 10,
+              },
+              value: {
+                show: true,
+                fontSize: "22px",
+                fontWeight: 600,
+                color: "#111827",
+                offsetY: -10,
+                formatter: (val: number) => `${Math.round(val)}%`,
+              },
+            },
+          },
         };
-        options.xaxis = {
-          ...options.xaxis,
-          tickAmount: 10,
-          labels: { formatter: (val) => Number(val).toFixed(1) },
+        options.fill = {
+          type: "gradient",
+          gradient: {
+            shade: "light",
+            type: "horizontal",
+            gradientToColors: ["#7B61FF"],
+            stops: [0, 100],
+          },
         };
-        options.yaxis = {
-          labels: { formatter: (val) => Number(val).toFixed(1) },
-        };
+        options.stroke = { lineCap: "round" };
+        options.labels = categories as string[];
         break;
     }
 
-    
+    // 병합 로직 수정 (plotOptions 안쪽까지 병합)
     return {
       ...options,
-      chart: { ...options.chart, ...customOptions?.chart },
-      plotOptions: { ...options.plotOptions, ...customOptions?.plotOptions },
+      chart: {
+        ...options.chart,
+        ...customOptions?.chart,
+        dropShadow: {
+          ...options.chart?.dropShadow,
+          ...(customOptions?.chart?.dropShadow ?? {}),
+          ...(customOptions?.dropShadow ?? {}),
+        },
+      },
+      plotOptions: {
+        ...options.plotOptions,
+        radialBar: {
+          ...options.plotOptions?.radialBar,
+          ...(customOptions?.plotOptions?.radialBar ?? {}),
+        },
+        ...customOptions?.plotOptions,
+      },
       fill: { ...options.fill, ...customOptions?.fill },
       stroke: { ...options.stroke, ...customOptions?.stroke },
       grid: { ...options.grid, ...customOptions?.grid },
+      legend: { ...options.legend, ...customOptions?.legend },
       ...customOptions,
     };
   }, [

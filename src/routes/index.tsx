@@ -1,6 +1,6 @@
 import { Routes, Route } from "react-router-dom";
 
-// === Pages ===
+// Pages 
 import Home from "../pages/Home";
 import Overview from "../pages/dashboard/Overview";
 import EventPage from "../pages/eventlog/EventLogPage";
@@ -8,10 +8,13 @@ import InstancePage from "../pages/instance/InstancePage";
 import CpuPage from "../pages/system/CpuPage";
 import CheckpointPage from "../pages/engine/CheckPointPage";
 import SessionPage from "../pages/session/SessionPage";
+import DatabaseDashboard from "../pages/dashboard/DatabaseOverview";
+import SessionListPage from "../pages/session/SessionListPage";
 
 
 import AlarmPage from "../pages/alarm/AlarmPage";
 import LayoutBuilder from "../components/dashboard/Layout";
+import DashboardEditor from "../components/dashboard/DashboardEditor";
 
 
 const routeList = [
@@ -20,6 +23,8 @@ const routeList = [
 
   // 대시보드 메인
   { path: "/overview", element: <Overview /> },
+  { path : "/layout", element : <LayoutBuilder />},
+  { path : "/editor", element : <DashboardEditor />},
 
   // Instance 단위
   { path: "/instance/cpu", element: <CpuPage /> },
@@ -28,7 +33,9 @@ const routeList = [
 
 
   // Database 단위
+  { path: "database/summary", element: <DatabaseDashboard /> },
   { path: "/database/session", element: <SessionPage /> },
+  { path: "/database/sessionList", element: <SessionListPage /> },
 
 
   // 기타
