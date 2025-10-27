@@ -1,7 +1,9 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import "../../styles/session/sessionActivityList.css";
+import Pagination from "../../components/util/Pagination";
 
 export default function SessionActivityList() {
+  // 더미 세션 데이터
   const [sessions] = useState(
     Array.from({ length: 22 }).map((_, i) => ({
       pid: 1300 + i,
@@ -16,15 +18,22 @@ export default function SessionActivityList() {
     }))
   );
 
-  // 페이지네이션 상태
+  //  페이지네이션 상태
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
-  const totalPages = Math.ceil(sessions.length / itemsPerPage);
+  const totalPages = useMemo(() => Math.ceil(sessions.length / itemsPerPage), [sessions]);
 
-  // 현재 페이지 데이터
+  //  현재 페이지 데이터
   const startIndex = (currentPage - 1) * itemsPerPage;
   const currentSessions = sessions.slice(startIndex, startIndex + itemsPerPage);
 
+  //  페이지 변경 핸들러
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+    // TODO: API 호출 (예: fetchSessions(page))
+  };
+
+  //  CSV 내보내기
   const handleExportCSV = () => {
     const headers = [
       "PID",
@@ -58,15 +67,10 @@ export default function SessionActivityList() {
     link.click();
   };
 
-  const handlePageChange = (page: number) => {
-    if (page >= 1 && page <= totalPages) {
-      setCurrentPage(page);
-    }
-  };
-
   return (
-    <div className="session-section">
-      <div className="session-header">
+    <main className="session-section">
+      {/* 상단 헤더 */}
+      <header className="session-header">
         <div>
           <h2 className="session-title">Session Activity List</h2>
           <p className="session-sub">
@@ -76,10 +80,10 @@ export default function SessionActivityList() {
         <button className="export-btn" onClick={handleExportCSV}>
           CSV 내보내기
         </button>
-      </div>
+      </header>
 
       {/* 테이블 */}
-      <div className="session-table-container">
+      <section className="session-table-container">
         <div className="session-table-header">
           <div>PID</div>
           <div>사용자</div>
@@ -91,6 +95,7 @@ export default function SessionActivityList() {
           <div>실행시간</div>
           <div>쿼리</div>
         </div>
+
         {currentSessions.map((s, idx) => (
           <div key={idx} className="session-table-row">
             <div>{s.pid}</div>
@@ -98,7 +103,9 @@ export default function SessionActivityList() {
             <div>{s.db}</div>
             <div>{s.type}</div>
             <div className="state-wrapper">
-                <span className={`state ${s.state.replace(/\s+/g, "-")}`}>{s.state}</span>
+              <span className={`state ${s.state.replace(/\s+/g, "-")}`}>
+                {s.state}
+              </span>
             </div>
             <div>{s.waitType}</div>
             <div>{s.waitEvent}</div>
@@ -106,36 +113,14 @@ export default function SessionActivityList() {
             <div className="query-text">{s.query}</div>
           </div>
         ))}
-      </div>
+      </section>
 
       {/* 페이지네이션 */}
-      <div className="pagination-container">
-        <button
-          className="page-btn prev"
-          onClick={() => handlePageChange(currentPage - 1)}
-          disabled={currentPage === 1}
-        >
-          이전
-        </button>
-
-        {[...Array(totalPages)].map((_, i) => (
-          <button
-            key={i + 1}
-            className={`page-btn ${currentPage === i + 1 ? "active" : ""}`}
-            onClick={() => handlePageChange(i + 1)}
-          >
-            {i + 1}
-          </button>
-        ))}
-
-        <button
-          className="page-btn next"
-          onClick={() => handlePageChange(currentPage + 1)}
-          disabled={currentPage === totalPages}
-        >
-          다음
-        </button>
-      </div>
-    </div>
+      <Pagination
+        currentPage={currentPage}
+        totalPages={totalPages}
+        onPageChange={handlePageChange}
+      />
+    </main>
   );
 }
