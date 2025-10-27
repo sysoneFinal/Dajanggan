@@ -21,7 +21,7 @@ import QueryOverview from "../pages/query/QueryOverview";
 
 const routeList = [
   // 헤더 없는 초기 페이지
-  { path: "/", element: <Home />, layout: "none" },
+  { path: "/", element: <Home /> },
 
   // 대시보드 메인
   { path: "/overview", element: <Overview /> },
@@ -35,13 +35,13 @@ const routeList = [
 
 
   // Database 단위
-  { path: "database/summary", element: <DatabaseDashboard /> },
+  { path: "/database/summary", element: <DatabaseDashboard /> },
   // 세션
   { path: "/database/session/dashboard", element: <SessionPage /> },
   { path: "/database/session/sessionList", element: <SessionListPage /> },
   // 쿼리
   { path: "/database/query/dashboard", element: <QueryOverview /> },
-  { path: "/database/query/executionstatus", element: <ExecutionStatus /> },
+  { path: "/database/query/execution-stats", element: <ExecutionStatus /> },
   // Vacuum
   { path: "/database/vacuum/dashboard", element: <VacuumPage /> },
   

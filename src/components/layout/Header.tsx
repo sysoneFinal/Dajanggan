@@ -41,31 +41,31 @@ const Header = ({ isEditing, onToggleEdit }: HeaderProps) => {
   }, [location.pathname]);
 
   // 인스턴스 목록 불러오기
-  useEffect(() => {
-    const fetchInstances = async () => {
-      try {
-        const res = await apiClient.get("/api/instances");
-        setInstances(res.data);
-      } catch (err) {
-        console.error("인스턴스 불러오기에 실패했습니다.", err);
-      }
-    };
-    fetchInstances();
-  }, []);
+  // useEffect(() => {
+  //   const fetchInstances = async () => {
+  //     try {
+  //       const res = await apiClient.get("/api/instances");
+  //       setInstances(res.data);
+  //     } catch (err) {
+  //       console.error("인스턴스 불러오기에 실패했습니다.", err);
+  //     }
+  //   };
+  //   fetchInstances();
+  // }, []);
 
   // 인스턴스 선택 시 DB 목록 불러오기
-  useEffect(() => {
-    if (selectedInstance === "Select Instance") return;
-    const fetchDatabases = async () => {
-      try {
-        const res = await apiClient.get(`/api/instances/${selectedInstance}/databases`);
-        setDatabases(res.data);
-      } catch (err) {
-        console.error("데이터베이스 불러오기에 실패했습니다.", err);
-      }
-    };
-    fetchDatabases();
-  }, [selectedInstance]);
+  // useEffect(() => {
+  //   if (selectedInstance === "Select Instance") return;
+  //   const fetchDatabases = async () => {
+  //     try {
+  //       const res = await apiClient.get(`/api/instances/${selectedInstance}/databases`);
+  //       setDatabases(res.data);
+  //     } catch (err) {
+  //       console.error("데이터베이스 불러오기에 실패했습니다.", err);
+  //     }
+  //   };
+  //   fetchDatabases();
+  // }, [selectedInstance]);
 
   //  드롭다운 외부 클릭 시 닫기
   useEffect(() => {

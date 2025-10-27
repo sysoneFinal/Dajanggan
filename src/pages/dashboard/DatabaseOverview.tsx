@@ -358,47 +358,47 @@ export default function DatabaseDashboard() {
         />
       </div>
 
-  <div className="event-summary-card">
-  <h4 className="event-title">EVENT Summary</h4>
+      <div className="event-summary-card">
+      <h4 className="event-title">EVENT Summary</h4>
 
-  <div className="event-stats">
-    <div className="stat info">
-      <div className="label">Info</div>
-      <div className="value">13</div>
-    </div>
-    <div className="stat warning">
-      <div className="label">Warning</div>
-      <div className="value">7</div>
-    </div>
-    <div className="stat critical">
-      <div className="label">Critical</div>
-      <div className="value">1</div>
-    </div>
-  </div>
-
-  <div className="recent-section">
-    <h5 className="recent-title">Recent Event</h5>
-    <div className="recent-table">
-      <div className="table-header">
-        <span>Type</span>
-        <span>Time</span>
-        <span>Severity</span>
+      <div className="event-stats">
+        <div className="stat info">
+          <div className="label">Info</div>
+          <div className="value">13</div>
+        </div>
+        <div className="stat warning">
+          <div className="label">Warning</div>
+          <div className="value">7</div>
+        </div>
+        <div className="stat critical">
+          <div className="label">Critical</div>
+          <div className="value">1</div>
+        </div>
       </div>
 
-      <div className="table-row">
-        <span>High Disk I/O</span>
-        <span>2m</span>
-        <span className="severity critical">Critical</span>
-      </div>
+      <div className="recent-section">
+        <h5 className="recent-title">Recent Event</h5>
+        <div className="recent-table">
+          <div className="table-header">
+            <span>Type</span>
+            <span>Time</span>
+            <span>Severity</span>
+          </div>
 
-      <div className="table-row">
-        <span>CPU Spike</span>
-        <span>4m</span>
-        <span className="severity warning">Warning</span>
+          <div className="table-row">
+            <span>High Disk I/O</span>
+            <span>2m</span>
+            <span className="severity critical">Critical</span>
+          </div>
+
+          <div className="table-row">
+            <span>CPU Spike</span>
+            <span>4m</span>
+            <span className="severity warning">Warning</span>
+          </div>
+        </div>
       </div>
     </div>
-  </div>
-</div>
 
     </div>
   );
