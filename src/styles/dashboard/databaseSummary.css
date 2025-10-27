@@ -2,24 +2,23 @@
 /* 전체 레이아웃 */
 .database-dashboard {
   display: grid;
-  grid-template-columns: repeat(12, 1fr); 
+  grid-template-columns: repeat(12, 1fr);
   grid-auto-rows: minmax(340px, auto);
   gap: 18px;
-  padding: 20px 10px;
+  padding: 20px;
   min-height: 100vh;
-  max-width: 1680px;
+  width: 100%;
+  max-width: 1920px; /* 기준 해상도 */
   margin: 0 auto;
   box-sizing: border-box;
   position: relative;
   z-index: 1;
 }
 
-
-/* 카드 공통 스타일 */
+/* 카드 공통 */
 .db-card {
   background: rgba(255, 255, 255, 0.55);
   backdrop-filter: blur(18px);
-  -webkit-backdrop-filter: blur(18px);
   border: 1px solid rgba(255, 255, 255, 0.45);
   border-radius: 22px;
   box-shadow: 0 12px 35px rgba(0, 0, 0, 0.05);
@@ -29,11 +28,7 @@
   justify-content: space-between;
   transition: all 0.25s ease;
   height: 20rem;
-  
-  position: relative;
-  z-index: auto; /* 혹은 1 */
-  overflow: visible !important; /* 차트 tooltip이나 메뉴 잘리면 */
-
+  overflow: visible !important;
 }
 
 .card:hover {
@@ -434,12 +429,20 @@
   color: #ef4444;
 }
 
-/* 반응형  */
 
+/* 1920px 이상 — 아주 큰 화면 (QHD, 4K 등) */
+@media (min-width: 1921px) {
+  .database-dashboard {
+    width: 95vw; /* 살짝 여백 */
+    max-width: 2400px; /* 너무 넓지 않게 */
+  }
+}
+
+/* 1440px 이하 */
 @media (max-width: 1440px) {
   .database-dashboard {
     grid-template-columns: repeat(8, 1fr);
-    padding: 32px 40px;
+    width: 95%;
   }
 
   .tps,
@@ -449,14 +452,29 @@
   }
 }
 
+/* 1024px 이하 */
 @media (max-width: 1024px) {
   .database-dashboard {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(4, 1fr);
+    width: 94%;
+  }
+
+  .db-card {
+    height: auto;
+    min-height: 16rem;
   }
 }
 
+/* 768px 이하 */
 @media (max-width: 768px) {
   .database-dashboard {
     grid-template-columns: 1fr;
+    gap: 14px;
+    width: 100%;
+    padding: 16px 10px;
+  }
+
+  .db-card {
+    height: auto;
   }
 }
