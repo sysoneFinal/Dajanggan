@@ -30,20 +30,20 @@ const routeList = [
 
   // Instance 단위
   { path: "/instance/cpu", element: <CpuPage /> },
-  { path: "/instance/checkpoint", element: <CheckpointPage /> },
+  { path: "/instance/checkpoint/dashboard", element: <CheckpointPage /> },
   { path: "/instance/event", element: <EventPage /> },
 
 
   // Database 단위
   { path: "database/summary", element: <DatabaseDashboard /> },
   // 세션
-  { path: "/database/session", element: <SessionPage /> },
-  { path: "/database/sessionList", element: <SessionListPage /> },
+  { path: "/database/session/dashboard", element: <SessionPage /> },
+  { path: "/database/session/sessionList", element: <SessionListPage /> },
   // 쿼리
-  { path: "/database/query", element: <QueryOverview /> },
-  { path: "/database/executionstatus", element: <ExecutionStatus /> },
+  { path: "/database/query/dashboard", element: <QueryOverview /> },
+  { path: "/database/query/executionstatus", element: <ExecutionStatus /> },
   // Vacuum
-  { path: "/database/vacuum", element: <VacuumPage /> },
+  { path: "/database/vacuum/dashboard", element: <VacuumPage /> },
   
 
 
