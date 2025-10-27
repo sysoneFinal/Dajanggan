@@ -10,11 +10,11 @@ import type { AxiosInstance } from 'axios';
  * - 공통 baseURL 및 timeout 설정
  */
 const apiClient: AxiosInstance = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL ,
+  baseURL: import.meta.env.VITE_API_BASE_URL,
   timeout: 5000,
   headers: {
     'Content-Type': 'application/json',
-  },
+	  },
 });
 
 /**

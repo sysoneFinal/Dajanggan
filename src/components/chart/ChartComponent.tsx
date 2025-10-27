@@ -65,34 +65,33 @@ export default function Chart({
           | "radialBar");
 
   const baseOptions = useMemo<ApexCharts.ApexOptions>(() => {
+    const safeTitle = {
+      text: titleOptions?.text,
+      align: titleOptions?.align ?? "left",
+      offsetY: 0,
+      style: {
+        color: titleOptions?.color ?? "#111827",
+        fontSize: titleOptions?.fontSize ?? "15px",
+        fontWeight: titleOptions?.fontWeight ?? 600,
+      },
+    };
+
+    const safeSubtitle = { text: undefined as any, offsetY: 0 };
+
     const options: ApexCharts.ApexOptions = {
       chart: {
         type: normalizedType,
         toolbar: { show: showToolbar },
         background: "transparent",
         fontFamily: "Pretendard, sans-serif",
+        animations: { enabled: true },
         stacked: isStacked,
-        dropShadow: {
-          enabled: true,
-          top: 0,
-          left: 0,
-          blur: 4,
-          color: colors?.[0] ?? "#6366F1",
-          opacity: 0.25,
-        },
+        redrawOnParentResize: true,
+        redrawOnWindowResize: true,
       },
       theme: { mode: "light" },
-      title: titleOptions
-        ? {
-            text: titleOptions.text,
-            align: titleOptions.align ?? "left",
-            style: {
-              color: titleOptions.color ?? "#111827",
-              fontSize: titleOptions.fontSize ?? "15px",
-              fontWeight: titleOptions.fontWeight ?? 600,
-            },
-          }
-        : undefined,
+      title: safeTitle,
+      subtitle: safeSubtitle,
       colors,
       grid: {
         show: showGrid,
@@ -107,7 +106,8 @@ export default function Chart({
       tooltip: {
         theme: "light",
         y: {
-          formatter: tooltipFormatter ?? ((v) => v.toLocaleString()),
+          formatter:
+            tooltipFormatter ?? ((v: number) => (v ?? 0).toLocaleString()),
         },
       },
       dataLabels: { enabled: false },
@@ -120,23 +120,31 @@ export default function Chart({
         labels: { style: { colors: "#6B7280" } },
         axisBorder: { color: "#D1D5DB" },
         axisTicks: { color: "#D1D5DB" },
-        ...xaxisOptions,
+        ...(xaxisOptions ?? {}),
       },
-      yaxis: {
-        labels: {
-          style: { colors: "#6B7280" },
-          formatter: (val: number) =>
-            val >= 1_000_000
-              ? `${(val / 1_000_000).toFixed(1)}M`
-              : val >= 1_000
-              ? `${(val / 1_000).toFixed(0)}K`
-              : val.toLocaleString(),
-        },
-        ...yaxisOptions,
+      yaxis:
+        (yaxisOptions as any) ??
+        ({
+          labels: {
+            style: { colors: "#6B7280" },
+            formatter: (val: number) =>
+              val >= 1_000_000
+                ? `${(val / 1_000_000).toFixed(1)}M`
+                : val >= 1_000
+                ? `${(val / 1_000).toFixed(0)}K`
+                : (val ?? 0).toLocaleString(),
+          },
+        } as ApexYAxis),
+      noData: {
+        text: "Loading...",
+        align: "center",
+        style: { fontSize: "12px" },
       },
     };
 
+    // Chart Type별 세부 설정
     switch (type) {
+      // Stacked / 일반 막대
       case "bar":
       case "column":
         options.plotOptions = {
@@ -144,42 +152,33 @@ export default function Chart({
             horizontal: type === "bar",
             borderRadius: 4,
             columnWidth: "60%",
+            dataLabels: {
+              total: {
+                enabled: isStacked,
+                style: { fontSize: "13px", fontWeight: 900 },
+              },
+            },
           },
         };
+        options.stroke = { show: false };
         break;
 
-      case "line":
-        options.stroke = { curve: "straight", width: 3 };
-        break;
-
-      // case "area":
-      //   options.stroke = { curve: "smooth", width: 2 };
-      //   options.fill = {
-      //     type: "gradient",
-      //     gradient: {
-      //       shadeIntensity: 0.4,
-      //       opacityFrom: 0.7,
-      //       opacityTo: 0.1,
-      //       stops: [0, 90, 100],
-      //     },
-      //   };
-      //   break;
+      // Area Chart 
       case "area":
-        options.stroke = {
-          curve: "smooth",
-          width: 2,
+        options.stroke = { curve: "smooth", width: 2 };
+        options.fill = {
+          type: "gradient",
+          gradient: {
+            shade: "light",
+            type: "vertical",
+            opacityFrom: 0.5,
+            opacityTo: 0.05,
+            stops: [0, 100],
+          },
         };
 
-        options.fill = {
-            type: "gradient",
-            gradient: {
-              shade: "light",
-              type: "vertical",
-              opacityFrom: 0.5, 
-              opacityTo: 0.05,
-              stops: [0, 100],
-            },
-          };
+        // 🎨 통일된 색상 팔레트
+        options.colors = ["#7B61FF", "#FF928A", "#60A5FA"];
 
         options.markers = {
           size: 4,
@@ -187,8 +186,6 @@ export default function Chart({
           strokeColors: "#fff",
           hover: { size: 6 },
         };
-
-        options.colors = ["#7B61FF", "#FF928A"];
 
         options.tooltip = {
           theme: "light",
@@ -204,49 +201,34 @@ export default function Chart({
         options.yaxis = {
           labels: {
             style: { colors: "rgba(0,0,0,0.5)" },
-            formatter: (val: number) => `${Math.round(val / 1000)}K`,
+            formatter: (val: number) => `${Math.round(val)}`,
           },
         };
-
         break;
-  
 
+      // Donut / Pie
       case "donut":
       case "pie":
         options.labels = categories as string[];
         options.plotOptions = {
           pie: {
-            donut: {
-              size: type === "donut" ? "50%" : "0%",
-            },
+            donut: { size: type === "donut" ? "50%" : "0%" },
           },
         };
         break;
 
+      // Radial Gauge
       case "radialBar":
         options.plotOptions = {
           radialBar: {
             hollow: { size: "60%" },
-            track: {
-              background: "#E5E7EB",
-              strokeWidth: "100%",
-              margin: 4,
-            },
+            track: { background: "#E5E7EB", margin: 4 },
             dataLabels: {
-              show: true,
-              name: {
-                show: true,
-                fontSize: "13px",
-                color: "#6B7280",
-                offsetY: 10,
-              },
+              name: { fontSize: "13px", color: "#6B7280" },
               value: {
-                show: true,
                 fontSize: "22px",
                 fontWeight: 600,
-                color: "#111827",
-                offsetY: -10,
-                formatter: (val: number) => `${Math.round(val)}%`,
+                formatter: (v: number) => `${Math.round(v)}%`,
               },
             },
           },
@@ -261,39 +243,23 @@ export default function Chart({
           },
         };
         options.stroke = { lineCap: "round" };
-        options.labels = categories as string[];
         break;
     }
 
-    // 병합 로직 수정 (plotOptions 안쪽까지 병합)
+    // 사용자 옵션 병합
     return {
       ...options,
-      chart: {
-        ...options.chart,
-        ...customOptions?.chart,
-        dropShadow: {
-          ...options.chart?.dropShadow,
-          ...(customOptions?.chart?.dropShadow ?? {}),
-          ...(customOptions?.dropShadow ?? {}),
-        },
-      },
-      plotOptions: {
-        ...options.plotOptions,
-        radialBar: {
-          ...options.plotOptions?.radialBar,
-          ...(customOptions?.plotOptions?.radialBar ?? {}),
-        },
-        ...customOptions?.plotOptions,
-      },
+      ...customOptions,
+      chart: { ...options.chart, ...customOptions?.chart },
+      plotOptions: { ...options.plotOptions, ...customOptions?.plotOptions },
       fill: { ...options.fill, ...customOptions?.fill },
       stroke: { ...options.stroke, ...customOptions?.stroke },
       grid: { ...options.grid, ...customOptions?.grid },
-      legend: { ...options.legend, ...customOptions?.legend },
-      ...customOptions,
+      title: { ...safeTitle, ...(customOptions?.title ?? {}) },
+      subtitle: { ...safeSubtitle, ...(customOptions?.subtitle ?? {}) },
     };
   }, [
     type,
-    normalizedType,
     titleOptions,
     colors,
     categories,
@@ -304,6 +270,7 @@ export default function Chart({
     xaxisOptions,
     yaxisOptions,
     customOptions,
+    isStacked,
   ]);
 
   return (

@@ -1,0 +1,161 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+:root {
+--card: #ffffff;
+--text: #1f2937;
+--muted: #6b7280;
+--ring: rgba(2, 6, 23, 0.08);
+--shadow: 0 20px 40px rgba(2, 6, 23, 0.06);
+--indigo: #6366f1;
+--red: #ef4444;
+--amber: #f59e0b;
+}
+
+body {
+  font-family: "Inter-Regular", sans-serif;
+}
+
+/* Layout */
+.il-root {
+  padding: 24px 20px 40px;
+  font-family: "Inter-Regular", sans-serif;
+  color: var(--text);
+  align-items: flex-start;
+  padding: 40px 20px;
+  background: transparent;
+}
+
+
+.il-topbar {
+margin-bottom: 20px;
+  display: flex;
+  align-items: left;
+  justify-content: flex-end; /* 오른쪽 정렬 */
+  gap: 12px;
+}
+
+
+.il-title {
+font-size: 18px;
+font-weight: 700;
+}
+
+
+.il-add-btn {
+border: 0;
+border-radius: 999px;
+background: #111827;
+color: #fff;
+padding: 8px 12px;
+font-weight: 600;
+cursor: pointer;
+}
+.il-add-btn:hover { background: #0b1220; }
+
+
+/* Card */
+.il-card {
+margin: 0 auto;
+background: var(--card);
+border-radius: 18px;
+box-shadow: var(--shadow);
+border: 1px solid var(--ring);
+}
+
+
+/* Header Row */
+.il-header-row {
+display: grid;
+grid-template-columns: repeat(7, minmax(0, 1fr));
+gap: 16px;
+padding: 12px 24px;
+background: #f1f5f9;
+font-size: 11px;
+font-weight: 700;
+letter-spacing: 0.04em;
+text-transform: uppercase;
+color: #64748b;
+border-bottom: 1px solid #e5e7eb;
+text-align: left;
+}
+
+/* Status Dot */
+.il-dot {
+display: inline-block;
+width: 10px; height: 10px;
+border-radius: 999px;
+}
+.il-dot--indigo { background: var(--indigo); }
+.il-dot--red { background: var(--red); }
+.il-dot--amber { background: var(--amber); }
+
+/* Rows */
+.il-row-wrap { border-bottom: 1px solid #eef2f7; }
+
+
+.il-row {
+display: grid;
+grid-template-columns: repeat(7, minmax(0, 1fr));
+gap: 16px;
+padding: 16px 24px;
+align-items: left;
+cursor: pointer;
+}
+.il-row:hover { background: #fafafa; }
+
+.il-cell { color: #334155; font-size: 14px; }
+.il-strong { font-weight: 600; color: #0f172a; }
+.left { text-align: left; }
+
+/* Database Section */
+.il-db { margin: 10px 24px 18px; border: 1px solid #e5e7eb; border-radius: 12px; overflow: hidden; }
+.il-db-title {
+background: #fff;
+padding: 10px 12px;
+text-align: left;
+font-weight: 700;
+color: #475569;
+border-bottom: 1px solid #e5e7eb;
+}
+
+
+.il-db-header {
+display: grid;
+grid-template-columns: repeat(6, minmax(0, 1fr));
+gap: 12px;
+padding: 10px 14px;
+background: #f8fafc;
+font-size: 11px;
+font-weight: 700;
+text-transform: uppercase;
+color: #64748b;
+border-bottom: 1px solid #e5e7eb;
+}
+
+
+.il-db-row {
+display: grid;
+grid-template-columns: repeat(6, minmax(0, 1fr));
+gap: 12px;
+padding: 12px 14px;
+align-items: left;
+background: #fff;
+}
+
+
+/* Badge */
+.il-db-row > .il-badge {
+  justify-self: start;   /* stretch → start */
+  width: max-content;    /* 내용만큼 */
+  display: inline-flex;
+  align-items: left;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1;
+  border: 1px solid currentColor;
+  white-space: nowrap;
+}
+.il-badge--indigo { color: var(--indigo); background: rgba(99,102,241,0.08); border-color: rgba(99,102,241,0.35);
+}
