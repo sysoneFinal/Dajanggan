@@ -66,7 +66,7 @@ border: 1px solid var(--ring);
 /* Header Row */
 .il-header-row {
 display: grid;
-grid-template-columns: repeat(7, minmax(0, 1fr));
+grid-template-columns: repeat(7, 1fr) 0.1fr;
 gap: 16px;
 padding: 12px 24px;
 background: #f1f5f9;
@@ -95,7 +95,7 @@ border-radius: 999px;
 
 .il-row {
 display: grid;
-grid-template-columns: repeat(7, minmax(0, 1fr));
+grid-template-columns: repeat(7, 1fr) 0.1fr;
 gap: 16px;
 padding: 16px 24px;
 align-items: left;
@@ -159,3 +159,96 @@ background: #fff;
 }
 .il-badge--indigo { color: var(--indigo); background: rgba(99,102,241,0.08); border-color: rgba(99,102,241,0.35);
 }
+
+
+/* 액션 메뉴 위치 */
+.il-actions {
+  position: relative;
+  justify-self: end; /* grid라면 오른쪽 붙이기 */
+}
+
+.il-dots-btn {
+  background: transparent;
+  border: none;
+  padding: 4px;
+  cursor: pointer;
+  line-height: 0;
+}
+
+.il-menu {
+  position: absolute;
+  right: 6px;
+  top: 28px;
+  display: flex;
+  flex-direction: column;
+  background: #fff;
+  border: 1px solid rgba(2,6,23,0.08);
+  border-radius: 10px;
+  box-shadow: 0 12px 28px rgba(2,6,23,0.12);
+  overflow: hidden;
+  z-index: 20;
+}
+
+.il-menu > button {
+  width: 140px;
+  padding: 10px 12px;
+  text-align: left;
+  background: transparent;
+  border: none;
+  font-size: 14px;
+  cursor: pointer;
+}
+.il-menu > button:hover { background: rgba(2,6,23,0.04); }
+.il-menu > button.danger { color: #ef4444; }
+
+/* 오버레이: 그림자 X, 살짝 어둡게만 */
+.il-modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(255, 255, 255, 0.172); /* 0.36 → 0.28 */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 50;
+}
+
+/* 카드: 투명 + 배경 흐림 + 그림자 약하게 */
+.il-modal-card {
+  width: 520px;
+  max-width: calc(100% - 40px);
+  background: rgb(255, 255, 255);     /* 반투명 */
+  backdrop-filter: blur(10px);              /* 배경 흐림 */
+  -webkit-backdrop-filter: blur(10px);
+  border-radius: 14px;
+  /* 그림자 블러/강도 줄이기 (밴딩 완화) */
+  box-shadow: 0 12px 28px rgba(2, 6, 23, 0.14);
+  border: 1px solid rgba(255, 255, 255, 0.6); /* 유리 가장자리 */
+  overflow: hidden;
+  position: relative;
+}
+
+.il-modal-header, .il-modal-footer {
+  padding: 14px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.il-modal-body { padding: 16px; }
+
+.il-x {
+  background: transparent;
+  border: none;
+  font-size: 22px;
+  cursor: pointer;
+  line-height: 1;
+}
+
+.il-modal-footer button {
+  box-shadow: 0 8px 10px rgba(2, 6, 23, 0.14);
+  border: none;
+  padding: 10px 14px;
+  border-radius: 10px;
+  cursor: pointer;
+}
+.il-modal-footer .primary { background: #6366f1; color: #fff; }
+.il-modal-footer .danger { background: #ef4444; color: #fff; }

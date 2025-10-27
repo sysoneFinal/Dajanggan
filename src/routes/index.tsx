@@ -3,11 +3,14 @@ import Home from "../pages/Home";
 import Overview from "../pages/dashboard/Overview";
 import EventPage from "../pages/eventlog/EventLogPage";
 import InstanceRegister from "../pages/instance/InstanceRegister";
+import InstanceEdit from "../pages/instance/InstanceEdit";
 import InstancePage from "../pages/instance/InstancePage";
 import SessionPage from "../pages/session/SessionPage";
 import CheckpointPage from "../pages/engine/CheckPointPage";
 import QueryMonitor from "../pages/query/QueryMonitor";
-import VacuumPage from "../pages/vacuum/VacuumPage";
+import VacuumOverview from "../pages/vacuum/VacuumOverview";
+import VacuumMaintenance from "../pages/vacuum/VacuumMaintenance";
+import VacuumHistory from "../pages/vacuum/VacuumHistory";
 import CpuPage from "../pages/system/CpuPage";
 import AlarmPage from "../pages/alarm/AlarmPage";
 
@@ -20,12 +23,15 @@ const routeList = [
   { path: "/cpu", element: <CpuPage /> },
   { path: "/instance-management", element: <InstancePage /> },
   { path: "/instance-register", element: <InstanceRegister /> },
+  { path: "/instances/:id/edit", element: <InstanceEdit /> },
   { path: "/checkpoint", element: <CheckpointPage /> },
 
   // DB 단위 
   { path: "/session", element: <SessionPage /> },
   { path: "/query", element: <QueryMonitor /> },
-  { path: "/vacuum", element: <VacuumPage /> },
+  { path: "/vacuum", element: <VacuumOverview /> },
+  { path: "/vacuum-maintenance", element: <VacuumMaintenance /> },
+  { path: "/vacuum-history", element: <VacuumHistory /> },
 
   // 알람
   { path: "/alarm", element: <AlarmPage /> },
