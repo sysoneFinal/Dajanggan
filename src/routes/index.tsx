@@ -38,14 +38,13 @@ const routeList = [
   { path: "/database/summary", element: <DatabaseDashboard /> },
   // 세션
   { path: "/database/session/dashboard", element: <SessionPage /> },
-  { path: "/database/session/sessionList", element: <SessionListPage /> },
+  { path: "/database/session/active", element: <SessionListPage /> },
   // 쿼리
   { path: "/database/query/dashboard", element: <QueryOverview /> },
   { path: "/database/query/execution-stats", element: <ExecutionStatus /> },
   // Vacuum
   { path: "/database/vacuum/dashboard", element: <VacuumPage /> },
   
-
 
   // 기타
   { path: "/instance-management", element: <InstancePage /> },
