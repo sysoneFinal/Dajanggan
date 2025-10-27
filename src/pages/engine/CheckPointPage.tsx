@@ -1,7 +1,7 @@
 import { useState } from "react";
 import Chart from "../../components/chart/ChartComponent";
-import GaugeChart from "../../components/chart/GaugeChart.tsx";
 import "../../styles/engine/checkpoint.css";
+import GaugeChart from "../../components/chart/GaugeChart";
 
 // API 응답 전체 구조
 interface CheckpointData {

@@ -1,0 +1,184 @@
+.instance-popup {
+  background: rgba(250, 250, 255, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  border-radius: 40px;
+  width: 380px;
+  padding: 24px 0;
+  box-shadow: 0px 10px 30px rgba(0, 0, 0, 0.08),
+    inset 0px 4px 4px rgba(193, 193, 193, 0.25);
+  backdrop-filter: blur(6px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.popup-header {
+  font-family: "Inter", sans-serif;
+  font-size: 22px;
+  font-weight: 600;
+  color: rgba(0, 0, 0, 0.8);
+  margin-bottom: 12px;
+}
+
+.instance-item {
+  width: 85%;
+  height: 72px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  justify-content: center;
+  border-radius: 20px;
+  transition: background 0.25s ease;
+  cursor: pointer;
+  background: transparent;
+}
+
+.instance-item:hover {
+  background: #1e1e1e;
+}  
+
+.instance-item.selected {
+  background: #1e1e1e;
+}
+
+.inst-divider {
+  width: 75%;
+  height: 1px;
+  background: #d2d2d2;
+  opacity: 0.7;
+  margin: 0 auto;
+}
+
+.instance-item:hover .instance-name,
+.instance-item.selected .instance-name {
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.status-dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  margin-right: 20px;
+}
+
+.status-dot.normal {
+  background: #7f81f2;
+}
+
+.status-dot.warning {
+  background: #ff6767;
+}
+
+.instance-name {
+  font-size: 20px;
+  font-weight: 500;
+  color: rgba(0, 0, 0, 0.8);
+}
+
+.add-instance {
+    background: transparent;
+    font-size: 16px;
+    font-weight: 300;
+    color: #000;
+    margin-top: 20px;
+    cursor: pointer;
+    transition: opacity 0.2s ease;
+    border: 0;
+}
+
+.add-instance:hover {
+  opacity: 0.7;
+}
+
+/* 리스트 없을때 버튼용 */
+
+.add-instance-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 219px;
+  height: 59px;
+  margin: 40px auto 0;
+  position: relative;
+}
+
+.add-instance-button {
+  width: 219px;
+  height: 59px;
+  position: relative;
+  cursor: pointer;
+  transition: transform 0.2s ease;
+}
+
+.add-instance-button:hover {
+  transform: translateY(-2px);
+}
+
+.add-instance-bg {
+  background: linear-gradient(
+      to left,
+      rgba(255, 255, 255, 0.15),
+      rgba(255, 255, 255, 0.15)
+    ),
+    linear-gradient(
+      90deg,
+      rgba(255, 255, 255, 0.14) 0%,
+      rgba(255, 255, 255, 0.07) 100%
+    );
+  border-radius: 50px;
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  width: 219px;
+  height: 59px;
+  position: absolute;
+  top: 0;
+  left: 0;
+  box-shadow: 0px 6px 16px rgba(0, 0, 0, 0.2),
+    inset 0px 2px 4px rgba(0, 0, 0, 0.1),
+    inset 0px -1px 2px rgba(255, 255, 255, 0.6);
+  backdrop-filter: blur(12.5px);
+}
+
+.add-instance-overlay {
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.3) 0%,
+    rgba(153, 153, 153, 0) 100%
+  );
+  border-radius: 50px;
+  opacity: 0.3;
+  width: 91px;
+  height: 59px;
+  position: absolute;
+  top: 0;
+  left: 0;
+  mix-blend-mode: difference;
+}
+
+.add-instance-text {
+  position: absolute;
+  left: 20px;
+  top: 17px;
+  color: rgba(0, 0, 0, 0.8);
+  font-family: "Inter-SemiBold", sans-serif;
+  font-size: 21px;
+  font-weight: 600;
+  user-select: none;
+}
+
+.add-instance-icon-bg {
+  background: #000000;
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  position: absolute;
+  right: 10px;
+  top: 9px;
+}
+
+.add-instance-icon {
+  width: 20px;
+  height: 20px;
+  position: absolute;
+  right: 20px;
+  top: 19px;
+}

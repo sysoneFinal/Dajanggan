@@ -5,6 +5,7 @@
 .vd-root{ padding:20px; }
 .vd-grid{ display:grid; grid-template-columns:1fr 1fr 1fr; gap:20px; margin-bottom:14px; }
 .vd-grid2{ display:grid; grid-template-columns:1fr 1fr 1fr 1fr; gap:20px; margin-bottom:14px; }
+.vd-grid3{ display:grid; grid-template-columns:1fr 1fr; gap:20px; margin-bottom:14px; }
 .vd-card{ background:var(--card); border-radius:18px; box-shadow:var(--shadow); padding:16px; }
 .vd-card__header{ display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; }
 .vd-card__header h3{ margin:0; font-size:16px; font-weight:700; }
@@ -36,3 +37,43 @@
 .vd-card .apexcharts-canvas { min-height: 240px; width:100% !important; }
 
 @media (max-width: 1024px){ .vd-grid{ grid-template-columns:1fr; } }
+
+/* 페이지네이션 */
+.tq-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding-top: 40px;
+  flex-shrink: 0;
+}
+
+.tq-page-btn,
+.tq-page-num {
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  cursor: pointer;
+  transition: all 0.2s;
+  min-width: 36px;
+}
+
+.tq-page-btn:hover:not(:disabled),
+.tq-page-num:hover {
+  border-color: var(--muted);
+}
+
+.tq-page-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.tq-page-num--active {
+  background: #111827;
+  color: white;
+  border-color: #111827;
+}
