@@ -12,6 +12,7 @@ import AlarmPage from "../pages/alarm/AlarmPage";
 import ExecutionStatus from "../pages/query/ExecutionStatus";
 import QueryOverview from "../pages/query/QueryOverview";
 import TopQuery from "../pages/query/TopQuery";
+import BGWriterPage from "../pages/engine/BGWriterPage";
 
 const routeList = [
   { path: "/", element: <Home /> },
@@ -23,6 +24,7 @@ const routeList = [
   { path: "/instance-management", element: <InstancePage /> },
   { path: "/instance-register", element: <InstanceRegister /> },
   { path: "/checkpoint", element: <CheckpointPage /> },
+  { path: "/bgwriter", element: <BGWriterPage /> },
 
   // DB 단위 
   { path: "/session", element: <SessionPage /> },

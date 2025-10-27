@@ -7,7 +7,7 @@ import "../../styles/layout/sidebar.css";
 
 type MainItem = "Overview" | "Instance" | "Event";
 
-const INSTANCE_MENUS = ["Instance Management", "CPU", "Memory", "I/O", "Checkpoint", "BG Writer"];
+const INSTANCE_MENUS = ["Instance Management", "CPU", "Memory", "I/O", "Checkpoint", "BGWriter"];
 const DB_LIST = ["db-01", "db-02", "db-03", "db-04"];
 
 const DB_SUBMENUS: Record<string, string[] | null> = {
@@ -24,7 +24,7 @@ const ROUTE_MAP: Record<string, string> = {
   Memory: "/memory",
   "I/O": "/io",
   Checkpoint : "/checkpoint",
-  "BG Writer": "/bg-writer",
+  BGWriter: "/bgwriter",
 
   // DB
   Session: "/session",
