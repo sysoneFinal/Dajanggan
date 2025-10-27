@@ -10,6 +10,7 @@ interface MenuItem {
   path?: string;
   children?: MenuItem[];
 }
+
 interface SidebarProps {
   onChangeBreadcrumb: (path: string[]) => void;
 }
@@ -44,7 +45,7 @@ export default function Sidebar({ onChangeBreadcrumb }: SidebarProps) {
     );
   };
 
-  const renderMenu = (items: MenuItem[], depth = 0) => (
+const renderMenu = (items: readonly MenuItem[], depth = 0): JSX.Element => (
     <div className={`sidebar__menu-level sidebar__menu-level--${depth}`}>
       {items.map((item) => {
         const descendantActive = hasActiveChild(item);
@@ -79,7 +80,7 @@ export default function Sidebar({ onChangeBreadcrumb }: SidebarProps) {
                 }
               }}
 
-              style={{ paddingLeft: `${depth * 1}rem` }}
+              // style={{ paddingLeft: `${depth * 1}rem` }}
             >
               <span>{item.label}</span>
               {item.children && (
