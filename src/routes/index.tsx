@@ -12,6 +12,7 @@ import AlarmPage from "../pages/alarm/AlarmPage";
 import ExecutionStatus from "../pages/query/ExecutionStatus";
 import QueryOverview from "../pages/query/QueryOverview";
 import TopQuery from "../pages/query/TopQuery";
+import QueryTuner from "../pages/query/QueryTuner";
 
 const routeList = [
   { path: "/", element: <Home /> },
@@ -29,6 +30,7 @@ const routeList = [
   { path: "/query", element: <QueryOverview /> },
   { path: "/executionstatus", element: <ExecutionStatus /> },
   { path: "/topquery", element: <TopQuery /> },
+  { path: "/querytuner", element: <QueryTuner /> },
   { path: "/vacuum", element: <VacuumPage /> },
 
   // 알람
