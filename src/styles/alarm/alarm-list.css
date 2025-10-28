@@ -1,0 +1,41 @@
+:root{
+  --bg:#f3f5f7; --card:#ffffff; --text:#111827; --muted:#6b7280;
+  --chip:#f8fafc; --chip-border:#e5e7eb; --shadow:0 18px 50px rgba(8,15,23,.12);
+}
+
+.vd-root{ padding:20px; }
+.vd-card3{ background:var(--card); border-radius:18px; box-shadow:var(--shadow); padding:16px; }
+.vd-card3__header{ display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; }
+.vd-card3__header h3{ margin:0; font-size:16px; font-weight:700; }
+.vd-tablewrap{ width:100%; overflow:auto; }
+.vd-table{ width:100%; border-collapse:collapse; font-size:14px; }
+.vd-table thead th{ text-align:left; color:var(--muted); font-weight:700; font-size:12px; padding:10px 8px; border-bottom:1px solid #eef0f3; }
+.vd-table tbody tr {
+  transition: background-color 0.2s ease;
+  cursor: pointer;
+}
+.vd-table tbody tr:hover {
+  background-color: rgba(127, 129, 242, 0.08); /* 은은한 보라빛 하이라이트 */
+}
+.vd-table tbody td{ padding:12px 8px; border-bottom:1px solid #f1f3f6; vertical-align:middle; }
+
+.vd-td-strong{ font-weight:700; }
+/* 뱃지 */
+.vd-badges { display: flex; gap: 8px; flex-wrap: wrap; margin-left: 8px; }
+.vd-badge {
+  font-size: 13px; color: #374151; background: #f3f4f6;
+  border-radius: 9999px; padding: 6px 10px; line-height: 1;
+}
+.vd-badge--ok { background: #eef4ff; color: #4f46e5; }
+
+.vd-btn {
+  padding: 8px 14px; border-radius: 10px;
+  background: #fff; border: 1px solid rgba(2,6,23,0.08);
+  box-shadow: 0 6px 18px rgba(8, 15, 23, 0.06);
+}
+.vd-iconbtn {
+  width: 36px; height: 36px; border-radius: 10px;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: #fff; border: 1px solid rgba(2,6,23,0.08);
+  box-shadow: 0 6px 18px rgba(8, 15, 23, 0.06);
+}

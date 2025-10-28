@@ -13,7 +13,7 @@ import SessionPage from "../pages/session/SessionPage";
 import DatabaseDashboard from "../pages/dashboard/DatabaseOverview";
 import SessionListPage from "../pages/session/SessionListPage";
 
-import AlarmPage from "../pages/alarm/AlarmPage";
+import AlarmList from "../pages/alarm/AlarmList.tsx";
 import LayoutBuilder from "../components/dashboard/Layout";
 import DashboardEditor from "../components/dashboard/DashboardEditor";
 import ExecutionStatus from "../pages/query/ExecutionStatus";
@@ -82,7 +82,7 @@ const routeList = [
 
 
   // 알람
-  { path: "/alarm", element: <AlarmPage /> },
+  { path: "/alarm", element: <AlarmList /> },
 ];
 
 
