@@ -1,6 +1,6 @@
 // src/components/VacuumTableMenu.tsx
 import { useEffect, useMemo, useRef, useState } from "react";
-import "/src/styles/VacuumPage.css";
+import "/src/styles/vacuum/VacuumPage.css";
 
 /** ─ TableDropdown: 내부 전용 ─ */
 function TableDropdown({

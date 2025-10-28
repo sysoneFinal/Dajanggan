@@ -19,7 +19,6 @@ import SessionPage from "../pages/session/SessionPage";
 import DatabaseDashboard from "../pages/dashboard/DatabaseOverview";
 import SessionListPage from "../pages/session/SessionListPage";
 
-import AlarmList from "../pages/alarm/AlarmList";
 import LayoutBuilder from "../components/dashboard/Layout";
 import DashboardEditor from "../components/dashboard/DashboardEditor";
 import ExecutionStatus from "../pages/query/ExecutionStatus";
@@ -31,6 +30,8 @@ import HotTablePage from "../pages/engine/HotTablePage";
 import HotIndexPage from "../pages/engine/HotIndexPage.tsx";
 import MemoryPage from "../pages/system/MemoryPage.tsx";
 import DiskPage from "../pages/system/DiskPage.tsx";
+import AlarmList from "../pages/alarm/AlarmList";
+import AlarmRuleRegister from "../pages/alarm/AlarmRuleRegister.tsx";
 
 const routeList = [
   // 헤더 없는 초기 페이지
@@ -44,6 +45,7 @@ const routeList = [
   // Instance 단위
   { path: "/instance/event", element: <EventPage /> },
   { path: "/instance/cpu/dashboard", element: <CpuPage /> },
+  { path: "/instance/disk/dashboard", element: <DiskPage /> },
   { path: "/instance/memory/dashboard", element: <MemoryPage /> },
   { path: "/instance/checkpoint/dashboard", element: <CheckpointPage /> },
   { path: "/instance/bg-writer/dashboard", element: <BGWriterPage /> },
@@ -95,6 +97,7 @@ const routeList = [
 
   // 알람
   { path: "/alarm", element: <AlarmList /> },
+  { path: "/alarm-rule", element: <AlarmRuleRegister /> },
 ];
 
 
