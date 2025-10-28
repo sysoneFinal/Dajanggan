@@ -44,6 +44,7 @@ const routeList = [
   // Instance 단위
   { path: "/instance/event", element: <EventPage /> },
   { path: "/instance/cpu/dashboard", element: <CpuPage /> },
+  { path: "/instance/disk/dashboard", element: <DiskPage /> },
   { path: "/instance/memory/dashboard", element: <MemoryPage /> },
   { path: "/instance/checkpoint/dashboard", element: <CheckpointPage /> },
   { path: "/instance/bg-writer/dashboard", element: <BGWriterPage /> },
