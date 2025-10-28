@@ -54,7 +54,8 @@ const routeList = [
   { path: "/database/query/dashboard", element: <QueryOverview /> },
   { path: "/database/query/execution-stats", element: <ExecutionStatus /> },
   { path: "/database/query/top-n-query", element: <TopQuery /> },
-  
+    { path: "/database/query/query-analysis", element: <QueryTuner /> },
+
   // Vacuum
   { path: "/database/vacuum/dashboard", element: <VacuumPage /> },
   
@@ -68,10 +69,6 @@ const routeList = [
 
   // DB 단위 
   { path: "/session", element: <SessionPage /> },
-  { path: "/query", element: <QueryOverview /> },
-  { path: "/executionstatus", element: <ExecutionStatus /> },
-  { path: "/topquery", element: <TopQuery /> },
-  { path: "/querytuner", element: <QueryTuner /> },
   { path: "/vacuum", element: <VacuumPage /> },
 
 

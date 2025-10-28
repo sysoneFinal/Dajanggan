@@ -2,7 +2,7 @@ import { useState } from "react";
 import "/src/styles/layout/query-tuner.css";
 
 /**
- * Query Tuner 페이지
+ * Query Analysis 페이지
  * - SQL 쿼리 분석 및 최적화 제안
  * - EXPLAIN ANALYZE 실행
  * - AI 기반 개선 제안
@@ -41,10 +41,9 @@ type PerformanceComparison = {
 };
 
 /* ---------- 데모 데이터 ---------- */
-const demoSafeQuery = `SELECT *
-FROM orders
-WHERE created_at > '2024-01-01'
-ORDER BY total_amount DESC;`;
+const demoSafeQuery = `UPDATE orders
+SET status = 'completed'
+WHERE order_id = 12345;`;
 
 const demoExecutionResult: ExecutionResult = {
   executionTime: "234ms",
@@ -87,7 +86,7 @@ const demoPerformance: PerformanceComparison = {
 /* ---------- 메인 페이지 ---------- */
 export default function QueryTuner() {
   const [sqlQuery, setSqlQuery] = useState(demoSafeQuery);
-  const [executionMode, setExecutionMode] = useState<ExecutionMode>("safe");
+  const [executionMode, setExecutionMode] = useState<ExecutionMode>("dangerous");
   const [hasExecuted, setHasExecuted] = useState(true);
 
   // SQL 안전성 체크
@@ -205,6 +204,21 @@ export default function QueryTuner() {
               <div className="qt-explain-plan">
                 <pre>{demoExplainPlan.plan}</pre>
               </div>
+              
+              {/* 안전모드 경고 */}
+              {executionMode === "dangerous" && (
+                <div className="qt-safety-warning">
+                  <div className="qt-safety-warning-icon">⚠️</div>
+                  <div className="qt-safety-warning-content">
+                    <div className="qt-safety-warning-title">
+                      데이터 변경 명령이 포함되어 있어 실제 실행 없이 추정치만 표시됩니다.
+                    </div>
+                    <div className="qt-safety-warning-desc">
+                      UPDATE, INSERT, DELETE 쿼리는 안전을 위해 EXPLAIN만 수행합니다.
+                    </div>
+                  </div>
+                </div>
+              )}
             </section>
           )}
         </div>
