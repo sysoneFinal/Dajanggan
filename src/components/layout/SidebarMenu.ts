@@ -17,8 +17,8 @@ export const SIDEBAR_MENU = [
             { label: "Buffer Usage", path: "/instance/memory/buffer-usage" },
         ]}, 
       { label: "Disk I/O",  children: [
-            { label: "Dashboard", path: "/instance/io/dashboard" },
-            { label: "I/O Breakdown", path: "/instance/io/breakdown" },
+            { label: "Dashboard", path: "/instance/disk/dashboard" },
+            { label: "I/O Breakdown", path: "/instance/disk/breakdown" },
         ]}, 
       { label: "Checkpoint",    children: [
             { label: "Dashboard", path: "/instance/checkpoint/dashboard" },
