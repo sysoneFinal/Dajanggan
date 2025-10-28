@@ -21,6 +21,7 @@ import QueryOverview from "../pages/query/QueryOverview";
 import TopQuery from "../pages/query/TopQuery";
 import BGWriterPage from "../pages/engine/BGWriterPage";
 import HotTablePage from "../pages/engine/HotTablePage";
+import HotIndexPage from "../pages/engine/HotIndexPage.tsx";
 
 const routeList = [
   // 헤더 없는 초기 페이지
@@ -46,6 +47,10 @@ const routeList = [
   // Hot Table
     { path: "/database/hottable/dashboard", element: <HotTablePage /> },
     // { path: "/database/hottable/active", element: <HotTableListPage /> },
+
+  // Hot Index
+  { path: "/database/hotindex/dashboard", element: <HotIndexPage /> },
+  // { path: "/database/hotindex/active", element: <HotIndexListPage /> },
 
   // 세션
   { path: "/database/session/dashboard", element: <SessionPage /> },
