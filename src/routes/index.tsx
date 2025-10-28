@@ -22,6 +22,7 @@ import TopQuery from "../pages/query/TopQuery";
 import BGWriterPage from "../pages/engine/BGWriterPage";
 import HotTablePage from "../pages/engine/HotTablePage";
 import HotIndexPage from "../pages/engine/HotIndexPage.tsx";
+import MemoryPage from "../pages/system/MemoryPage.tsx";
 
 const routeList = [
   // 헤더 없는 초기 페이지
@@ -36,7 +37,7 @@ const routeList = [
   { path: "/instance/event", element: <EventPage /> },
   { path: "/instance/cpu/dashboard", element: <CpuPage /> },
   // { path: "/instance/disk/dashboard", element: <DiskPage /> },
-  // { path: "/instance/memory/dashboard", element: <MemoryPage /> },
+  { path: "/instance/memory/dashboard", element: <MemoryPage /> },
   { path: "/instance/checkpoint/dashboard", element: <CheckpointPage /> },
   { path: "/instance/bg-writer/dashboard", element: <BGWriterPage /> },
   
