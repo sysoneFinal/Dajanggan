@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import Chart from "../../components/chart/ChartComponent";
-import "/src/styles/VacuumPage.css";
+import "/src/styles/vacuum/VacuumPage.css";
 
 /* ---------- 타입 및 데모 데이터 ---------- */
 type VacuumRecord = {

@@ -1,5 +1,7 @@
 import { useState } from "react";
-import "/src/styles/VacuumPage.css";
+import { useNavigate } from "react-router-dom";
+import "/src/styles/vacuum/VacuumPage.css";
+import Pagination from "../../components/util/Pagination";
 
 type VacuumHistoryRow = {
   table: string;
@@ -47,13 +49,19 @@ export default function VacuumHistoryTable({ rows = historyDemo }: { rows?: Vacu
   const [page, setPage] = useState(1);
   const rowsPerPage = 14;
   const totalPages = Math.ceil(rows.length / rowsPerPage);
-
+  const navigate = useNavigate();
   const paginatedRows = rows.slice((page - 1) * rowsPerPage, page * rowsPerPage);
+
+  const handleRowClick = (tableName: string) => {
+      navigate("/database/vacuum/bloatDetail", {
+        state: { table: tableName }, // 선택된 테이블 정보 같이 넘길 수도 있음
+      });
+    };
 
   return (
     <div className="vd-root">
-      <section className="vd-card">
-        <header className="vd-card__header">
+      <section className="vd-card3">
+        <header className="vd-card3__header">
           <h3>History</h3>
         </header>
 
@@ -74,7 +82,10 @@ export default function VacuumHistoryTable({ rows = historyDemo }: { rows?: Vacu
             </thead>
             <tbody>
               {paginatedRows.map((r, i) => (
-                <tr key={`${r.table}-${i}`}>
+                <tr key={`${r.table}-${i}`}
+                    onClick={() => handleRowClick(r.table)}
+                    className="vd-table-row"
+                >
                   <td className="vd-td-strong">{r.table}</td>
                   <td>{r.lastVacuum}</td>
                   <td>{r.lastAutovacuum}</td>
@@ -95,33 +106,11 @@ export default function VacuumHistoryTable({ rows = historyDemo }: { rows?: Vacu
         </div>
 
         {/* 페이지네이션 */}
-        <div className="tq-pagination">
-          <button
-            className="tq-page-btn"
-            onClick={() => setPage((p) => Math.max(1, p - 1))}
-            disabled={page === 1}
-          >
-            이전
-          </button>
-
-          {Array.from({ length: totalPages }, (_, i) => (
-            <button
-              key={i}
-              className={`tq-page-num ${page === i + 1 ? "tq-page-num--active" : ""}`}
-              onClick={() => setPage(i + 1)}
-            >
-              {i + 1}
-            </button>
-          ))}
-
-          <button
-            className="tq-page-btn"
-            onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-            disabled={page === totalPages}
-          >
-            다음
-          </button>
-        </div>
+         <Pagination
+        currentPage={page}
+        totalPages={totalPages}
+        onPageChange={(newPage) => setPage(newPage)}
+        />
       </section>
     </div>
   );

@@ -1,8 +1,8 @@
 import { useMemo, useState } from "react";
+import { useLocation } from "react-router-dom";
 import Chart from "../../components/chart/ChartComponent";
-import "/src/styles/VacuumPage.css";
+import "/src/styles/vacuum/VacuumPage.css";
 import VacuumTableMenu from "./VacuumTableMenu";
-
 
 /* ---------- 타입/데모데이터 ---------- */
 type BloatDetailData = {
@@ -47,6 +47,7 @@ const demo: BloatDetailData = {
 
 /* ---------- 페이지 ---------- */
 export default function BloatDetailPage({ data = demo }: { data?: BloatDetailData }) {
+  const location = useLocation();
   const bloatTrendSeries = useMemo(() => [{ name: "Bloat %", data: data.bloatTrend.data }], [data]);
   const deadTuplesSeries = useMemo(() => [{ name: "Dead Tuples", data: data.deadTuplesTrend.data }], [data]);
   const indexBloatSeries = useMemo(
@@ -54,14 +55,13 @@ export default function BloatDetailPage({ data = demo }: { data?: BloatDetailDat
     [data]
   );
 
-  const [selectedTable, setSelectedTable] = useState("public.orders");
-  const tableList = [
-    "public.orders",
-    "public.order_items",
-    "public.customers",
-    "public.payments",
-    "public.shipments",
-  ];
+  const tableList = useMemo(
+    () => ["public.orders","public.order_items","public.customers","public.payments","public.shipments"],
+    []
+  );
+
+  const routedTable = location.state?.table as string | undefined;
+  const [selectedTable, setSelectedTable] = useState<string>(routedTable ?? tableList[0]);
 
   return (
     <div className="vd-root">

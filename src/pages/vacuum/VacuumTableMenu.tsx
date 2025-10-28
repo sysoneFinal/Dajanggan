@@ -1,6 +1,6 @@
 // src/components/VacuumTableMenu.tsx
 import { useEffect, useMemo, useRef, useState } from "react";
-import "/src/styles/VacuumPage.css";
+import "/src/styles/vacuum/VacuumPage.css";
 
 /** ─ TableDropdown: 내부 전용 ─ */
 function TableDropdown({
@@ -88,7 +88,7 @@ export default function VacuumTableMenu({
   lastVacuumText,
 }: VacuumTableMenuProps) {
   return (
-    <section className="vd-card vd-card--headerbar">
+    <section className="vd-card3 vd-card3--headerbar">
       <div className="vd-hbar">
         <h2 className="vd-hbar__title">
           Bloat Detail —{" "}
