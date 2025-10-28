@@ -22,11 +22,7 @@
 
 /* 카드 */
 .tq-card {
-  background: linear-gradient(
-    180deg,
-    rgba(255, 255, 255, 0.58) 0%,
-    rgba(255, 255, 255, 0.54) 100%
-  );
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.58) 0%, rgba(255, 255, 255, 0.54) 100%);
   border-radius: 18px;
   border: 1px solid rgba(255, 255, 255, 0.8);
   box-shadow: 0px 10px 30px 0px rgba(0, 0, 0, 0.08);
@@ -36,11 +32,20 @@
   flex-direction: column;
 }
 
-/* Top Query 카드 (첫 번째 카드) - 높이 조정 (480px → 520px) */
+/* Top Query 카드 - 500px 고정 */
 .tq-card:first-child {
-  height: 520px;
-  max-height: 520px;
-  min-height: 520px;
+  height: 500px;
+  max-height: 500px;
+  min-height: 500px;
+  flex-shrink: 0;
+}
+
+/* 슬로우 쿼리 카드 - 500px 고정 */
+.tq-card:last-child {
+  height: 515px;
+  max-height: 515px;
+  min-height: 515px;
+  flex-shrink: 0;
 }
 
 .tq-card__header {
@@ -211,11 +216,12 @@
 .tq-sort-btn:hover { background: rgba(17,24,39,.1); color: var(--text); }
 .tq-sort-btn--active { background:#111827; color:#fff; box-shadow:0 1px 3px rgba(0,0,0,.1); }
 
-/* 슬로우 쿼리 리스트 - 높이 증가 (250px → 300px) */
+/* 슬로우 쿼리 리스트 - 내부 스크롤, flex: 1 */
 .tq-slow-list {
-  display:flex; flex-direction:column; gap:8px; margin-bottom:16px;
-  padding-right:4px; min-height:280px; max-height:280px; overflow-y: auto;
+  display:flex; flex-direction:column; gap:8px;
+  padding-right:4px; flex: 1; overflow-y: auto; min-height: 0;
 }
+
 .tq-slow-card {
   background: rgba(255,255,255,.8); border:1px solid var(--border);
   border-radius:12px; padding:10px 14px; transition:all .2s; animation: cardFadeIn .4s ease;
@@ -225,7 +231,7 @@
 
 .tq-slow-card-header {
   display:flex; align-items:flex-start; justify-content:space-between;
-  margin-bottom:5px; gap:8px;
+  margin-bottom:6px; gap:8px;
 }
 .tq-slow-card-left { display:flex; align-items:flex-start; gap:8px; flex:1; min-width:0; }
 .tq-slow-card-icon { font-size:18px; flex-shrink:0; }
@@ -234,7 +240,7 @@
   white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
 }
 .tq-slow-card-severity { padding:3px 10px; border-radius:6px; font-size:10px; font-weight:700; color:#fff; flex-shrink:0; }
-.tq-slow-card-suggestion { font-size:12px; color:var(--text); margin-bottom:5px; padding-left:26px; }
+.tq-slow-card-suggestion { font-size:12px; color:var(--text); margin-bottom:6px; padding-left:26px; }
 .tq-slow-card-footer { display:flex; gap:12px; padding-left:26px; font-size:11px; color:var(--muted); }
 .tq-slow-card-time { font-weight:500; }
 .tq-slow-card-occurred { font-weight:400; }
