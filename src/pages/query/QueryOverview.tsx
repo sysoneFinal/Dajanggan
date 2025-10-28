@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from "react";
 import Chart from "../../components/chart/ChartComponent";
-import "/src/styles/layout/query-overview.css";
+import "/src/styles/query/query-overview.css";
 
 /**
  * 쿼리 오버뷰 대시보드

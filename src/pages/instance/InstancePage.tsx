@@ -1,6 +1,7 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import "/src/styles/instance-register.css";
+import instanceDots from "/src/assets/icon/instance-dots.svg";
 import apiClient from "../../api/apiClient";
 
 // ------------------ Types ------------------
@@ -14,7 +15,7 @@ export interface DatabaseSummary {
 }
 
 export interface InstanceRow {
-  instanceId: string;
+  instanceId: number;
   instanceName: string;
   host: string;
   port: number;
@@ -121,7 +122,7 @@ export const mapInstance = (i: InstanceDto): InstanceRow => {
     : undefined;
 
   return {
-    instanceId: String(id ?? ""), // 일단 문자열화
+    instanceId: Number(id ?? ""), // 일단 문자열화
     instanceName: i.instanceName ?? i.host ?? String(id ?? "-"),
     host: i.host,
     port: Number(i.port),
@@ -141,6 +142,13 @@ const InstancePage: React.FC = () => {
   const [rows, setRows] = useState<InstanceRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // 수정, 삭제 모달
+  const [menuOpenId, setMenuOpenId] = useState<number | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<InstanceRow | null>(null);
+  const menuRef = useRef<HTMLDivElement | null>(null);
+
+
 
   const extractInstanceList = (data: any): InstanceDto[] => {
         if (Array.isArray(data)) return data;
@@ -176,6 +184,7 @@ const InstancePage: React.FC = () => {
         if (!ignore) setLoading(false);
       }
     })();
+    
     return () => { ignore = true; };
   }, []);
 
@@ -231,6 +240,34 @@ const InstancePage: React.FC = () => {
 
   const visibleRows = useMemo(() => rows, [rows]);
 
+useEffect(() => {
+  const closeOnOutside = (e: MouseEvent) => {
+    const t = e.target as HTMLElement;
+    if (t.closest(".il-menu") || t.closest(".il-dots-btn")) return;
+    setMenuOpenId(null);
+  };
+  document.addEventListener("mousedown", closeOnOutside);
+  return () => document.removeEventListener("mousedown", closeOnOutside);
+}, []);
+
+const openMenu = (e: React.MouseEvent, id: number) => {
+  e.stopPropagation();
+  setMenuOpenId(prev => (prev === id ? null : id));
+};
+
+const handleEdit = (row: InstanceRow) => {
+  setMenuOpenId(null);
+  navigate(`/instances/${row.instanceId}/edit`); 
+};
+
+const handleDelete = (row: InstanceRow) => {
+  setDeleteTarget(row);
+  setMenuOpenId(null);
+};
+
+
+
+
   return (
     <div className="il-root">
       <div className="il-topbar">
@@ -278,18 +315,66 @@ const InstancePage: React.FC = () => {
               <div className="il-cell">{r.version}</div>
               <div className="il-cell">{formatMs(r.uptimeMs)}</div>
               <div className="il-cell">{formatDateTime(r.updatedAt)}</div>
+              <div className="il-cell il-actions">
+                <button className="il-dots-btn" onClick={(e) => openMenu(e, r.instanceId)}>
+                <img src={instanceDots} alt="options" width={20} height={20} />
+                </button>
+
+                {menuOpenId === r.instanceId && (
+                  <div className="il-menu" ref={menuRef}>
+                    <button onClick={() => handleEdit(r)}>수정</button>
+                    <button className="danger" onClick={() => handleDelete(r)}>삭제</button>
+                  </div>
+                )}
+              </div>
             </div>
+
+        
+
+            {/* 삭제 확인 모달 */}
+            {deleteTarget && (
+              <div className="il-modal">
+                <div className="il-modal-card">
+                  <div className="il-modal-header">
+                    <h3>인스턴스 삭제</h3>
+                  </div>
+                  <div className="il-modal-body">
+                    <p>
+                      <b>{deleteTarget.instanceName}</b> 를(을) 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.
+                    </p>
+                  </div>
+                  <div className="il-modal-footer">
+                    <button onClick={() => setDeleteTarget(null)}>취소</button>
+                    <button
+                      className="danger"
+                      onClick={async() => {
+                         try {
+                          await apiClient.delete(`/api/instances/${deleteTarget.instanceId}`);
+                          alert("삭제되었습니다.");
+                          setDeleteTarget(null);
+                          setRows(prev => prev.filter(r => r.instanceId !== deleteTarget.instanceId));                         } catch (error) {
+                          console.error(error);
+                          alert("삭제 중 오류가 발생했습니다.");
+                        }
+                      }}
+                    >
+                      삭제
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {r.databases && r.databases.length > 0 && expanded[r.instanceId] && (
               <div className="il-db">
                 <div className="il-db-title">Database</div>
                 <div className="il-db-header">
                   <div>DB</div>
-                  <div className="center">Status</div>
-                  <div className="center">연결수</div>
-                  <div className="right">크기</div>
-                  <div className="center">캐시 히트율</div>
-                  <div className="center">마지막 업데이트</div>
+                  <div>Status</div>
+                  <div>연결수</div>
+                  <div>크기</div>
+                  <div>캐시 히트율</div>
+                  <div>마지막 업데이트</div>
                 </div>
                 {r.databases.map((db) => (
                   <div key={db.databaseName} className="il-db-row">
@@ -297,10 +382,10 @@ const InstancePage: React.FC = () => {
                     <span className={`il-badge ${db.isEnabled ? "il-badge--indigo" : "il-badge--red"}`}>
                         {db.isEnabled ? "active" : "inactive"}
                     </span> 
-                    <div className="il-cell center">{db.connections}</div>
-                    <div className="il-cell right">{formatBytes(db.sizeBytes)}</div>
-                    <div className="il-cell center">{(db.cacheHitRate * 100).toFixed(1)}%</div>
-                    <div className="il-cell center">{formatDateTime(db.updatedAt)}</div>
+                    <div className="il-cell">{db.connections}</div>
+                    <div className="il-cell">{formatBytes(db.sizeBytes)}</div>
+                    <div className="il-cell">{(db.cacheHitRate * 100).toFixed(1)}%</div>
+                    <div className="il-cell">{formatDateTime(db.updatedAt)}</div>
                   </div>
                 ))}
               </div>

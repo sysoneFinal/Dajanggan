@@ -1,8 +1,23 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import "../../styles/session/sessionActivityList.css";
+import Pagination from "../../components/util/Pagination";
+import apiClient from "../../api/apiClient";
+
+interface Session {
+  pid: number;
+  user: string;
+  db: string;
+  type: string;
+  state: string;
+  waitType: string;
+  waitEvent: string;
+  runtime: string;
+  query: string;
+}
 
 export default function SessionActivityList() {
-  const [sessions] = useState(
+  // 기본 더미 데이터
+  const [sessions, setSessions] = useState<Session[]>(
     Array.from({ length: 22 }).map((_, i) => ({
       pid: 1300 + i,
       user: i % 2 === 0 ? "sammy" : "doyoung",
@@ -16,15 +31,50 @@ export default function SessionActivityList() {
     }))
   );
 
-  // 페이지네이션 상태
+  //  페이지네이션 상태
   const [currentPage, setCurrentPage] = useState(1);
+  const [totalCount, setTotalCount] = useState(sessions.length); // 초기값은 더미 데이터 개수로 설정
   const itemsPerPage = 10;
-  const totalPages = Math.ceil(sessions.length / itemsPerPage);
+  const totalPages = Math.ceil(totalCount / itemsPerPage);
 
-  // 현재 페이지 데이터
+  // 현재 페이지 데이터 (더미 용 계산)
   const startIndex = (currentPage - 1) * itemsPerPage;
   const currentSessions = sessions.slice(startIndex, startIndex + itemsPerPage);
 
+  //  페이지 변경 핸들러
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+    // TODO: 나중에 fetchSessions(page) 호출 예정
+  };
+
+  //  API 호출 함수 — 지금은 주석 처리
+  const fetchSessions = async (page: number) => {
+    try {
+      const response = await apiClient.get(
+        `/api/sessions?page=${page}&size=${itemsPerPage}`
+      );
+      const data = await response.data;
+
+      // 서버 응답 예시:
+      // {
+      //   "content": [ { pid: 1, user: "...", ... }, ... ],
+      //   "totalCount": 42
+      // }
+
+      // TODO: 실제 서버 연결 시 주석 해제
+      // setSessions(data.content || []);
+      // setTotalCount(data.totalCount || 0);
+    } catch (error) {
+      console.error("세션 데이터를 불러오지 못했습니다:", error);
+    }
+  };
+
+  //  나중에 API 연결 시 여기에 fetchSessions(currentPage) 활성화
+  useEffect(() => {
+    // fetchSessions(currentPage);
+  }, [currentPage]);
+
+  //  CSV 내보내기
   const handleExportCSV = () => {
     const headers = [
       "PID",
@@ -58,15 +108,10 @@ export default function SessionActivityList() {
     link.click();
   };
 
-  const handlePageChange = (page: number) => {
-    if (page >= 1 && page <= totalPages) {
-      setCurrentPage(page);
-    }
-  };
-
   return (
-    <div className="session-section">
-      <div className="session-header">
+    <main className="session-section">
+      {/* 상단 헤더 */}
+      <header className="session-header">
         <div>
           <h2 className="session-title">Session Activity List</h2>
           <p className="session-sub">
@@ -76,10 +121,10 @@ export default function SessionActivityList() {
         <button className="export-btn" onClick={handleExportCSV}>
           CSV 내보내기
         </button>
-      </div>
+      </header>
 
       {/* 테이블 */}
-      <div className="session-table-container">
+      <section className="session-table-container">
         <div className="session-table-header">
           <div>PID</div>
           <div>사용자</div>
@@ -91,51 +136,38 @@ export default function SessionActivityList() {
           <div>실행시간</div>
           <div>쿼리</div>
         </div>
-        {currentSessions.map((s, idx) => (
-          <div key={idx} className="session-table-row">
-            <div>{s.pid}</div>
-            <div>{s.user}</div>
-            <div>{s.db}</div>
-            <div>{s.type}</div>
-            <div className="state-wrapper">
-                <span className={`state ${s.state.replace(/\s+/g, "-")}`}>{s.state}</span>
+
+        {currentSessions.length > 0 ? (
+          currentSessions.map((s, idx) => (
+            <div key={idx} className="session-table-row">
+              <div>{s.pid}</div>
+              <div>{s.user}</div>
+              <div>{s.db}</div>
+              <div>{s.type}</div>
+              <div className="state-wrapper">
+                <span className={`state ${s.state.replace(/\s+/g, "-")}`}>
+                  {s.state}
+                </span>
+              </div>
+              <div>{s.waitType}</div>
+              <div>{s.waitEvent}</div>
+              <div>{s.runtime}</div>
+              <div className="query-text">{s.query}</div>
             </div>
-            <div>{s.waitType}</div>
-            <div>{s.waitEvent}</div>
-            <div>{s.runtime}</div>
-            <div className="query-text">{s.query}</div>
-          </div>
-        ))}
-      </div>
+          ))
+        ) : (
+          <div className="session-empty">데이터가 없습니다.</div>
+        )}
+      </section>
 
       {/* 페이지네이션 */}
-      <div className="pagination-container">
-        <button
-          className="page-btn prev"
-          onClick={() => handlePageChange(currentPage - 1)}
-          disabled={currentPage === 1}
-        >
-          이전
-        </button>
-
-        {[...Array(totalPages)].map((_, i) => (
-          <button
-            key={i + 1}
-            className={`page-btn ${currentPage === i + 1 ? "active" : ""}`}
-            onClick={() => handlePageChange(i + 1)}
-          >
-            {i + 1}
-          </button>
-        ))}
-
-        <button
-          className="page-btn next"
-          onClick={() => handlePageChange(currentPage + 1)}
-          disabled={currentPage === totalPages}
-        >
-          다음
-        </button>
-      </div>
-    </div>
+      {totalPages > 1 && (
+        <Pagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          onPageChange={handlePageChange}
+        />
+      )}
+    </main>
   );
 }

@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import Chart from "../../components/chart/ChartComponent";
-import "/src/styles/layout/execution-status.css";
+import Pagination from "../../components/util/Pagination";
+import "/src/styles/query/execution-status.css";
 
 /**
  * 쿼리 실행 상태 페이지
@@ -278,32 +279,12 @@ export default function ExecutionStatus() {
             </tbody>
           </table>
         </div>
-        {/* 페이지네이션 */}
-        <div className="es-pagination">
-          <button 
-            className="es-page-btn" 
-            disabled={currentPage === 1}
-            onClick={() => setCurrentPage(currentPage - 1)}
-          >
-            이전
-          </button>
-          {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-            <button
-              key={page}
-              className={`es-page-num ${currentPage === page ? "es-page-num--active" : ""}`}
-              onClick={() => setCurrentPage(page)}
-            >
-              {page}
-            </button>
-          ))}
-          <button 
-            className="es-page-btn" 
-            disabled={currentPage === totalPages}
-            onClick={() => setCurrentPage(currentPage + 1)}
-          >
-            다음
-          </button>
-        </div>
+        {/* 페이지네이션 - 공통 컴포넌트 사용 */}
+        <Pagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          onPageChange={setCurrentPage}
+        />
       </section>
 
       {/* 하단 차트 그리드 (VacuumPage와 동일한 구조) */}
