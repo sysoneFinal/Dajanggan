@@ -1,0 +1,173 @@
+.session-db-dashboard {
+  display: flex;
+  flex-direction: column;
+  gap: 1.75rem;
+  padding: 1.5rem 2rem;
+}
+
+/* 요약 카드 */
+.session-db-summary-cards {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.session-db-summary-card {
+  flex: 1;
+  background: white;
+  border-radius: 1rem;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.05);
+  padding: 1.25rem 1.5rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  transition: all 0.2s ease;
+  height: 110px; 
+}
+
+.session-db-summary-card .label {
+  font-size: 0.95rem;
+  color: #111827;
+  font-weight: 500;
+  margin: 0; 
+}
+
+.session-db-summary-card h2 {
+  font-size: 1.6rem;
+  font-weight: 700;
+  margin: 0.25rem 0 0.3rem; 
+  line-height: 1.1;
+}
+
+.session-db-summary-card .desc {
+  font-size: 0.8rem;
+  color: #6b7280;
+  margin: 0; 
+}
+
+/* 경고 카드 강조 */
+.session-db-summary-card.warn-active {
+  border: 1px solid rgba(255, 0, 0, 0.2) !important;
+  background: rgba(251, 138, 138, 0.03) !important;
+  color : #b91c1c !important;
+}
+
+/* 차트 그리드 */
+.session-db-chart-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-auto-rows: minmax(345px, auto);
+  gap: 18px;
+  width: 100%;
+}
+
+.session-db-chart-card,
+.session-db-connection-card {
+  background: white;
+  border-radius: 1rem;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.05);
+  padding: 1rem 1.25rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: stretch;
+  width: 100%;
+  min-width: 0;
+  overflow: hidden;
+}
+
+/* Connection Usage 카드 */
+.session-db-connection-card {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+.session-db-connection-content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.session-db-connection-info ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  font-size: 0.8rem;
+  color: #6b7280;
+}
+.session-db-connection-info p {
+  margin-top: 0.4rem;
+  font-size: 0.8rem;
+  color: #111827;
+}
+.dot {
+  display:inline-block;
+  width:8px; height:8px;
+  border-radius:50%;
+  margin-right:6px;
+}
+.dot.normal { background:#7B61FF; }
+.dot.warn { background:#FFD66B; }
+.dot.danger { background:#FF928A; }
+
+/* 하단 Deadlock grid */
+.session-db-bottom-grid {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 18px;
+  width: 100%;
+}
+.session-db-bottom-grid > * {
+  background: white;
+  border-radius: 1rem;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.05);
+  padding: 1rem 1.25rem;
+}
+.session-db-recent-deadlocks ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+.session-db-recent-deadlocks li {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.85rem;
+  padding: 0.6rem 0.75rem;
+  border-radius: 12px;
+  background: #fff8f8;
+}
+.session-db-recent-deadlocks .warn { color: #ef4444; font-weight: 600; }
+.session-db-recent-deadlocks .dur { font-weight: 700; color: #ef4444; }
+
+.summary-bottom {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 0.4rem;
+}
+
+/* trend 그대로 유지 */
+.trend {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+.trend-icon {
+  width: 14px;
+  height: 14px;
+}
+
+.trend.up { color: #ef4444; }   /* 상승 */
+.trend.down { color: #3b82f6; } /* 하락 */
+.trend.flat { color: #6b7280; } /* 변화 없음 */
+.trend-dash { font-size: 0.8rem; opacity: 0.6; }
+
+.desc {
+  font-size: 0.8rem;
+  color: #6b7280;
+}

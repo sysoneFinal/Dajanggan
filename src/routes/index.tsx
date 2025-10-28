@@ -9,7 +9,7 @@ import InstancePage from "../pages/instance/InstancePage";
 import VacuumPage from "../pages/vacuum/VacuumPage";
 import CpuPage from "../pages/system/CpuPage";
 import CheckpointPage from "../pages/engine/CheckPointPage";
-import SessionPage from "../pages/session/SessionPage";
+import SessionDashboard from "../pages/session/SessionDashboard";
 import DatabaseDashboard from "../pages/dashboard/DatabaseOverview";
 import SessionListPage from "../pages/session/SessionListPage";
 
@@ -41,7 +41,7 @@ const routeList = [
   { path: "/database/summary", element: <DatabaseDashboard /> },
 
   // 세션
-  { path: "/database/session/dashboard", element: <SessionPage /> },
+  { path: "/database/session/dashboard", element: <SessionDashboard /> },
   { path: "/database/session/active", element: <SessionListPage /> },
 
   // 쿼리
@@ -59,15 +59,6 @@ const routeList = [
 
   { path: "/checkpoint", element: <CheckpointPage /> },
   
-
-  // DB 단위 
-  { path: "/session", element: <SessionPage /> },
-  { path: "/query", element: <QueryOverview /> },
-  { path: "/executionstatus", element: <ExecutionStatus /> },
-  { path: "/topquery", element: <TopQuery /> },
-  { path: "/vacuum", element: <VacuumPage /> },
-
-
   // 알람
   { path: "/alarm", element: <AlarmPage /> },
 ];

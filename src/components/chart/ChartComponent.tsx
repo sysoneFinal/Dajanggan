@@ -177,7 +177,7 @@ export default function Chart({
           },
         };
 
-        // 🎨 통일된 색상 팔레트
+        //  통일된 색상 팔레트
         options.colors = ["#7B61FF", "#FF928A", "#60A5FA"];
 
         options.markers = {
