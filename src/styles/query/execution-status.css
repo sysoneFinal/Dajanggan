@@ -36,13 +36,6 @@
 .es-td-id{ font-weight:700; color:#6366F1; }
 .es-td-query{ color:var(--text); font-weight:500; max-width:300px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 
-/* 페이지네이션 */
-.es-pagination{ display:flex; align-items:center; justify-content:center; gap:8px; padding-top:8px; }
-.es-page-btn, .es-page-num{ background:transparent; border:1px solid var(--border); border-radius:8px; padding:8px 12px; font-size:14px; font-weight:600; color:var(--text); cursor:pointer; transition:all 0.2s; min-width:40px; }
-.es-page-btn:hover:not(:disabled), .es-page-num:hover{ border-color:var(--muted); }
-.es-page-btn:disabled{ opacity:0.3; cursor:not-allowed; }
-.es-page-num--active{ background:#111827; color:white; border-color:#111827; }
-
 /* 차트 그리드 */
 .es-grid{ display:grid; grid-template-columns:1fr 1fr; gap:20px; }
 .es-card.es-chart { min-height:380px; }

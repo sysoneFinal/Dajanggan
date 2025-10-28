@@ -1,0 +1,515 @@
+:root {
+  --bg: #f3f5f7;
+  --card: #ffffff;
+  --text: #111827;
+  --muted: #6b7280;
+  --border: #e5e7eb;
+  --shadow: 0 18px 50px rgba(8, 15, 23, 0.12);
+  --primary: #111827;
+  --success: #10b981;
+  --warning: #f59e0b;
+  --danger: #ef4444;
+}
+
+/* 메인 컨테이너 */
+.qt-root {
+  padding: 20px 20px 0 20px;
+  max-width: 100%;
+  min-height: 100vh;
+  box-sizing: border-box;
+}
+
+/* 메인 2열 그리드 */
+.qt-main-grid {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 20px;
+  align-items: start;
+}
+
+/* 왼쪽 열 */
+.qt-left-column {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* 오른쪽 열 */
+.qt-right-column {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* 카드 */
+.qt-card {
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.58) 0%,
+    rgba(255, 255, 255, 0.54) 100%
+  );
+  border-radius: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.8);
+  box-shadow: 0px 10px 30px 0px rgba(0, 0, 0, 0.08);
+  backdrop-filter: blur(3px);
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+}
+
+.qt-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+  gap: 12px;
+}
+
+.qt-card-header h3 {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--text);
+  flex: 0 0 auto;
+}
+
+/* SQL 입력 에디터 */
+.qt-textarea {
+  width: 100%;
+  min-height: 240px;
+  padding: 16px;
+  font-family: "Courier New", monospace;
+  font-size: 14px;
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.8);
+  border: 1px solid rgba(229, 231, 235, 0.6);
+  border-radius: 12px;
+  resize: vertical;
+  box-sizing: border-box;
+  line-height: 1.6;
+}
+
+.qt-textarea:focus {
+  outline: none;
+  border-color: var(--primary);
+}
+
+.qt-editor-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+/* 버튼 */
+.qt-btn {
+  padding: 10px 24px;
+  font-size: 14px;
+  font-weight: 600;
+  border-radius: 8px;
+  border: 1px solid rgba(229, 231, 235, 0.6);
+  background: rgba(255, 255, 255, 0.7);
+  color: var(--text);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.qt-btn:hover {
+  background: rgba(255, 255, 255, 0.9);
+  border-color: var(--primary);
+}
+
+.qt-btn--primary {
+  background: var(--primary);
+  color: #ffffff;
+  border-color: var(--primary);
+}
+
+.qt-btn--primary:hover {
+  background: #000000;
+  border-color: #000000;
+}
+
+.qt-btn--secondary {
+  background: rgba(255, 255, 255, 0.5);
+  border: 1px solid rgba(229, 231, 235, 0.6);
+}
+
+.qt-btn--secondary:hover {
+  background: rgba(255, 255, 255, 0.8);
+}
+
+/* 실행 모드 배지 */
+.qt-execution-badges {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  flex: 0 0 auto;
+}
+
+.qt-mode-badge {
+  padding: 6px 14px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #ffffff;
+  white-space: nowrap;
+}
+
+.qt-mode-badge--safe {
+  background: var(--success);
+}
+
+.qt-mode-badge--estimate {
+  background: #6366F1;
+}
+
+.qt-mode-badge--danger {
+  background: var(--warning);
+}
+
+/* 메트릭 그리드 */
+.qt-metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+}
+
+.qt-metric {
+  background: rgba(255, 255, 255, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.8);
+  padding: 20px 16px;
+  border-radius: 12px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  transition: all 0.2s ease;
+}
+
+.qt-metric:hover {
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
+  transform: translateY(-1px);
+}
+
+.qt-metric-label {
+  font-size: 12px;
+  color: var(--muted);
+  font-weight: 500;
+  line-height: 1.4;
+}
+
+.qt-metric-value {
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--text);
+  line-height: 1.2;
+}
+
+.qt-metric-unit {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--muted);
+  margin-left: 4px;
+}
+
+/* 빈 상태 */
+.qt-empty-state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 200px;
+  color: var(--muted);
+  font-size: 14px;
+  background: rgba(249, 250, 251, 0.3);
+  border-radius: 12px;
+}
+
+/* 실행 계획 */
+.qt-explain-plan {
+  background: rgba(249, 250, 251, 0.6);
+  border: 1px solid rgba(229, 231, 235, 0.6);
+  border-radius: 12px;
+  padding: 20px;
+  min-height: 150px;
+}
+
+.qt-explain-plan pre {
+  margin: 0;
+  font-family: "Courier New", monospace;
+  font-size: 13px;
+  color: var(--text);
+  line-height: 2;
+  white-space: pre-wrap;
+}
+
+/* 안전모드 경고 */
+.qt-safety-warning {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  background: rgba(254, 243, 199, 0.8);
+  border: 1px solid rgba(251, 191, 36, 0.6);
+  border-radius: 12px;
+  padding: 16px;
+  margin-top: 16px;
+}
+
+.qt-safety-warning-icon {
+  font-size: 20px;
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+.qt-safety-warning-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.qt-safety-warning-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #92400e;
+  line-height: 1.5;
+}
+
+.qt-safety-warning-desc {
+  font-size: 13px;
+  font-weight: 400;
+  color: #92400e;
+  line-height: 1.5;
+}
+
+/* AI 개선 제안 */
+.qt-suggestions {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.qt-suggestion-card {
+  background: rgba(255, 255, 255, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.8);
+  border-radius: 12px;
+  padding: 18px;
+  transition: all 0.2s;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+.qt-suggestion-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+  transform: translateY(-2px);
+}
+
+.qt-suggestion-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.qt-suggestion-badge {
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #ffffff;
+  flex-shrink: 0;
+}
+
+.qt-suggestion-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text);
+  line-height: 1.4;
+}
+
+.qt-suggestion-code {
+  background: rgba(249, 250, 251, 0.6);
+  border: 1px solid rgba(229, 231, 235, 0.6);
+  border-radius: 8px;
+  padding: 12px;
+  margin-bottom: 10px;
+}
+
+.qt-suggestion-code code {
+  font-family: "Courier New", monospace;
+  font-size: 12px;
+  color: #374151;
+  line-height: 1.6;
+}
+
+.qt-suggestion-description {
+  font-size: 14px;
+  color: var(--text);
+  line-height: 1.5;
+  margin-bottom: 8px;
+}
+
+.qt-suggestion-improvement {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--primary);
+}
+
+/* Before/After 성능 비교 */
+.qt-card--performance {
+  min-height: auto;
+}
+
+.qt-performance {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 36px;
+  padding: 32px 0;
+}
+
+.qt-performance-section {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.qt-performance-label {
+  font-size: 14px;
+  color: var(--muted);
+  font-weight: 500;
+  text-transform: capitalize;
+}
+
+.qt-performance-value {
+  font-size: 44px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.qt-performance-value--before {
+  color: var(--danger);
+}
+
+.qt-performance-value--after {
+  color: var(--success);
+}
+
+.qt-performance-arrow {
+  font-size: 30px;
+  color: var(--muted);
+  font-weight: 300;
+}
+
+.qt-performance-improvement {
+  text-align: center;
+  font-size: 15px;
+  font-weight: 600;
+  color: #2563eb;
+  padding-top: 14px;
+  margin-top: 14px;
+  border-top: 1px solid rgba(229, 231, 235, 0.6);
+}
+
+/* 반응형 */
+@media (max-width: 1200px) {
+  .qt-main-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .qt-metrics-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 768px) {
+  .qt-root {
+    padding: 12px 12px 0 12px;
+  }
+
+  .qt-card {
+    padding: 16px;
+  }
+
+  .qt-card-header {
+    flex-wrap: wrap;
+  }
+
+  .qt-card-header h3 {
+    width: 100%;
+    margin-bottom: 8px;
+  }
+
+  .qt-metrics-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .qt-textarea {
+    min-height: 150px;
+    font-size: 13px;
+  }
+
+  .qt-editor-actions {
+    flex-direction: column;
+  }
+
+  .qt-btn {
+    width: 100%;
+  }
+
+  .qt-performance {
+    flex-direction: column;
+    gap: 16px;
+    padding: 20px 0;
+  }
+
+  .qt-performance-arrow {
+    transform: rotate(90deg);
+  }
+
+  .qt-performance-value {
+    font-size: 36px;
+  }
+
+  .qt-suggestion-header {
+    flex-wrap: wrap;
+  }
+}
+
+/* 애니메이션 */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(15px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.qt-card {
+  animation: fadeIn 0.5s ease-out;
+  animation-fill-mode: both;
+}
+
+/* 카드별 딜레이 추가 */
+.qt-left-column .qt-card:nth-child(1) {
+  animation-delay: 0.1s;
+}
+
+.qt-left-column .qt-card:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.qt-right-column .qt-card:nth-child(1) {
+  animation-delay: 0.15s;
+}
+
+.qt-right-column .qt-card:nth-child(2) {
+  animation-delay: 0.25s;
+}
+
+.qt-right-column .qt-card:nth-child(3) {
+  animation-delay: 0.35s;
+}

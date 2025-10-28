@@ -17,8 +17,8 @@ export const SIDEBAR_MENU = [
             { label: "Buffer Usage", path: "/instance/memory/buffer-usage" },
         ]}, 
       { label: "Disk I/O",  children: [
-            { label: "Dashboard", path: "/instance/io/dashboard" },
-            { label: "I/O Breakdown", path: "/instance/io/breakdown" },
+            { label: "Dashboard", path: "/instance/disk/dashboard" },
+            { label: "I/O Breakdown", path: "/instance/disk/breakdown" },
         ]}, 
       { label: "Checkpoint",    children: [
             { label: "Dashboard", path: "/instance/checkpoint/dashboard" },
@@ -57,8 +57,11 @@ export const SIDEBAR_MENU = [
       {
         label: "Vacuum",
         children: [
-          { label: "Dashboard", path: "/database/vacuum/dashboard" },
-          { label: "Detail", path: "/database/vacuum/detail" },
+          { label: "Overview", path: "/database/vacuum/oerview" },
+          { label: "Maintenance", path: "/database/vacuum/maintenance" },
+          { label: "History", path: "/database/vacuum/history" },
+          { label: "Risk", path: "/database/vacuum/risk" },
+          { label: "Bloat", path: "/database/vacuum/bloat" },
         ],
       },
       {
