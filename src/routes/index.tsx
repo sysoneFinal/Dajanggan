@@ -19,7 +19,6 @@ import SessionPage from "../pages/session/SessionPage";
 import DatabaseDashboard from "../pages/dashboard/DatabaseOverview";
 import SessionListPage from "../pages/session/SessionListPage";
 
-import AlarmList from "../pages/alarm/AlarmList";
 import LayoutBuilder from "../components/dashboard/Layout";
 import DashboardEditor from "../components/dashboard/DashboardEditor";
 import ExecutionStatus from "../pages/query/ExecutionStatus";
@@ -94,8 +93,6 @@ const routeList = [
   { path: "/session", element: <SessionPage /> },
 
 
-  // 알람
-  { path: "/alarm", element: <AlarmList /> },
 ];
 
 
