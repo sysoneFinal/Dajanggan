@@ -1,185 +1,165 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import Chart from "../../components/chart/ChartComponent";
 import "/src/styles/VacuumPage.css";
+import VacuumTableMenu from "./VacuumTableMenu";
+
 
 /* ---------- 타입/데모데이터 ---------- */
-
-type DashboardData = {
-  deadtuple: { data: number[][]; labels: string[] };
-  autovacuum: { data: number[][]; labels: string[] };
-  latency: { data: number[]; labels: string[] };
-  Kpi: { avgDelay: number; avgDuration: number; totalDeadTuple: number;};
+type BloatDetailData = {
+  kpi: { bloatPct: string; tableSize: string; wastedSpace: string };
+  bloatTrend: { data: number[]; labels: string[] };
+  deadTuplesTrend: { data: number[]; labels: string[] };
+  indexBloatTrend: { data: number[][]; labels: string[]; names: string[] };
 };
 
-const demo: DashboardData = {
-   deadtuple: {
+const demo: BloatDetailData = {
+  kpi: {
+    bloatPct: "9.4%",
+    tableSize: "16 GB",
+    wastedSpace: "1.5 GB",
+  },
+  bloatTrend: {
+    data: [3, 3.5, 4, 4.3, 4.8, 5.2, 5.6, 6, 6.5, 7, 7.4, 8, 8.2, 8.5, 8.9, 9.4],
+    labels: [
+      "30d ago", "29d ago", "28d ago", "25d ago", "20d ago", "18d ago", "15d ago",
+      "13d ago", "10d ago", "8d ago", "6d ago", "4d ago", "3d ago", "2d ago", "1d ago", "Now"
+    ],
+  },
+  deadTuplesTrend: {
+    data: [30000, 40000, 38000, 50000, 48000, 55000, 60000, 62000, 70000, 65000, 72000, 80000, 78000, 85000],
+    labels: [
+      "30d ago", "28d ago", "27d ago", "25d ago", "20d ago", "18d ago", "15d ago",
+      "13d ago", "10d ago", "8d ago", "6d ago", "4d ago", "2d ago", "Now"
+    ],
+  },
+  indexBloatTrend: {
     data: [
-        [12, 18, 25, 20, 15, 30, 40, 55, 48, 70, 85, 90, 100, 92, 80, 65, 50, 45, 40, 38, 35, 30, 25, 20],
-        [10, 12, 18, 25, 22, 28, 35, 45, 55, 65, 72, 80, 85, 88, 84, 70, 60, 55, 45, 40, 38, 32, 28, 25],
+      [5, 6, 7, 8, 9, 10, 11], // idx_customer
+      [4, 4.5, 5, 6, 6.5, 7, 7.5], // idx_date
+      [3, 3.2, 3.5, 4, 4.3, 4.8, 5], // orders_pkey
+      [2, 2.1, 2.3, 2.5, 2.7, 2.9, 3.2], // idx_status
     ],
-    labels: [
-      "00:00","01:00","02:00","03:00","04:00","05:00","06:00","07:00",
-      "08:00","09:00","10:00","11:00","12:00","13:00","14:00","15:00",
-      "16:00","17:00","18:00","19:00","20:00","21:00","22:00","23:00"
-    ],
+    labels: ["30d ago", "25d ago", "20d ago", "15d ago", "10d ago", "5d ago", "Now"],
+    names: ["idx_customer", "idx_date", "orders_pkey", "idx_status"],
   },
-
-  // Autovacuum Cost Delay vs Active Workers (Last 24h)
-  autovacuum: {
-    data: [
-        [200, 220, 210, 230, 260, 240, 250, 270, 280, 260, 250, 245, 255, 265, 270, 260, 250, 240, 235, 220, 210, 205, 200, 195],
-        [2, 3, 2, 4, 3, 3, 4, 5, 5, 4, 4, 3, 4, 4, 5, 4, 3, 3, 2, 2, 2, 1, 1, 1]
-    ],
-    labels: [
-      "00:00","01:00","02:00","03:00","04:00","05:00","06:00","07:00",
-      "08:00","09:00","10:00","11:00","12:00","13:00","14:00","15:00",
-      "16:00","17:00","18:00","19:00","20:00","21:00","22:00","23:00"
-    ],
-  },
-
-  // Average Latency Trend (24h)
-  latency: {
-    data: [300, 400, 280, 600, 320, 290, 410, 370, 350, 450, 320, 310, 330, 420, 380, 360, 340, 390, 410, 430, 370, 350, 320, 310],
-    labels: [
-      "00:00","01:00","02:00","03:00","04:00","05:00","06:00","07:00",
-      "08:00","09:00","10:00","11:00","12:00","13:00","14:00","15:00",
-      "16:00","17:00","18:00","19:00","20:00","21:00","22:00","23:00"
-    ],
-  },
-
-  Kpi: {
-    avgDelay: 3.4,
-    avgDuration: 2.4,
-    totalDeadTuple: 1.5,
-  }
 };
 
 
 /* ---------- 페이지 ---------- */
-export default function VacuumPage({ data = demo }: { data?: DashboardData }) {
-  const deadtupleSeries = useMemo(
-    () => [
-            { name: "Dead Tuple 증가 속도", data: data.deadtuple.data[0] },
-            { name: "Vacuum 처리 속도", data: data.deadtuple.data[1] },
-        ],
-    [data.deadtuple.data]
+export default function BloatDetailPage({ data = demo }: { data?: BloatDetailData }) {
+  const bloatTrendSeries = useMemo(() => [{ name: "Bloat %", data: data.bloatTrend.data }], [data]);
+  const deadTuplesSeries = useMemo(() => [{ name: "Dead Tuples", data: data.deadTuplesTrend.data }], [data]);
+  const indexBloatSeries = useMemo(
+    () => data.indexBloatTrend.names.map((name, i) => ({ name, data: data.indexBloatTrend.data[i] })),
+    [data]
   );
-  const autovacuumSeries = useMemo(
-      () => [
-            { name: "Autovacuum Cost Delay", data: data.autovacuum.data[0] }, // yAxis 0
-            { name: "Active Workers", data: data.autovacuum.data[1] },        // yAxis 1
-        ],
-    [data.autovacuum.data]
-  );
-  const latencySeries = useMemo(
-    () => [{ name: "latency", data: data.latency.data }],
-    [data.latency.data]
-  );
-  
+
+  const [selectedTable, setSelectedTable] = useState("public.orders");
+  const tableList = [
+    "public.orders",
+    "public.order_items",
+    "public.customers",
+    "public.payments",
+    "public.shipments",
+  ];
+
   return (
     <div className="vd-root">
-        <div className="vd-grid">
-            <section className="vd-card2">
-                <header className="vd-card2__header">
-                    <h5>평균 지연시간 <span className="vd-dim">(rows/sec • 24h)</span></h5>
-                </header>
-                <h1>{data.Kpi.avgDelay}</h1>
-            </section>
-
-             <section className="vd-card2">
-                <header className="vd-card2__header">
-                    <h5>Average Duration <span className="vd-dim">(24h)</span></h5>
-                </header>
-                 <h1>{data.Kpi.avgDuration}</h1>
-            </section>
-
-             <section className="vd-card2">
-                <header className="vd-card2__header">
-                    <h5>Total Dead Tuples Processed<span className="vd-dim">(24h)</span></h5>
-                </header>
-                 <h1>{data.Kpi.totalDeadTuple}</h1>
-            </section>
-        </div>
-
+      <div className="vd-grid4">
+          <VacuumTableMenu
+            tables={tableList}
+            selectedTable={selectedTable}
+            onChange={(t: string) => {
+              setSelectedTable(t);
+            }}
+            dbName="appdb"
+            autovacuumEnabled={true}
+            lastVacuumText="2025-10-20 11:30"
+          />
+      </div>
+      {/* ---------- KPI ---------- */}
       <div className="vd-grid">
+        <section className="vd-card2">
+          <header className="vd-card2__header"><h5>Bloat %</h5></header>
+          <h1>{data.kpi.bloatPct}</h1>
+          <p className="vd-dim">Wasted space ratio</p>
+        </section>
+        <section className="vd-card2">
+          <header className="vd-card2__header"><h5>Table Size</h5></header>
+          <h1>{data.kpi.tableSize}</h1>
+          <p className="vd-dim">incl. toast & indexes</p>
+        </section>
+        <section className="vd-card2">
+          <header className="vd-card2__header"><h5>Wasted Space</h5></header>
+          <h1>{data.kpi.wastedSpace}</h1>
+          <p className="vd-dim">Bloat size estimate</p>
+        </section>
+      </div>
+
+      {/* ---------- 차트 ---------- */}
+      <div className="vd-grid4">
+        {/* Bloat % Trend */}
         <section className="vd-card vd-chart">
           <header className="vd-card__header">
-            <h3>Vacuum deadtuple <span className="vd-dim">(rows/sec • 24h)</span></h3>
+            <h3>Bloat % Trend <span className="vd-dim">(Last 30 Days)</span></h3>
           </header>
           <Chart
             type="line"
-            series={deadtupleSeries}
-            categories={data.deadtuple.labels}
+            series={bloatTrendSeries}
+            categories={data.bloatTrend.labels}
             height={380}
             width="100%"
-            showToolbar={false}
-            colors= {["#EF4444", "#6366F1"]}
+            showLegend={false}
+            colors={["#6366F1"]}
             customOptions={{
-                chart: { redrawOnParentResize: true, redrawOnWindowResize: true },
-                stroke: { curve: "smooth", width: 2 },
-                legend: { show: true, position: "bottom" },
-                xaxis: {
-                labels: { style: { colors: "#9CA3AF" } },
-                axisBorder: { show: false },
-                axisTicks: { show: false },
-                categories: data.deadtuple.labels,
-                },
-                yaxis: { title: { text: "rows/sec" } },
+              stroke: { width: 2, curve: "smooth" },
+              grid: { borderColor: "#E5E7EB", strokeDashArray: 4 },
+              yaxis: { min: 0, title: { text: "Bloat %" } },
             }}
-            />
-
+          />
         </section>
 
+        {/* Dead Tuples Trend */}
         <section className="vd-card vd-chart">
           <header className="vd-card__header">
-            <h3>Vacuum autovacuum <span className="vd-dim">(rows/sec • 24h)</span></h3>
+            <h3>Dead Tuples Trend <span className="vd-dim">(Last 30 Days)</span></h3>
           </header>
           <Chart
             type="line"
-            series={autovacuumSeries.map((s, i) => ({ ...s, yAxisIndex: i }))}
-            categories={data.autovacuum.labels}
+            series={deadTuplesSeries}
+            categories={data.deadTuplesTrend.labels}
+            height={380}
+            width="100%"
+            showLegend={false}
+            colors={["#6366F1"]}
+            customOptions={{
+              stroke: { width: 2, curve: "smooth" },
+              grid: { borderColor: "#E5E7EB", strokeDashArray: 4 },
+              yaxis: { min: 0, title: { text: "Dead Tuples Count" } },
+            }}
+          />
+        </section>
+
+        {/* Index Bloat Trend */}
+        <section className="vd-card vd-chart">
+          <header className="vd-card__header">
+            <h3>Index Bloat Trend <span className="vd-dim">(Last 30 Days)</span></h3>
+          </header>
+          <Chart
+            type="line"
+            series={indexBloatSeries}
+            categories={data.indexBloatTrend.labels}
             height={400}
             width="100%"
             showLegend={true}
-            showToolbar={false}
-            colors={["#6366F1", "#10B981"]}
+            colors={["#EF4444", "#6366F1", "#F59E0B", "#10B981"]}
             customOptions={{
-                chart: { redrawOnParentResize: true, redrawOnWindowResize: true },
-                stroke: { width: 2, curve: "smooth" },
-                grid: { borderColor: "#E5E7EB", strokeDashArray: 4 },
-                markers: { size: 0 },
-                yaxis: [
-                { title: { text: "Cost Delay (ms)" }, decimalsInFloat: 0 }, 
-                { title: { text: "Active Workers" }, opposite: true, decimalsInFloat: 0 }, // 오른쪽
-                ],
+              stroke: { width: 2, curve: "smooth" },
+              grid: { borderColor: "#E5E7EB", strokeDashArray: 4 },
+              yaxis: { min: 0, title: { text: "Bloat %" } },
+              legend: { position: "bottom" },
             }}
-            tooltipFormatter={(v) => `${Math.round(v).toLocaleString()}`}
-            />
-        </section>
-
-
-        <section className="vd-card vd-chart">
-          <header className="vd-card__header">
-            <h3>latency Trend <span className="vd-dim">(24h)</span></h3>
-          </header>
-          <Chart
-            type="line"
-            series={latencySeries}
-            categories={data.latency.labels}
-            height={400}
-            width="100%"
-            showLegend={false}
-            showToolbar={false}
-            colors={["#6366F1"]}
-            customOptions={{
-                chart: { redrawOnParentResize: true, redrawOnWindowResize: true },
-                stroke: { width: 2, curve: "smooth" },
-                grid: { borderColor: "#E5E7EB", strokeDashArray: 4 },
-                markers: { size: 4 },
-                yaxis: { min: 0 },
-            }}
-            tooltipFormatter={(v) => `${Math.round(v).toLocaleString()}`}
-            />
+          />
         </section>
       </div>
     </div>
