@@ -1,0 +1,100 @@
+/* CSV 다운로드 버튼 */
+.csv-btn {
+  width: 3rem;              /* 48px 정도 */
+  height: 3rem;             /* 48px 정도 */
+  border: 0.125rem solid rgba(214, 214, 214, 0.5);
+  border-radius: 0.9rem;
+  background-color: rgba(255, 255, 255, 0.6);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  position: relative;
+  transition: all 0.3s ease;
+  box-shadow: 0.125rem 0.125rem 0.625rem rgba(0, 0, 0, 0.11);    
+  gap: 0.15rem;                  
+  overflow: visible;            
+
+}
+
+.download-svgIcon {
+  width: 1.1rem;             /* 17~18px 정도 */
+  height: 1.1rem;
+  fill: rgb(70, 70, 70);
+  transition: fill 0.3s ease;
+  display: block;
+}
+
+.download-icon{
+  display: block;      
+  width: 1.1rem;
+  height: 0.3rem;
+  border-bottom: 0.125rem solid rgb(70, 70, 70);
+  border-left: 0.125rem solid rgb(70, 70, 70);
+  border-right: 0.125rem solid rgb(70, 70, 70);
+  transition: border-color 0.3s ease;
+}
+
+.csv-btn:hover {
+  background-color: rgb(40, 40, 40);
+  box-shadow: 0 0.25rem 1rem rgba(0, 0, 0, 0.2);
+}
+
+.csv-btn:hover .download-icon {
+  border-color: rgb(235, 235, 235);
+}
+
+.csv-btn:hover .download-svgIcon {
+  fill: rgb(255, 255, 255);
+  animation: slide-in-top 1s linear infinite;
+}
+
+/* hover 애니메이션 */
+@keyframes slide-in-top {
+  0% {
+    transform: translateY(-0.6rem);
+    opacity: 0;
+  }
+  100% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+/* Tooltip */
+.csv-tooltip {
+  position: absolute;
+  bottom: 120%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0, 0, 0, 0.75);
+  color: white;
+  padding: 0.6rem 0.8rem;
+  font-size: 0.9rem;
+  border-radius: 0.4rem;
+  backdrop-filter: blur(0.4rem);
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s ease, transform 0.25s ease;
+  box-shadow: 0 0.25rem 0.75rem rgba(0, 0, 0, 0.3);
+}
+
+/* Tooltip 화살표 */
+.csv-tooltip::after {
+  content: "";
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border-width: 0.35rem;
+  border-style: solid;
+  border-color: rgba(0, 0, 0, 0.75) transparent transparent transparent;
+}
+
+/* Hover 시 툴팁 등장 */
+.csv-btn:hover .csv-tooltip {
+  opacity: 1;
+  transform: translateX(-50%) translateY(-0.3rem);
+}

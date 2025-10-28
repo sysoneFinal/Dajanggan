@@ -1,0 +1,121 @@
+.diskio-container {
+    padding: 24px;
+    min-height: 100vh;
+}
+
+.diskio-header {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    margin-bottom: 24px;
+}
+
+.diskio-actions {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+}
+
+.csv-export-button {
+    padding: 8px 16px;
+    background-color: #ffffff;
+    color: #6B7280;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.csv-export-button:hover {
+    background-color: #F9FAFB;
+}
+
+.table-wrapper {
+    overflow-x: auto;
+    border-radius: 8px;
+    border: 1px solid #E5E7EB;
+    background-color: #ffffff;
+}
+
+.diskio-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.diskio-table thead tr {
+    background-color: #F9FAFB;
+}
+
+.diskio-table th {
+    padding: 12px 16px;
+    text-align: center;
+    border-bottom: 2px solid #E5E7EB;
+    font-weight: 600;
+    font-size: 14px;
+    color: #374151;
+    cursor: pointer;
+    user-select: none;
+}
+
+.diskio-table th:hover {
+    background-color: #F3F4F6;
+}
+
+.diskio-table tbody tr {
+    border-bottom: 1px solid #E5E7EB;
+    transition: background-color 0.15s;
+}
+
+.diskio-table tbody tr:hover {
+    background-color: #F9FAFB;
+}
+
+.diskio-table tbody tr:last-child {
+    border-bottom: none;
+}
+
+.diskio-table td {
+    padding: 12px 16px;
+    font-size: 14px;
+    color: #374151;
+    text-align: center;
+}
+
+/* 배지 스타일 */
+.badge {
+    padding: 4px 12px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 500;
+    display: inline-block;
+}
+
+.badge-normal {
+    background-color: #DBEAFE;
+    color: #1E40AF;
+}
+
+.badge-warning {
+    background-color: #FEF3C7;
+    color: #92400E;
+}
+
+.badge-danger {
+    background-color: #FEE2E2;
+    color: #991B1B;
+}
+
+/* 정렬 아이콘 */
+.sort-icon {
+    margin-left: 4px;
+    font-size: 12px;
+    opacity: 0.5;
+}
+
+.sort-icon.active {
+    opacity: 1;
+}

@@ -22,11 +22,11 @@ export const SIDEBAR_MENU = [
         ]}, 
       { label: "Checkpoint",    children: [
             { label: "Dashboard", path: "/instance/checkpoint/dashboard" },
-            { label: "Checkpoint History", path: "/instance/checkpoint/history" },` `    
+            { label: "Checkpoint History", path: "/instance/checkpoint/list" },` `
       ]},
       { label: "BG Writer", children:[
-            { label: "Dashboard", path: "/instance/bg-writer/dashboard" },
-            { label: "BGWriter Efficiency", path: "/instance/bg-writer/efficiency" }
+            { label: "Dashboard", path: "/instance/bgwriter/dashboard" },
+            { label: "BGWriter Efficiency", path: "/instance/bgwriter/efficiency" }
       ]},
       { label: "Event", path: "/instance/event" }
     ],
