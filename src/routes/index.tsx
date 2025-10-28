@@ -92,8 +92,6 @@ const routeList = [
 
   // DB 단위 
   { path: "/session", element: <SessionPage /> },
-  { path: "/vacuum", element: <VacuumPage /> },
-
 
   // 알람
   { path: "/alarm", element: <AlarmPage /> },
