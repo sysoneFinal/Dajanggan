@@ -30,6 +30,7 @@ import HotIndexPage from "../pages/engine/HotIndexPage.tsx";
 import MemoryPage from "../pages/system/MemoryPage.tsx";
 import DiskPage from "../pages/system/DiskPage.tsx";
 import CheckPointListPage from "../pages/engine/CheckPointListPage.tsx";
+import BGWriterListPage from "../pages/engine/BGWriterListPage.tsx";
 
 const routeList = [
   // 헤더 없는 초기 페이지
@@ -44,13 +45,15 @@ const routeList = [
   { path: "/instance/event", element: <EventPage /> },
   { path: "/instance/cpu/dashboard", element: <CpuPage /> },
   { path: "/instance/memory/dashboard", element: <MemoryPage /> },
+  { path: "/instance/disk/dashboard", element: <DiskPage /> },
 
   // CheckPoint
   { path: "/instance/checkpoint/dashboard", element: <CheckpointPage /> },
   { path: "/instance/checkpoint/list", element: <CheckPointListPage /> },
 
   // BGWriter
-  { path: "/instance/bg-writer/dashboard", element: <BGWriterPage /> },
+  { path: "/instance/bgwriter/dashboard", element: <BGWriterPage /> },
+  { path: "/instance/bgwriter/efficiency", element: <BGWriterListPage /> },
 
   // Database 단위
   { path: "/database/summary", element: <DatabaseDashboard /> },
