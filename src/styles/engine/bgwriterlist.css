@@ -1,0 +1,173 @@
+.bgwriter-container {
+    padding: 24px;
+    min-height: 100vh;
+}
+
+.bgwriter-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+}
+
+.bgwriter-title {
+    font-size: 24px;
+    font-weight: 600;
+    color: #111827;
+}
+
+.bgwriter-actions {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+}
+
+.time-filter-dropdown {
+    padding: 8px 16px;
+    border: 1px solid #D1D5DB;
+    border-radius: 6px;
+    background-color: #ffffff;
+    cursor: pointer;
+    font-size: 14px;
+    color: #374151;
+}
+
+.csv-export-button {
+    padding: 8px 16px;
+    background-color: #ffffff;
+    color: #6B7280;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.csv-export-button:hover {
+    background-color: #F9FAFB;
+}
+
+.table-wrapper {
+    overflow-x: auto;
+    border-radius: 8px;
+    border: 1px solid #E5E7EB;
+    background-color: #ffffff;
+}
+
+.bgwriter-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.bgwriter-table thead tr {
+    background-color: #F9FAFB;
+}
+
+.bgwriter-table th {
+    padding: 12px 16px;
+    text-align: center;
+    border-bottom: 2px solid #E5E7EB;
+    font-weight: 600;
+    font-size: 14px;
+    color: #374151;
+    cursor: pointer;
+    user-select: none;
+}
+
+.bgwriter-table th:hover {
+    background-color: #F3F4F6;
+}
+
+.bgwriter-table tbody tr {
+    border-bottom: 1px solid #E5E7EB;
+    transition: background-color 0.15s;
+}
+
+.bgwriter-table tbody tr:hover {
+    background-color: #F9FAFB;
+}
+
+.bgwriter-table tbody tr:last-child {
+    border-bottom: none;
+}
+
+.bgwriter-table td {
+    padding: 12px 16px;
+    font-size: 14px;
+    color: #374151;
+    text-align: center;
+}
+
+/* 프로그레스 바 스타일 */
+.progress-cell {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    justify-content: center;
+}
+
+.progress-bar-wrapper {
+    flex: 1;
+    max-width: 200px;
+}
+
+.progress-bar-track {
+    width: 100%;
+    height: 8px;
+    background-color: #E5E7EB;
+    border-radius: 4px;
+    overflow: hidden;
+    position: relative;
+}
+
+.progress-bar-fill {
+    height: 100%;
+    border-radius: 4px;
+    transition: width 0.3s ease, background-color 0.3s ease;
+}
+
+.progress-value {
+    font-size: 13px;
+    font-weight: 500;
+    color: #374151;
+    min-width: 45px;
+    text-align: right;
+}
+
+/* 배지 스타일 */
+.badge {
+    padding: 4px 12px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 500;
+    display: inline-block;
+}
+
+.badge-normal {
+    background-color: #DBEAFE;
+    color: #1E40AF;
+}
+
+.badge-warning {
+    background-color: #FEF3C7;
+    color: #92400E;
+}
+
+.badge-danger {
+    background-color: #FEE2E2;
+    color: #991B1B;
+}
+
+/* 정렬 아이콘 */
+.sort-icon {
+    margin-left: 4px;
+    font-size: 12px;
+    opacity: 0.5;
+}
+
+.sort-icon.active {
+    opacity: 1;
+}
