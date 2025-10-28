@@ -5,15 +5,8 @@ import Home from "../pages/Home";
 import Overview from "../pages/dashboard/Overview";
 import EventPage from "../pages/eventlog/EventLogPage";
 import InstanceRegister from "../pages/instance/InstanceRegister";
-import InstanceEdit from "../pages/instance/InstanceEdit";
 import InstancePage from "../pages/instance/InstancePage";
-import VacuumOverview from "../pages/vacuum/VacuumOverview";
-import VacuumMaintenance from "../pages/vacuum/VacuumMaintenance";
-import VacuumSessionDetail from "../pages/vacuum/VacuumSessionDetail";
-import VacuumHistory from "../pages/vacuum/VacuumHistory";
-import VacuumRisk from "../pages/vacuum/VacuumRisk";
-import VacuumBloat from "../pages/vacuum/VacuumBloat";
-import VacuumBloatDetail from "../pages/vacuum/VacuumBloatDetail";
+import VacuumPage from "../pages/vacuum/VacuumPage";
 import CpuPage from "../pages/system/CpuPage";
 import CheckpointPage from "../pages/engine/CheckPointPage";
 import SessionPage from "../pages/session/SessionPage";
@@ -31,6 +24,7 @@ import BGWriterPage from "../pages/engine/BGWriterPage";
 import HotTablePage from "../pages/engine/HotTablePage";
 import HotIndexPage from "../pages/engine/HotIndexPage.tsx";
 import MemoryPage from "../pages/system/MemoryPage.tsx";
+import DiskPage from "../pages/system/DiskPage.tsx";
 
 const routeList = [
   // 헤더 없는 초기 페이지
@@ -44,7 +38,7 @@ const routeList = [
   // Instance 단위
   { path: "/instance/event", element: <EventPage /> },
   { path: "/instance/cpu/dashboard", element: <CpuPage /> },
-  // { path: "/instance/disk/dashboard", element: <DiskPage /> },
+  { path: "/instance/disk/dashboard", element: <DiskPage /> },
   { path: "/instance/memory/dashboard", element: <MemoryPage /> },
   { path: "/instance/checkpoint/dashboard", element: <CheckpointPage /> },
   { path: "/instance/bg-writer/dashboard", element: <BGWriterPage /> },
@@ -84,15 +78,13 @@ const routeList = [
   // 기타
   { path: "/instance-management", element: <InstancePage /> },
   { path: "/instance-register", element: <InstanceRegister /> },
-  { path: "/instances/:id/edit", element: <InstanceEdit /> },
+
   { path: "/checkpoint", element: <CheckpointPage /> },
   
 
   // DB 단위 
   { path: "/session", element: <SessionPage /> },
-  { path: "/query", element: <QueryOverview /> },
-  { path: "/executionstatus", element: <ExecutionStatus /> },
-  { path: "/topquery", element: <TopQuery /> },
+  { path: "/vacuum", element: <VacuumPage /> },
 
 
   // 알람
