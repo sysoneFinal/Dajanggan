@@ -1,11 +1,12 @@
 import { useState, useMemo } from "react";
+import Pagination from "../../components/util/Pagination";
 import "/src/styles/query/top-query.css";
 
 /**
  * 리소스 사용량 기준 Top-N 쿼리 페이지
  * - 메모리/CPU/I/O/실행시간 기준 Top 쿼리 목록
  * - 슬로우 쿼리 모니터링
- * 
+ *
  * @author 이해든
  */
 
@@ -93,7 +94,8 @@ const demoSlowQueries: SlowQueryItem[] = [
     id: "#1",
     icon: "⚠️",
     query: "SELECT * FROM orders WHERE...",
-    fullQuery: "SELECT * FROM orders WHERE created_at > NOW() - INTERVAL '30 days' ORDER BY created_at DESC;",
+    fullQuery:
+      "SELECT * FROM orders WHERE created_at > NOW() - INTERVAL '30 days' ORDER BY created_at DESC;",
     severity: "HIGH",
     suggestion: "인덱스 최적화가 필요합니다",
     executionTime: "4.2초",
@@ -103,7 +105,8 @@ const demoSlowQueries: SlowQueryItem[] = [
     id: "#2",
     icon: "⚠️",
     query: "UPDATE inventory SET...",
-    fullQuery: "UPDATE inventory SET stock = stock - 1 WHERE product_id = ? AND stock > 0;",
+    fullQuery:
+      "UPDATE inventory SET stock = stock - 1 WHERE product_id = ? AND stock > 0;",
     severity: "MEDIUM",
     suggestion: "인덱스 최적화가 필요합니다",
     executionTime: "1.8초",
@@ -113,11 +116,34 @@ const demoSlowQueries: SlowQueryItem[] = [
     id: "#3",
     icon: "⚠️",
     query: "DELETE FROM temp_data",
-    fullQuery: "DELETE FROM temp_data WHERE created_at < NOW() - INTERVAL '7 days';",
+    fullQuery:
+      "DELETE FROM temp_data WHERE created_at < NOW() - INTERVAL '7 days';",
     severity: "LOW",
     suggestion: "대량 삭제 작업으로 시간이 소요됩니다",
     executionTime: "1.2초",
     occurredAt: "8분 전",
+  },
+  {
+    id: "#4",
+    icon: "⚠️",
+    query: "SELECT * FROM users WHERE...",
+    fullQuery:
+      "SELECT * FROM users WHERE active = TRUE AND last_login < NOW() - INTERVAL '90 days';",
+    severity: "MEDIUM",
+    suggestion: "WHERE 조건 최적화 필요",
+    executionTime: "2.1초",
+    occurredAt: "12분 전",
+  },
+  {
+    id: "#5",
+    icon: "⚠️",
+    query: "INSERT INTO logs SELECT...",
+    fullQuery:
+      "INSERT INTO logs SELECT * FROM staging_logs WHERE processed = FALSE;",
+    severity: "HIGH",
+    suggestion: "배치 처리 크기 조정 필요",
+    executionTime: "3.5초",
+    occurredAt: "15분 전",
   },
 ];
 
@@ -168,44 +194,36 @@ export default function TopQuery() {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 3;
 
-  // 현재 선택된 리소스 타입의 데이터
-  const currentQueries = useMemo(
-    () => demoTopQueries[resourceType],
-    [resourceType]
-  );
+  // 리소스별 Top Query 목록
+  const topQueries = demoTopQueries[resourceType];
 
-  // 선택된 쿼리의 상세 정보
-  const selectedQuery = useMemo(
-    () => currentQueries.find((q) => q.id === selectedQueryId),
-    [currentQueries, selectedQueryId]
-  );
+  // 선택된 쿼리
+  const selectedQuery = topQueries.find((q) => q.id === selectedQueryId);
 
   // 쿼리 클릭 핸들러
   const handleQueryClick = (id: string) => {
-    setSelectedQueryId(selectedQueryId === id ? null : id);
+    setSelectedQueryId((prev) => (prev === id ? null : id));
   };
-
-  // 리소스 타입 변경 핸들러
-  const handleResourceTypeChange = (type: ResourceType) => {
-    setResourceType(type);
-    setSelectedQueryId(null);
-  };
-
-  // 최대값 계산 (막대 그래프 정규화용)
-  const maxValue = useMemo(
-    () => Math.max(...currentQueries.map((q) => q.value)),
-    [currentQueries]
-  );
 
   // 슬로우 쿼리 정렬
   const sortedSlowQueries = useMemo(() => {
-    const sorted = [...demoSlowQueries];
+    const queries = [...demoSlowQueries];
+    
     if (sortOption === "실행시간 느린순") {
-      return sorted.sort((a, b) => parseFloat(b.executionTime) - parseFloat(a.executionTime));
+      return queries.sort((a, b) => {
+        const aTime = parseFloat(a.executionTime);
+        const bTime = parseFloat(b.executionTime);
+        return bTime - aTime;
+      });
     } else if (sortOption === "실행시간 빠른순") {
-      return sorted.sort((a, b) => parseFloat(a.executionTime) - parseFloat(b.executionTime));
+      return queries.sort((a, b) => {
+        const aTime = parseFloat(a.executionTime);
+        const bTime = parseFloat(b.executionTime);
+        return aTime - bTime;
+      });
     }
-    return sorted;
+    
+    return queries;
   }, [sortOption]);
 
   // 페이지네이션
@@ -215,8 +233,8 @@ export default function TopQuery() {
     currentPage * itemsPerPage
   );
 
-  // 심각도별 색상
-  const getSeverityColor = (severity: string) => {
+  // Severity 색상
+  const getSeverityColor = (severity: "HIGH" | "MEDIUM" | "LOW") => {
     switch (severity) {
       case "HIGH":
         return "#EF4444";
@@ -231,41 +249,43 @@ export default function TopQuery() {
 
   return (
     <div className="tq-root">
-      {/* 리소스 사용량 기준 Top-N 쿼리 */}
+      {/* Top Query 섹션 */}
       <section className="tq-card">
         <header className="tq-card__header">
-          <h2 className="tq-title">리소스 사용량 기준 Top-N 쿼리</h2>
+          <h2 className="tq-title">Top Query</h2>
           <div className="tq-tabs">
             <ResourceTab
               active={resourceType === "메모리"}
               label="메모리"
-              onClick={() => handleResourceTypeChange("메모리")}
+              onClick={() => setResourceType("메모리")}
             />
             <ResourceTab
               active={resourceType === "CPU"}
               label="CPU"
-              onClick={() => handleResourceTypeChange("CPU")}
+              onClick={() => setResourceType("CPU")}
             />
             <ResourceTab
               active={resourceType === "I/O"}
               label="I/O"
-              onClick={() => handleResourceTypeChange("I/O")}
+              onClick={() => setResourceType("I/O")}
             />
             <ResourceTab
               active={resourceType === "실행시간"}
               label="실행시간"
-              onClick={() => handleResourceTypeChange("실행시간")}
+              onClick={() => setResourceType("실행시간")}
             />
           </div>
         </header>
 
-        <div className="tq-section-title">{resourceType} 사용량 Top 10</div>
+        <h3 className="tq-section-title">
+          {resourceType} 사용량 기준 Top 10
+        </h3>
 
-        {/* Top 쿼리 목록 */}
         <div className="tq-query-list">
-          {currentQueries.map((query) => {
-            const barWidth = (query.value / maxValue) * 100;
+          {topQueries.map((query) => {
             const isSelected = selectedQueryId === query.id;
+            const maxValue = Math.max(...topQueries.map((q) => q.value));
+            const barWidth = (query.value / maxValue) * 100;
 
             return (
               <div key={query.id} className="tq-query-item-wrapper">
@@ -300,7 +320,9 @@ export default function TopQuery() {
                   <div className="tq-query-detail">
                     <div className="tq-detail-section">
                       <div className="tq-detail-label">QUERY</div>
-                      <div className="tq-detail-query">{selectedQuery.detail}</div>
+                      <div className="tq-detail-query">
+                        {selectedQuery.detail}
+                      </div>
                     </div>
                     <div className="tq-detail-actions">
                       <button className="tq-detail-btn tq-detail-btn--primary">
@@ -320,7 +342,6 @@ export default function TopQuery() {
         <header className="tq-card__header">
           <div className="tq-slow-header">
             <div className="tq-slow-title">
-              <span className="tq-slow-icon">⚠️</span>
               슬로우 쿼리
             </div>
             <button className="tq-csv-btn">
@@ -375,46 +396,34 @@ export default function TopQuery() {
                 </div>
                 <div
                   className="tq-slow-card-severity"
-                  style={{ backgroundColor: getSeverityColor(slowQuery.severity) }}
+                  style={{
+                    backgroundColor: getSeverityColor(slowQuery.severity),
+                  }}
                 >
                   {slowQuery.severity}
                 </div>
               </div>
-              <div className="tq-slow-card-suggestion">{slowQuery.suggestion}</div>
+              <div className="tq-slow-card-suggestion">
+                {slowQuery.suggestion}
+              </div>
               <div className="tq-slow-card-footer">
-                <span className="tq-slow-card-time">실행: {slowQuery.executionTime}</span>
-                <span className="tq-slow-card-occurred">발생: {slowQuery.occurredAt}</span>
+                <span className="tq-slow-card-time">
+                  실행: {slowQuery.executionTime}
+                </span>
+                <span className="tq-slow-card-occurred">
+                  발생: {slowQuery.occurredAt}
+                </span>
               </div>
             </div>
           ))}
         </div>
 
-        {/* 페이지네이션 */}
-        <div className="tq-pagination">
-          <button
-            className="tq-page-btn"
-            disabled={currentPage === 1}
-            onClick={() => setCurrentPage(currentPage - 1)}
-          >
-            이전
-          </button>
-          {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-            <button
-              key={page}
-              className={`tq-page-num ${currentPage === page ? "tq-page-num--active" : ""}`}
-              onClick={() => setCurrentPage(page)}
-            >
-              {page}
-            </button>
-          ))}
-          <button
-            className="tq-page-btn"
-            disabled={currentPage === totalPages}
-            onClick={() => setCurrentPage(currentPage + 1)}
-          >
-            다음
-          </button>
-        </div>
+        {/* 공통 Pagination 컴포넌트 사용 */}
+        <Pagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          onPageChange={(page: number) => setCurrentPage(page)}
+        />
       </section>
     </div>
   );
