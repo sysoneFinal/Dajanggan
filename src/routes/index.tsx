@@ -1,12 +1,20 @@
 import { Routes, Route } from "react-router-dom";
 
+
 // Pages 
 import Home from "../pages/Home";
 import Overview from "../pages/dashboard/Overview";
 import EventPage from "../pages/eventlog/EventLogPage";
 import InstanceRegister from "../pages/instance/InstanceRegister";
+import InstanceEdit from "../pages/instance/InstanceEdit";
 import InstancePage from "../pages/instance/InstancePage";
-import VacuumPage from "../pages/vacuum/VacuumPage";
+import VacuumOverview from "../pages/vacuum/VacuumOverview";
+import VacuumMaintenance from "../pages/vacuum/VacuumMaintenance";
+import VacuumSessionDetail from "../pages/vacuum/VacuumSessionDetail";
+import VacuumHistory from "../pages/vacuum/VacuumHistory";
+import VacuumRisk from "../pages/vacuum/VacuumRisk";
+import VacuumBloat from "../pages/vacuum/VacuumBloat";
+import VacuumBloatDetail from "../pages/vacuum/VacuumBloatDetail";
 import CpuPage from "../pages/system/CpuPage";
 import CheckpointPage from "../pages/engine/CheckPointPage";
 import SessionPage from "../pages/session/SessionPage";
