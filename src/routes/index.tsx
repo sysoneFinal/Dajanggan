@@ -31,6 +31,7 @@ import MemoryPage from "../pages/system/MemoryPage.tsx";
 import DiskPage from "../pages/system/DiskPage.tsx";
 import CheckPointListPage from "../pages/engine/CheckPointListPage.tsx";
 import BGWriterListPage from "../pages/engine/BGWriterListPage.tsx";
+import DiskListPage from "../pages/system/DiskListPage.tsx";
 
 const routeList = [
   // 헤더 없는 초기 페이지
@@ -45,7 +46,10 @@ const routeList = [
   { path: "/instance/event", element: <EventPage /> },
   { path: "/instance/cpu/dashboard", element: <CpuPage /> },
   { path: "/instance/memory/dashboard", element: <MemoryPage /> },
+
+  // disk i/o
   { path: "/instance/disk/dashboard", element: <DiskPage /> },
+  { path: "/instance/disk/breakdown", element: <DiskListPage /> },
 
   // CheckPoint
   { path: "/instance/checkpoint/dashboard", element: <CheckpointPage /> },
