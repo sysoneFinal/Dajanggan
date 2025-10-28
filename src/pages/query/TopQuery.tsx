@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import "/src/styles/layout/top-query.css";
+import "/src/styles/query/top-query.css";
 
 /**
  * 리소스 사용량 기준 Top-N 쿼리 페이지

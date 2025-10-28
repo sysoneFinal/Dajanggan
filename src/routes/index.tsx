@@ -30,6 +30,7 @@ import BGWriterPage from "../pages/engine/BGWriterPage";
 import HotTablePage from "../pages/engine/HotTablePage";
 import HotIndexPage from "../pages/engine/HotIndexPage.tsx";
 import MemoryPage from "../pages/system/MemoryPage.tsx";
+import DiskPage from "../pages/system/DiskPage.tsx";
 
 const routeList = [
   // 헤더 없는 초기 페이지
