@@ -1,12 +1,10 @@
 import { Routes, Route } from "react-router-dom";
 
-
 // Pages 
 import Home from "../pages/Home";
 import Overview from "../pages/dashboard/Overview";
 import EventPage from "../pages/eventlog/EventLogPage";
 import InstanceRegister from "../pages/instance/InstanceRegister";
-import InstanceEdit from "../pages/instance/InstanceEdit";
 import InstancePage from "../pages/instance/InstancePage";
 import VacuumOverview from "../pages/vacuum/VacuumOverview";
 import VacuumMaintenance from "../pages/vacuum/VacuumMaintenance";
@@ -21,7 +19,7 @@ import SessionPage from "../pages/session/SessionPage";
 import DatabaseDashboard from "../pages/dashboard/DatabaseOverview";
 import SessionListPage from "../pages/session/SessionListPage";
 
-import AlarmPage from "../pages/alarm/AlarmPage";
+import AlarmList from "../pages/alarm/AlarmList";
 import LayoutBuilder from "../components/dashboard/Layout";
 import DashboardEditor from "../components/dashboard/DashboardEditor";
 import ExecutionStatus from "../pages/query/ExecutionStatus";
@@ -32,7 +30,6 @@ import BGWriterPage from "../pages/engine/BGWriterPage";
 import HotTablePage from "../pages/engine/HotTablePage";
 import HotIndexPage from "../pages/engine/HotIndexPage.tsx";
 import MemoryPage from "../pages/system/MemoryPage.tsx";
-import DiskPage from "../pages/system/DiskPage.tsx";
 
 const routeList = [
   // 헤더 없는 초기 페이지
@@ -46,7 +43,6 @@ const routeList = [
   // Instance 단위
   { path: "/instance/event", element: <EventPage /> },
   { path: "/instance/cpu/dashboard", element: <CpuPage /> },
-  { path: "/instance/disk/dashboard", element: <DiskPage /> },
   { path: "/instance/memory/dashboard", element: <MemoryPage /> },
   { path: "/instance/checkpoint/dashboard", element: <CheckpointPage /> },
   { path: "/instance/bg-writer/dashboard", element: <BGWriterPage /> },
@@ -83,6 +79,8 @@ const routeList = [
   { path: "/database/vacuum/bloatDetail", element: <VacuumBloatDetail /> },
   
 
+
+
   // 기타
   { path: "/instance-management", element: <InstancePage /> },
   { path: "/instance-register", element: <InstanceRegister /> },
@@ -93,8 +91,9 @@ const routeList = [
   // DB 단위 
   { path: "/session", element: <SessionPage /> },
 
+
   // 알람
-  { path: "/alarm", element: <AlarmPage /> },
+  { path: "/alarm", element: <AlarmList /> },
 ];
 
 
