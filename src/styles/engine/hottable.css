@@ -1,65 +1,34 @@
-.checkpoint-page {
+.hot-table-page {
     padding: 24px;
     min-height: 100vh;
 }
 
-.instance-select,
-.time-range-select {
-    padding: 8px 12px;
-    border: 1px solid #d1d5db;
-    border-radius: 6px;
-    background: white;
-    font-size: 14px;
-    color: #374151;
-    cursor: pointer;
-    transition: border-color 0.2s;
+/* 페이지 제목 */
+.hot-table-header {
+    margin-bottom: 24px;
 }
 
-.instance-select:hover,
-.time-range-select:hover {
-    border-color: #8b5cf6;
+.hot-table-title {
+    font-size: 24px;
+    font-weight: 700;
+    color: #111827;
+    margin: 0;
 }
 
-.instance-select:focus,
-.time-range-select:focus {
-    outline: none;
-    border-color: #8b5cf6;
-    box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.1);
-}
-
-.btn-refresh {
-    padding: 8px 16px;
-    background: #8b5cf6;
-    color: white;
-    border: none;
-    border-radius: 6px;
-    font-size: 14px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: background 0.2s, transform 0.1s;
-}
-
-.btn-refresh:hover {
-    background: #7c3aed;
-}
-
-.btn-refresh:active {
-    transform: scale(0.98);
-}
-
-.checkpoint-grid {
+/* 그리드 레이아웃 */
+.hot-table-grid {
     display: flex;
     flex-direction: column;
     gap: 20px;
 }
 
-.checkpoint-row {
+.hot-table-row {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
     gap: 20px;
 }
 
-
+/* 차트 카드 */
 .chart-card {
     background: white;
     border-radius: 12px;
@@ -76,6 +45,7 @@
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
+/* 차트 헤더 */
 .chart-header {
     display: flex;
     justify-content: space-between;
@@ -112,6 +82,7 @@
     color: #6b7280;
 }
 
+/* 상태 뱃지 */
 .status-badge {
     padding: 4px 12px;
     border-radius: 12px;
@@ -137,7 +108,7 @@
     color: #991b1b;
 }
 
-/* Chart Content */
+/* 차트 내용 */
 .chart-content {
     flex: 1;
     display: flex;
@@ -146,7 +117,7 @@
     min-height: 250px;
 }
 
-/* Chart Footer */
+/* 차트 푸터 */
 .chart-footer {
     display: flex;
     justify-content: space-around;
@@ -178,6 +149,7 @@
     text-align: center;
 }
 
+/* Gauge 차트 스타일 */
 .chart-card .gauge-container {
     margin: 0 auto;
 }

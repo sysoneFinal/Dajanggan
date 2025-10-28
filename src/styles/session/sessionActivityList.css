@@ -1,0 +1,99 @@
+.session-section {
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0.6) 100%);
+  border-radius: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.8);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+  padding: 24px 30px;
+  width: 100%;
+  max-width: 1550px;
+  margin: 0 auto;
+}
+
+.session-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 18px;
+}
+
+.session-title {
+  color: #6b7280;
+  font-family: "Inter-Bold", sans-serif;
+  font-size: 18px;
+  margin: 0;
+}
+
+.session-sub {
+  color: #6b7280;
+  font-family: "Inter-Regular", sans-serif;
+  font-size: 14px;
+  margin: 4px 0 0 0;
+}
+
+.export-btn {
+  background: #4f46e5;
+  color: white;
+  font-size: 14px;
+  border: none;
+  border-radius: 10px;
+  padding: 8px 14px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: all 0.2s ease;
+}
+.export-btn:hover {
+  background: #3b36c9;
+}
+
+.session-table-container {
+  border-radius: 12px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.6);
+}
+
+.session-table-header,
+.session-table-row {
+  display: grid;
+  grid-template-columns: repeat(9, 1fr);
+  text-align: center;
+  padding: 12px 0;
+}
+
+.session-table-header {
+  background: #efefef;
+  font-weight: 700;
+  font-family: "Inter-Bold", sans-serif;
+  font-size: 16px;
+  color: #000;
+}
+
+.session-table-row {
+  border-bottom: 1px solid #e5e7eb;
+  font-family: "Inter-Regular", sans-serif;
+  font-size: 15px;
+  color: #111;
+  background: rgba(255, 255, 255, 0.7);
+}
+
+.session-table-row:nth-child(even) {
+  background: rgba(250, 250, 250, 0.9);
+}
+
+.state.active {
+  color: #16a34a;
+  font-weight: 600;
+}
+
+.state.waiting {
+  color: #eab308;
+  font-weight: 600;
+}
+
+.query-text {
+  font-family: monospace;
+  font-size: 14px;
+  color: #374151;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
