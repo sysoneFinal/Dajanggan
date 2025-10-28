@@ -26,8 +26,11 @@ import DashboardEditor from "../components/dashboard/DashboardEditor";
 import ExecutionStatus from "../pages/query/ExecutionStatus";
 import QueryOverview from "../pages/query/QueryOverview";
 import TopQuery from "../pages/query/TopQuery";
+import QueryTuner from "../pages/query/QueryTuner";
 import BGWriterPage from "../pages/engine/BGWriterPage";
 import HotTablePage from "../pages/engine/HotTablePage";
+import HotIndexPage from "../pages/engine/HotIndexPage.tsx";
+import MemoryPage from "../pages/system/MemoryPage.tsx";
 
 const routeList = [
   // 헤더 없는 초기 페이지
@@ -40,7 +43,9 @@ const routeList = [
 
   // Instance 단위
   { path: "/instance/event", element: <EventPage /> },
-  { path: "/instance/cpu", element: <CpuPage /> },
+  { path: "/instance/cpu/dashboard", element: <CpuPage /> },
+  // { path: "/instance/disk/dashboard", element: <DiskPage /> },
+  { path: "/instance/memory/dashboard", element: <MemoryPage /> },
   { path: "/instance/checkpoint/dashboard", element: <CheckpointPage /> },
   { path: "/instance/bg-writer/dashboard", element: <BGWriterPage /> },
   
@@ -52,6 +57,10 @@ const routeList = [
     { path: "/database/hottable/dashboard", element: <HotTablePage /> },
     // { path: "/database/hottable/active", element: <HotTableListPage /> },
 
+  // Hot Index
+  { path: "/database/hotindex/dashboard", element: <HotIndexPage /> },
+  // { path: "/database/hotindex/active", element: <HotIndexListPage /> },
+
   // 세션
   { path: "/database/session/dashboard", element: <SessionPage /> },
   { path: "/database/session/active", element: <SessionListPage /> },
@@ -60,7 +69,8 @@ const routeList = [
   { path: "/database/query/dashboard", element: <QueryOverview /> },
   { path: "/database/query/execution-stats", element: <ExecutionStatus /> },
   { path: "/database/query/top-n-query", element: <TopQuery /> },
-  
+    { path: "/database/query/query-analysis", element: <QueryTuner /> },
+
   // Vacuum
   { path: "/database/vacuum/overview", element: <VacuumOverview /> },
   { path: "/database/vacuum/maintenance", element: <VacuumMaintenance /> },
