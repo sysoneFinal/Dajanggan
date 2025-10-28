@@ -1,5 +1,5 @@
 import { useState } from "react";
-import "/src/styles/layout/query-tuner.css";
+import "/src/styles/query/query-tuner.css";
 
 /**
  * Query Analysis 페이지
