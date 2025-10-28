@@ -20,6 +20,7 @@ type DashboardData = {
 };
 
 const demo: DashboardData = {
+  kpi: { avgProgressPct: 82, running: 200, backlogTables: 8 },
   throughput: {
     data: [
       8,12,10,25,18,40,22,80,35,120,60,92,45,33,27,22,20,18,15,13,10,8,6,5,
@@ -34,7 +35,6 @@ const demo: DashboardData = {
     data: [600, 420, 300, 520, 430, 280, 610, 680],
     labels: ["00:00","03:00","06:00","09:00","12:00","15:00","18:00","21:00"],
   },
-  kpi: { avgProgressPct: 82, running: 200, backlogTables: 8 },
   sessions: [
     {
       table: "orders",
@@ -114,6 +114,13 @@ export default function VacuumPage({ data = demo }: { data?: DashboardData }) {
   return (
     <div className="vd-root">
       {/* 상단 2개 차트 (Overview와 동일 패턴) */}
+         {/* KPI 칩 */}
+      <section className="vd-kpis">
+        <Kpi label="Average Progress" value={`${data.kpi.avgProgressPct}%`} sub="(현재)" />
+        <Kpi label="Running VACUUMs" value={data.kpi.running} sub="(active)" />
+        <Kpi label="Backlog Tables" value={data.kpi.backlogTables} sub="(24h 기준)" />
+      </section>
+
       <div className="vd-grid">
         <section className="vd-card vd-chart">
           <header className="vd-card__header">
@@ -164,13 +171,7 @@ export default function VacuumPage({ data = demo }: { data?: DashboardData }) {
         </section>
       </div>
 
-      {/* KPI 칩 */}
-      <section className="vd-kpis">
-        <Kpi label="Average Progress" value={`${data.kpi.avgProgressPct}%`} sub="(현재)" />
-        <Kpi label="Running VACUUMs" value={data.kpi.running} sub="(active)" />
-        <Kpi label="Backlog Tables" value={data.kpi.backlogTables} sub="(24h 기준)" />
-      </section>
-
+  
       {/* 하단 세션 테이블 (Progress에도 미니 차트) */}
       <section className="vd-card">
         <header className="vd-card__header">

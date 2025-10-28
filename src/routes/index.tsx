@@ -6,14 +6,20 @@ import Overview from "../pages/dashboard/Overview";
 import EventPage from "../pages/eventlog/EventLogPage";
 import InstanceRegister from "../pages/instance/InstanceRegister";
 import InstancePage from "../pages/instance/InstancePage";
-import VacuumPage from "../pages/vacuum/VacuumPage";
+import VacuumOverview from "../pages/vacuum/VacuumOverview";
+import VacuumMaintenance from "../pages/vacuum/VacuumMaintenance";
+import VacuumSessionDetail from "../pages/vacuum/VacuumSessionDetail";
+import VacuumHistory from "../pages/vacuum/VacuumHistory";
+import VacuumRisk from "../pages/vacuum/VacuumRisk";
+import VacuumBloat from "../pages/vacuum/VacuumBloat";
+import VacuumBloatDetail from "../pages/vacuum/VacuumBloatDetail";
 import CpuPage from "../pages/system/CpuPage";
 import CheckpointPage from "../pages/engine/CheckPointPage";
 import SessionPage from "../pages/session/SessionPage";
 import DatabaseDashboard from "../pages/dashboard/DatabaseOverview";
 import SessionListPage from "../pages/session/SessionListPage";
 
-import AlarmList from "../pages/alarm/AlarmList.tsx";
+import AlarmList from "../pages/alarm/AlarmList";
 import LayoutBuilder from "../components/dashboard/Layout";
 import DashboardEditor from "../components/dashboard/DashboardEditor";
 import ExecutionStatus from "../pages/query/ExecutionStatus";
@@ -38,7 +44,6 @@ const routeList = [
   // Instance 단위
   { path: "/instance/event", element: <EventPage /> },
   { path: "/instance/cpu/dashboard", element: <CpuPage /> },
-  { path: "/instance/disk/dashboard", element: <DiskPage /> },
   { path: "/instance/memory/dashboard", element: <MemoryPage /> },
   { path: "/instance/checkpoint/dashboard", element: <CheckpointPage /> },
   { path: "/instance/bg-writer/dashboard", element: <BGWriterPage /> },
@@ -66,8 +71,16 @@ const routeList = [
     { path: "/database/query/query-analysis", element: <QueryTuner /> },
 
   // Vacuum
-  { path: "/database/vacuum/dashboard", element: <VacuumPage /> },
+  { path: "/database/vacuum/overview", element: <VacuumOverview /> },
+  { path: "/database/vacuum/maintenance", element: <VacuumMaintenance /> },
+  { path: "/database/vacuum/sessionDetail", element: <VacuumSessionDetail /> },
+  { path: "/database/vacuum/history", element: <VacuumHistory /> },
+  { path: "/database/vacuum/risk", element: <VacuumRisk /> },
+  { path: "/database/vacuum/bloat", element: <VacuumBloat /> },
+  { path: "/database/vacuum/bloatDetail", element: <VacuumBloatDetail /> },
   
+
+
 
   // 기타
   { path: "/instance-management", element: <InstancePage /> },
@@ -78,7 +91,6 @@ const routeList = [
 
   // DB 단위 
   { path: "/session", element: <SessionPage /> },
-  { path: "/vacuum", element: <VacuumPage /> },
 
 
   // 알람
