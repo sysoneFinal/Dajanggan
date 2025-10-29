@@ -1,0 +1,224 @@
+/* ===== Backdrop ===== */
+.deadlock-modal__backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.45);
+  backdrop-filter: blur(2px);
+  display: grid;
+  place-items: center;
+  z-index: 1000;
+}
+
+/* ===== Dialog ===== */
+.deadlock-modal {
+  background: #fff;
+  width: min(920px, 92vw);
+  max-height: 86vh;
+  border: 1px solid #e5e7eb;
+  border-radius: 16px;
+  box-shadow: 0 18px 60px rgba(15,23,42,0.25), 0 4px 4px rgba(0,0,0,0.08);
+  overflow: hidden;
+  display: grid;
+  grid-template-rows: auto auto 1fr auto auto;
+}
+
+/* ===== Header ===== */
+.deadlock-modal__header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 20px;
+  border-bottom: 1px solid #e5e7eb;
+  background: #fff;
+}
+.deadlock-modal__title {
+  font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-size: 16px;
+  font-weight: 700;
+  color: #1f2937;
+  margin: 0;
+}
+.deadlock-modal__timestamp {
+  margin-left: auto;
+  font-size: 13px;
+  color: #414141;
+  background: #f8fafc;
+  border: 1px solid #e5e7eb;
+  border-radius: 999px;
+  padding: 5px 10px;
+}
+
+/* ===== Top cards ===== */
+.deadlock-modal__topcards {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0,1fr));
+  gap: 12px;
+  padding: 16px 20px 0 20px;
+}
+.deadlock-modal__card {
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 12px 14px;
+  display: grid;
+  gap: 4px;
+}
+.deadlock-modal__label {
+  font-size: 12px;
+  color: #6b7280;
+}
+.deadlock-modal__value {
+  font-size: 16px;
+  font-weight: 700;
+  color: #111827;
+  word-break: break-all;
+}
+
+/* ===== Graph (blocker ↕ blocked) ===== */
+.deadlock-modal__graph {
+  margin: 16px 20px;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  overflow: hidden;
+}
+.deadlock-modal__lane {
+  padding: 14px 16px;
+}
+.deadlock-modal__lane + .deadlock-modal__lane {
+  border-top: 1px solid #e5e7eb;
+}
+.deadlock-modal__lane-head {
+  display: inline-block;
+  font-weight: 600;
+  font-size: 14px;
+  color: #fff;
+  padding: 6px 10px;
+  border-radius: 8px;
+}
+.deadlock-modal__lane-head--blocker { background: #111827; }
+.deadlock-modal__lane-head--blocked { background: #374151; }
+.deadlock-modal__lane-meta {
+  display: flex;
+  gap: 12px;
+  margin-top: 8px;
+  font-size: 13px;
+}
+.deadlock-modal__pid { font-weight: 600; color: #111827; }
+.deadlock-modal__user { color: #6b7280; }
+.deadlock-modal__query {
+  margin: 10px 0 0 0;
+  padding: 10px 12px;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  font-size: 13px;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* Center arrow between lanes */
+.deadlock-modal__arrow {
+  display: grid;
+  place-items: center;
+  font-weight: 800;
+  color: #ef4444;
+  font-size: 28px;
+  line-height: 1;
+  padding: 2px 0;
+  border-top: 1px dashed #e5e7eb;
+  border-bottom: 1px dashed #e5e7eb;
+}
+
+/* ===== Section (락 정보) ===== */
+.deadlock-modal__section {
+  padding: 0 20px 0 20px;
+}
+.deadlock-modal__section-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: #111827;
+  margin: 6px 0 10px 0;
+}
+.deadlock-modal__rowgrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0,1fr));
+  gap: 12px;
+}
+
+/* ===== Impact ===== */
+.deadlock-modal__impact {
+  margin: 16px 20px;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 10px 14px;
+}
+.deadlock-modal__impact-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.deadlock-modal__impact-badge {
+  color: #894b00;
+  font-weight: 700;
+}
+.deadlock-modal__ended {
+  color: #374151;
+  font-size: 14px;
+}
+.deadlock-modal__impact-sub {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+  color: #374151;
+  font-size: 14px;
+}
+.deadlock-modal__clock { display: inline-block; }
+
+/* ===== Footer ===== */
+.deadlock-modal__footer {
+  display: flex;
+  justify-content: flex-end;
+  padding: 14px 20px 18px 20px;
+}
+.deadlock-modal__btn {
+  background: #000;
+  color: #fff;
+  border: 1px solid #3b82f6;
+  border-radius: 10px;
+  height: 36px;
+  padding: 0 18px;
+  font-weight: 800;
+  cursor: pointer;
+}
+.deadlock-modal__btn:focus-visible {
+  outline: 3px solid #93c5fd;
+  outline-offset: 2px;
+}
+
+/* ===== Responsive ===== */
+@media (max-width: 840px) {
+  .deadlock-modal__topcards,
+  .deadlock-modal__rowgrid {
+    grid-template-columns: 1fr;
+  }
+  .deadlock-modal__lane-meta {
+    flex-direction: column;
+    gap: 4px;
+  }
+  .deadlock-modal__timestamp {
+    font-size: 12px;
+    padding: 4px 8px;
+  }
+}
+
+@media (max-width: 480px) {
+  .deadlock-modal {
+    width: 96vw;
+    border-radius: 12px;
+  }
+  .deadlock-modal__title { font-size: 15px; }
+  .deadlock-modal__value { font-size: 15px; }
+  .deadlock-modal__btn { width: 100%; }
+}

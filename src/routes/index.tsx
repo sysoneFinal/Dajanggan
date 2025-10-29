@@ -15,7 +15,7 @@ import VacuumBloat from "../pages/vacuum/VacuumBloat";
 import VacuumBloatDetail from "../pages/vacuum/VacuumBloatDetail";
 import CpuPage from "../pages/system/CpuPage";
 import CheckpointPage from "../pages/engine/CheckPointPage";
-import SessionPage from "../pages/session/SessionPage";
+import SessionDashboard from "../pages/session/SessionDashboard";
 import DatabaseDashboard from "../pages/dashboard/DatabaseOverview";
 import SessionListPage from "../pages/session/SessionListPage";
 
@@ -36,6 +36,7 @@ import CheckPointListPage from "../pages/engine/CheckPointListPage.tsx";
 import BGWriterListPage from "../pages/engine/BGWriterListPage.tsx";
 import DiskListPage from "../pages/system/DiskListPage.tsx";
 import CPUListPage from "../pages/system/CpuListPage.tsx";
+import MemoryListPage from "../pages/system/MemoryListPage.tsx";
 
 const routeList = [
   // 헤더 없는 초기 페이지
@@ -54,6 +55,7 @@ const routeList = [
   { path: "/instance/cpu/usage", element: <CPUListPage /> },
 
   { path: "/instance/memory/dashboard", element: <MemoryPage /> },
+  { path: "/instance/memory/buffer-usage", element: <MemoryListPage /> },
 
   // disk i/o
   { path: "/instance/disk/dashboard", element: <DiskPage /> },
@@ -79,7 +81,7 @@ const routeList = [
   // { path: "/database/hotindex/active", element: <HotIndexListPage /> },
 
   // 세션
-  { path: "/database/session/dashboard", element: <SessionPage /> },
+  { path: "/database/session/dashboard", element: <SessionDashboard /> },
   { path: "/database/session/active", element: <SessionListPage /> },
 
   // 쿼리
@@ -106,10 +108,7 @@ const routeList = [
 
   { path: "/checkpoint", element: <CheckpointPage /> },
   
-
-  // DB 단위 
-  { path: "/session", element: <SessionPage /> },
-
+  // 알람
 
   // 알람
   { path: "/alarm", element: <AlarmList /> },

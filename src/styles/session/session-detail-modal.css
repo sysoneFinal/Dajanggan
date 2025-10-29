@@ -1,0 +1,112 @@
+.session-detail-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 999;
+  backdrop-filter: blur(6px);
+}
+
+.session-detail-modal {
+  background: #fff;
+  border-radius: 16px;
+  border: 1px solid #e5e7eb;
+  box-shadow: 0 18px 60px rgba(15, 23, 42, 0.25);
+  width: 920px;
+  padding: 24px;
+  font-family: "Inter", sans-serif;
+  position: relative;
+}
+
+.session-detail-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid #e5e7eb;
+  padding-bottom: 12px;
+  margin-bottom: 16px;
+}
+
+.session-detail-header h3 {
+  font-weight: 700;
+  font-size: 16px;
+  color: #1f2937;
+}
+
+.pid-badge {
+  background: #f8fafc;
+  border: 1px solid #e5e7eb;
+  border-radius: 20px;
+  padding: 4px 12px;
+  font-size: 12px;
+}
+
+.session-info-section h4,
+.session-query-section h4 {
+  font-size: 14px;
+  font-weight: 700;
+  margin-bottom: 8px;
+  color: #111827;
+}
+
+.info-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px 16px;
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 16px;
+}
+
+.query-box {
+  background: #f8fafc;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 12px;
+  font-family: monospace;
+  font-size: 13px;
+  color: #334155;
+  overflow-x: auto;
+}
+
+.session-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.cancel-btn {
+  background: #fee2e2;
+  color: #b91c1c;
+  border: 1px solid #fecaca;
+  border-radius: 999px;
+  padding: 5px 12px;
+  font-size: 12px;
+}
+
+.deadlock-btn {
+  background: #ffedd5;
+  color: #9a3412;
+  border: 1px solid #fed7aa;
+  border-radius: 999px;
+  padding: 5px 12px;
+  font-size: 12px;
+}
+
+.close-btn {
+  background: #000;
+  color: white;
+  border: none;
+  border-radius: 10px;
+  font-weight: 700;
+  font-size: 13px;
+  padding: 10px 24px;
+  position: absolute;
+  bottom: 24px;
+  right: 24px;
+  cursor: pointer;
+}
