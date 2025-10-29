@@ -18,6 +18,7 @@ import CheckpointPage from "../pages/engine/CheckPointPage";
 import SessionPage from "../pages/session/SessionPage";
 import DatabaseDashboard from "../pages/dashboard/DatabaseOverview";
 import SessionListPage from "../pages/session/SessionListPage";
+
 import LayoutBuilder from "../components/dashboard/Layout";
 import DashboardEditor from "../components/dashboard/DashboardEditor";
 import ExecutionStatus from "../pages/query/ExecutionStatus";
@@ -29,6 +30,8 @@ import HotTablePage from "../pages/engine/HotTablePage";
 import HotIndexPage from "../pages/engine/HotIndexPage.tsx";
 import MemoryPage from "../pages/system/MemoryPage.tsx";
 import DiskPage from "../pages/system/DiskPage.tsx";
+import AlarmList from "../pages/alarm/AlarmList";
+import AlarmRuleRegister from "../pages/alarm/AlarmRuleRegister.tsx";
 import CheckPointListPage from "../pages/engine/CheckPointListPage.tsx";
 import BGWriterListPage from "../pages/engine/BGWriterListPage.tsx";
 import DiskListPage from "../pages/system/DiskListPage.tsx";
@@ -111,6 +114,9 @@ const routeList = [
   { path: "/session", element: <SessionPage /> },
 
 
+  // 알람
+  { path: "/alarm", element: <AlarmList /> },
+  { path: "/alarm-rule", element: <AlarmRuleRegister /> },
 ];
 
 

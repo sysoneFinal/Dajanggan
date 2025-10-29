@@ -1,0 +1,119 @@
+:root{
+  --bg:#f3f5f7; --card:#ffffff; --text:#111827; --muted:#6b7280;
+  --chip:#f8fafc; --chip-border:#e5e7eb; --shadow:0 18px 50px rgba(8,15,23,.12);
+}
+
+/* ---------- 공통 ---------- */
+.ar-root{ padding:20px; }
+
+/* ---------- 폼 컨트롤 ---------- */
+.ar-input, .ar-select{
+  height:42px; width:100%;
+  box-sizing:border-box;
+  border:1px solid rgba(2,6,23,.08);
+  border-radius:10px;
+  padding:0 12px;
+  font-size:14px;
+  background:#fff; outline:none;
+  box-shadow:0 6px 18px rgba(8,15,23,.04);
+  display:block; /* 수직 정렬 안정화 */
+}
+.ar-input:focus, .ar-select:focus{
+  border-color:#7f81f2;
+  box-shadow:0 0 0 3px rgba(127,129,242,.15);
+}
+
+/* 숫자 입력 스핀 제거 + 라인 높이 안정화 */
+.ar-input::-webkit-outer-spin-button,
+.ar-input::-webkit-inner-spin-button{ -webkit-appearance: none; margin:0; }
+.ar-input[type="number"]{ -moz-appearance:textfield; }
+.ar-input::placeholder{ color:#9ca3af; }
+
+
+/* 그리드 (상단 셀렉트 영역) */
+.ar-grid {
+ display: grid;
+  grid-template-columns: repeat(2, 1fr); /* 한 줄에 2칸 */
+  gap: 20px 40px; /* 세로, 가로 간격 */
+  align-items: start;
+  max-width: 1100px; /* 중앙 폭 제한 */
+  margin: 0 auto;    /* 가운데 정렬 */
+  padding: 0 40px;   /* 좌우 패딩 (양 옆 공간 확보) */
+}
+
+/* 집계를 한 줄 아래로 내릴 때 사용하는 단일 칼럼 영역 */
+.ar-grid-1 {
+  max-width: 280px;           /* 집계 선택 폭 축소 */
+  margin: 0 auto;             /* 가운데 */
+}
+
+.ar-kicker{ font-size:12px; color:#6b7280; margin-bottom:16px; }
+
+/* 토글 */
+.ar-toggle{ position:relative; width:48px; height:28px; border-radius:9999px; background:#e5e7eb; border:1px solid rgba(2,6,23,.08); }
+.ar-toggle--on{ background:#7f81f2; }
+.ar-dot{ position:absolute; top:3px; left:3px; width:22px; height:22px; border-radius:9999px; background:#fff; box-shadow:0 2px 6px rgba(0,0,0,.15); transition:transform .2s ease; }
+.ar-toggle--on .ar-dot{ transform:translateX(20px); }
+
+/* 하단 버튼 */
+.ar-ghostbtn{ background:#fff; border:1px solid rgba(2,6,23,.08); padding:10px 14px; border-radius:12px; }
+.ar-save{ position:sticky; bottom:0; display:flex; justify-content:flex-end; padding-top:12px; }
+
+/* ---------- 카드/테이블 ---------- */
+.ar-tablewrap {
+  max-width: 1240px;
+  margin: 0 auto;
+}
+
+.ar-table {
+  width: 100%;
+}
+
+/* 항목명 폭 */
+.ar-table thead th{
+  text-align:left; color:var(--muted);
+  font-weight:700; font-size:12px;
+  padding:10px 8px;
+  border-bottom:1px solid #eef0f3;
+}
+
+/* 줄 높이 고정 */
+.ar-table tbody tr{ height:56px; }  /* 필요시 52~60px 사이로 조절 */
+
+.ar-table tbody td{
+  padding:12px 8px;
+  border-bottom:1px solid #f1f3f6;
+  vertical-align:middle;            /* input 수직중앙 */
+}
+
+.ar-table thead th:last-child,
+.ar-table tbody td:last-child { width: 40px; }
+/* 행 hover (리스트 테이블 재사용 시에도 깔끔) */
+.ar-table tbody tr{ transition: background-color .2s ease; }
+.ar-table tbody tr { height: 60px; } /* 56 → 60 */
+.ar-table tbody tr:hover{ background-color:rgba(127,129,242,.08); }
+
+/* 첫/마지막 열 고정 폭 + 정렬 */
+
+.ar-table tbody td:first-child,
+.ar-table thead th:first-child { width: 160px; }
+.ar-table thead th:nth-child(2),
+.ar-table thead th:nth-child(3),
+.ar-table thead th:nth-child(4),
+.ar-table tbody td:nth-child(2),
+.ar-table tbody td:nth-child(3),
+.ar-table tbody td:nth-child(4) {
+  width: 300px;           
+}
+
+/* 강조 텍스트 */
+.ar-td-strong{ font-weight:700; }
+
+.ar-input, .ar-select {
+  height: 48px;              /* 42 → 48 */
+  padding: 0 14px;
+  margin-bottom:16px;
+}
+
+
+

@@ -2,18 +2,33 @@
   --bg:#f3f5f7; --card:#ffffff; --text:#111827; --muted:#6b7280;
   --chip:#f8fafc; --chip-border:#e5e7eb; --shadow:0 18px 50px rgba(8,15,23,.12);
 }
+
 .vd-root{ padding:20px; }
 .vd-grid{ display:grid; grid-template-columns:1fr 1fr 1fr; gap:20px; margin-bottom:14px; }
 .vd-grid2{ display:grid; grid-template-columns:1fr 1fr 1fr 1fr; gap:20px; margin-bottom:14px; }
 .vd-grid3{ display:grid; grid-template-columns:1fr 1fr; gap:20px; margin-bottom:14px; }
 .vd-grid4{ display:grid; gap:20px; margin-bottom:14px; }
+
 .vd-card{ background:var(--card); border-radius:18px; box-shadow:var(--shadow); padding:16px; }
 .vd-card__header{ display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; }
 .vd-card__header h3{ margin:0; font-size:16px; font-weight:700; }
+.vd-card:hover{ 
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+  transform: translateY(-2px); 
+}
 .vd-card2{ background:var(--card); border-radius:18px; box-shadow:var(--shadow); padding:16px; }
 .vd-card2__header{ display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; }
 .vd-card2__header h3{ margin:0; font-size:16px; font-weight:700; }
 .vd-card2__header h5{ margin:0; font-size:13px; font-weight:500; }
+.vd-card2:hover{ 
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+  transform: translateY(-2px); 
+}
+
+.vd-card3{ background:var(--card); border-radius:18px; box-shadow:var(--shadow); padding:16px; }
+.vd-card3__header{ display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; }
+.vd-card3__header h3{ margin:0; font-size:16px; font-weight:700; }
+
 .vd-dim{ color:var(--muted); font-size:12px; font-weight:600; }
 .vd-kpis{ display:flex; gap:12px; flex-wrap:wrap; margin:10px 0 18px; }
 .vd-chip{ background:var(--chip); border-radius:999px; padding:10px 14px; display:flex; gap:8px; align-items:center; }
@@ -24,7 +39,16 @@
 .vd-tablewrap{ width:100%; overflow:auto; }
 .vd-table{ width:100%; border-collapse:collapse; font-size:14px; }
 .vd-table thead th{ text-align:left; color:var(--muted); font-weight:700; font-size:12px; padding:10px 8px; border-bottom:1px solid #eef0f3; }
+.vd-table tbody tr {
+  transition: background-color 0.2s ease;
+  cursor: pointer;
+}
+
+.vd-table tbody tr:hover {
+  background-color: rgba(127, 129, 242, 0.08); /* 은은한 보라빛 하이라이트 */
+}
 .vd-table tbody td{ padding:12px 8px; border-bottom:1px solid #f1f3f6; vertical-align:middle; }
+
 .vd-td-strong{ font-weight:700; }
 
 /* progress cell */
@@ -39,15 +63,6 @@
 
 @media (max-width: 1024px){ .vd-grid{ grid-template-columns:1fr; } }
 
-/* 페이지네이션 */
-.tq-pagination {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 5px;
-  padding-top: 40px;
-  flex-shrink: 0;
-}
 
 .tq-page-btn,
 .tq-page-num {
