@@ -1,5 +1,6 @@
 // components/alert/AlertDetailModal.tsx
 import { useEffect, useMemo, useRef } from "react";
+import { createPortal } from "react-dom"; 
 import Chart from "../../components/chart/ChartComponent"; 
 import "/src/styles/alarm/alarm-modal.css";
 
@@ -42,28 +43,24 @@ type Props = {
 export default function AlertDetailModal({ open, data, onClose, onAcknowledge }: Props) {
   const dlgRef = useRef<HTMLDivElement>(null);
 
-  // 화면 스크롤 잠금
   useEffect(() => {
     if (!open) return;
-    const { overflow } = document.body.style;
+    const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
-    return () => { document.body.style.overflow = overflow; };
+    return () => { document.body.style.overflow = prev; };
   }, [open]);
 
-  // ESC 닫기
   useEffect(() => {
     if (!open) return;
-    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [open, onClose]);
 
-  // 외부 클릭 닫기
   const onBackdropClick = (e: React.MouseEvent<HTMLDivElement>) => {
     if (e.target === e.currentTarget) onClose();
   };
 
-  // Apex 시리즈
   const latencySeries = useMemo(
     () => [{ name: "Latency (ms)", data: data.latency.data }],
     [data.latency.data]
@@ -71,30 +68,30 @@ export default function AlertDetailModal({ open, data, onClose, onAcknowledge }:
 
   if (!open) return null;
 
-  return (
+   return createPortal(
     <div
       role="dialog"
       aria-modal="true"
       aria-labelledby="alert-detail-title"
-      className="ad-modal__backdrop"
+      className="am-modal__backdrop"
       onMouseDown={onBackdropClick}
     >
-      <div className="ad-modal" ref={dlgRef}>
-        <header className="ad-modal__header">
-          <div className="ad-modal__titlewrap">
-            <span className={`ad-badge ad-badge--${data.severity.toLowerCase()}`}>{data.severity}</span>
-            <h2 id="alert-detail-title" className="ad-modal__title">{data.title}</h2>
+      <div className="am-modal" ref={dlgRef}>
+        <header className="am-modal__header">
+          <div className="am-modal__titlewrap">
+            <span className={`am-badge am-badge--${data.severity.toLowerCase()}`}>{data.severity}</span>
+            <h2 id="alert-detail-title" className="am-modal__title">{data.title}</h2>
           </div>
-          <button className="ad-iconbtn" aria-label="닫기" onClick={onClose}>×</button>
+          <button className="am-iconbtn" aria-label="닫기" onClick={onClose}>×</button>
         </header>
 
-        <p className="ad-modal__subtitle">{data.occurredAt} · {data.description}</p>
+        <p className="am-modal__subtitle">{data.occurredAt} · {data.description}</p>
 
-        <div className="ad-modal__grid">
+        <div className="am-modal__grid">
           {/* 좌측: 차트 */}
-          <section className="ad-card ad-chart">
-            <header className="ad-card__header">
-              <h3>latency Trend <span className="ad-dim">(24h)</span></h3>
+          <section className="am-card am-chart">
+            <header className="am-card__header">
+              <h3>latency Trend <span className="am-dim">(24h)</span></h3>
             </header>
             <Chart
               type="line"
@@ -118,8 +115,8 @@ export default function AlertDetailModal({ open, data, onClose, onAcknowledge }:
           </section>
 
           {/* 우측: 요약 & 버튼 */}
-          <aside className="ad-side">
-            <div className="ad-summary">
+          <aside className="am-side">
+            <div className="am-summary">
               <h4>요약</h4>
               <dl>
                 <div><dt>현재값</dt><dd>{String(data.summary.current)}</dd></div>
@@ -127,7 +124,7 @@ export default function AlertDetailModal({ open, data, onClose, onAcknowledge }:
                 <div><dt>지속시간</dt><dd>{data.summary.duration}</dd></div>
               </dl>
               <button
-                className="ad-btn ad-btn--primary"
+                className="am-btn am-btn--primary"
                 onClick={() => onAcknowledge?.(data.id)}
               >
                 Acknowledge
@@ -137,12 +134,12 @@ export default function AlertDetailModal({ open, data, onClose, onAcknowledge }:
         </div>
 
         {/* 관련 객체 테이블 */}
-        <section className="ad-card">
-          <header className="ad-card__header">
+        <section className="am-card">
+          <header className="am-card__header">
             <h3>관련 객체</h3>
           </header>
-          <div className="ad-tablewrap">
-            <table className="ad-table">
+          <div className="am-tablewrap">
+            <table className="am-table">
               <thead>
                 <tr>
                   <th>유형</th>
@@ -158,7 +155,7 @@ export default function AlertDetailModal({ open, data, onClose, onAcknowledge }:
                     <td>{r.name}</td>
                     <td>{r.metric}</td>
                     <td>
-                      <span className={`ad-tag ad-tag--${(
+                      <span className={`am-tag am-tag--${(
                         r.level === "위험" ? "critical" :
                         r.level === "경고" ? "warn" :
                         r.level === "주의" ? "caution" : "ok"
@@ -172,5 +169,6 @@ export default function AlertDetailModal({ open, data, onClose, onAcknowledge }:
         </section>
       </div>
     </div>
+    ,document.body
   );
 }

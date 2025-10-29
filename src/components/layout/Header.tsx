@@ -229,12 +229,7 @@ const Header = ({ isEditing, onToggleEdit }: HeaderProps) => {
                     setIsNotificationOpen(false);      // 팝업 닫기
                   }}
                 >
-                  <span className="alert-severity">CRITICAL</span>
-                  <div className="alert-content">
-                    <p className="alert-title">Autovacuum Backlog — prod-a</p>
-                    <p className="alert-desc">지연 18.6h · Dead Tuples ≈ 1.2M</p>
-                    <span className="alert-time">2025-10-12 14:22</span>
-                  </div>
+                  
                 </li>
 
                 {/* 빈 상태 예시 */}
