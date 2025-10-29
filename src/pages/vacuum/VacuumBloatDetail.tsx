@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import Chart from "../../components/chart/ChartComponent";
-import "/src/styles/VacuumPage.css";
+import "/src/styles/vacuum/VacuumPage.css";
 import VacuumTableMenu from "./VacuumTableMenu";
 
 

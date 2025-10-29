@@ -1,0 +1,50 @@
+/* components/alert/alert-modal.css */
+.am-modal__backdrop{
+  position:fixed; inset:0; background:rgba(15,23,42,.45);
+  display:flex; align-items:center; justify-content:center; z-index:50;
+}
+.am-modal{
+  width:min(1120px, 92vw); max-height:90vh; overflow:auto;
+  background:#fff; border-radius:16px; box-shadow:0 30px 80px rgba(2,6,23,.25);
+  padding:20px 20px 28px;
+}
+.am-modal__header{ display:flex; justify-content:space-between; align-items:center; gap:12px; }
+.am-modal__titlewrap{ display:flex; align-items:center; gap:10px; }
+.am-modal__title{ font-size:18px; font-weight:700; margin:0; }
+.am-modal__subtitle{ margin:4px 0 14px; color:#6b7280; }
+.am-iconbtn{ border:0; background:transparent; font-size:26px; line-height:1; cursor:pointer; padding:4px 8px; }
+
+.am-modal__grid{ display:grid; grid-template-columns: 1fr 280px; gap:16px; margin:8px 0 18px; }
+.am-side{ display:flex; }
+.am-summary{ width:100%; border:1px solid #e5e7eb; border-radius:12px; padding:16px; }
+.am-summary h4{ margin:0 0 10px; font-size:14px; }
+.am-summary dl{ display:grid; grid-template-columns:80px 1fr; row-gap:8px; column-gap:8px; margin:0 0 14px; }
+.am-summary dt{ color:#6b7280; }
+.am-summary dd{ margin:0; font-weight:600; }
+
+.am-card{ background:#fff; border:1px solid #e5e7eb; border-radius:12px; }
+.am-card__header{ padding:12px 14px; border-bottom:1px solid #e5e7eb; }
+.am-card__header h3{ margin:0; font-size:14px; }
+.am-dim{ color:#9ca3af; font-weight:500; }
+
+.am-chart{ padding:8px 10px 14px; }
+
+.am-tablewrap{ overflow:auto; }
+.am-table{ width:100%; border-collapse:collapse; font-size:14px; }
+.am-table th, .am-table td{ padding:10px 12px; border-bottom:1px solid #e5e7eb; text-align:left; }
+
+.am-btn{ display:inline-flex; align-items:center; justify-content:center;
+  padding:10px 14px; border-radius:10px; border:1px solid transparent; cursor:pointer; font-weight:600; }
+.am-btn--primary{ background:#111827; color:#fff; }
+.am-btn--primary:hover{ filter:brightness(1.05); }
+
+.am-badge{ padding:4px 8px; border-radius:999px; font-size:12px; font-weight:700; }
+.am-badge--critical{ background:#fee2e2; color:#b91c1c; }
+.am-badge--warning{ background:#fef3c7; color:#b45309; }
+.am-badge--info{ background:#e0e7ff; color:#3730a3; }
+
+.am-tag{ padding:4px 10px; border-radius:999px; font-size:12px; font-weight:700; }
+.am-tag--critical{ background:#fee2e2; color:#b91c1c; }
+.am-tag--warn{ background:#fff7ed; color:#9a3412; }
+.am-tag--caution{ background:#eef2ff; color:#3730a3; }
+.am-tag--ok{ background:#e5f9ef; color:#047857; }
