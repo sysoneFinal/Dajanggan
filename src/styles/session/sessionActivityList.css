@@ -78,6 +78,7 @@
   font-size: 1.125rem;
   color: #111;
   background: rgba(255, 255, 255, 0.7);
+  cursor: pointer;
 }
 
 .session-table-row:nth-child(even) {

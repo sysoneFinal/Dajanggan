@@ -2,6 +2,8 @@ import React, { useState, useEffect } from "react";
 import "../../styles/session/sessionActivityList.css";
 import Pagination from "../../components/util/Pagination";
 import apiClient from "../../api/apiClient";
+import SessionDetailModal from "../../components/session/SessionDetailModal";
+import type { SessionDetail } from "../../components/session/SessionDetailModal";
 
 interface Session {
   pid: number;
@@ -16,7 +18,7 @@ interface Session {
 }
 
 export default function SessionActivityList() {
-  // 기본 더미 데이터
+  // 더미 데이터
   const [sessions, setSessions] = useState<Session[]>(
     Array.from({ length: 22 }).map((_, i) => ({
       pid: 1300 + i,
@@ -27,54 +29,51 @@ export default function SessionActivityList() {
       waitType: i % 2 === 0 ? "Lock" : "IO",
       waitEvent: i % 2 === 0 ? "transactionid" : "buffer_io",
       runtime: `${5 + i}m ${i * 2}s`,
-      query: i % 2 === 0 ? "SELECT * FROM users" : "SELECT * FROM logs;",
+      query:
+        i % 2 === 0
+          ? "SELECT user_id, username, address, status FROM users WHERE id = 10;"
+          : "DELETE FROM orders WHERE id = 5;",
     }))
   );
 
-  //  페이지네이션 상태
+  // 선택된 세션 (모달용)
+  const [selectedSession, setSelectedSession] = useState<SessionDetail | null>(
+    null
+  );
+
+  // 페이지네이션 상태
   const [currentPage, setCurrentPage] = useState(1);
-  const [totalCount, setTotalCount] = useState(sessions.length); // 초기값은 더미 데이터 개수로 설정
+  const [totalCount, setTotalCount] = useState(sessions.length);
   const itemsPerPage = 10;
   const totalPages = Math.ceil(totalCount / itemsPerPage);
 
-  // 현재 페이지 데이터 (더미 용 계산)
   const startIndex = (currentPage - 1) * itemsPerPage;
   const currentSessions = sessions.slice(startIndex, startIndex + itemsPerPage);
 
-  //  페이지 변경 핸들러
+  // 페이지 변경
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
-    // TODO: 나중에 fetchSessions(page) 호출 예정
   };
 
-  //  API 호출 함수 — 지금은 주석 처리
-  const fetchSessions = async (page: number) => {
-    try {
-      const response = await apiClient.get(
-        `/api/sessions?page=${page}&size=${itemsPerPage}`
-      );
-      const data = await response.data;
-
-      // 서버 응답 예시:
-      // {
-      //   "content": [ { pid: 1, user: "...", ... }, ... ],
-      //   "totalCount": 42
-      // }
-
-      // TODO: 실제 서버 연결 시 주석 해제
-      // setSessions(data.content || []);
-      // setTotalCount(data.totalCount || 0);
-    } catch (error) {
-      console.error("세션 데이터를 불러오지 못했습니다:", error);
-    }
+  //  행 클릭 시 모달 오픈
+  const handleRowClick = (session: Session) => {
+    const detail: SessionDetail = {
+      pid: session.pid,
+      user: session.user,
+      db: session.db,
+      waitType: session.waitType,
+      waitEvent: session.waitEvent,
+      duration: session.runtime,
+      state: session.state,
+      cpu: "34%",
+      memory: "12MB",
+      query: session.query,
+      startTime: "2025-10-24 11:03:12",
+    };
+    setSelectedSession(detail);
   };
 
-  //  나중에 API 연결 시 여기에 fetchSessions(currentPage) 활성화
-  useEffect(() => {
-    // fetchSessions(currentPage);
-  }, [currentPage]);
-
-  //  CSV 내보내기
+  // CSV 내보내기
   const handleExportCSV = () => {
     const headers = [
       "PID",
@@ -108,6 +107,24 @@ export default function SessionActivityList() {
     link.click();
   };
 
+  // (나중에 실제 API로 연결할 때)
+  const fetchSessions = async (page: number) => {
+    try {
+      const response = await apiClient.get(
+        `/api/sessions?page=${page}&size=${itemsPerPage}`
+      );
+      const data = await response.data;
+      // setSessions(data.content || []);
+      // setTotalCount(data.totalCount || 0);
+    } catch (error) {
+      console.error("세션 데이터를 불러오지 못했습니다:", error);
+    }
+  };
+
+  useEffect(() => {
+    // fetchSessions(currentPage);
+  }, [currentPage]);
+
   return (
     <main className="session-section">
       {/* 상단 헤더 */}
@@ -139,15 +156,17 @@ export default function SessionActivityList() {
 
         {currentSessions.length > 0 ? (
           currentSessions.map((s, idx) => (
-            <div key={idx} className="session-table-row">
+            <div
+              key={idx}
+              className="session-table-row"
+              onClick={() => handleRowClick(s)}
+            >
               <div>{s.pid}</div>
               <div>{s.user}</div>
               <div>{s.db}</div>
               <div>{s.type}</div>
               <div className="state-wrapper">
-                <span className={`state ${s.state.replace(/\s+/g, "-")}`}>
-                  {s.state}
-                </span>
+                <span className={`state ${s.state}`}>{s.state}</span>
               </div>
               <div>{s.waitType}</div>
               <div>{s.waitEvent}</div>
@@ -166,6 +185,14 @@ export default function SessionActivityList() {
           currentPage={currentPage}
           totalPages={totalPages}
           onPageChange={handlePageChange}
+        />
+      )}
+
+      {/* 세션 상세 모달 */}
+      {selectedSession && (
+        <SessionDetailModal
+          session={selectedSession}
+          onClose={() => setSelectedSession(null)}
         />
       )}
     </main>

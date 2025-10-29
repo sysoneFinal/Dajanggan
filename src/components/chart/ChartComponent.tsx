@@ -70,7 +70,7 @@ export default function Chart({
       align: titleOptions?.align ?? "left",
       offsetY: 0,
       style: {
-        color: titleOptions?.color ?? "#111827",
+        color: titleOptions?.color ?? "#6b7280",
         fontSize: titleOptions?.fontSize ?? "15px",
         fontWeight: titleOptions?.fontWeight ?? 600,
       },
@@ -177,7 +177,7 @@ export default function Chart({
           },
         };
 
-        // 🎨 통일된 색상 팔레트
+        //  통일된 색상 팔레트
         options.colors = ["#7B61FF", "#FF928A", "#60A5FA"];
 
         options.markers = {
