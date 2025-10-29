@@ -1,59 +1,80 @@
-/* 반원 게이지 스타일 */
+/* 공통 */
 .gauge-container {
-  width: 200px;
+  width: clamp(10rem, 40vw, 12.5rem); /* 160px ~ 200px */
   text-align: center;
   user-select: none;
-  margin: 0 auto;
+  position: relative;
 }
 
+/* 중앙 값 */
 .gauge-value {
-  margin-top: -10px;
-  font-size: 26px;
+  position: absolute;
+  top: 55%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: clamp(1.25rem, 2.2vw, 1.75rem); /* 20px ~ 28px */
   font-weight: 700;
-  color: #4f46e5;
+  color: #111827;
+  margin: 0;
+  pointer-events: none;
 }
 
-.gauge-desc {
-  font-size: 12px;
-  color: #9ca3af;
-  margin-top: 2px;
-}
-
-/* 바(bar) 게이지 스타일 */
+/* bar 게이지 */
 .gauge-bar-container {
   width: 100%;
-  padding: 8px 0;
+  padding: 0.5rem 0; /* 8px */
 }
 
 .gauge-bar-label {
   color: #6b7280;
-  font-size: 14px;
+  font-size: clamp(0.8125rem, 1vw, 0.875rem); /* 13px ~ 14px */
   font-weight: 500;
-  margin-bottom: 8px;
+  margin-bottom: 0.5rem; /* 8px */
 }
 
 .gauge-bar-wrapper {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: clamp(0.5rem, 1vw, 0.75rem); /* 8px ~ 12px */
 }
 
 .gauge-bar-track {
   flex: 1;
-  height: 10px;
-  border-radius: 10px;
+  height: 0.625rem; /* 10px */
+  border-radius: 0.625rem; /* 10px */
   overflow: hidden;
+  background: rgba(229, 231, 235, 0.8);
 }
 
 .gauge-bar-progress {
   height: 100%;
-  border-radius: 10px;
+  border-radius: 0.625rem; /* 10px */
+  transition: background 0.4s ease, width 0.8s ease-out;
 }
 
 .gauge-bar-value {
   color: #111827;
-  font-size: 15px;
+  font-size: clamp(0.875rem, 1.1vw, 1rem); /* 14px ~ 16px */
   font-weight: 700;
-  min-width: 45px;
+  min-width: 2.8125rem; /* 45px */
   text-align: right;
+}
+
+/* 상태별 색상 */
+.gauge-bar-container.normal .gauge-bar-progress {
+  background: #7b61ff;
+}
+.gauge-bar-container.warning .gauge-bar-progress {
+  background: #facc15;
+}
+.gauge-bar-container.critical .gauge-bar-progress {
+  background: #ef4444;
+}
+
+
+/* 작은 화면 보정 */
+@media (max-width: 360px) {
+  .gauge-container {
+    width: 10rem;
+  }
 }

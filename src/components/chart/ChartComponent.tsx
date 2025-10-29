@@ -70,7 +70,7 @@ export default function Chart({
       align: titleOptions?.align ?? "left",
       offsetY: 0,
       style: {
-        color: titleOptions?.color ?? "#111827",
+        color: titleOptions?.color ?? "#6b7280",
         fontSize: titleOptions?.fontSize ?? "15px",
         fontWeight: titleOptions?.fontWeight ?? 600,
       },

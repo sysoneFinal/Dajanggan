@@ -1,8 +1,13 @@
 import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
 import Chart from "../../components/chart/ChartComponent";
 import trendUp from "../../assets/icon/trend-up.svg";
 import trendDown from "../../assets/icon/trend-down.svg";
 import "../../styles/session/session-dashboard.css";
+import GaugeChart from "../../components/chart/GaugeChart";
+import DeadlockModal from "../../components/session/DeadlockModal";
+import type { DeadlockDetail } from "../../components/session/DeadlockModal";
+
 
 /** 더미 데이터 */
 const mockData = {
@@ -13,6 +18,7 @@ const mockData = {
     { label: "Avg Transaction Time", value: "3.8s", diff: 1, desc: "최근 5분 평균 기준" },
     { label: "DeadLocks", value: 1, diff: 0, desc: "최근 10분 이내 발생", warn: true },
   ],
+
   charts: {
     sessionTrend: {
       series: [
@@ -36,13 +42,71 @@ const mockData = {
     topUsers: { data: [42, 18, 8, 4] },
     deadlockTrend: { data: [0, 0.5, 2, 2.5, 3, 3, 2.5] },
   },
+
   connection: { usage: 50, max: 100, current: 50 },
+
+  /** DeadlockDetail 타입에 맞는 구조 */
   recentDeadlocks: [
-    { time: "10:22", user: "batch_user", table: "orders", message: "Deadlock occurred", duration: "4.8s" },
-    { time: "10:18", user: "api_srv", table: "session_log", message: "Conflict with PID 12345", duration: "6.1s" },
-    { time: "10:05", user: "admin", table: "payments", message: "Lock chain detected", duration: "4.2s" },
+    {
+      detectedAt: "2025-10-14 10:22:05",
+      dbName: "post1-db",
+      tableName: "public.orders",
+      lockType: "RowExclusiveLock ↔ ShareLock",
+      durationMs: 4800,
+      blocker: {
+        pid: 18423,
+        user: "batch_user",
+        query: "UPDATE orders SET status='DONE' WHERE id=10;",
+      },
+      blocked: {
+        pid: 19501,
+        user: "app_user",
+        query: "DELETE FROM orders WHERE id=10;",
+      },
+      endedInfo: "종료된 세션: 19501 (자동 ROLLBACK)",
+      repeats24h: 3,
+    },
+    {
+      detectedAt: "2025-10-14 10:18:41",
+      dbName: "post1-db",
+      tableName: "public.session_log",
+      lockType: "AccessExclusiveLock ↔ ShareRowExclusiveLock",
+      durationMs: 6100,
+      blocker: {
+        pid: 22310,
+        user: "api_srv",
+        query: "INSERT INTO session_log VALUES (...);",
+      },
+      blocked: {
+        pid: 22540,
+        user: "app_user",
+        query: "UPDATE session_log SET status='RUNNING' WHERE id=77;",
+      },
+      endedInfo: "종료된 세션: 22540 (자동 ROLLBACK)",
+      repeats24h: 2,
+    },
+    {
+      detectedAt: "2025-10-14 10:05:02",
+      dbName: "post1-db",
+      tableName: "public.payments",
+      lockType: "ExclusiveLock ↔ ShareLock",
+      durationMs: 4200,
+      blocker: {
+        pid: 14302,
+        user: "admin",
+        query: "UPDATE payments SET status='PAID' WHERE id=240;",
+      },
+      blocked: {
+        pid: 14810,
+        user: "report_user",
+        query: "SELECT * FROM payments WHERE id=240 FOR UPDATE;",
+      },
+      endedInfo: "종료된 세션: 14810 (자동 ROLLBACK)",
+      repeats24h: 1,
+    },
   ],
 };
+
 
 /** API 요청 */
 async function fetchSessionDashboard() {
@@ -52,6 +116,11 @@ async function fetchSessionDashboard() {
 }
 
 export default function SessionDashboard() {
+  const [open, setOpen] = useState(false);
+  const [selected, setSelected] = useState<DeadlockDetail | null>(null);
+
+
+
   const { data, isLoading, isError } = useQuery({
     queryKey: ["sessionDashboard"],
     queryFn: fetchSessionDashboard,
@@ -76,7 +145,6 @@ export default function SessionDashboard() {
             <p className="label">{card.label}</p>
             <h2>{card.value}</h2>
 
-            {/* trend + desc 묶음 */}
             <div className="summary-bottom">
               <div className={`trend ${trendClass}`}>
                 {isUp ? (
@@ -99,7 +167,7 @@ export default function SessionDashboard() {
 
       </div>
 
-      {/* --- 메인 차트 --- */}
+      {/*  메인 차트  */}
       <div className="session-db-chart-grid">
         <div className="session-db-chart-card">
           <Chart
@@ -124,18 +192,32 @@ export default function SessionDashboard() {
           />
         </div>
 
-        <div className="session-db-connection-card">
-          <h4>Connection Usage</h4>
+        <div className="session-db-chart-card">
+            <p className="session-db-connection-title">Database Connection Usage</p>
           <div className="session-db-connection-content">
-            <Chart type="radialBar" series={[dashboard.connection.usage]} colors={["#7B61FF"]} height={150} />
+            <div className="session-db-connection-chart">
+            <ul>
+              <li><span className="dot normal"></span>정상</li>
+              <li><span className="dot warn"></span>경고</li>
+              <li><span className="dot danger"></span>위험</li>
+            </ul>
+                <GaugeChart
+              value={dashboard.connection.usage}
+              status={
+                dashboard.connection.usage >= 90
+                  ? "critical"
+                  : dashboard.connection.usage >= 70
+                  ? "warning"
+                  : "normal"
+              }
+              type="semi-circle"
+            />
+            </div>
             <div className="session-db-connection-info">
-              <ul>
-                <li><span className="dot normal"></span>정상</li>
-                <li><span className="dot warn"></span>경고</li>
-                <li><span className="dot danger"></span>위험</li>
-              </ul>
               <p>
                 <strong>Max:</strong> {dashboard.connection.max}<br />
+              </p>
+              <p>
                 <strong>Current:</strong> {dashboard.connection.current}
               </p>
             </div>
@@ -183,31 +265,64 @@ export default function SessionDashboard() {
         </div>
       </div>
 
-      {/* --- Deadlock 섹션 --- */}
-      <div className="session-db-bottom-grid">
-        <div className="session-db-chart-card">
-          <Chart
-            type="line"
-            titleOptions={{ text: "DeadLock Count Trend (Last 30 Minutes)" }}
-            series={[{ name: "Deadlock", data: dashboard.charts.deadlockTrend.data }]}
-            categories={dashboard.charts.sessionTrend.categories}
-            colors={["#FF6363"]}
-            height={260}
-          />
-        </div>
+      {/*  Deadlock 섹션  */}
+<div className="session-db-bottom-grid">
+  <div className="session-db-chart-card deadlock-summary-card">
+    <div className="deadlock-header">
+      <h4>DeadLock Overview (Last 30 Minutes)</h4>
+    </div>
 
-        <div className="session-db-recent-deadlocks">
-          <h4>Recent Deadlocks (Latest 3)</h4>
-          <ul>
-            {dashboard.recentDeadlocks.map((d, idx) => (
-              <li key={idx}>
-                <span>{d.time}</span> {d.user} — {d.table}{" "}
-                <b className="warn">{d.message}</b> <span className="dur">{d.duration}</span>
-              </li>
-            ))}
-          </ul>
-        </div>
+    <div className="deadlock-content">
+      <div className="deadlock-chart">
+        <Chart
+          type="line"
+          series={[{ name: "Deadlock", data: dashboard.charts.deadlockTrend.data }]}
+          categories={dashboard.charts.sessionTrend.categories}
+          colors={["#FF6363"]}
+          height={250}
+        />
+      </div>
+
+      <div className="recent-deadlocks-mini">
+        <h6>Recent DeadLocks</h6>
+        <ul>
+          {dashboard.recentDeadlocks.map((d, idx) => (
+            <li key={idx}
+              onClick={() => {
+              setSelected(d);
+              setOpen(true);
+              }}
+            >
+              <div className="deadlock-info">
+                <span className="time">{d.detectedAt}</span>
+                <div className="tags">
+                  <span className="tag user">
+                    <i className="ri-user-3-line"></i> {d.blocker.user}
+                  </span>
+                  <span className="tag table">
+                    <i className="ri-database-2-line"></i> {d.tableName}
+                  </span>
+                </div>
+              </div>
+              <div className="deadlock-body">
+                <span className="msg">{d.blocked.query}</span>
+                <span className="dur">{(d.durationMs / 1000).toFixed(1)}s</span>
+              </div>
+            </li>
+          ))}
+        </ul>
       </div>
     </div>
+  </div>
+</div>
+  {selected && (
+    <DeadlockModal
+      open={open}
+      onClose={() => setOpen(false)}
+      detail={selected}
+    />
+  )}
+</div>
+    
   );
 }
