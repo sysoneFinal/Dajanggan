@@ -18,6 +18,7 @@ import CheckpointPage from "../pages/engine/CheckPointPage";
 import SessionDashboard from "../pages/session/SessionDashboard";
 import DatabaseDashboard from "../pages/dashboard/DatabaseOverview";
 import SessionListPage from "../pages/session/SessionListPage";
+
 import LayoutBuilder from "../components/dashboard/Layout";
 import DashboardEditor from "../components/dashboard/DashboardEditor";
 import ExecutionStatus from "../pages/query/ExecutionStatus";
@@ -29,7 +30,13 @@ import HotTablePage from "../pages/engine/HotTablePage";
 import HotIndexPage from "../pages/engine/HotIndexPage.tsx";
 import MemoryPage from "../pages/system/MemoryPage.tsx";
 import DiskPage from "../pages/system/DiskPage.tsx";
+import AlarmList from "../pages/alarm/AlarmList";
+import AlarmRuleRegister from "../pages/alarm/AlarmRuleRegister.tsx";
 import CheckPointListPage from "../pages/engine/CheckPointListPage.tsx";
+import BGWriterListPage from "../pages/engine/BGWriterListPage.tsx";
+import DiskListPage from "../pages/system/DiskListPage.tsx";
+import CPUListPage from "../pages/system/CpuListPage.tsx";
+import MemoryListPage from "../pages/system/MemoryListPage.tsx";
 
 const routeList = [
   // 헤더 없는 초기 페이지
@@ -42,15 +49,26 @@ const routeList = [
 
   // Instance 단위
   { path: "/instance/event", element: <EventPage /> },
+
+  // cpu
   { path: "/instance/cpu/dashboard", element: <CpuPage /> },
+  { path: "/instance/cpu/usage", element: <CPUListPage /> },
+
+  // memory
   { path: "/instance/memory/dashboard", element: <MemoryPage /> },
+  { path: "/instance/memory/buffer-usage", element: <MemoryListPage /> },
+
+  // disk i/o
+  { path: "/instance/disk/dashboard", element: <DiskPage /> },
+  { path: "/instance/disk/breakdown", element: <DiskListPage /> },
 
   // CheckPoint
   { path: "/instance/checkpoint/dashboard", element: <CheckpointPage /> },
   { path: "/instance/checkpoint/list", element: <CheckPointListPage /> },
 
   // BGWriter
-  { path: "/instance/bg-writer/dashboard", element: <BGWriterPage /> },
+  { path: "/instance/bgwriter/dashboard", element: <BGWriterPage /> },
+  { path: "/instance/bgwriter/efficiency", element: <BGWriterListPage /> },
 
   // Database 단위
   { path: "/database/summary", element: <DatabaseDashboard /> },
@@ -93,6 +111,9 @@ const routeList = [
   
   // 알람
 
+  // 알람
+  { path: "/alarm", element: <AlarmList /> },
+  { path: "/alarm-rule", element: <AlarmRuleRegister /> },
 ];
 
 

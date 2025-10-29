@@ -5,6 +5,8 @@ import apiClient from "../../api/apiClient";
 import { findBreadcrumbPath } from "./FindBreadcrumb";
 import { SIDEBAR_MENU } from "../layout/SidebarMenu"; 
 
+import AlertDetailModal, { type  AlertDetailData } from "../../pages/alarm/AlarmDetailModal";
+
 interface Instance {
   id: number;
   name: string;
@@ -31,6 +33,12 @@ const Header = ({ isEditing, onToggleEdit }: HeaderProps) => {
 
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
+
+  const [selectedAlert, setSelectedAlert] = useState<AlertDetailData | null>(null);
+  // 바깥 클릭 판단용 ref (컨트롤 전체와 알림 각각)
+  const controlsRef = useRef<HTMLDivElement>(null);
+  const notifRef = useRef<HTMLDivElement>(null);
+
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   // 현재 페이지 경로에 따라 breadcrumb 자동 갱신
@@ -126,6 +134,29 @@ const Header = ({ isEditing, onToggleEdit }: HeaderProps) => {
     </div>
   );
 
+    /* ---------------- 데모 알림 데이터 ---------------- */
+  const demoAlert: AlertDetailData = {
+    id: "alert-123",
+    title: "Autovacuum Backlog — prod-a",
+    severity: "CRITICAL",
+    occurredAt: "2025-10-12 14:22",
+    description: "자동 청소가 중단되었습니다. 지연 18.6시간, 미처리 Dead Tuples ≈ 120만.",
+    latency: {
+      data: [300,400,280,600,320,290,410,370,350,450,320,310,330,420,380,360,340,390,410,430,370,350,320,310],
+      labels: [
+        "00:00","01:00","02:00","03:00","04:00","05:00","06:00","07:00",
+        "08:00","09:00","10:00","11:00","12:00","13:00","14:00","15:00",
+        "16:00","17:00","18:00","19:00","20:00","21:00","22:00","23:00"
+      ],
+    },
+    summary: { current: 18.6, threshold: 6, duration: "15m" },
+    related: [
+      { type: "table", name: "orders",   metric: "Dead 780K", level: "경고" },
+      { type: "table", name: "sessions", metric: "Dead 1.2M", level: "위험" },
+      { type: "table", name: "logs",     metric: "Dead 450K", level: "주의" },
+    ],
+  };
+
   return (
     <header className="header">
       {/* 브레드크럼 */}
@@ -177,24 +208,51 @@ const Header = ({ isEditing, onToggleEdit }: HeaderProps) => {
           </span>
         </button>
 
-        {/* 알림 */}
-        <div className="notification-wrapper" ref={dropdownRef}>
+         {/* 알림 */}
+        <div className="notification-wrapper" ref={notifRef}>
           <button
             className="header-notification-btn"
-            onClick={() => setIsNotificationOpen((prev) => !prev)}
+           onClick={() => setSelectedAlert(demoAlert)}  
           >
             <span className="header-notification-icon">🔔</span>
           </button>
+
           {isNotificationOpen && (
             <div className="notification-popup">
               <h4>Notifications</h4>
               <ul>
-                <li>No new alerts</li>
+                {/* 실제로는 alerts.map(...) 으로 대체 */}
+                <li
+                  className="alert-item alert-critical"
+                  onClick={() => {
+                    setSelectedAlert(demoAlert);      // ✅ 모달 데이터 주입
+                    setIsNotificationOpen(false);      // 팝업 닫기
+                  }}
+                >
+                  
+                </li>
+
+                {/* 빈 상태 예시 */}
+                {/* <li className="no-alert">No new alerts</li> */}
               </ul>
             </div>
           )}
         </div>
       </div>
+
+      {/* ✅ 알림 상세 모달 */}
+      {selectedAlert && (
+        <AlertDetailModal
+          open={true}
+          data={selectedAlert}
+          onClose={() => setSelectedAlert(null)}
+          onAcknowledge={(id) => {
+            // TODO: ack API 호출
+            console.log("ack:", id);
+            setSelectedAlert(null);
+          }}
+        />
+      )}
     </header>
   );
 };
