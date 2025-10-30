@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import Chart from "../../components/chart/ChartComponent";
 import ChartGridLayout from "../../components/layout/ChartGridLayout"
 import WidgetCard from "../../components/util/WidgetCard"
+import SummaryCard from "../../components/layout/SummaryCard";
 import "/src/styles/vacuum/VacuumPage.css";
 import VacuumTableMenu from "./VacuumTableMenu";
 
@@ -88,21 +89,21 @@ export default function BloatDetailPage({ data = demo, onToggle, expanded=true, 
       {/* ---------- KPI ---------- */}
       <div className={`vd-collapse ${expanded ? "is-open" : ""}`} aria-hidden={!expanded}  style={{ display: expanded ? "block" : "none" }}  >
       <div className="vd-grid">
-        <section className="vd-card2">
-          <header className="vd-card2__header"><h5>Bloat %</h5></header>
-          <h1>{data.kpi.bloatPct}</h1>
-          <p className="vd-dim">Wasted space ratio</p>
-        </section>
-        <section className="vd-card2">
-          <header className="vd-card2__header"><h5>Table Size</h5></header>
-          <h1>{data.kpi.tableSize}</h1>
-          <p className="vd-dim">incl. toast & indexes</p>
-        </section>
-        <section className="vd-card2">
-          <header className="vd-card2__header"><h5>Wasted Space</h5></header>
-          <h1>{data.kpi.wastedSpace}</h1>
-          <p className="vd-dim">Bloat size estimate</p>
-        </section>
+        <SummaryCard
+          label="Bloat %"
+          value={data.kpi.bloatPct}
+          diff={3}
+        />
+        <SummaryCard
+          label="Table Size"
+          value={data.kpi.tableSize}
+          diff={3}
+        />
+        <SummaryCard
+          label="Wasted Space"
+          value={data.kpi.wastedSpace}
+          diff={3}
+        />
       </div>
 
       {/* ---------- 차트 ---------- */}

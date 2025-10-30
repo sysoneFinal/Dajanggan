@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import Chart from "../../components/chart/ChartComponent";
 import ChartGridLayout from "../../components/layout/ChartGridLayout"
 import WidgetCard from "../../components/util/WidgetCard"
+import SummaryCard from "../../components/layout/SummaryCard";
 import "/src/styles/vacuum/VacuumPage.css";
 
 /* ---------- 타입/데모데이터 ---------- */
@@ -137,37 +138,38 @@ export default function VacuumPage({ data = demo }: { data?: DashboardData }) {
     () => [{ name: "latency", data: data.latency.data }],
     [data.latency.data]
   );
-  
+
   return (
     <div className="vd-root">
           <div className="vd-grid2">
-            <section className="vd-card2">
-                <header className="vd-card2__header">
-                    <h5>평균 지연시간 <span className="vd-dim">(rows/sec • 24h)</span></h5>
-                </header>
-                <h1>{data.Kpi.avgDelay}</h1>
-            </section>
+             <SummaryCard
+                label="평균 지연시간"
+                value={data.Kpi.avgDelay}
+                diff={3}
+                desc="rows/sec • 24h"
+              />
 
-             <section className="vd-card2">
-                <header className="vd-card2__header">
-                    <h5>Average Duration <span className="vd-dim">(24h)</span></h5>
-                </header>
-                 <h1>{data.Kpi.avgDuration}</h1>
-            </section>
+              <SummaryCard
+                label="Average Duration"
+                value={data.Kpi.avgDuration}
+                diff={3}
+                desc="24h"
+              />
 
-             <section className="vd-card2">
-                <header className="vd-card2__header">
-                    <h5>Total Dead Tuples Processed<span className="vd-dim">(24h)</span></h5>
-                </header>
-                 <h1>{data.Kpi.totalDeadTuple}</h1>
-            </section>
-
-             <section className="vd-card2">
-                <header className="vd-card2__header">
-                    <h5>Auto Vacuum Worker 활동률<span className="vd-dim">(%)</span></h5>
-                </header>
-                <h1>{data.Kpi.autovacuumWorker}</h1>
-            </section>
+              <SummaryCard
+                label="Total Dead Tuples Processed"
+                value={data.Kpi.totalDeadTuple}
+                diff={3}
+                desc="24h"
+              />
+              
+              <SummaryCard
+                label="Auto Vacuum Worker 활동률"
+                value={data.Kpi.autovacuumWorker}
+                diff={3}
+                desc="%"
+              />
+            
         </div>
 
         <ChartGridLayout>

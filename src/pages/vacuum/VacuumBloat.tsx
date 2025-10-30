@@ -2,6 +2,7 @@ import { useMemo, useState, useRef } from "react";
 import Chart from "../../components/chart/ChartComponent";
 import ChartGridLayout from "../../components/layout/ChartGridLayout"
 import WidgetCard from "../../components/util/WidgetCard"
+import SummaryCard from "../../components/layout/SummaryCard";
 import "/src/styles/vacuum/VacuumPage.css";
 import BloatDetailPage from "./VacuumBloatDetail";
 
@@ -101,26 +102,22 @@ export default function VacuumPage({ data = demo }: { data?: DashboardData }) {
   return (
     <div className="vd-root">
         <div className="vd-grid">
-            <section className="vd-card2">
-                <header className="vd-card2__header">
-                    <h5>Est. Table Bloat <span className="vd-dim"></span></h5>
-                </header>
-                <h1>{data.Kpi.tableBloat}</h1>
-            </section>
-
-             <section className="vd-card2">
-                <header className="vd-card2__header">
-                    <h5>Critical Tables <span className="vd-dim"></span></h5>
-                </header>
-                 <h1>{data.Kpi.criticalTable}</h1>
-            </section>
-
-             <section className="vd-card2">
-                <header className="vd-card2__header">
-                    <h5>Bloat Growth<span className="vd-dim">(30d)</span></h5>
-                </header>
-                 <h1>{data.Kpi.bloatGrowth}</h1>
-            </section>
+           <SummaryCard
+              label="Est. Table Bloat"
+              value={data.Kpi.tableBloat}
+              diff={3}
+            />
+             <SummaryCard
+              label="Critical Tables"
+              value={data.Kpi.criticalTable}
+              diff={3}
+            />
+            <SummaryCard
+              label="Bloat Growth"
+              value={data.Kpi.bloatGrowth}
+              diff={3}
+              desc="30d"
+            />
         </div>
 
       <ChartGridLayout>
