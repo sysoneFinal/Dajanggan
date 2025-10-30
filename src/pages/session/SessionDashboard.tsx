@@ -1,24 +1,23 @@
 import { useQuery } from "@tanstack/react-query";
 import { useState, useEffect } from "react";
 import Chart from "../../components/chart/ChartComponent";
-import trendUp from "../../assets/icon/trend-up.svg";
-import trendDown from "../../assets/icon/trend-down.svg";
-import "../../styles/session/session-dashboard.css";
 import GaugeChart from "../../components/chart/GaugeChart";
 import DeadlockModal from "../../components/session/DeadlockModal";
 import type { DeadlockDetail } from "../../components/session/DeadlockModal";
 import WidgetCard from "../../components/util/WidgetCard";
-
+import ChartGridLayout from "../../components/layout/ChartGridLayout";
+import SummaryCard from "../../components/layout/SummaryCard";
+import "../../styles/session/session-dashboard.css";
 
 
 /** 더미 데이터 */
 const mockData = {
   summary: [
-    { label: "Active Sessions", value: 10, diff: 3, desc: "최근 5분 평균 기준" },
-    { label: "Idle In Transaction", value: 2, diff: -3, desc: "최근 5분 평균 기준" },
-    { label: "Waiting Sessions", value: 2, diff: 0, desc: "최근 5분 평균 기준" },
-    { label: "Avg Transaction Time", value: "3.8s", diff: 1, desc: "최근 5분 평균 기준" },
-    { label: "DeadLocks", value: 1, diff: 0, desc: "최근 10분 이내 발생", warn: true },
+    { label: "Active Sessions", value: 10, diff: 3, desc: "최근 5분 평균 기준" , status: "info" },
+    { label: "Idle In Transaction", value: 2, diff: -3, desc: "최근 5분 평균 기준", status: "info" },
+    { label: "Waiting Sessions", value: 2, diff: 0, desc: "최근 5분 평균 기준", status: "info" },
+    { label: "Avg Transaction Time", value: "3.8s", diff: 1, desc: "최근 5분 평균 기준", status: "critical" },
+    { label: "DeadLocks", value: 1, diff: 0, desc: "최근 10분 이내 발생", status: "warning" },
   ],
 
   charts: {
@@ -47,7 +46,6 @@ const mockData = {
 
   connection: { usage: 50, max: 100, current: 50 },
 
-  /** DeadlockDetail 타입에 맞는 구조 */
   recentDeadlocks: [
     {
       detectedAt: "2025-10-14 10:22:05",
@@ -109,7 +107,6 @@ const mockData = {
   ],
 };
 
-
 /** API 요청 */
 async function fetchSessionDashboard() {
   const res = await fetch("/api/dashboard/session");
@@ -121,8 +118,6 @@ export default function SessionDashboard() {
   const [open, setOpen] = useState(false);
   const [selected, setSelected] = useState<DeadlockDetail | null>(null);
 
-
-
   const { data, isLoading, isError } = useQuery({
     queryKey: ["sessionDashboard"],
     queryFn: fetchSessionDashboard,
@@ -130,85 +125,55 @@ export default function SessionDashboard() {
   });
 
   const dashboard = data || mockData;
- 
-// 차트 움직임 확인용 
+
+  /**  실시간 차트 업데이트 (5초 단위) */
   const [sessionTrend, setSessionTrend] = useState(dashboard.charts.sessionTrend);
-useEffect(() => {
-  const interval = setInterval(() => {
-    setSessionTrend((prev: any) => {
-      // 현재 시각 구하기
-      const now = new Date();
-      const hh = now.getHours().toString().padStart(2, "0");
-      const mm = now.getMinutes().toString().padStart(2, "0");
-      const ss = now.getSeconds().toString().padStart(2, "0");
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setSessionTrend((prev: any) => {
+        const now = new Date();
+        const hh = now.getHours().toString().padStart(2, "0");
+        const mm = now.getMinutes().toString().padStart(2, "0");
+        const ss = now.getSeconds().toString().padStart(2, "0");
+        const newTimeLabel = `${hh}:${mm}:${ss}`;
 
-      // 새 시각 (5초 단위로 업데이트)
-      const newTimeLabel = `${hh}:${mm}:${ss}`;
+        const updatedSeries = prev.series.map((s: any) => ({
+          ...s,
+          data: [...s.data.slice(1), Math.max(0, s.data.at(-1) + Math.floor(Math.random() * 5 - 2))],
+        }));
 
-      // ✅ 1️⃣ 시리즈 데이터 업데이트 (좌측 shift, 우측 push)
-      const updatedSeries = prev.series.map((s: any) => ({
-        ...s,
-        data: [...s.data.slice(1), Math.max(0, s.data.at(-1) + Math.floor(Math.random() * 5 - 2))],
-      }));
+        const newCategories = [...prev.categories.slice(1), newTimeLabel];
 
-      // x축 카테고리도 동일하게 shift → push
-      const newCategories = [...prev.categories.slice(1), newTimeLabel];
+        return {
+          ...prev,
+          series: updatedSeries,
+          categories: newCategories,
+        };
+      });
+    }, 5000);
 
-      // 반환 (새 series + categories)
-      return {
-        ...prev,
-        series: updatedSeries,
-        categories: newCategories,
-      };
-    });
-  }, 5000); // 5초마다 갱신
-
-  return () => clearInterval(interval);
-}, []);
-
-
+    return () => clearInterval(interval);
+  }, []);
 
   return (
     <div className="session-db-dashboard">
       {/* --- 상단 요약 카드 --- */}
       <div className="session-db-summary-cards">
-      {dashboard.summary.map((card, idx) => {
-        const isUp = card.diff > 0;
-        const isDown = card.diff < 0;
-
-        const icon = isUp ? trendUp : isDown ? trendDown : null;
-        const trendClass = isUp ? "up" : isDown ? "down" : "flat";
-
-        return (
-          <div key={idx} className={`session-db-summary-card ${card.warn ? "warn-active" : ""}`}>
-            <p className="label">{card.label}</p>
-            <h2>{card.value}</h2>
-
-            <div className="summary-bottom">
-              <div className={`trend ${trendClass}`}>
-                {isUp ? (
-                  <img src={trendUp} alt="up" className="trend-icon" />
-                ) : isDown ? (
-                  <img src={trendDown} alt="down" className="trend-icon" />
-                ) : (
-                  <span className="trend-dash">–</span>
-                )}
-                <span className="trend-value">{isUp ? `+${card.diff}` : card.diff}</span>
-              </div>
-
-              <span className="desc">{card.desc}</span>
-            </div>
-          </div>
-
-
-        );
-      })}
-
+         {dashboard.summary.map((card:any, idx : any) => (
+          <SummaryCard
+            key={idx}
+            label={card.label}
+            value={card.value}
+            diff={card.diff}
+            desc={card.desc}
+            status={card.status}
+          />
+        ))}
       </div>
 
-      {/*  메인 차트  */}
-      <div className="session-db-chart-grid">
-        <WidgetCard title="Session State Trend (Realtime Dummy)">
+      {/* --- 첫 번째 차트 섹션 --- */}
+      <ChartGridLayout>
+        <WidgetCard title="Session State Trend (Realtime Dummy)" span={4}>
           <Chart
             type="area"
             series={sessionTrend.series}
@@ -216,7 +181,7 @@ useEffect(() => {
           />
         </WidgetCard>
 
-        <WidgetCard title="Wait Event Type Ratio Trend (Last 15 Minutes)">
+        <WidgetCard title="Wait Event Type Ratio Trend (Last 15 Minutes)" span={4}>
           <Chart
             type="column"
             series={dashboard.charts.waitEvent.series}
@@ -225,133 +190,122 @@ useEffect(() => {
           />
         </WidgetCard>
 
-        <WidgetCard title="Database Connection Usage">
-            <p className="session-db-connection-title">Database Connection Usage</p>
+        <WidgetCard title="Database Connection Usage" span={4}>
           <div className="session-db-connection-content">
             <div className="session-db-connection-chart">
-            <ul>
-              <li><span className="dot normal"></span>정상</li>
-              <li><span className="dot warn"></span>경고</li>
-              <li><span className="dot danger"></span>위험</li>
-            </ul>
                 <GaugeChart
-              value={dashboard.connection.usage}
-              status={
-                dashboard.connection.usage >= 90
-                  ? "critical"
-                  : dashboard.connection.usage >= 70
-                  ? "warning"
-                  : "normal"
-              }
-              type="semi-circle"
-            />
-            </div>
+                  value={dashboard.connection.usage}
+                  status={
+                    dashboard.connection.usage >= 90
+                      ? "critical"
+                      : dashboard.connection.usage >= 70
+                      ? "warning"
+                      : "normal"
+                  }
+                  type="semi-circle"
+                />
             <div className="session-db-connection-info">
               <p>
-                <strong>Max:</strong> {dashboard.connection.max}<br />
+                <strong>Max:</strong> {dashboard.connection.max}
               </p>
               <p>
                 <strong>Current:</strong> {dashboard.connection.current}
               </p>
             </div>
-          </div>
+      
+            </div>
+
           <Chart
             type="line"
             series={[{ name: "Usage", data: [6, 5, 4, 3, 2, 4, 5] }]}
             categories={dashboard.charts.sessionTrend.categories}
-            height={100}
+            height={130}
           />
+          </div>
         </WidgetCard>
+      </ChartGridLayout>
 
-        <WidgetCard title="Avg Transaction Duration Trend (Last 30 Minutes)">
+      {/* --- 두 번째 차트 섹션 --- */}
+      <ChartGridLayout>
+        <WidgetCard title="Avg Transaction Duration Trend (Last 30 Minutes)" span={4}>
           <Chart
             type="line"
             series={[{ name: "Avg Tx Duration", data: dashboard.charts.txDuration.data }]}
             categories={dashboard.charts.sessionTrend.categories}
-            colors={["#8979FF"]}
-            height={250}
           />
         </WidgetCard>
 
-        <WidgetCard title="Avg Lock Wait Time (Last 30 Minutes)">
+        <WidgetCard title="Avg Lock Wait Time (Last 30 Minutes)" span={4}>
           <Chart
             type="line"
             series={[{ name: "Lock Wait", data: dashboard.charts.lockWait.data }]}
             categories={dashboard.charts.sessionTrend.categories}
-            colors={["#9AA0F7"]}
-            height={250}
           />
         </WidgetCard>
 
-        <WidgetCard title="Top Users by Session Count">
+        <WidgetCard title="Top Users by Session Count" span={4}>
           <Chart
             type="bar"
             series={[{ name: "Session Count", data: dashboard.charts.topUsers.data }]}
             categories={["app_user", "batch_service", "admin_user", "report_user"]}
-            colors={["#7B61FF"]}
-            height={250}
           />
         </WidgetCard>
-      </div>
+      </ChartGridLayout>
 
-      {/*  Deadlock 섹션  */}
-<div className="session-db-bottom-grid">
-  <div className="session-db-chart-card deadlock-summary-card">
-    <div className="deadlock-header">
-      <h4>DeadLock Overview (Last 30 Minutes)</h4>
+      {/* --- Deadlock 섹션 --- */}
+      <ChartGridLayout>
+        <WidgetCard title="DeadLock Overview (Last 30 Minutes)" span={8}>
+          <div className="deadlock-content">
+            <div className="deadlock-chart">
+              <Chart
+                type="line"
+                series={[{ name: "Deadlock", data: dashboard.charts.deadlockTrend.data }]}
+                categories={dashboard.charts.sessionTrend.categories}
+                colors={["#FF6363"]}
+              />
+            </div>
+
+            <div className="recent-deadlocks-mini">
+              <h6>Recent DeadLocks</h6>
+              <ul>
+                {dashboard.recentDeadlocks.map((d, idx) => (
+                  <li
+                    key={idx}
+                    onClick={() => {
+                      setSelected(d);
+                      setOpen(true);
+                    }}
+                  >
+                    <div className="deadlock-info">
+                      <span className="time">{d.detectedAt}</span>
+                      <div className="tags">
+                        <span className="tag user">
+                          <i className="ri-user-3-line"></i> {d.blocker.user}
+                        </span>
+                        <span className="tag table">
+                          <i className="ri-database-2-line"></i> {d.tableName}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="deadlock-body">
+                      <span className="msg">{d.blocked.query}</span>
+                      <span className="dur">
+                        {(d.durationMs / 1000).toFixed(1)}s
+                      </span>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        </WidgetCard>
+      </ChartGridLayout>
+
+      {/* --- Deadlock 상세 모달 --- */}
+      {selected && (
+        <DeadlockModal open={open} onClose={() => setOpen(false)} detail={selected} />
+      )}
     </div>
-
-    <div className="deadlock-content">
-      <div className="deadlock-chart">
-        <Chart
-          type="line"
-          series={[{ name: "Deadlock", data: dashboard.charts.deadlockTrend.data }]}
-          categories={dashboard.charts.sessionTrend.categories}
-          colors={["#FF6363"]}
-          height={250}
-        />
-      </div>
-
-      <div className="recent-deadlocks-mini">
-        <h6>Recent DeadLocks</h6>
-        <ul>
-          {dashboard.recentDeadlocks.map((d, idx) => (
-            <li key={idx}
-              onClick={() => {
-              setSelected(d);
-              setOpen(true);
-              }}
-            >
-              <div className="deadlock-info">
-                <span className="time">{d.detectedAt}</span>
-                <div className="tags">
-                  <span className="tag user">
-                    <i className="ri-user-3-line"></i> {d.blocker.user}
-                  </span>
-                  <span className="tag table">
-                    <i className="ri-database-2-line"></i> {d.tableName}
-                  </span>
-                </div>
-              </div>
-              <div className="deadlock-body">
-                <span className="msg">{d.blocked.query}</span>
-                <span className="dur">{(d.durationMs / 1000).toFixed(1)}s</span>
-              </div>
-            </li>
-          ))}
-        </ul>
-      </div>
-    </div>
-  </div>
-</div>
-  {selected && (
-    <DeadlockModal
-      open={open}
-      onClose={() => setOpen(false)}
-      detail={selected}
-    />
-  )}
-</div>
-    
   );
 }

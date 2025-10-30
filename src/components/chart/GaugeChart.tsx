@@ -20,7 +20,7 @@ const STATUS_COLOR: Record<GaugeStatus, string> = {
 };
 
 export default function GaugeChart({
-  value,
+   value,
   type = "semi-circle",
   status = "normal",
   color,
@@ -28,9 +28,10 @@ export default function GaugeChart({
   radius = 70,
   label,
 }: GaugeChartProps) {
-  // 색상 및 설명 자동 결정
+    // 색상 및 설명 자동 결정
   const gaugeColor = color ?? STATUS_COLOR[status];
 
+ 
   // Bar 타입 게이지
   if (type === "bar") {
     return (
@@ -58,19 +59,34 @@ export default function GaugeChart({
   const progress = (value / 100) * circumference;
 
   return (
-    <div className="gauge-container">
-      <svg width="180" height="110" viewBox="0 0 180 110">
-        {/* 트랙 */}
+       <div className="gauge-container">
+      {/* 상단 라벨 */}
+      {label && <div className="gauge-label">{label}</div>}
+
+      {/* 범례 (Legend) */}
+      <ul className="gauge-legend">
+        <li>
+          <span className="dot normal"></span>정상
+        </li>
+        <li>
+          <span className="dot warn"></span>경고
+        </li>
+        <li>
+          <span className="dot danger"></span>위험
+        </li>
+      </ul>
+
+      {/* 반원형 게이지 */}
+      <svg width="180" height="90" viewBox="0 0 180 100">
         <path
-          d={`M20,90 A${radius},${radius} 0 0,1 160,90`}
+          d={`M20,80 A${radius},${radius} 0 0,1 160,80`}
           stroke={trackColor}
           strokeWidth="15"
           fill="none"
           strokeLinecap="round"
         />
-        {/* 진행선 */}
         <path
-          d={`M20,90 A${radius},${radius} 0 0,1 160,90`}
+          d={`M20,80 A${radius},${radius} 0 0,1 160,80`}
           stroke={gaugeColor}
           strokeWidth="15"
           fill="none"
