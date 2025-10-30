@@ -3,6 +3,7 @@ import Chart from "../../components/chart/ChartComponent";
 import "../../styles/engine/checkpoint.css";
 import GaugeChart from "../../components/chart/GaugeChart";
 import WidgetCard from "../../components/util/WidgetCard";
+import ChartGridLayout from "../../components/layout/ChartGridLayout";
 
 /** Checkpoint API 응답 타입 */
 interface CheckpointData {
@@ -129,16 +130,6 @@ const getGaugeStatus = (value: number): "normal" | "warning" | "critical" => {
     return "critical";
 };
 
-const getStatusText = (value: number): string => {
-    if (value < 20) return "정상";
-    if (value < 30) return "주의";
-    return "위험";
-};
-
-
-
-
-
 /** 메인 컴포넌트 */
 export default function CheckPointPage() {
     const { data } = useQuery({
@@ -150,39 +141,32 @@ export default function CheckPointPage() {
     const dashboard = data || mockData;
 
     const gaugeStatus = getGaugeStatus(dashboard.requestRatio.value);
-    const statusText = getStatusText(dashboard.requestRatio.value);
+    // const statusText = getStatusText(dashboard.requestRatio.value);
 
     return (
         <div className="checkpoint-page">
-            {/* 메인 차트 그리드 */}
-            <div className="checkpoint-chart-grid">
+            {/* 첫 번째 행: 3개 카드 (4+4+4=12) */}
+            <ChartGridLayout>
                 {/* Checkpoint 요청 비율 */}
-                <WidgetCard title="Checkpoint 요청 비율">
+                <WidgetCard title="Checkpoint 요청 비율" span={2}>
+                    <div className="session-db-connection-chart">
+                        <ul>
+                            <li><span className="dot normal"></span>정상</li>
+                            <li><span className="dot warn"></span>경고</li>
+                            <li><span className="dot danger"></span>위험</li>
+                        </ul>
                     <div className="checkpoint-gauge-container">
-                        <div className="checkpoint-status-badge">
-                            <span className={`status-text ${gaugeStatus}`}>{statusText}</span>
-                        </div>
                         <GaugeChart
                             value={dashboard.requestRatio.value}
                             status={gaugeStatus}
                             type="semi-circle"
                         />
                     </div>
-                </WidgetCard>
-
-                {/* 평균 블록 쓰기 시간 */}
-                <WidgetCard title="평균 블록 쓰기 시간 (Last 24 Hours)">
-                    <Chart
-                        type="line"
-                        series={[{ name: "Avg Write Time", data: dashboard.avgWriteTime.data }]}
-                        categories={dashboard.avgWriteTime.categories}
-                        colors={["#10B981"]}
-                        height={250}
-                    />
+                    </div>
                 </WidgetCard>
 
                 {/* Checkpoint 발생 추이 */}
-                <WidgetCard title="Checkpoint 발생 추이 (Last 24 Hours)">
+                <WidgetCard title="Checkpoint 발생 추이 (Last 24 Hours)" span={5}>
                     <Chart
                         type="line"
                         series={[
@@ -190,24 +174,13 @@ export default function CheckPointPage() {
                             { name: "Timed", data: dashboard.occurrence.timed },
                         ]}
                         categories={dashboard.occurrence.categories}
-                        colors={["#10B981", "#3B82F6"]}
-                        height={250}
-                    />
-                </WidgetCard>
-
-                {/* WAL 생성량 추이 */}
-                <WidgetCard title="WAL 생성량 추이 (Last 24 Hours)">
-                    <Chart
-                        type="line"
-                        series={[{ name: "WAL Generation", data: dashboard.walGeneration.data }]}
-                        categories={dashboard.walGeneration.categories}
-                        colors={["#8B5CF6"]}
+                        colors={["#8E79FF", "#FEA29B"]}
                         height={250}
                     />
                 </WidgetCard>
 
                 {/* Checkpoint 처리 시간 추세 */}
-                <WidgetCard title="Checkpoint 처리 시간 추세 (Last 24 Hours)">
+                <WidgetCard title="Checkpoint 처리 시간 추세 (Last 24 Hours)" span={5}>
                     <Chart
                         type="line"
                         series={[
@@ -215,22 +188,47 @@ export default function CheckPointPage() {
                             { name: "Write Time", data: dashboard.processTime.writeTime },
                         ]}
                         categories={dashboard.processTime.categories}
-                        colors={["#F59E0B", "#EF4444"]}
+                        colors={["#8E79FF", "#FEA29B"]}
+                        height={250}
+                    />
+                </WidgetCard>
+            </ChartGridLayout>
+
+            {/* 두 번째 행: 3개 카드 (4+4+4=12) */}
+            <ChartGridLayout>
+                {/* WAL 생성량 추이 */}
+                <WidgetCard title="WAL 생성량 추이 (Last 24 Hours)" span={4}>
+                    <Chart
+                        type="line"
+                        series={[{ name: "WAL Generation", data: dashboard.walGeneration.data }]}
+                        categories={dashboard.walGeneration.categories}
+                        colors={["#8E79FF"]}
                         height={250}
                     />
                 </WidgetCard>
 
                 {/* Checkpoint buffer 처리량 */}
-                <WidgetCard title="Checkpoint Buffer 처리량 (Last 24 Hours)">
+                <WidgetCard title="Checkpoint Buffer 처리량 (Last 24 Hours)" span={4}>
                     <Chart
                         type="line"
                         series={[{ name: "Buffers/sec", data: dashboard.buffer.data }]}
                         categories={dashboard.buffer.categories}
-                        colors={["#8B5CF6"]}
+                        colors={["#8E79FF"]}
                         height={250}
                     />
                 </WidgetCard>
-            </div>
+
+                {/* 평균 블록 쓰기 시간 */}
+                <WidgetCard title="평균 블록 쓰기 시간 (Last 24 Hours)" span={4}>
+                    <Chart
+                        type="line"
+                        series={[{ name: "Avg Write Time", data: dashboard.avgWriteTime.data }]}
+                        categories={dashboard.avgWriteTime.categories}
+                        colors={["#8E79FF"]}
+                        height={250}
+                    />
+                </WidgetCard>
+            </ChartGridLayout>
         </div>
     );
 }
