@@ -149,19 +149,12 @@ export default function CheckPointPage() {
             <ChartGridLayout>
                 {/* Checkpoint 요청 비율 */}
                 <WidgetCard title="Checkpoint 요청 비율" span={2}>
-                    <div className="session-db-connection-chart">
-                        <ul>
-                            <li><span className="dot normal"></span>정상</li>
-                            <li><span className="dot warn"></span>경고</li>
-                            <li><span className="dot danger"></span>위험</li>
-                        </ul>
                     <div className="checkpoint-gauge-container">
                         <GaugeChart
                             value={dashboard.requestRatio.value}
                             status={gaugeStatus}
                             type="semi-circle"
                         />
-                    </div>
                     </div>
                 </WidgetCard>
 
