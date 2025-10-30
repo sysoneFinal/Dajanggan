@@ -1,21 +1,156 @@
-*, *::before, *::after {
-    box-sizing: border-box;
-}
 .bgwriter-page {
-    min-height: 100vh;
-    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    padding: 1.5rem 0;
 }
 
+/* 차트 그리드 */
+.bgwriter-chart-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.8rem;
+    width: 100%;
+}
+
+/* 차트 카드 (WidgetCard 래퍼) */
+.bgwriter-chart-card {
+    border-radius: 1rem;
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.05);
+    padding: 1rem 1.25rem;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: stretch;
+    width: 100%;
+    min-width: 0;
+    overflow: hidden;
+    backdrop-filter: blur(12px);
+    background: rgba(255, 255, 255, 0.45);
+}
+
+/* Gauge 컨테이너 */
+.bgwriter-gauge-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem 0;
+    gap: 1rem;
+}
+
+/* 상태 뱃지 */
+.bgwriter-status-badge {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    margin-bottom: 0.5rem;
+}
+
+.bgwriter-status-badge .status-text {
+    padding: 6px 16px;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.bgwriter-status-badge .status-text.normal {
+    background: rgba(16, 185, 129, 0.15);
+    color: #059669;
+}
+
+.bgwriter-status-badge .status-text.warning {
+    background: rgba(245, 158, 11, 0.15);
+    color: #d97706;
+}
+
+.bgwriter-status-badge .status-text.critical {
+    background: rgba(239, 68, 68, 0.15);
+    color: #dc2626;
+}
+
+/* Fsync 상태 영역 */
+.bgwriter-fsync-status {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 0.5rem;
+}
+
+/* Gauge Footer (통계 영역) */
+.bgwriter-gauge-footer {
+    display: flex;
+    justify-content: space-around;
+    width: 100%;
+    padding-top: 1rem;
+    border-top: 1px solid rgba(0, 0, 0, 0.06);
+    gap: 1rem;
+}
+
+/* 차트 Footer (통계 영역) */
+.bgwriter-chart-footer {
+    display: flex;
+    justify-content: space-around;
+    width: 100%;
+    padding-top: 1rem;
+    margin-top: 0.5rem;
+    border-top: 1px solid rgba(0, 0, 0, 0.06);
+    gap: 0.8rem;
+    flex-wrap: wrap;
+}
+
+/* 통계 아이템 */
+.bgwriter-stat-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.3rem;
+    min-width: 80px;
+    flex: 1;
+}
+
+.bgwriter-stat-label {
+    font-size: 0.8rem;
+    color: #6b7280;
+    font-weight: 500;
+    text-align: center;
+    white-space: nowrap;
+}
+
+.bgwriter-stat-value {
+    font-size: 0.95rem;
+    color: #111827;
+    font-weight: 700;
+    text-align: center;
+}
+
+/* 툴바 영역 (필요시) */
+.bgwriter-toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+    gap: 1rem;
+}
+
+.bgwriter-toolbar-left,
+.bgwriter-toolbar-right {
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+}
+
+/* Select 박스 */
 .instance-select,
 .time-range-select {
     padding: 8px 12px;
     border: 1px solid #d1d5db;
-    border-radius: 6px;
-    background: #ffffff;
-    font-size: 14px;
+    border-radius: 8px;
+    background: white;
+    font-size: 0.875rem;
     color: #374151;
     cursor: pointer;
-    transition: border-color 0.2s ease;
+    transition: all 0.2s ease;
 }
 
 .instance-select:hover,
@@ -30,172 +165,151 @@
     box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.1);
 }
 
+/* 새로고침 버튼 */
 .btn-refresh {
     padding: 8px 16px;
     background: #8b5cf6;
-    color: #ffffff;
+    color: white;
     border: none;
-    border-radius: 6px;
-    font-size: 14px;
+    border-radius: 8px;
+    font-size: 0.875rem;
     font-weight: 600;
     cursor: pointer;
-    transition: background 0.2s ease, transform 0.15s ease;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
 }
 
 .btn-refresh:hover {
     background: #7c3aed;
+    transform: translateY(-1px);
 }
 
 .btn-refresh:active {
-    transform: scale(0.98);
+    transform: translateY(0);
 }
 
-.bgwriter-grid {
+/* 로딩 상태 */
+.bgwriter-loading {
     display: flex;
-    flex-direction: column;
-    gap: 20px;
-}
-
-.bgwriter-row {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 20px;
-}
-
-.chart-card {
-    background: #ffffff;
-    border-radius: 12px;
-    padding: 20px;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-    transition: box-shadow 0.2s;
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-    min-height: 400px;
-}
-
-.chart-card:hover {
-    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-}
-
-/* 차트 헤더 */
-.chart-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    padding-bottom: 12px;
-    border-bottom: 1px solid #e5e7eb;
-}
-
-.chart-title-group {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-}
-
-.chart-title {
-    font-size: 16px;
-    font-weight: 600;
-    color: #111827;
-    margin: 0;
-}
-
-.chart-info {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-
-.info-icon {
-    font-size: 14px;
-}
-
-.info-text {
-    font-size: 12px;
-    color: #6b7280;
-}
-
-/* 상태 배지 */
-.status-badge {
-    padding: 4px 12px;
-    border-radius: 12px;
-    font-size: 12px;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    white-space: nowrap;
-}
-
-.status-normal {
-    background: #d1fae5;
-    color: #065f46;
-}
-
-.status-warning {
-    background: #fef3c7;
-    color: #92400e;
-}
-
-.status-danger {
-    background: #fee2e2;
-    color: #991b1b;
-}
-
-/* 차트 컨텐츠 */
-.chart-content {
-    flex: 1;
-    display: flex;
-    align-items: center;
     justify-content: center;
-    min-height: 250px;
+    align-items: center;
+    min-height: 400px;
+    font-size: 1.1rem;
+    color: #6b7280;
 }
 
-/* 차트 푸터 */
-.chart-footer {
-    display: flex;
-    justify-content: space-around;
-    padding-top: 12px;
-    border-top: 1px solid #e5e7eb;
-    gap: 16px;
-    flex-wrap: wrap;
-}
-
-.stat-item {
+/* 에러 상태 */
+.bgwriter-error {
     display: flex;
     flex-direction: column;
+    justify-content: center;
     align-items: center;
-    gap: 4px;
-    min-width: 80px;
+    min-height: 400px;
+    gap: 1rem;
 }
 
-.stat-label {
-    font-size: 12px;
+.bgwriter-error-message {
+    font-size: 1.1rem;
+    color: #dc2626;
+    font-weight: 600;
+}
+
+.bgwriter-error-detail {
+    font-size: 0.9rem;
     color: #6b7280;
-    font-weight: 500;
-    text-align: center;
 }
 
-.stat-value {
-    font-size: 14px;
-    color: #111827;
-    font-weight: 700;
-    text-align: center;
+/* 반응형 - 태블릿 (1024px 이하) */
+@media (max-width: 1024px) {
+    .bgwriter-chart-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .bgwriter-stat-item {
+        min-width: 70px;
+    }
+
+    .bgwriter-stat-label {
+        font-size: 0.75rem;
+    }
+
+    .bgwriter-stat-value {
+        font-size: 0.9rem;
+    }
 }
 
+/* 반응형 - 모바일 (768px 이하) */
+@media (max-width: 768px) {
+    .bgwriter-page {
+        padding: 1rem 0;
+    }
 
-.chart-card .gauge-container {
-    margin: 0 auto;
+    .bgwriter-chart-grid {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+    }
+
+    .bgwriter-toolbar {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .bgwriter-toolbar-left,
+    .bgwriter-toolbar-right {
+        width: 100%;
+        justify-content: space-between;
+    }
+
+    .bgwriter-chart-footer,
+    .bgwriter-gauge-footer {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 0.6rem;
+    }
+
+    .bgwriter-stat-item {
+        flex-direction: row;
+        justify-content: space-between;
+        align-items: center;
+        min-width: unset;
+    }
+
+    .bgwriter-stat-label,
+    .bgwriter-stat-value {
+        text-align: left;
+    }
+
+    .bgwriter-gauge-container {
+        padding: 0.5rem 0;
+    }
 }
 
-.chart-card .gauge-value {
-    font-size: 36px;
-    font-weight: 700;
-    color: #111827;
-    margin: 8px 0;
-}
+/* 작은 모바일 (480px 이하) */
+@media (max-width: 480px) {
+    .bgwriter-page {
+        padding: 0.75rem 0;
+    }
 
-.chart-card .gauge-desc {
-    font-size: 12px;
-    color: #6b7280;
-    margin: 0;
+    .bgwriter-chart-grid {
+        gap: 0.75rem;
+    }
+
+    .bgwriter-chart-card {
+        padding: 0.875rem 1rem;
+    }
+
+    .bgwriter-stat-label {
+        font-size: 0.7rem;
+    }
+
+    .bgwriter-stat-value {
+        font-size: 0.85rem;
+    }
+
+    .bgwriter-status-badge .status-text {
+        font-size: 0.75rem;
+        padding: 5px 12px;
+    }
 }
