@@ -3,6 +3,7 @@ import Chart from "../../components/chart/ChartComponent";
 import GaugeChart from "../../components/chart/GaugeChart";
 import "../../styles/engine/hottable.css";
 import WidgetCard from "../../components/util/WidgetCard";
+import ChartGridLayout from "../../components/layout/ChartGridLayout";
 
 /** Hot Table API 응답 타입 */
 interface HotTableData {
@@ -92,7 +93,6 @@ async function fetchHotTableData() {
     return res.json();
 }
 
-/** 유틸리티 함수 */
 const getCacheGaugeStatus = (value: number): "normal" | "warning" | "critical" => {
     if (value >= 95) return "normal";
     if (value >= 85) return "warning";
@@ -105,22 +105,11 @@ const getVacuumGaugeStatus = (hours: number): "normal" | "warning" | "critical" 
     return "critical";
 };
 
-const getCacheStatusText = (value: number): string => {
-    if (value >= 95) return "정상";
-    if (value >= 85) return "주의";
-    return "위험";
-};
-
-const getVacuumStatusText = (hours: number): string => {
-    if (hours < 6) return "정상";
-    if (hours < 24) return "주의";
-    return "위험";
-};
-
 const vacuumDelayToPercent = (hours: number): number => {
     const maxHours = 48;
     return Math.min((hours / maxHours) * 100, 100);
 };
+
 
 /** 메인 컴포넌트 */
 export default function HotTablePage() {
@@ -133,46 +122,54 @@ export default function HotTablePage() {
     const dashboard = data || mockData;
 
     const cacheGaugeStatus = getCacheGaugeStatus(dashboard.cacheHitRatio.value);
-    const cacheStatusText = getCacheStatusText(dashboard.cacheHitRatio.value);
 
     const vacuumGaugeStatus = getVacuumGaugeStatus(dashboard.vacuumDelay.delayHours);
-    const vacuumStatusText = getVacuumStatusText(dashboard.vacuumDelay.delayHours);
     const vacuumPercent = vacuumDelayToPercent(dashboard.vacuumDelay.delayHours);
 
     return (
         <div className="hottable-page">
-            {/* 메인 차트 그리드 */}
-            <div className="hottable-chart-grid">
+            {/* 첫 번째 행: 2개의 게이지 + 1개 차트 */}
+            <ChartGridLayout>
                 {/* 테이블 캐시 적중률 */}
-                <WidgetCard title="테이블 캐시 적중률">
+                <WidgetCard title="테이블 캐시 적중률" span={2}>
+                    <div className="session-db-connection-chart">
+                        <ul>
+                            <li><span className="dot normal"></span>정상</li>
+                            <li><span className="dot warn"></span>경고</li>
+                            <li><span className="dot danger"></span>위험</li>
+                        </ul>
+
                     <div className="hottable-gauge-container">
-                        <div className="hottable-status-badge">
-                            <span className={`status-text ${cacheGaugeStatus}`}>{cacheStatusText}</span>
-                        </div>
                         <GaugeChart
                             value={dashboard.cacheHitRatio.value}
                             status={cacheGaugeStatus}
                             type="semi-circle"
                         />
                     </div>
+                </div>
                 </WidgetCard>
 
                 {/* Vacuum 지연 시간 */}
-                <WidgetCard title="Vacuum 지연 시간">
-                    <div className="hottable-gauge-container">
-                        <div className="hottable-status-badge">
-                            <span className={`status-text ${vacuumGaugeStatus}`}>{vacuumStatusText}</span>
-                        </div>
+                <WidgetCard title="Vacuum 지연 시간" span={2}>
+                    <div className="session-db-connection-chart">
+                        <ul>
+                            <li><span className="dot normal"></span>정상</li>
+                            <li><span className="dot warn"></span>경고</li>
+                            <li><span className="dot danger"></span>위험</li>
+                        </ul>
+
+                        <div className="hottable-gauge-container">
                         <GaugeChart
                             value={vacuumPercent}
                             status={vacuumGaugeStatus}
                             type="semi-circle"
                         />
                     </div>
+                    </div>
                 </WidgetCard>
 
                 {/* 테이블별 Dead Tuple 추이 */}
-                <WidgetCard title="테이블별 Dead Tuple 추이 (Last 24 Hours)">
+                <WidgetCard title="테이블별 Dead Tuple 추이 (Last 24 Hours)" span={4}>
                     <Chart
                         type="line"
                         series={dashboard.deadTupleTrend.tables.map((table) => ({
@@ -180,35 +177,37 @@ export default function HotTablePage() {
                             data: table.data,
                         }))}
                         categories={dashboard.deadTupleTrend.categories}
-                        colors={["#8B5CF6", "#10B981", "#F59E0B"]}
+                        colors={["#8E79FF", "#77B2FB", "#FEA29B"]}
                         height={250}
                     />
                 </WidgetCard>
-
                 {/* DB 전체 Dead Tuple 추이 */}
-                <WidgetCard title="DB 전체 Dead Tuple 추이 (Last 24 Hours)">
+                <WidgetCard title="DB 전체 Dead Tuple 추이 (Last 24 Hours)" span={4}>
                     <Chart
                         type="area"
                         series={[{ name: "Total Dead Tuples", data: dashboard.totalDeadTuple.data }]}
                         categories={dashboard.totalDeadTuple.categories}
-                        colors={["#EF4444"]}
+                        colors={["#8E79FF"]}
                         height={250}
                     />
                 </WidgetCard>
+            </ChartGridLayout>
 
+            {/* 두 번째 행: 3개 차트 */}
+            <ChartGridLayout>
                 {/* Top-N 테이블 조회량 */}
-                <WidgetCard title="Top-N 테이블 조회량 (Last 24 Hours)">
+                <WidgetCard title="Top-N 테이블 조회량 (Last 24 Hours)" span={6}>
                     <Chart
                         type="bar"
                         series={[{ name: "Scan Count", data: dashboard.topQueryTables.scanCounts }]}
                         categories={dashboard.topQueryTables.tableNames}
-                        colors={["#3B82F6"]}
+                        colors={["#8E79FF"]}
                         height={250}
                     />
                 </WidgetCard>
 
                 {/* Top-N 테이블 DML량 */}
-                <WidgetCard title="Top-N 테이블 DML량 (Last 24 Hours)">
+                <WidgetCard title="Top-N 테이블 DML량 (Last 24 Hours)" span={6}>
                     <Chart
                         type="bar"
                         series={[
@@ -217,13 +216,13 @@ export default function HotTablePage() {
                             { name: "Update", data: dashboard.topDmlTables.updateCounts },
                         ]}
                         categories={dashboard.topDmlTables.tableNames}
-                        colors={["#EF4444", "#3B82F6", "#F59E0B"]}
+                        colors={["#FEA29B", "#8E79FF", "#77B2FB"]}
                         height={250}
                         isStacked={true}
                     />
 
                 </WidgetCard>
-            </div>
+            </ChartGridLayout>
         </div>
     );
 }
