@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import Chart from "../../components/chart/ChartComponent";
 import "../../styles/engine/hotindex.css";
 import WidgetCard from "../../components/util/WidgetCard";
+import ChartGridLayout from "../../components/layout/ChartGridLayout";
 
 /** Hot Index API 응답 타입 */
 interface HotIndexData {
@@ -137,69 +138,22 @@ export default function HotIndexPage() {
 
     return (
         <div className="hotindex-page">
-            {/* 메인 차트 그리드 */}
-            <div className="hotindex-chart-grid">
+            {/* 첫 번째 행: 3개 차트 */}
+            <ChartGridLayout>
                 {/* 인덱스 사용 비중 */}
-                <WidgetCard title="인덱스 사용 비중">
+                <WidgetCard title="인덱스 사용 비중" span={3}>
                     <Chart
                         type="pie"
                         series={dashboard.usageDistribution.data}
                         categories={dashboard.usageDistribution.categories}
                         height={300}
-                        colors={["#8B5CF6", "#3B82F6", "#10B981", "#F59E0B", "#6B7280"]}
+                        colors={["#8E79FF", "#77B2FB", "#51DAA8", "#FEA29B", "#6B7280"]}
                         showLegend={true}
                     />
                 </WidgetCard>
 
-                {/* Top-N 인덱스 사용량 */}
-                <WidgetCard title="Top-N 인덱스 사용량 (Last 24 Hours)">
-                    <Chart
-                        type="bar"
-                        series={[{ name: "Index Scans", data: dashboard.topUsage.data }]}
-                        categories={dashboard.topUsage.categories}
-                        height={250}
-                        colors={["#5B5CF6"]}
-                    />
-                </WidgetCard>
-
-                {/* 비효율 인덱스 Top-N */}
-                <WidgetCard title="비효율 인덱스 Top-N">
-                    <Chart
-                        type="bar"
-                        series={[{ name: "Efficiency (%)", data: dashboard.inefficientIndexes.data }]}
-                        categories={dashboard.inefficientIndexes.categories}
-                        height={250}
-                        colors={["#EF4444"]}
-                    />
-                </WidgetCard>
-
-                {/* 인덱스 캐시 적중률 추세 */}
-                <WidgetCard title="인덱스 캐시 적중률 추세 (Last 24 Hours)">
-                    <Chart
-                        type="line"
-                        series={[{ name: "Index Hit Ratio (%)", data: dashboard.cacheHitRatio.data }]}
-                        categories={dashboard.cacheHitRatio.categories}
-                        height={250}
-                        colors={["#A855F7"]}
-                        xaxisOptions={{
-                            labels: { rotate: 0, rotateAlways: false }
-                        }}
-                    />
-                </WidgetCard>
-
-                {/* 인덱스 효율성 */}
-                <WidgetCard title="인덱스 효율성 (Scatter)">
-                    <Chart
-                        type="scatter"
-                        series={[{ name: "Indexes", data: dashboard.efficiency.indexes }]}
-                        categories={dashboard.efficiency.categories}
-                        height={250}
-                        colors={["#10B981"]}
-                    />
-                </WidgetCard>
-
                 {/* 인덱스 액세스 추이 */}
-                <WidgetCard title="인덱스 액세스 추이 (Last 24 Hours)">
+                <WidgetCard title="인덱스 액세스 추이 (Last 24 Hours)" span={5}>
                     <Chart
                         type="line"
                         series={[
@@ -208,21 +162,70 @@ export default function HotIndexPage() {
                         ]}
                         categories={dashboard.accessTrend.categories}
                         height={250}
-                        colors={["#3B82F6", "#EF4444"]}
+                        colors={["#8E79FF", "#FEA29B"]}
                     />
                 </WidgetCard>
+                {/* 인덱스 캐시 적중률 추세 */}
+                <WidgetCard title="인덱스 캐시 적중률 추세 (Last 24 Hours)" span={4}>
+                    <Chart
+                        type="line"
+                        series={[{ name: "Index Hit Ratio (%)", data: dashboard.cacheHitRatio.data }]}
+                        categories={dashboard.cacheHitRatio.categories}
+                        height={250}
+                        colors={["#8E79FF"]}
+                        xaxisOptions={{
+                            labels: { rotate: 0, rotateAlways: false }
+                        }}
+                    />
+                </WidgetCard>
+            </ChartGridLayout>
 
+            {/* 두 번째 행: 4개 차트 */}
+            <ChartGridLayout>
                 {/* 인덱스 스캔 속도 추이 */}
-                <WidgetCard title="인덱스 스캔 속도 추이 (Last 24 Hours)">
+                <WidgetCard title="인덱스 스캔 속도 추이 (Last 24 Hours)" span={3}>
                     <Chart
                         type="line"
                         series={[{ name: "Index 스캔 속도 (ms)", data: dashboard.scanSpeed.data }]}
                         categories={dashboard.scanSpeed.categories}
                         height={250}
-                        colors={["#8B5CF6"]}
+                        colors={["#8E79FF"]}
                     />
                 </WidgetCard>
-            </div>
+
+                {/* 인덱스 효율성 */}
+                <WidgetCard title="인덱스 효율성 (Scatter)" span={3}>
+                    <Chart
+                        type="scatter"
+                        series={[{ name: "Indexes", data: dashboard.efficiency.indexes }]}
+                        categories={dashboard.efficiency.categories}
+                        height={250}
+                        colors={["#8E79FF"]}
+                    />
+                </WidgetCard>
+
+                {/* Top-N 인덱스 사용량 */}
+                <WidgetCard title="Top-N 인덱스 사용량 (Last 24 Hours)" span={3}>
+                    <Chart
+                        type="bar"
+                        series={[{ name: "Index Scans", data: dashboard.topUsage.data }]}
+                        categories={dashboard.topUsage.categories}
+                        height={250}
+                        colors={["#8E79FF"]}
+                    />
+                </WidgetCard>
+
+                {/* 비효율 인덱스 Top-N */}
+                <WidgetCard title="비효율 인덱스 Top-N" span={3}>
+                    <Chart
+                        type="bar"
+                        series={[{ name: "Efficiency (%)", data: dashboard.inefficientIndexes.data }]}
+                        categories={dashboard.inefficientIndexes.categories}
+                        height={250}
+                        colors={["#FEA29B"]}
+                    />
+                </WidgetCard>
+            </ChartGridLayout>
         </div>
     );
 }
