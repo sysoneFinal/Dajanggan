@@ -208,7 +208,7 @@ export default function VacuumPage({ data = demo }: { data?: DashboardData }) {
 
         <section className="vd-card vd-chart">
           <header className="vd-card__header">
-            <h3>latency Trend <span className="vd-dim">(24h)</span></h3>
+            <h3>Bloat Distribution by Percentage <span className="vd-dim">(24h)</span></h3>
           </header>
           <Chart
             type="bar"
