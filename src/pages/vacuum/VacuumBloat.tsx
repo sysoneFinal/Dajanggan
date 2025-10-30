@@ -51,7 +51,7 @@ const demo: DashboardData = {
   Kpi: {
     tableBloat: "305.3GB",
     criticalTable: 42,
-    bloatGrowth: "+31GB (+6.5+)",
+    bloatGrowth: "+31GB",
   }
 };
 
