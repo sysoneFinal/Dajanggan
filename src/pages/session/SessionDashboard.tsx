@@ -8,6 +8,7 @@ import GaugeChart from "../../components/chart/GaugeChart";
 import DeadlockModal from "../../components/session/DeadlockModal";
 import type { DeadlockDetail } from "../../components/session/DeadlockModal";
 import WidgetCard from "../../components/util/WidgetCard";
+import ChartGridLayout from "../../components/layout/ChartGridLayout";
 
 
 
@@ -205,10 +206,9 @@ useEffect(() => {
       })}
 
       </div>
-
+<ChartGridLayout>
       {/*  메인 차트  */}
-      <div className="session-db-chart-grid">
-        <WidgetCard title="Session State Trend (Realtime Dummy)">
+        <WidgetCard title="Session State Trend (Realtime Dummy)" span={4}>
           <Chart
             type="area"
             series={sessionTrend.series}
@@ -216,7 +216,7 @@ useEffect(() => {
           />
         </WidgetCard>
 
-        <WidgetCard title="Wait Event Type Ratio Trend (Last 15 Minutes)">
+        <WidgetCard title="Wait Event Type Ratio Trend (Last 15 Minutes)" span={4}>
           <Chart
             type="column"
             series={dashboard.charts.waitEvent.series}
@@ -225,7 +225,7 @@ useEffect(() => {
           />
         </WidgetCard>
 
-        <WidgetCard title="Database Connection Usage">
+        <WidgetCard title="Database Connection Usage" span={4}>
             <p className="session-db-connection-title">Database Connection Usage</p>
           <div className="session-db-connection-content">
             <div className="session-db-connection-chart">
@@ -262,8 +262,10 @@ useEffect(() => {
             height={100}
           />
         </WidgetCard>
+       </ChartGridLayout> 
 
-        <WidgetCard title="Avg Transaction Duration Trend (Last 30 Minutes)">
+<ChartGridLayout>
+        <WidgetCard title="Avg Transaction Duration Trend (Last 30 Minutes)" span={4}>
           <Chart
             type="line"
             series={[{ name: "Avg Tx Duration", data: dashboard.charts.txDuration.data }]}
@@ -273,7 +275,7 @@ useEffect(() => {
           />
         </WidgetCard>
 
-        <WidgetCard title="Avg Lock Wait Time (Last 30 Minutes)">
+        <WidgetCard title="Avg Lock Wait Time (Last 30 Minutes)" span={4}>
           <Chart
             type="line"
             series={[{ name: "Lock Wait", data: dashboard.charts.lockWait.data }]}
@@ -283,7 +285,7 @@ useEffect(() => {
           />
         </WidgetCard>
 
-        <WidgetCard title="Top Users by Session Count">
+        <WidgetCard title="Top Users by Session Count" span={4}>
           <Chart
             type="bar"
             series={[{ name: "Session Count", data: dashboard.charts.topUsers.data }]}
@@ -292,10 +294,10 @@ useEffect(() => {
             height={250}
           />
         </WidgetCard>
-      </div>
-
+      </ChartGridLayout>
+<ChartGridLayout>
       {/*  Deadlock 섹션  */}
-<div className="session-db-bottom-grid">
+
   <div className="session-db-chart-card deadlock-summary-card">
     <div className="deadlock-header">
       <h4>DeadLock Overview (Last 30 Minutes)</h4>
@@ -343,7 +345,7 @@ useEffect(() => {
       </div>
     </div>
   </div>
-</div>
+</ChartGridLayout>
   {selected && (
     <DeadlockModal
       open={open}
