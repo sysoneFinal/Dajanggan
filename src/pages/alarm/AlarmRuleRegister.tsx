@@ -101,6 +101,15 @@ export default function AlertRuleCreate({
               <option value="payments">payments</option>
             </select>
           </div>
+           <div>
+            <div className="ar-kicker">구분</div>
+            <select className="ar-select" value={metric} onChange={(e)=>setMetric(e.target.value as Metric)}>
+              <option value="dead_tuples">Vacuum</option>
+              <option value="bloat_pct">Session</option>
+              <option value="vacuum_backlog">Hot Table</option>
+              <option value="wal_lag">Query</option>
+            </select>
+          </div>
           <div>
             <div className="ar-kicker">지표</div>
             <select className="ar-select" value={metric} onChange={(e)=>setMetric(e.target.value as Metric)}>
@@ -190,8 +199,6 @@ export default function AlertRuleCreate({
           <button className="al-btn" onClick={handleSave}>규칙 저장</button>
         </div>
 
-        {/* Debug preview - 필요 없으면 제거 */}
-        {/* <pre>{JSON.stringify(payload, null, 2)}</pre> */}
       </section>
     </div>
   );
