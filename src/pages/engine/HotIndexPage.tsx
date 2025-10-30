@@ -1,8 +1,10 @@
-import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import Chart from "../../components/chart/ChartComponent";
-import "../../styles/engine/checkpoint.css";
+import "../../styles/engine/hotindex.css";
+import WidgetCard from "../../components/util/WidgetCard";
+import ChartGridLayout from "../../components/layout/ChartGridLayout";
 
-// API 응답 전체 구조
+/** Hot Index API 응답 타입 */
 interface HotIndexData {
     usageDistribution: {
         categories: string[];
@@ -45,8 +47,8 @@ interface HotIndexData {
     };
 }
 
-// 더미 데이터
-const dummyData: HotIndexData = {
+/** 더미 데이터 */
+const mockData: HotIndexData = {
     usageDistribution: {
         categories: [
             "idx_products_category: 15%",
@@ -116,248 +118,114 @@ const dummyData: HotIndexData = {
     }
 };
 
-// 차트 카드 컴포넌트
-interface ChartCardProps {
-    title: string;
-    statusBadge?: string;
-    children: React.ReactNode;
-    footer?: React.ReactNode;
+/** API 요청 */
+async function fetchHotIndexData() {
+    const res = await fetch("/api/dashboard/hotindex");
+    if (!res.ok) throw new Error("Failed to fetch hot index data");
+    return res.json();
 }
 
-function ChartCard({ title, statusBadge, children, footer }: ChartCardProps) {
-    return (
-        <div className="chart-card">
-            {/* 헤더 */}
-            <div className="chart-header">
-                <div className="chart-title-group">
-                    <h3 className="chart-title">{title}</h3>
-                </div>
-                {statusBadge && (
-                    <span
-                        className={`status-badge ${
-                            statusBadge === "정상"
-                                ? "status-normal"
-                                : statusBadge === "주의"
-                                    ? "status-warning"
-                                    : "status-danger"
-                        }`}
-                    >
-            {statusBadge}
-          </span>
-                )}
-            </div>
 
-            {/* 내용 */}
-            <div className="chart-content">{children}</div>
-
-            {/* 푸터 */}
-            {footer && <div className="chart-footer">{footer}</div>}
-        </div>
-    );
-}
-
-// 통계 아이템 컴포넌트
-interface StatItemProps {
-    label: string;
-    value: string;
-    color?: string;
-}
-
-function StatItem({ label, value, color }: StatItemProps) {
-    return (
-        <div className="stat-item">
-      <span className="stat-label" style={{ color }}>
-        {label}
-      </span>
-            <span className="stat-value">{value}</span>
-        </div>
-    );
-}
-
-// 메인 컴포넌트
+/** 메인 컴포넌트 */
 export default function HotIndexPage() {
-    const [data] = useState<HotIndexData>(dummyData);
+    const { data } = useQuery({
+        queryKey: ["hotIndexDashboard"],
+        queryFn: fetchHotIndexData,
+        retry: 1,
+    });
+
+    const dashboard = data || mockData;
 
     return (
-        <div className="checkpoint-page">
-            <div className="checkpoint-grid">
-                <div className="checkpoint-row">
-                    <ChartCard title="인덱스 사용 비중">
-                        <Chart
-                            type="pie"
-                            series={data.usageDistribution.data}
-                            categories={data.usageDistribution.categories}
-                            height={300}
-                            colors={["#8B5CF6", "#3B82F6", "#10B981", "#F59E0B", "#6B7280"]}
-                            showLegend={true}
-                        />
-                    </ChartCard>
+        <div className="hotindex-page">
+            {/* 첫 번째 행: 3개 차트 */}
+            <ChartGridLayout>
+                {/* 인덱스 사용 비중 */}
+                <WidgetCard title="인덱스 사용 비중" span={3}>
+                    <Chart
+                        type="pie"
+                        series={dashboard.usageDistribution.data}
+                        categories={dashboard.usageDistribution.categories}
+                        height={300}
+                        colors={["#8E79FF", "#77B2FB", "#51DAA8", "#FEA29B", "#6B7280"]}
+                        showLegend={true}
+                    />
+                </WidgetCard>
 
-                    <ChartCard
-                        title="Top-N 인덱스 사용량"
-                        footer={
-                            <>
-                                <StatItem label="총 스캔" value={`${data.topUsage.total.toLocaleString()}회`} />
-                            </>
-                        }
-                    >
-                        <Chart
-                            type="bar"
-                            series={[{ name: "Index Scans", data: data.topUsage.data }]}
-                            categories={data.topUsage.categories}
-                            height={250}
-                            colors={["#5B5CF6"]}
-                            showGrid={true}
-                            showLegend={false}
-                            xaxisOptions={{
-                                title: { text: "스캔 횟수", style: { fontSize: "12px", color: "#6B7280" } },
-                            }}
-                            tooltipFormatter={(value: number) => `${value.toLocaleString()}회`}
-                        />
-                    </ChartCard>
+                {/* 인덱스 액세스 추이 */}
+                <WidgetCard title="인덱스 액세스 추이 (Last 24 Hours)" span={5}>
+                    <Chart
+                        type="line"
+                        series={[
+                            { name: "Reads", data: dashboard.accessTrend.reads },
+                            { name: "Writes", data: dashboard.accessTrend.writes },
+                        ]}
+                        categories={dashboard.accessTrend.categories}
+                        height={250}
+                        colors={["#8E79FF", "#FEA29B"]}
+                    />
+                </WidgetCard>
+                {/* 인덱스 캐시 적중률 추세 */}
+                <WidgetCard title="인덱스 캐시 적중률 추세 (Last 24 Hours)" span={4}>
+                    <Chart
+                        type="line"
+                        series={[{ name: "Index Hit Ratio (%)", data: dashboard.cacheHitRatio.data }]}
+                        categories={dashboard.cacheHitRatio.categories}
+                        height={250}
+                        colors={["#8E79FF"]}
+                        xaxisOptions={{
+                            labels: { rotate: 0, rotateAlways: false }
+                        }}
+                    />
+                </WidgetCard>
+            </ChartGridLayout>
 
-                    <ChartCard
-                        title="비효율 인덱스 Top-N"
-                        footer={
-                            <>
-                                <StatItem label="비효율 인덱스" value={`${data.inefficientIndexes.total.toLocaleString()}개`} />
-                            </>
-                        }>
-                        <Chart
-                            type="bar"
-                            series={[{ name: "Efficiency (%)", data: data.inefficientIndexes.data }]}
-                            categories={data.inefficientIndexes.categories}
-                            height={250}
-                            colors={["#EF4444"]}
-                            showGrid={true}
-                            showLegend={false}
-                            xaxisOptions={{
-                                title: { text: "효율성 (%)", style: { fontSize: "12px", color: "#6B7280" } },
-                            }}
-                            tooltipFormatter={(value: number) => `${value.toFixed(1)}%`}
-                        />
-                    </ChartCard>
-                </div>
+            {/* 두 번째 행: 4개 차트 */}
+            <ChartGridLayout>
+                {/* 인덱스 스캔 속도 추이 */}
+                <WidgetCard title="인덱스 스캔 속도 추이 (Last 24 Hours)" span={3}>
+                    <Chart
+                        type="line"
+                        series={[{ name: "Index 스캔 속도 (ms)", data: dashboard.scanSpeed.data }]}
+                        categories={dashboard.scanSpeed.categories}
+                        height={250}
+                        colors={["#8E79FF"]}
+                    />
+                </WidgetCard>
 
-                <div className="checkpoint-row">
-                    <ChartCard
-                        title="인덱스 캐시 적중률 추세"
-                        footer={
-                            <>
-                                <StatItem label="평균" value={`${data.cacheHitRatio.average}%`} />
-                                <StatItem label="최대" value={`${data.cacheHitRatio.max}%`} />
-                                <StatItem label="최소" value={`${data.cacheHitRatio.min}%`} />
-                            </>
-                        }
-                    >
-                        <Chart
-                            type="line"
-                            series={[{ name: "Index Hit Ratio (%)", data: data.cacheHitRatio.data }]}
-                            categories={data.cacheHitRatio.categories}
-                            height={250}
-                            colors={["#A855F7"]}
-                            showGrid={true}
-                            showLegend={false}
-                            xaxisOptions={{
-                                title: { text: "시간", style: { fontSize: "12px", color: "#6B7280" } },
-                            }}
-                            yaxisOptions={{
-                                title: { text: "적중률 (%)", style: { fontSize: "12px", color: "#6B7280" } },
-                                labels: { formatter: (val: number) => `${val}%` },
-                            }}
-                            tooltipFormatter={(value: number) => `${value}%`}
-                        />
-                    </ChartCard>
+                {/* 인덱스 효율성 */}
+                <WidgetCard title="인덱스 효율성 (Scatter)" span={3}>
+                    <Chart
+                        type="scatter"
+                        series={[{ name: "Indexes", data: dashboard.efficiency.indexes }]}
+                        categories={dashboard.efficiency.categories}
+                        height={250}
+                        colors={["#8E79FF"]}
+                    />
+                </WidgetCard>
 
-                    <ChartCard title="인덱스 효율성">
-                        <Chart
-                            type="scatter"
-                            series={[{ name: "Indexes", data: data.efficiency.indexes }]}
-                            categories={data.efficiency.categories}
-                            height={250}
-                            colors={["#10B981"]}
-                            showGrid={true}
-                            showLegend={false}
-                            xaxisOptions={{
-                                title: { text: "", style: { fontSize: "12px", color: "#6B7280" } },
-                            }}
-                            yaxisOptions={{
-                                title: { text: "", style: { fontSize: "12px", color: "#6B7280" } },
-                            }}
-                        />
-                    </ChartCard>
+                {/* Top-N 인덱스 사용량 */}
+                <WidgetCard title="Top-N 인덱스 사용량 (Last 24 Hours)" span={3}>
+                    <Chart
+                        type="bar"
+                        series={[{ name: "Index Scans", data: dashboard.topUsage.data }]}
+                        categories={dashboard.topUsage.categories}
+                        height={250}
+                        colors={["#8E79FF"]}
+                    />
+                </WidgetCard>
 
-                    <ChartCard
-                        title="인덱스 액세스 추이"
-                        footer={
-                            <>
-                                <StatItem
-                                    label="● Reads"
-                                    value={`${data.accessTrend.totalReads.toLocaleString()}`}
-                                    color="#3B82F6"
-                                />
-                                <StatItem
-                                    label="● Writes"
-                                    value={`${data.accessTrend.totalWrites.toLocaleString()}`}
-                                    color="#EF4444"
-                                />
-                            </>
-                        }
-                    >
-                        <Chart
-                            type="line"
-                            series={[
-                                { name: "Reads", data: data.accessTrend.reads },
-                                { name: "Writes", data: data.accessTrend.writes },
-                            ]}
-                            categories={data.accessTrend.categories}
-                            height={250}
-                            colors={["#3B82F6", "#EF4444"]}
-                            showGrid={true}
-                            showLegend={true}
-                            xaxisOptions={{
-                                title: { text: "시간", style: { fontSize: "12px", color: "#6B7280" } },
-                            }}
-                            yaxisOptions={{
-                                title: { text: "액세스", style: { fontSize: "12px", color: "#6B7280" } },
-                                labels: { formatter: (val: number) => `${(val / 1000).toFixed(1)}K` },
-                            }}
-                            tooltipFormatter={(value: number) => `${value.toLocaleString()}`}
-                        />
-                    </ChartCard>
-                </div>
-
-                <div className="checkpoint-row">
-                    <ChartCard
-                        title="인덱스 스캔 속도 추이"
-                        footer={
-                            <>
-                                <StatItem label="평균" value={`${data.scanSpeed.average.toFixed(1)}ms`} />
-                                <StatItem label="최대" value={`${data.scanSpeed.max}ms`} />
-                                <StatItem label="최소" value={`${data.scanSpeed.min}ms`} />
-                            </>
-                        }
-                    >
-                        <Chart
-                            type="line"
-                            series={[{ name: "Index 스캔 속도 (ms)", data: data.scanSpeed.data }]}
-                            categories={data.scanSpeed.categories}
-                            height={250}
-                            colors={["#8B5CF6"]}
-                            showGrid={true}
-                            showLegend={false}
-                            xaxisOptions={{
-                                title: { text: "시간", style: { fontSize: "12px", color: "#6B7280" } },
-                            }}
-                            yaxisOptions={{
-                                title: { text: "시간 (ms)", style: { fontSize: "12px", color: "#6B7280" } },
-                                labels: { formatter: (val: number) => `${val.toFixed(1)}ms` },
-                            }}
-                            tooltipFormatter={(value: number) => `${value.toFixed(2)}ms`}
-                        />
-                    </ChartCard>
-                </div>
-            </div>
+                {/* 비효율 인덱스 Top-N */}
+                <WidgetCard title="비효율 인덱스 Top-N" span={3}>
+                    <Chart
+                        type="bar"
+                        series={[{ name: "Efficiency (%)", data: dashboard.inefficientIndexes.data }]}
+                        categories={dashboard.inefficientIndexes.categories}
+                        height={250}
+                        colors={["#FEA29B"]}
+                    />
+                </WidgetCard>
+            </ChartGridLayout>
         </div>
     );
 }
