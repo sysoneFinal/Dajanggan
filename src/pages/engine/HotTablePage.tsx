@@ -132,13 +132,6 @@ export default function HotTablePage() {
             <ChartGridLayout>
                 {/* 테이블 캐시 적중률 */}
                 <WidgetCard title="테이블 캐시 적중률" span={2}>
-                    <div className="session-db-connection-chart">
-                        <ul>
-                            <li><span className="dot normal"></span>정상</li>
-                            <li><span className="dot warn"></span>경고</li>
-                            <li><span className="dot danger"></span>위험</li>
-                        </ul>
-
                     <div className="hottable-gauge-container">
                         <GaugeChart
                             value={dashboard.cacheHitRatio.value}
@@ -146,25 +139,16 @@ export default function HotTablePage() {
                             type="semi-circle"
                         />
                     </div>
-                </div>
                 </WidgetCard>
 
                 {/* Vacuum 지연 시간 */}
                 <WidgetCard title="Vacuum 지연 시간" span={2}>
-                    <div className="session-db-connection-chart">
-                        <ul>
-                            <li><span className="dot normal"></span>정상</li>
-                            <li><span className="dot warn"></span>경고</li>
-                            <li><span className="dot danger"></span>위험</li>
-                        </ul>
-
                         <div className="hottable-gauge-container">
                         <GaugeChart
                             value={vacuumPercent}
                             status={vacuumGaugeStatus}
                             type="semi-circle"
                         />
-                    </div>
                     </div>
                 </WidgetCard>
 
