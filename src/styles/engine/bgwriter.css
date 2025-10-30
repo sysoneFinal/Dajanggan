@@ -4,13 +4,6 @@
     padding: 1.5rem 0;
 }
 
-/* 차트 그리드 */
-.bgwriter-chart-grid {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 0.8rem;
-    width: 100%;
-}
 
 /* 차트 카드 (WidgetCard 래퍼) */
 .bgwriter-chart-card {
@@ -34,8 +27,8 @@
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    padding: 1rem 0;
-    gap: 1rem;
+    /*padding: 1rem 0;*/
+    /*gap: 1rem;*/
 }
 
 /* 상태 뱃지 */
@@ -223,10 +216,6 @@
 
 /* 반응형 - 태블릿 (1024px 이하) */
 @media (max-width: 1024px) {
-    .bgwriter-chart-grid {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
-
     .bgwriter-stat-item {
         min-width: 70px;
     }
@@ -244,11 +233,6 @@
 @media (max-width: 768px) {
     .bgwriter-page {
         padding: 1rem 0;
-    }
-
-    .bgwriter-chart-grid {
-        grid-template-columns: 1fr;
-        gap: 1rem;
     }
 
     .bgwriter-toolbar {
@@ -290,10 +274,6 @@
 @media (max-width: 480px) {
     .bgwriter-page {
         padding: 0.75rem 0;
-    }
-
-    .bgwriter-chart-grid {
-        gap: 0.75rem;
     }
 
     .bgwriter-chart-card {
