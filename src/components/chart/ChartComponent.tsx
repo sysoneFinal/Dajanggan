@@ -78,7 +78,7 @@ export default function Chart({
         toolbar: { show: showToolbar },
         background: "transparent",
         fontFamily: FONT_FAMILY,
-        animations: { enabled: true, speed: 200 },
+        animations: { enabled: false },
         stacked: isStacked,
         redrawOnParentResize: true,
         redrawOnWindowResize: true,
