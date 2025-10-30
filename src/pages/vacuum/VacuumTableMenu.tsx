@@ -11,7 +11,8 @@ function TableDropdown({
   value: string;
   onChange: (v: string) => void;
   maxHeight?: number;
-}) {
+}) 
+{
   const [open, setOpen] = useState(false);
   const btnRef = useRef<HTMLButtonElement | null>(null);
   const popRef = useRef<HTMLDivElement | null>(null);
@@ -72,7 +73,6 @@ type VacuumTableMenuProps = {
   tables: string[];               // 드롭다운 목록
   selectedTable: string;          // 선택된 테이블
   onChange: (table: string) => void; // 선택 변경 콜백
-  dbName?: string;
   autovacuumEnabled?: boolean;
   lastVacuumText?: string; 
 
@@ -84,7 +84,6 @@ export default function VacuumTableMenu({
   tables,
   selectedTable,
   onChange,
-  dbName = "appdb",
   autovacuumEnabled = true,
   lastVacuumText,
   onToggle,
@@ -103,7 +102,6 @@ export default function VacuumTableMenu({
         </h2>
 
         <div className="vd-badges">
-          <span className="vd-badge">DB: {dbName}</span>
           <span className={`vd-badge ${autovacuumEnabled ? "vd-badge--ok" : "vd-badge--warn"}`}>
             Autovacuum: {autovacuumEnabled ? "enabled" : "disabled"}
           </span>

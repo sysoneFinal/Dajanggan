@@ -77,7 +77,6 @@ export default function BloatDetailPage({ data = demo, onToggle, expanded=true, 
             onChange={(t: string) => {
               setSelectedTable(t);
             }}
-            dbName="appdb"
             autovacuumEnabled={true}
             lastVacuumText="2025-10-20 11:30"
             onToggle={onToggle}
