@@ -1,5 +1,7 @@
 import { useMemo, useState, useRef } from "react";
 import Chart from "../../components/chart/ChartComponent";
+import ChartGridLayout from "../../components/layout/ChartGridLayout"
+import WidgetCard from "../../components/util/WidgetCard"
 import "/src/styles/vacuum/VacuumPage.css";
 import BloatDetailPage from "./VacuumBloatDetail";
 
@@ -121,12 +123,8 @@ export default function VacuumPage({ data = demo }: { data?: DashboardData }) {
             </section>
         </div>
 
-      <div className="vd-grid">
-        <section className="vd-card vd-chart">
-          <header className="vd-card__header">
-            <h3>Xmin Horizon Monitor <span className="vd-dim">(last 7d)</span></h3>
-          </header>
-
+      <ChartGridLayout>
+        <WidgetCard title="Xmin Horizon Monitor (last 7d)" span={4}>
           <Chart
             type="area"                                 // 면적 라인
             series={xminHorizonMonitorSeries}
@@ -134,7 +132,6 @@ export default function VacuumPage({ data = demo }: { data?: DashboardData }) {
             height={380}
             width="100%"
             showToolbar={false}
-            colors={["#22C55E", "#F59E0B", "#EF4444"]}  // 초록/주황/빨강
             customOptions={{
               chart: { redrawOnParentResize: true, redrawOnWindowResize: true, toolbar: { show: false } },
               dataLabels: { enabled: false },
@@ -162,7 +159,7 @@ export default function VacuumPage({ data = demo }: { data?: DashboardData }) {
                 tickAmount: 4,
                 labels: { formatter: (v: number) => `${v}h` },
               },
-              // 오른쪽 끝에 Warn/Alert 텍스트(겹쳐도 자연스러움)
+              // 오른쪽 끝에 Warn/Alert 텍스트
               annotations: {
                 yaxis: [
                   {
@@ -193,57 +190,27 @@ export default function VacuumPage({ data = demo }: { data?: DashboardData }) {
               }
             }}
           />
-        </section>
-
-        <section className="vd-card vd-chart">
-          <header className="vd-card__header">
-            <h3>Total Bloat Trend <span className="vd-dim"> (Last 30 Days) </span></h3>
-          </header>
+        </WidgetCard>
+        <WidgetCard title="Total Bloat Trend (Last 30 Days)" span={4}>
           <Chart
             type="line"
             series={bloatTrendSeries}
             categories={data.bloatTrend.labels}
             height={400}
             width="100%"
-            showLegend={false}
-            showToolbar={false}
-            colors={["#6366F1"]}
-            customOptions={{
-                chart: { redrawOnParentResize: true, redrawOnWindowResize: true },
-                stroke: { width: 2, curve: "smooth" },
-                grid: { borderColor: "#E5E7EB", strokeDashArray: 4 },
-                markers: { size: 0 },
-                yaxis: {min:0},
-            }}
-            tooltipFormatter={(v) => `${Math.round(v).toLocaleString()}`}
             />
-        </section>
+        </WidgetCard>
 
-
-        <section className="vd-card vd-chart">
-          <header className="vd-card__header">
-            <h3>Bloat Distribution by Percentage <span className="vd-dim">(24h)</span></h3>
-          </header>
+        <WidgetCard title="Bloat Distribution by Percentage (24h)" span={4}>
           <Chart
             type="bar"
             series={bloatDistributionSeries}
             categories={data.bloatDistribution.labels}
             height={400}
             width="100%"
-            showLegend={false}
-            showToolbar={false}
-            colors={["#6366F1"]}
-            customOptions={{
-                chart: { redrawOnParentResize: true, redrawOnWindowResize: true },
-                stroke: { width: 2, curve: "smooth" },
-                grid: { borderColor: "#E5E7EB", strokeDashArray: 4 },
-                markers: { size: 4 },
-                yaxis: { min: 0 },
-            }}
-            tooltipFormatter={(v) => `${Math.round(v).toLocaleString()}`}
             />
-        </section>
-      </div>
+        </WidgetCard>
+        </ChartGridLayout>
       <div ref={detailRef} className="mt-8" />
 
      <BloatDetailPage onToggle={toggle} expanded={expanded} />

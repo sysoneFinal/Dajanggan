@@ -1,5 +1,7 @@
 import { useMemo, useState } from "react";
 import Chart from "../../components/chart/ChartComponent";
+import ChartGridLayout from "../../components/layout/ChartGridLayout"
+import WidgetCard from "../../components/util/WidgetCard"
 import "/src/styles/vacuum/VacuumPage.css";
 import VacuumTableMenu from "./VacuumTableMenu";
 
@@ -104,12 +106,8 @@ export default function BloatDetailPage({ data = demo, onToggle, expanded=true, 
       </div>
 
       {/* ---------- 차트 ---------- */}
-      <div className="vd-grid3">
-        {/* Bloat % Trend */}
-        <section className="vd-card vd-chart">
-          <header className="vd-card__header">
-            <h3>Bloat % Trend <span className="vd-dim">(Last 30 Days)</span></h3>
-          </header>
+      <ChartGridLayout>
+        <WidgetCard title="Bloat % Trend(Last 30 Days)" span={4}>
           <Chart
             type="line"
             series={bloatTrendSeries}
@@ -124,51 +122,27 @@ export default function BloatDetailPage({ data = demo, onToggle, expanded=true, 
               yaxis: { min: 0, title: { text: "Bloat %" } },
             }}
           />
-        </section>
-
-        {/* Dead Tuples Trend */}
-        <section className="vd-card vd-chart">
-          <header className="vd-card__header">
-            <h3>Dead Tuples Trend <span className="vd-dim">(Last 30 Days)</span></h3>
-          </header>
+        </WidgetCard>
+        <WidgetCard title="Dead Tuples Trend (Last 30 Days)" span={4}>
           <Chart
             type="line"
             series={deadTuplesSeries}
             categories={data.deadTuplesTrend.labels}
             height={380}
             width="100%"
-            showLegend={false}
-            colors={["#6366F1"]}
-            customOptions={{
-              stroke: { width: 2, curve: "smooth" },
-              grid: { borderColor: "#E5E7EB", strokeDashArray: 4 },
-              yaxis: { min: 0, title: { text: "Dead Tuples Count" } },
-            }}
           />
-        </section>
+        </WidgetCard>
 
-        {/* Index Bloat Trend */}
-        <section className="vd-card vd-chart">
-          <header className="vd-card__header">
-            <h3>Index Bloat Trend <span className="vd-dim">(Last 30 Days)</span></h3>
-          </header>
+         <WidgetCard title="Index Bloat Trend (Last 30 Days)" span={4}>
           <Chart
             type="line"
             series={indexBloatSeries}
             categories={data.indexBloatTrend.labels}
             height={400}
             width="100%"
-            showLegend={true}
-            colors={["#EF4444", "#6366F1", "#F59E0B", "#10B981"]}
-            customOptions={{
-              stroke: { width: 2, curve: "smooth" },
-              grid: { borderColor: "#E5E7EB", strokeDashArray: 4 },
-              yaxis: { min: 0, title: { text: "Bloat %" } },
-              legend: { position: "bottom" },
-            }}
           />
-        </section>
-      </div>
+        </WidgetCard>
+        </ChartGridLayout>
       </div>
     </div>
   );

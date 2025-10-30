@@ -1,5 +1,7 @@
 import { useMemo } from "react";
 import Chart from "../../components/chart/ChartComponent";
+import ChartGridLayout from "../../components/layout/ChartGridLayout"
+import WidgetCard from "../../components/util/WidgetCard"
 import "/src/styles/vacuum/VacuumPage.css";
 
 /* ---------- 타입/데모데이터 ---------- */
@@ -138,7 +140,7 @@ export default function VacuumPage({ data = demo }: { data?: DashboardData }) {
   
   return (
     <div className="vd-root">
-        <div className="vd-grid2">
+          <div className="vd-grid2">
             <section className="vd-card2">
                 <header className="vd-card2__header">
                     <h5>평균 지연시간 <span className="vd-dim">(rows/sec • 24h)</span></h5>
@@ -168,89 +170,69 @@ export default function VacuumPage({ data = demo }: { data?: DashboardData }) {
             </section>
         </div>
 
-      <div className="vd-grid">
-        <section className="vd-card vd-chart">
-          <header className="vd-card__header">
-            <h3>Vacuum deadtuple <span className="vd-dim">(rows/sec • 24h)</span></h3>
-          </header>
+        <ChartGridLayout>
+        <WidgetCard title="Vacuum deadtuple (rows/sec • 24h)" span={4}>
           <Chart
             type="line"
             series={deadtupleSeries}
             categories={data.deadtuple.labels}
             height={380}
             width="100%"
-            showToolbar={false}
-            colors= {["#EF4444", "#6366F1"]}
             customOptions={{
-                chart: { redrawOnParentResize: true, redrawOnWindowResize: true },
-                stroke: { curve: "smooth", width: 2 },
-                legend: { show: true, position: "bottom" },
-                xaxis: {
+              chart: { redrawOnParentResize: true, redrawOnWindowResize: true },
+              stroke: { curve: "smooth", width: 2 },
+              legend: { show: true, position: "bottom" },
+              xaxis: {
                 labels: { style: { colors: "#9CA3AF" } },
                 axisBorder: { show: false },
                 axisTicks: { show: false },
                 categories: data.deadtuple.labels,
-                },
-                yaxis: { title: { text: "rows/sec" } },
+              },
+              yaxis: { title: { text: "rows/sec" } },
             }}
-            />
+          />
+        </WidgetCard>
 
-        </section>
-
-        <section className="vd-card vd-chart">
-          <header className="vd-card__header">
-            <h3>Vacuum autovacuum <span className="vd-dim">(rows/sec • 24h)</span></h3>
-          </header>
+        <WidgetCard title="Vacuum autovacuum(rows/sec • 24h)" span={4}>
           <Chart
             type="line"
-            series={autovacuumSeries.map((s, i) => ({ ...s, yAxisIndex: i }))}
+            series={autovacuumSeries} // ★ yAxisIndex 붙이지 마세요 (ApexCharts는 지원 X)
             categories={data.autovacuum.labels}
             height={400}
             width="100%"
-            showLegend={true}
-            showToolbar={false}
-            colors={["#6366F1", "#10B981"]}
-            customOptions={{
-                chart: { redrawOnParentResize: true, redrawOnWindowResize: true },
-                stroke: { width: 2, curve: "smooth" },
-                grid: { borderColor: "#E5E7EB", strokeDashArray: 4 },
-                markers: { size: 0 },
-                yaxis: [
-                { title: { text: "Cost Delay (ms)" }, decimalsInFloat: 0 }, 
-                { title: { text: "Active Workers" }, opposite: true, decimalsInFloat: 0 }, // 오른쪽
-                ],
+             customOptions={{
+              chart: { redrawOnParentResize: true, redrawOnWindowResize: true },
+              stroke: { width: 2, curve: "smooth" },
+              grid: { borderColor: "#E5E7EB", strokeDashArray: 4 },
+              markers: { size: 0 },
+              // series[0] = 왼쪽 Y축, series[1] = 오른쪽 Y축로 매핑
+              yaxis: [
+                { title: { text: "Cost Delay (ms)" }, decimalsInFloat: 0 },
+                { title: { text: "Active Workers" }, opposite: true, decimalsInFloat: 0 },
+              ],
             }}
             tooltipFormatter={(v) => `${Math.round(v).toLocaleString()}`}
-            />
-        </section>
-
-
-        <section className="vd-card vd-chart">
-          <header className="vd-card__header">
-            <h3>latency Trend <span className="vd-dim">(24h)</span></h3>
-          </header>
+          />
+        </WidgetCard>
+        
+        <WidgetCard title="Latency Trend(24h)" span={4}>
           <Chart
             type="line"
             series={latencySeries}
             categories={data.latency.labels}
             height={400}
             width="100%"
-            showLegend={false}
-            showToolbar={false}
-            colors={["#6366F1"]}
             customOptions={{
-                chart: { redrawOnParentResize: true, redrawOnWindowResize: true },
-                stroke: { width: 2, curve: "smooth" },
-                grid: { borderColor: "#E5E7EB", strokeDashArray: 4 },
-                markers: { size: 4 },
-                yaxis: { min: 0 },
+              chart: { redrawOnParentResize: true, redrawOnWindowResize: true },
+              stroke: { width: 2, curve: "smooth" },
+              grid: { borderColor: "#E5E7EB", strokeDashArray: 4 },
+              markers: { size: 4 },
+              yaxis: { min: 0 },
             }}
             tooltipFormatter={(v) => `${Math.round(v).toLocaleString()}`}
-            />
-        </section>
-
-        
-      </div>
+          />
+        </WidgetCard>
+      </ChartGridLayout>
 
   
       {/* 하단 세션 테이블 (Progress에도 미니 차트) */}
