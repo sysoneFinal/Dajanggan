@@ -1,29 +1,12 @@
 /* === 공통 차트 그리드 === */
 .chart-grid-layout {
   display: grid;
-  grid-template-columns: repeat(12, 1fr); /
+  grid-template-columns: repeat(12, 1fr); 
   grid-auto-rows: minmax(240px, auto);
-  gap: 1.25rem; /* 🔹 카드 간 간격 통일 */
-  padding: 0 2.5rem 2rem; 
+  gap: 1rem; 
+  padding-bottom: 0.8rem;
   width: 100%;
   box-sizing: border-box;
-}
-
-/* === 공용 카드 스타일 === */
-.chart-card {
-  background: rgba(255, 255, 255, 0.55);
-  border-radius: 1rem;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.05);
-  padding: 1.25rem 1.5rem;
-  backdrop-filter: blur(12px);
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  transition: transform 0.2s ease;
-}
-
-.chart-card:hover {
-  transform: translateY(-2px);
 }
 
 /* === 반응형 === */
@@ -31,14 +14,14 @@
   .chart-grid-layout {
     grid-template-columns: repeat(6, 1fr);
     gap: 1rem;
-    padding: 0 1.75rem 1.5rem;
+    padding: 0 0.5rem 0.9rem;
   }
 }
 
 @media (max-width: 768px) {
   .chart-grid-layout {
     grid-template-columns: 1fr;
-    gap: 0.8rem;
-    padding: 0 1.25rem 1.25rem;
+    gap: 0.6rem;
+    padding: 0 0.5rem 0.9rem;
   }
 }
