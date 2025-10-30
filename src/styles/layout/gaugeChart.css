@@ -1,66 +1,121 @@
-/* 공통 */
+
 .gauge-container {
-  width: clamp(10rem, 40vw, 12.5rem); /* 160px ~ 200px */
+  width: clamp(10rem, 40vw, 12.5rem); /* 160~200px */
   text-align: center;
   user-select: none;
   position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 0.4rem;
 }
 
-/* 중앙 값 */
+/* 중앙 값 (반원형 게이지 전용) */
 .gauge-value {
   position: absolute;
-  top: 55%;
+  top: 70%;
   left: 50%;
   transform: translate(-50%, -50%);
-  font-size: clamp(1.25rem, 2.2vw, 1.75rem); /* 20px ~ 28px */
+  font-size: clamp(1.25rem, 2.2vw, 1.75rem);
   font-weight: 700;
   color: #111827;
   margin: 0;
   pointer-events: none;
 }
 
-/* bar 게이지 */
+/* 라벨 (옵션) */
+.gauge-label {
+  font-size: clamp(0.9rem, 1.2vw, 1rem);
+  font-weight: 600;
+  color: #1f2937;
+  margin-bottom: 0.25rem;
+}
+
+/*  범례 (Legend) */
+.gauge-legend {
+  list-style: none;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 0.7rem;
+  padding: 0;
+  margin: 0.25rem 0 0.5rem 0;
+  font-size: 0.8rem;
+  color: #6b7280;
+}
+
+.gauge-legend li {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.dot.normal {
+  background: #7b61ff;
+}
+.dot.warn {
+  background: #facc15;
+}
+.dot.danger {
+  background: #ef4444;
+}
+
+/*  Bar 타입 게이지*/
 .gauge-bar-container {
   width: 100%;
-  padding: 0.5rem 0; /* 8px */
+  padding: 0.5rem 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.5rem;
 }
 
 .gauge-bar-label {
   color: #6b7280;
-  font-size: clamp(0.8125rem, 1vw, 0.875rem); /* 13px ~ 14px */
+  font-size: clamp(0.8125rem, 1vw, 0.875rem);
   font-weight: 500;
-  margin-bottom: 0.5rem; /* 8px */
+  margin-bottom: 0.25rem;
 }
 
 .gauge-bar-wrapper {
   display: flex;
   align-items: center;
-  gap: clamp(0.5rem, 1vw, 0.75rem); /* 8px ~ 12px */
+  gap: clamp(0.5rem, 1vw, 0.75rem);
+  width: 100%;
 }
 
 .gauge-bar-track {
   flex: 1;
   height: 0.625rem; /* 10px */
-  border-radius: 0.625rem; /* 10px */
-  overflow: hidden;
+  border-radius: 9999px;
   background: rgba(229, 231, 235, 0.8);
+  overflow: hidden;
+  position: relative;
 }
 
 .gauge-bar-progress {
   height: 100%;
-  border-radius: 0.625rem; /* 10px */
+  border-radius: inherit;
   transition: background 0.4s ease, width 0.8s ease-out;
 }
 
 .gauge-bar-value {
   color: #111827;
-  font-size: clamp(0.875rem, 1.1vw, 1rem); /* 14px ~ 16px */
+  font-size: clamp(0.875rem, 1.1vw, 1rem);
   font-weight: 700;
   min-width: 2.8125rem; /* 45px */
   text-align: right;
 }
 
-/* 상태별 색상 */
+/* 상태별 색상*/
 .gauge-bar-container.normal .gauge-bar-progress {
   background: #7b61ff;
 }
@@ -71,10 +126,18 @@
   background: #ef4444;
 }
 
-
-/* 작은 화면 보정 */
-@media (max-width: 360px) {
+/*  작은 화면 보정*/
+@media (max-width: 480px) {
   .gauge-container {
-    width: 10rem;
+    width: 9.5rem;
+  }
+
+  .gauge-value {
+    font-size: 1.1rem;
+    top: 60%;
+  }
+
+  .gauge-bar-label {
+    font-size: 0.75rem;
   }
 }
