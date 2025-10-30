@@ -34,9 +34,9 @@ interface ChartProps {
 const DEFAULT_COLORS = [
   "#7B61FF",
   "#FF928A",
-  "#60A5FA",
   "#34D399",
   "#FBBF24",
+  "#60A5FA",
 ];
 
 /** 공통 폰트 */
