@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Chart from "../../components/chart/ChartComponent";
 import trendUp from "../../assets/icon/trend-up.svg";
 import trendDown from "../../assets/icon/trend-down.svg";
@@ -7,6 +7,8 @@ import "../../styles/session/session-dashboard.css";
 import GaugeChart from "../../components/chart/GaugeChart";
 import DeadlockModal from "../../components/session/DeadlockModal";
 import type { DeadlockDetail } from "../../components/session/DeadlockModal";
+import WidgetCard from "../../components/util/WidgetCard";
+
 
 
 /** 더미 데이터 */
@@ -128,6 +130,43 @@ export default function SessionDashboard() {
   });
 
   const dashboard = data || mockData;
+ 
+// 차트 움직임 확인용 
+  const [sessionTrend, setSessionTrend] = useState(dashboard.charts.sessionTrend);
+useEffect(() => {
+  const interval = setInterval(() => {
+    setSessionTrend((prev: any) => {
+      // 현재 시각 구하기
+      const now = new Date();
+      const hh = now.getHours().toString().padStart(2, "0");
+      const mm = now.getMinutes().toString().padStart(2, "0");
+      const ss = now.getSeconds().toString().padStart(2, "0");
+
+      // 새 시각 (5초 단위로 업데이트)
+      const newTimeLabel = `${hh}:${mm}:${ss}`;
+
+      // ✅ 1️⃣ 시리즈 데이터 업데이트 (좌측 shift, 우측 push)
+      const updatedSeries = prev.series.map((s: any) => ({
+        ...s,
+        data: [...s.data.slice(1), Math.max(0, s.data.at(-1) + Math.floor(Math.random() * 5 - 2))],
+      }));
+
+      // x축 카테고리도 동일하게 shift → push
+      const newCategories = [...prev.categories.slice(1), newTimeLabel];
+
+      // 반환 (새 series + categories)
+      return {
+        ...prev,
+        series: updatedSeries,
+        categories: newCategories,
+      };
+    });
+  }, 5000); // 5초마다 갱신
+
+  return () => clearInterval(interval);
+}, []);
+
+
 
   return (
     <div className="session-db-dashboard">
@@ -169,30 +208,24 @@ export default function SessionDashboard() {
 
       {/*  메인 차트  */}
       <div className="session-db-chart-grid">
-        <div className="session-db-chart-card">
+        <WidgetCard title="Session State Trend (Realtime Dummy)">
           <Chart
             type="area"
-            titleOptions={{ text: "Session State Trend (Last 30 Minutes)" }}
-            series={dashboard.charts.sessionTrend.series}
-            categories={dashboard.charts.sessionTrend.categories}
-            colors={["#7B61FF", "#9AA0F7", "#FF9FAE"]}
-            height={250}
+            series={sessionTrend.series}
+            categories={sessionTrend.categories}
           />
-        </div>
+        </WidgetCard>
 
-        <div className="session-db-chart-card">
+        <WidgetCard title="Wait Event Type Ratio Trend (Last 15 Minutes)">
           <Chart
             type="column"
-            titleOptions={{ text: "Wait Event Type Ratio Trend (Last 15 Minutes)" }}
             series={dashboard.charts.waitEvent.series}
             categories={dashboard.charts.waitEvent.categories}
-            colors={["#7B61FF", "#FF928A", "#FFD66B", "#9BE7C4"]}
-            height={250}
             isStacked={true}
           />
-        </div>
+        </WidgetCard>
 
-        <div className="session-db-chart-card">
+        <WidgetCard title="Database Connection Usage">
             <p className="session-db-connection-title">Database Connection Usage</p>
           <div className="session-db-connection-content">
             <div className="session-db-connection-chart">
@@ -226,43 +259,39 @@ export default function SessionDashboard() {
             type="line"
             series={[{ name: "Usage", data: [6, 5, 4, 3, 2, 4, 5] }]}
             categories={dashboard.charts.sessionTrend.categories}
-            colors={["#7B61FF"]}
             height={100}
           />
-        </div>
+        </WidgetCard>
 
-        <div className="session-db-chart-card">
+        <WidgetCard title="Avg Transaction Duration Trend (Last 30 Minutes)">
           <Chart
             type="line"
-            titleOptions={{ text: "Avg Transaction Duration Trend (Last 30 Minutes)" }}
             series={[{ name: "Avg Tx Duration", data: dashboard.charts.txDuration.data }]}
             categories={dashboard.charts.sessionTrend.categories}
             colors={["#8979FF"]}
             height={250}
           />
-        </div>
+        </WidgetCard>
 
-        <div className="session-db-chart-card">
+        <WidgetCard title="Avg Lock Wait Time (Last 30 Minutes)">
           <Chart
             type="line"
-            titleOptions={{ text: "Avg Lock Wait Time (Last 30 Minutes)" }}
             series={[{ name: "Lock Wait", data: dashboard.charts.lockWait.data }]}
             categories={dashboard.charts.sessionTrend.categories}
             colors={["#9AA0F7"]}
             height={250}
           />
-        </div>
+        </WidgetCard>
 
-        <div className="session-db-chart-card">
+        <WidgetCard title="Top Users by Session Count">
           <Chart
             type="bar"
-            titleOptions={{ text: "Top Users by Session Count" }}
             series={[{ name: "Session Count", data: dashboard.charts.topUsers.data }]}
             categories={["app_user", "batch_service", "admin_user", "report_user"]}
             colors={["#7B61FF"]}
             height={250}
           />
-        </div>
+        </WidgetCard>
       </div>
 
       {/*  Deadlock 섹션  */}

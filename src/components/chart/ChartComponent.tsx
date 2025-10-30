@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import ReactApexChart from "react-apexcharts";
 
+/** 지원 차트 타입 */
 export type ChartType =
   | "column"
   | "line"
@@ -11,17 +12,11 @@ export type ChartType =
   | "scatter"
   | "radialBar";
 
+/** 컴포넌트 Props */
 interface ChartProps {
   type: ChartType;
   series: ApexAxisChartSeries | ApexNonAxisChartSeries;
   categories?: string[] | number[];
-  titleOptions?: {
-    text?: string;
-    align?: "left" | "center" | "right";
-    color?: string;
-    fontSize?: string;
-    fontWeight?: number;
-  };
   colors?: string[];
   customOptions?: ApexCharts.ApexOptions;
   width?: number | string;
@@ -35,15 +30,26 @@ interface ChartProps {
   tooltipFormatter?: (value: number) => string;
 }
 
+/** 공통 색상 팔레트 */
+const DEFAULT_COLORS = [
+  "#7B61FF",
+  "#FF928A",
+  "#60A5FA",
+  "#34D399",
+  "#FBBF24",
+];
+
+/** 공통 폰트 */
+const FONT_FAMILY = 'var(--font-family, "Pretendard", sans-serif)';
+
 export default function Chart({
   type,
   series,
   categories,
-  titleOptions,
-  colors,
+  colors = DEFAULT_COLORS,
   customOptions,
   width = "100%",
-  height = 300,
+  height = 250,
   showGrid = true,
   showLegend = true,
   showToolbar = false,
@@ -65,50 +71,46 @@ export default function Chart({
           | "radialBar");
 
   const baseOptions = useMemo<ApexCharts.ApexOptions>(() => {
-    const safeTitle = {
-      text: titleOptions?.text,
-      align: titleOptions?.align ?? "left",
-      offsetY: 0,
-      style: {
-        color: titleOptions?.color ?? "#6b7280",
-        fontSize: titleOptions?.fontSize ?? "15px",
-        fontWeight: titleOptions?.fontWeight ?? 600,
-      },
-    };
-
-    const safeSubtitle = { text: undefined as any, offsetY: 0 };
 
     const options: ApexCharts.ApexOptions = {
       chart: {
         type: normalizedType,
         toolbar: { show: showToolbar },
         background: "transparent",
-        fontFamily: "Pretendard, sans-serif",
-        animations: { enabled: true },
+        fontFamily: FONT_FAMILY,
+        animations: { enabled: false },
         stacked: isStacked,
         redrawOnParentResize: true,
         redrawOnWindowResize: true,
+        
       },
       theme: { mode: "light" },
-      title: safeTitle,
-      subtitle: safeSubtitle,
       colors,
       grid: {
         show: showGrid,
-        borderColor: "#E5E7EB",
+        borderColor: "rgba(0,0,0,0.08)",
         strokeDashArray: 4,
       },
       legend: {
         show: showLegend,
         position: "bottom",
-        labels: { colors: "#374151" },
+        fontSize: "12px",
+        labels: { colors: "#4B5563" },
+        itemMargin: { horizontal: 10, vertical: 5 },
       },
       tooltip: {
         theme: "light",
+        style: {
+          fontSize: "13px",
+          fontFamily: FONT_FAMILY,
+        },
+        fillSeriesColor: false,
+        marker: { show: true },
         y: {
           formatter:
             tooltipFormatter ?? ((v: number) => (v ?? 0).toLocaleString()),
         },
+        custom: undefined, // 필요시 커스텀 추가 가능
       },
       dataLabels: { enabled: false },
       stroke: {
@@ -117,16 +119,22 @@ export default function Chart({
       },
       xaxis: {
         categories,
-        labels: { style: { colors: "#6B7280" } },
+        labels: {
+          style: {
+            colors: "#6B7280",
+            fontFamily: FONT_FAMILY,
+            fontSize: "11px",
+          },
+        },
         axisBorder: { color: "#D1D5DB" },
         axisTicks: { color: "#D1D5DB" },
-        ...(xaxisOptions ?? {}),
+        ...xaxisOptions,
       },
       yaxis:
         (yaxisOptions as any) ??
         ({
           labels: {
-            style: { colors: "#6B7280" },
+            style: { colors: "#6B7280", fontFamily: FONT_FAMILY },
             formatter: (val: number) =>
               val >= 1_000_000
                 ? `${(val / 1_000_000).toFixed(1)}M`
@@ -135,16 +143,56 @@ export default function Chart({
                 : (val ?? 0).toLocaleString(),
           },
         } as ApexYAxis),
+
+      /**  로딩 상태 (NoData) 애니메이션 */
       noData: {
-        text: "Loading...",
+        text: "Loading…",
         align: "center",
-        style: { fontSize: "12px" },
+        verticalAlign: "middle",
+        style: {
+          fontSize: "14px",
+          fontFamily: FONT_FAMILY,
+          color: "#9CA3AF",
+          animation: "fadeBlink 1.4s ease-in-out infinite",
+        } as any,
       },
+
+      /** 반응형 설정 */
+      responsive: [
+        {
+          breakpoint: 768,
+          options: {
+            legend: { show: false },
+            title: {
+              style: {
+                fontSize: "13px",
+              },
+            },
+            xaxis: {
+              labels: { show: true, rotate: -30, fontSize: "10px" },
+            },
+            yaxis: {
+              labels: { show: true, fontSize: "10px" },
+            },
+          },
+        },
+        {
+          breakpoint: 480,
+          options: {
+            legend: { show: false },
+            chart: { height: 220 },
+            title: {
+              style: {
+                fontSize: "12px",
+              },
+            },
+          },
+        },
+      ],
     };
 
-    // Chart Type별 세부 설정
+    /**  타입별 세부 설정 */
     switch (type) {
-      // Stacked / 일반 막대
       case "bar":
       case "column":
         options.plotOptions = {
@@ -155,15 +203,13 @@ export default function Chart({
             dataLabels: {
               total: {
                 enabled: isStacked,
-                style: { fontSize: "13px", fontWeight: 900 },
+                style: { fontSize: "13px", fontWeight: 600 },
               },
             },
           },
         };
-        options.stroke = { show: false };
         break;
 
-      // Area Chart 
       case "area":
         options.stroke = { curve: "smooth", width: 2 };
         options.fill = {
@@ -176,37 +222,14 @@ export default function Chart({
             stops: [0, 100],
           },
         };
-
-        //  통일된 색상 팔레트
-        options.colors = ["#7B61FF", "#FF928A", "#60A5FA"];
-
         options.markers = {
           size: 4,
           strokeWidth: 2,
           strokeColors: "#fff",
           hover: { size: 6 },
         };
-
-        options.tooltip = {
-          theme: "light",
-          style: { fontSize: "13px", fontFamily: "Inter, sans-serif" },
-          marker: { show: true },
-        };
-
-        options.grid = {
-          borderColor: "rgba(0,0,0,0.06)",
-          strokeDashArray: 4,
-        };
-
-        options.yaxis = {
-          labels: {
-            style: { colors: "rgba(0,0,0,0.5)" },
-            formatter: (val: number) => `${Math.round(val)}`,
-          },
-        };
         break;
 
-      // Donut / Pie
       case "donut":
       case "pie":
         options.labels = categories as string[];
@@ -217,7 +240,6 @@ export default function Chart({
         };
         break;
 
-      // Radial Gauge
       case "radialBar":
         options.plotOptions = {
           radialBar: {
@@ -246,7 +268,7 @@ export default function Chart({
         break;
     }
 
-    // 사용자 옵션 병합
+    /** 사용자 옵션 병합 */
     return {
       ...options,
       ...customOptions,
@@ -255,12 +277,9 @@ export default function Chart({
       fill: { ...options.fill, ...customOptions?.fill },
       stroke: { ...options.stroke, ...customOptions?.stroke },
       grid: { ...options.grid, ...customOptions?.grid },
-      title: { ...safeTitle, ...(customOptions?.title ?? {}) },
-      subtitle: { ...safeSubtitle, ...(customOptions?.subtitle ?? {}) },
     };
   }, [
     type,
-    titleOptions,
     colors,
     categories,
     showGrid,
@@ -275,6 +294,15 @@ export default function Chart({
 
   return (
     <div style={{ width, height }}>
+      <style>
+        {`
+          @keyframes fadeBlink {
+            0% { opacity: 0.2; }
+            50% { opacity: 1; }
+            100% { opacity: 0.2; }
+          }
+        `}
+      </style>
       <ReactApexChart
         options={baseOptions}
         series={series}
