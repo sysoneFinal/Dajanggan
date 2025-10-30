@@ -3,7 +3,9 @@ import Chart from "../../components/chart/ChartComponent";
 import GaugeChart from "../../components/chart/GaugeChart";
 import "../../styles/engine/bgwriter.css";
 import WidgetCard from "../../components/util/WidgetCard";
+import ChartGridLayout from "../../components/layout/ChartGridLayout";
 
+/** BGWriter API 응답 타입 */
 interface BGWriterData {
     backendFlushRatio: {
         value: number;
@@ -114,12 +116,6 @@ const getGaugeStatus = (value: number): "normal" | "warning" | "critical" => {
     return "critical";
 };
 
-const getStatusText = (value: number): string => {
-    if (value < 15) return "정상";
-    if (value < 30) return "주의";
-    return "위험";
-};
-
 /** 메인 컴포넌트 */
 export default function BGWriterPage() {
     const { data } = useQuery({
@@ -131,39 +127,32 @@ export default function BGWriterPage() {
     const dashboard = data || mockData;
 
     const gaugeStatus = getGaugeStatus(dashboard.backendFlushRatio.value);
-    const statusText = getStatusText(dashboard.backendFlushRatio.value);
 
     return (
         <div className="bgwriter-page">
-            {/* 메인 차트 그리드 */}
-            <div className="bgwriter-chart-grid">
+            {/* 첫 번째 행: 3개 카드 (4+4+4=12) */}
+            <ChartGridLayout>
                 {/* Backend Flush 비율 */}
-                <WidgetCard title="Backend Flush 비율">
-                    <div className="bgwriter-gauge-container">
-                        <div className="bgwriter-status-badge">
-                            <span className={`status-text ${gaugeStatus}`}>{statusText}</span>
-                        </div>
+                <WidgetCard title="Backend Flush 비율" span={2}>
+                    <div className="session-db-connection-chart">
+                        <ul>
+                            <li><span className="dot normal"></span>정상</li>
+                            <li><span className="dot warn"></span>경고</li>
+                            <li><span className="dot danger"></span>위험</li>
+                        </ul>
+
+                        <div className="bgwriter-gauge-container">
                         <GaugeChart
                             value={dashboard.backendFlushRatio.value}
                             status={gaugeStatus}
                             type="semi-circle"
                         />
                     </div>
-                </WidgetCard>
-
-                {/* BGWriter 활동량 추세 */}
-                <WidgetCard title="BGWriter 활동량 추세 (Last 24 Hours)">
-                    <Chart
-                        type="line"
-                        series={[{ name: "Buffers Clean/sec", data: dashboard.cleanRate.data }]}
-                        categories={dashboard.cleanRate.categories}
-                        colors={["#8B5CF6"]}
-                        height={250}
-                    />
+                    </div>
                 </WidgetCard>
 
                 {/* 버퍼 플러시 주체별 비율 */}
-                <WidgetCard title="버퍼 플러시 주체별 비율 (Last 24 Hours)">
+                <WidgetCard title="버퍼 플러시 주체별 비율 (Last 24 Hours)" span={5}>
                     <Chart
                         type="area"
                         series={[
@@ -171,39 +160,13 @@ export default function BGWriterPage() {
                             { name: "Clean", data: dashboard.bufferFlushRatio.clean },
                         ]}
                         categories={dashboard.bufferFlushRatio.categories}
-                        colors={["#3B82F6", "#10B981"]}
-                        height={250}
-                    />
-                </WidgetCard>
-
-                {/* Clean 스캔 상한 도달 추이 */}
-                <WidgetCard title="Clean 스캔 상한 도달 추이 (Last 24 Hours)">
-                    <Chart
-                        type="line"
-                        series={[{ name: "Maxwritten Clean", data: dashboard.maxwrittenClean.data }]}
-                        categories={dashboard.maxwrittenClean.categories}
-                        colors={["#F59E0B"]}
-                        height={250}
-                    />
-                </WidgetCard>
-
-                {/* buffers_backend_fsync 추이 */}
-                <WidgetCard title="Buffers Backend Fsync 추이 (Last 24 Hours)">
-                    <div className="bgwriter-fsync-status">
-                        <div className="bgwriter-status-badge">
-                        </div>
-                    </div>
-                    <Chart
-                        type="line"
-                        series={[{ name: "Fsync Count", data: dashboard.backendFsync.data }]}
-                        categories={dashboard.backendFsync.categories}
-                        colors={["#EF4444"]}
+                        colors={["#8E79FF", "#FEA29B"]}
                         height={250}
                     />
                 </WidgetCard>
 
                 {/* BGWriter vs Checkpoint 쓰기 비중 */}
-                <WidgetCard title="BGWriter vs Checkpoint 쓰기 비중 (Last 24 Hours)">
+                <WidgetCard title="BGWriter vs Checkpoint 쓰기 비중 (Last 24 Hours)" span={5}>
                     <Chart
                         type="line"
                         series={[
@@ -211,11 +174,48 @@ export default function BGWriterPage() {
                             { name: "Checkpoint", data: dashboard.bgwriterVsCheckpoint.checkpoint },
                         ]}
                         categories={dashboard.bgwriterVsCheckpoint.categories}
-                        colors={["#8B5CF6", "#F59E0B"]}
+                        colors={["#8E79FF", "#FEA29B"]}
                         height={250}
                     />
                 </WidgetCard>
-            </div>
+
+            </ChartGridLayout>
+
+            {/* 두 번째 행: 3개 카드 (4+4+4=12) */}
+            <ChartGridLayout>
+            {/* BGWriter 활동량 추세 */}
+            <WidgetCard title="BGWriter 활동량 추세 (Last 24 Hours)" span={4}>
+                <Chart
+                    type="line"
+                    series={[{ name: "Buffers Clean/sec", data: dashboard.cleanRate.data }]}
+                    categories={dashboard.cleanRate.categories}
+                    colors={["#8E79FF"]}
+                    height={250}
+                />
+            </WidgetCard>
+                {/* Clean 스캔 상한 도달 추이 */}
+                <WidgetCard title="Clean 스캔 상한 도달 추이 (Last 24 Hours)" span={4}>
+                    <Chart
+                        type="line"
+                        series={[{ name: "Maxwritten Clean", data: dashboard.maxwrittenClean.data }]}
+                        categories={dashboard.maxwrittenClean.categories}
+                        colors={["#8E79FF"]}
+                        height={250}
+                    />
+                </WidgetCard>
+
+                {/* buffers_backend_fsync 추이 */}
+                <WidgetCard title="Buffers Backend Fsync 추이 (Last 24 Hours)" span={4}>
+                    <Chart
+                        type="line"
+                        series={[{ name: "Fsync Count", data: dashboard.backendFsync.data }]}
+                        categories={dashboard.backendFsync.categories}
+                        colors={["#8E79FF"]}
+                        height={250}
+                    />
+                </WidgetCard>
+
+            </ChartGridLayout>
         </div>
     );
 }
