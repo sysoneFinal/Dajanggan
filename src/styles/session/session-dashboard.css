@@ -23,14 +23,10 @@
   transition: all 0.2s ease;
   height: 110px; 
   backdrop-filter: blur(12px);
-}
-.session-db-summary-cards .session-db-summary-card:nth-child(odd) {
-  background: rgba(255, 255, 255, 0.6);
+  background: rgba(255, 255, 255, 0.45);
+
 }
 
-.session-db-summary-cards .session-db-summary-card:nth-child(even) {
-  background: rgba(255, 255, 255, 0.2);
-}
 
 
 .session-db-summary-card .label {
@@ -94,10 +90,10 @@
 
 
 /* 차트 그리드 */
-.session-db-chart-grid {
+.session-db-chart-grid,
+.session-db-bottom-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  grid-auto-rows: minmax(300px, auto);
   gap: 0.8rem;
   width: 100%;
 }
@@ -116,14 +112,8 @@
   overflow: hidden;
   backdrop-filter: blur(12px);
   justify-content: center;
+  background: rgba(255, 255, 255, 0.45);
 
-}
-
-.session-db-chart-grid .session-db-chart-card:nth-child(odd) {
-  background: rgba(255, 255, 255, 0.6);
-}
-.session-db-chart-grid .session-db-chart-card:nth-child(even) {
-  background: rgba(255, 255, 255, 0.2);
 }
 
 /* Connection Usage 카드 */
@@ -318,4 +308,42 @@
   font-size: 0.8rem;
   margin-right: 3px;
   opacity: 0.7;
+}
+
+
+/* 태블릿 (화면 너비 1024px 이하) */
+@media (max-width: 1024px) {
+  .session-db-chart-grid,
+  .session-db-bottom-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .session-db-summary-cards {
+    flex-wrap: wrap;
+  }
+  .session-db-summary-card {
+    flex: 1 1 45%;
+  }
+}
+
+/* 모바일 (화면 너비 768px 이하) */
+@media (max-width: 768px) {
+  .session-db-chart-grid,
+  .session-db-bottom-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .session-db-summary-cards {
+    flex-direction: column;
+  }
+  .session-db-summary-card {
+    width: 100%;
+  }
+
+  .deadlock-content {
+    flex-direction: column;
+  }
+  .recent-deadlocks-mini {
+    flex: unset;
+  }
 }
