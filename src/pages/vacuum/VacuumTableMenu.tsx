@@ -1,8 +1,6 @@
-// src/components/VacuumTableMenu.tsx
 import { useEffect, useMemo, useRef, useState } from "react";
 import "/src/styles/vacuum/VacuumPage.css";
 
-/** ─ TableDropdown: 내부 전용 ─ */
 function TableDropdown({
   tables,
   value,
@@ -76,7 +74,10 @@ type VacuumTableMenuProps = {
   onChange: (table: string) => void; // 선택 변경 콜백
   dbName?: string;
   autovacuumEnabled?: boolean;
-  lastVacuumText?: string;        // "YYYY-MM-DD HH:mm"
+  lastVacuumText?: string; 
+
+  onToggle?: () => void;
+  expanded?: boolean;
 };
 
 export default function VacuumTableMenu({
@@ -86,6 +87,8 @@ export default function VacuumTableMenu({
   dbName = "appdb",
   autovacuumEnabled = true,
   lastVacuumText,
+  onToggle,
+  expanded=true,
 }: VacuumTableMenuProps) {
   return (
     <section className="vd-card vd-card--headerbar">
@@ -107,8 +110,13 @@ export default function VacuumTableMenu({
           {lastVacuumText && <span className="vd-badge">Last VACUUM: {lastVacuumText}</span>}
         </div>
 
-        <button className="vd-backbtn" onClick={() => history.back()}>
-          ← Back
+           <button
+          type="button"
+          className="vd-backbtn"
+         onClick={() => { console.log("[VacuumTableMenu] toggle"); onToggle?.(); }}
+          aria-expanded={expanded}
+        >
+          {expanded ? "▲" : "▼"}
         </button>
       </div>
     </section>

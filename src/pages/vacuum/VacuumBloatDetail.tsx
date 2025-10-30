@@ -3,6 +3,11 @@ import Chart from "../../components/chart/ChartComponent";
 import "/src/styles/vacuum/VacuumPage.css";
 import VacuumTableMenu from "./VacuumTableMenu";
 
+type Props = {
+  data?: BloatDetailData;
+  expanded?: boolean;
+  onToggle?: () => void;
+};
 
 /* ---------- 타입/데모데이터 ---------- */
 type BloatDetailData = {
@@ -46,7 +51,7 @@ const demo: BloatDetailData = {
 
 
 /* ---------- 페이지 ---------- */
-export default function BloatDetailPage({ data = demo }: { data?: BloatDetailData }) {
+export default function BloatDetailPage({ data = demo, onToggle, expanded=true, }:Props) {
   const bloatTrendSeries = useMemo(() => [{ name: "Bloat %", data: data.bloatTrend.data }], [data]);
   const deadTuplesSeries = useMemo(() => [{ name: "Dead Tuples", data: data.deadTuplesTrend.data }], [data]);
   const indexBloatSeries = useMemo(
@@ -75,9 +80,12 @@ export default function BloatDetailPage({ data = demo }: { data?: BloatDetailDat
             dbName="appdb"
             autovacuumEnabled={true}
             lastVacuumText="2025-10-20 11:30"
+            onToggle={onToggle}
+            expanded={expanded}
           />
       </div>
       {/* ---------- KPI ---------- */}
+      <div className={`vd-collapse ${expanded ? "is-open" : ""}`} aria-hidden={!expanded}  style={{ display: expanded ? "block" : "none" }}  >
       <div className="vd-grid">
         <section className="vd-card2">
           <header className="vd-card2__header"><h5>Bloat %</h5></header>
@@ -97,7 +105,7 @@ export default function BloatDetailPage({ data = demo }: { data?: BloatDetailDat
       </div>
 
       {/* ---------- 차트 ---------- */}
-      <div className="vd-grid4">
+      <div className="vd-grid3">
         {/* Bloat % Trend */}
         <section className="vd-card vd-chart">
           <header className="vd-card__header">
@@ -161,6 +169,7 @@ export default function BloatDetailPage({ data = demo }: { data?: BloatDetailDat
             }}
           />
         </section>
+      </div>
       </div>
     </div>
   );

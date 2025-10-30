@@ -1,6 +1,8 @@
-import { useMemo } from "react";
+import { useMemo, useState, useRef } from "react";
 import Chart from "../../components/chart/ChartComponent";
 import "/src/styles/vacuum/VacuumPage.css";
+import BloatDetailPage from "./VacuumBloatDetail";
+
 
 /* ---------- 타입/데모데이터 ---------- */
 
@@ -53,6 +55,18 @@ const demo: DashboardData = {
 
 /* ---------- 페이지 ---------- */
 export default function VacuumPage({ data = demo }: { data?: DashboardData }) {
+    const [expanded, setExpanded] = useState(false); // 드릴다운 펼침상태
+    const detailRef = useRef<HTMLDivElement>(null);
+
+    const toggle = () => {
+    setExpanded((prev) => {
+      const next = !prev;
+      if (next) setTimeout(() => detailRef.current?.scrollIntoView({ behavior: "smooth" }), 0);
+      return next;
+    });
+  };
+
+
     const WARN_H = 4;
     const ALERT_H = 6;
 
@@ -230,6 +244,9 @@ export default function VacuumPage({ data = demo }: { data?: DashboardData }) {
             />
         </section>
       </div>
+      <div ref={detailRef} className="mt-8" />
+
+     <BloatDetailPage onToggle={toggle} expanded={expanded} />
     </div>
   );
 }
