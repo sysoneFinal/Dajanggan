@@ -1,6 +1,8 @@
 import { useState } from "react";
 import Chart from "../../components/chart/ChartComponent";
 import GaugeChart from "../../components/chart/GaugeChart";
+import WidgetCard from "../../components/util/WidgetCard";
+import ChartGridLayout from "../../components/layout/ChartGridLayout";
 import "../../styles/system/cpu.css";
 
 // API 응답 전체 구조
@@ -96,279 +98,168 @@ const dummyData: CPUData = {
 
 // Gauge 색상 결정
 const getGaugeColor = (value: number): string => {
-    if (value < 70) return "#10B981"; // 녹색 (정상)
-    if (value < 90) return "#F59E0B"; // 주황색 (주의)
-    return "#EF4444"; // 빨간색 (위험)
+    if (value < 70) return "#8E79FF"; // 녹색 (정상)
+    if (value < 90) return "#FFD66B"; // 주황색 (주의)
+    return "#FEA29B"; // 빨간색 (위험)
 };
-
-// Gauge 상태 텍스트
-const getStatusText = (value: number): string => {
-    if (value < 70) return "정상";
-    if (value < 90) return "주의";
-    return "위험";
-};
-
-// 차트 카드 컴포넌트
-interface ChartCardProps {
-    title: string;
-    statusBadge?: string;
-    children: React.ReactNode;
-    footer?: React.ReactNode;
-}
-
-function ChartCard({ title, statusBadge, children, footer }: ChartCardProps) {
-    return (
-        <div className="chart-card">
-            {/* 헤더 */}
-            <div className="chart-header">
-                <div className="chart-title-group">
-                    <h3 className="chart-title">{title}</h3>
-                </div>
-                {statusBadge && (
-                    <span
-                        className={`status-badge ${
-                            statusBadge === "정상"
-                                ? "status-normal"
-                                : statusBadge === "주의"
-                                    ? "status-warning"
-                                    : "status-danger"
-                        }`}
-                    >
-                        {statusBadge}
-                    </span>
-                )}
-            </div>
-
-            {/* 내용 */}
-            <div className="chart-content">{children}</div>
-
-            {/* 푸터 */}
-            {footer && <div className="chart-footer">{footer}</div>}
-        </div>
-    );
-}
-
-// 통계 아이템 컴포넌트
-interface StatItemProps {
-    label: string;
-    value: string;
-    color?: string;
-}
-
-function StatItem({ label, value, color }: StatItemProps) {
-    return (
-        <div className="stat-item">
-            <span className="stat-label" style={{ color }}>
-                {label}
-            </span>
-            <span className="stat-value">{value}</span>
-        </div>
-    );
-}
 
 // 메인 페이지
 export default function CPUPage() {
     const [data] = useState<CPUData>(dummyData);
 
     const gaugeColor = getGaugeColor(data.cpuUsage.value);
-    const status = getStatusText(data.cpuUsage.value);
 
     return (
         <div className="cpu-page">
-            <div className="cpu-grid">
-                <div className="cpu-row">
-                    <ChartCard
-                        title="CPU 사용률"
-                        statusBadge={status}
-                    >
-                        <GaugeChart
-                            value={data.cpuUsage.value}
-                            type="semi-circle"
-                            color={gaugeColor}
-                            label={data.cpuUsage.description}
-                        />
-                    </ChartCard>
+            {/* 첫 번째 행: 게이지 + 2개 차트 */}
+            <ChartGridLayout>
+                <WidgetCard title="CPU 사용률" span={2}>
+                    <GaugeChart
+                        value={data.cpuUsage.value}
+                        type="semi-circle"
+                        color={gaugeColor}
+                    />
+                </WidgetCard>
 
-                    <ChartCard
-                        title="CPU 사용률 추이"
-                    >
-                        <Chart
-                            type="line"
-                            series={[{ name: "CPU 사용률 (%)", data: data.cpuUsageTrend.data }]}
-                            categories={data.cpuUsageTrend.categories}
-                            height={250}
-                            colors={["#3B82F6"]}
-                            showGrid={true}
-                            showLegend={false}
-                            xaxisOptions={{
-                                title: { text: "시간", style: { fontSize: "12px", color: "#6B7280" } },
-                            }}
-                            yaxisOptions={{
-                                title: { text: "사용률 (%)", style: { fontSize: "12px", color: "#6B7280" } },
-                                labels: { formatter: (val: number) => `${val}%` },
-                                min: 0,
-                                max: 100,
-                            }}
-                            tooltipFormatter={(value: number) => `${value}%`}
-                        />
-                    </ChartCard>
+                <WidgetCard title="CPU 사용률 추이" span={5}>
+                    <Chart
+                        type="line"
+                        series={[{ name: "CPU 사용률 (%)", data: data.cpuUsageTrend.data }]}
+                        categories={data.cpuUsageTrend.categories}
+                        height={250}
+                        colors={["#8E79FF"]}
+                        showGrid={true}
+                        showLegend={false}
+                        tooltipFormatter={(value: number) => `${value}%`}
+                    />
+                </WidgetCard>
 
-                    <ChartCard
-                        title="CPU 부하 유형별 분석"
-                    >
-                        <Chart
-                            type="line"
-                            series={[
-                                { name: "PostgreSQL Backend", data: data.cpuLoadTypes.postgresqlBackend },
-                                { name: "BGWriter", data: data.cpuLoadTypes.bgWriter },
-                                { name: "Auto Vacuum", data: data.cpuLoadTypes.autoVacuum },
-                                { name: "Checkpoint", data: data.cpuLoadTypes.checkpoint },
-                            ]}
-                            categories={data.cpuLoadTypes.categories}
-                            height={250}
-                            colors={["#3B82F6", "#10B981", "#F59E0B", "#A855F7"]}
-                            showGrid={true}
-                            showLegend={true}
-                            xaxisOptions={{
-                                title: { text: "시간", style: { fontSize: "12px", color: "#6B7280" } },
-                            }}
-                            yaxisOptions={{
-                                title: { text: "CPU (%)", style: { fontSize: "12px", color: "#6B7280" } },
-                                labels: { formatter: (val: number) => `${val}%` },
-                            }}
-                            tooltipFormatter={(value: number) => `${value}%`}
-                        />
-                    </ChartCard>
-                </div>
+                <WidgetCard title="CPU 부하 유형별 분석" span={5}>
+                    <Chart
+                        type="line"
+                        series={[
+                            { name: "PostgreSQL Backend", data: data.cpuLoadTypes.postgresqlBackend },
+                            { name: "BGWriter", data: data.cpuLoadTypes.bgWriter },
+                            { name: "Auto Vacuum", data: data.cpuLoadTypes.autoVacuum },
+                            { name: "Checkpoint", data: data.cpuLoadTypes.checkpoint },
+                        ]}
+                        categories={data.cpuLoadTypes.categories}
+                        height={250}
+                        colors={["#8E79FF", "#77B2FB", "#51DAA8", "#FEA29B"]}
+                        showGrid={true}
+                        showLegend={true}
+                        tooltipFormatter={(value: number) => `${value}%`}
+                    />
+                </WidgetCard>
+            </ChartGridLayout>
 
-                <div className="cpu-row">
-                    <ChartCard
-                        title="I/O Wait vs 디스크 Latency 상관관계"
-                        footer={
-                            <>
-                                <StatItem label="● 높은 상관관계 (I/O Wait > 30%)" value="" color="#EF4444" />
-                                <StatItem label="● 주의 상관관계 (I/O Wait 20-30%)" value="" color="#F59E0B" />
-                                <StatItem label="● 정상 상태" value="" color="#10B981" />
-                            </>
-                        }
-                    >
-                        <Chart
-                            type="scatter"
-                            series={[
-                                {
-                                    name: "정상 상태",
-                                    data: data.ioWaitVsLatency.normal
-                                },
-                                {
-                                    name: "주의 상관관계",
-                                    data: data.ioWaitVsLatency.warning
-                                },
-                                {
-                                    name: "높은 상관관계",
-                                    data: data.ioWaitVsLatency.danger
-                                },
-                            ]}
-                            height={250}
-                            colors={["#10B981", "#F59E0B", "#EF4444"]}
-                            showGrid={true}
-                            showLegend={false}
-                            xaxisOptions={{
-                                title: { text: "I/O Wait (%)", style: { fontSize: "12px", color: "#6B7280" } },
-                                labels: { formatter: (val: String) => `${val}%` },
-                                min: 0,
-                                max: 40,
-                            }}
-                            yaxisOptions={{
-                                title: { text: "Disk Latency (ms)", style: { fontSize: "12px", color: "#6B7280" } },
-                                labels: { formatter: (val: number) => `${val}ms` },
-                                min: 0,
-                                max: 50,
-                            }}
-                            customOptions={{
-                                markers: {
-                                    size: 6,
-                                    strokeWidth: 0,
+            {/* 두 번째 행: 3개 차트 */}
+            <ChartGridLayout>
+                <WidgetCard title="I/O Wait vs 디스크 Latency 상관관계" span={4}>
+                    <Chart
+                        type="scatter"
+                        series={[
+                            {
+                                name: "정상 상태",
+                                data: data.ioWaitVsLatency.normal
+                            },
+                            {
+                                name: "주의 상관관계",
+                                data: data.ioWaitVsLatency.warning
+                            },
+                            {
+                                name: "높은 상관관계",
+                                data: data.ioWaitVsLatency.danger
+                            },
+                        ]}
+                        height={250}
+                        colors={["#8E79FF", "#FFD66B", "#FEA29B"]}
+                        showGrid={true}
+                        showLegend={false}
+                        xaxisOptions={{
+                            title: { text: "I/O Wait (%)", style: { fontSize: "12px", color: "#6B7280" } },
+                            labels: { formatter: (val: String) => `${val}%` },
+                            min: 0,
+                            max: 40,
+                        }}
+                        yaxisOptions={{
+                            title: { text: "Disk Latency (ms)", style: { fontSize: "12px", color: "#6B7280" } },
+                            labels: { formatter: (val: number) => `${val}ms` },
+                            min: 0,
+                            max: 50,
+                        }}
+                        customOptions={{
+                            markers: {
+                                size: 6,
+                                strokeWidth: 0,
+                            }
+                        }}
+                        tooltipFormatter={(value: number) => `${value}`}
+                    />
+                </WidgetCard>
+
+                <WidgetCard title="사용자별 CPU 사용량" span={4}>
+                    <Chart
+                        type="bar"
+                        series={[
+                            { name: "CPU Time (ms)", data: data.cpuByUser.cpuTime }
+                        ]}
+                        categories={data.cpuByUser.users}
+                        height={250}
+                        colors={["#8E79FF"]}
+                        showGrid={true}
+                        showLegend={false}
+                        xaxisOptions={{
+                            title: { text: "CPU Time (ms)", style: { fontSize: "12px", color: "#6B7280" } },
+                        }}
+                        yaxisOptions={{
+                            title: { text: "사용자", style: { fontSize: "12px", color: "#6B7280" } },
+                        }}
+                        tooltipFormatter={(value: number) => `${value.toLocaleString()} ms`}
+                    />
+                </WidgetCard>
+
+                <WidgetCard title="대기 유형별 비중 변화 (100%)" span={4}>
+                    <Chart
+                        type="column"
+                        series={[
+                            { name: "CPU", data: data.waitEventDistribution.cpu },
+                            { name: "Client", data: data.waitEventDistribution.client },
+                            { name: "I/O", data: data.waitEventDistribution.io },
+                            { name: "Lock", data: data.waitEventDistribution.lock },
+                            { name: "Other", data: data.waitEventDistribution.other },
+                        ]}
+                        categories={data.waitEventDistribution.categories}
+                        height={250}
+                        colors={["#8E79FF", "#51DAA8", "#77B2FB", "#FEA29B", "#6B7280"]}
+                        showGrid={true}
+                        showLegend={true}
+                        isStacked={true}
+                        xaxisOptions={{
+                            title: { text: "시간", style: { fontSize: "12px", color: "#6B7280" } },
+                        }}
+                        yaxisOptions={{
+                            title: { text: "비중 (%)", style: { fontSize: "12px", color: "#6B7280" } },
+                            labels: { formatter: (val: number) => `${val}%` },
+                            min: 0,
+                            max: 100,
+                        }}
+                        customOptions={{
+                            chart: {
+                                stacked: true,
+                                stackType: "100%"
+                            },
+                            plotOptions: {
+                                bar: {
+                                    horizontal: false,
+                                    columnWidth: "70%"
                                 }
-                            }}
-                            tooltipFormatter={(value: number) => `${value}`}
-                        />
-                    </ChartCard>
-
-                    <ChartCard
-                        title="사용자별 CPU 사용량"
-                        footer={
-                            <>
-                                <StatItem
-                                    label="최대 사용자"
-                                    value={`${data.cpuByUser.users[0]} (${(data.cpuByUser.cpuTime[0] / 1000).toFixed(1)}초)`}
-                                />
-                            </>
-                        }
-                    >
-                        <Chart
-                            type="bar"
-                            series={[
-                                { name: "CPU Time (ms)", data: data.cpuByUser.cpuTime }
-                            ]}
-                            categories={data.cpuByUser.users}
-                            height={250}
-                            colors={["#A855F7"]}
-                            showGrid={true}
-                            showLegend={false}
-                            xaxisOptions={{
-                                title: { text: "CPU Time (ms)", style: { fontSize: "12px", color: "#6B7280" } },
-                            }}
-                            yaxisOptions={{
-                                title: { text: "사용자", style: { fontSize: "12px", color: "#6B7280" } },
-                            }}
-                            tooltipFormatter={(value: number) => `${value.toLocaleString()} ms`}
-                        />
-                    </ChartCard>
-
-                    <ChartCard
-                        title="대기 유형별 비중 변화 (100%)"
-                    >
-                        <Chart
-                            type="column"
-                            series={[
-                                { name: "CPU", data: data.waitEventDistribution.cpu },
-                                { name: "Client", data: data.waitEventDistribution.client },
-                                { name: "I/O", data: data.waitEventDistribution.io },
-                                { name: "Lock", data: data.waitEventDistribution.lock },
-                                { name: "Other", data: data.waitEventDistribution.other },
-                            ]}
-                            categories={data.waitEventDistribution.categories}
-                            height={250}
-                            colors={["#3B82F6", "#10B981", "#F59E0B", "#EF4444", "#6B7280"]}
-                            showGrid={true}
-                            showLegend={true}
-                            isStacked={true}
-                            xaxisOptions={{
-                                title: { text: "시간", style: { fontSize: "12px", color: "#6B7280" } },
-                            }}
-                            yaxisOptions={{
-                                title: { text: "비중 (%)", style: { fontSize: "12px", color: "#6B7280" } },
-                                labels: { formatter: (val: number) => `${val}%` },
-                                min: 0,
-                                max: 100,
-                            }}
-                            customOptions={{
-                                chart: {
-                                    stacked: true,
-                                    stackType: "100%"
-                                },
-                                plotOptions: {
-                                    bar: {
-                                        horizontal: false,
-                                        columnWidth: "70%"
-                                    }
-                                }
-                            }}
-                            tooltipFormatter={(value: number) => `${value}%`}
-                        />
-                    </ChartCard>
-                </div>
-            </div>
+                            }
+                        }}
+                        tooltipFormatter={(value: number) => `${value}%`}
+                    />
+                </WidgetCard>
+            </ChartGridLayout>
         </div>
     );
 }
