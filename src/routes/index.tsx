@@ -37,6 +37,7 @@ import BGWriterListPage from "../pages/engine/BGWriterListPage.tsx";
 import DiskListPage from "../pages/system/DiskListPage.tsx";
 import CPUListPage from "../pages/system/CpuListPage.tsx";
 import MemoryListPage from "../pages/system/MemoryListPage.tsx";
+import HotIndexListPage from "../pages/engine/HotIndexListPage.tsx";
 import HotTableListPage from "../pages/engine/HotTableListPage.tsx";
 
 const routeList = [
@@ -80,7 +81,7 @@ const routeList = [
 
   // Hot Index
   { path: "/database/hotindex/dashboard", element: <HotIndexPage /> },
-  // { path: "/database/hotindex/active", element: <HotIndexListPage /> },
+  { path: "/database/hotindex/detail", element: <HotIndexListPage /> },
 
   // 세션
   { path: "/database/session/dashboard", element: <SessionDashboard /> },
