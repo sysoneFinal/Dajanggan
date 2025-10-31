@@ -4,28 +4,11 @@
     padding: 1.5rem 0;
 }
 
-/* 차트 그리드 */
-.hottable-chart-grid {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 0.8rem;
-    width: 100%;
-}
-
-/* 차트 카드 (WidgetCard 래퍼) */
-.hottable-chart-card {
-    border-radius: 1rem;
-    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.05);
-    padding: 1rem 1.25rem;
+/* 요약 카드 */
+.hottable-summary-cards {
     display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: stretch;
-    width: 100%;
-    min-width: 0;
-    overflow: hidden;
-    backdrop-filter: blur(12px);
-    background: rgba(255, 255, 255, 0.45);
+    gap: 1rem;
+    margin-bottom: 0.9rem;
 }
 
 /* Gauge 컨테이너 */
@@ -34,202 +17,12 @@
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    /*padding: 1rem 0;*/
-    /*gap: 1rem;*/
-}
-
-/* 상태 뱃지 */
-.hottable-status-badge {
-    width: 100%;
-    display: flex;
-    justify-content: center;
-    margin-bottom: 0.5rem;
-}
-
-.hottable-status-badge .status-text {
-    padding: 6px 16px;
-    border-radius: 20px;
-    font-size: 0.85rem;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-}
-
-.hottable-status-badge .status-text.normal {
-    background: rgba(16, 185, 129, 0.15);
-    color: #059669;
-}
-
-.hottable-status-badge .status-text.warning {
-    background: rgba(245, 158, 11, 0.15);
-    color: #d97706;
-}
-
-.hottable-status-badge .status-text.critical {
-    background: rgba(239, 68, 68, 0.15);
-    color: #dc2626;
-}
-
-/* Gauge Footer (통계 영역) */
-.hottable-gauge-footer {
-    display: flex;
-    justify-content: space-around;
-    width: 100%;
-    padding-top: 1rem;
-    border-top: 1px solid rgba(0, 0, 0, 0.06);
-    gap: 1rem;
-}
-
-/* 차트 Footer (통계 영역) */
-.hottable-chart-footer {
-    display: flex;
-    justify-content: space-around;
-    width: 100%;
-    padding-top: 1rem;
-    margin-top: 0.5rem;
-    border-top: 1px solid rgba(0, 0, 0, 0.06);
-    gap: 0.8rem;
-    flex-wrap: wrap;
-}
-
-/* 통계 아이템 */
-.hottable-stat-item {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 0.3rem;
-    min-width: 80px;
-    flex: 1;
-}
-
-.hottable-stat-label {
-    font-size: 0.8rem;
-    color: #6b7280;
-    font-weight: 500;
-    text-align: center;
-    white-space: nowrap;
-}
-
-.hottable-stat-value {
-    font-size: 0.95rem;
-    color: #111827;
-    font-weight: 700;
-    text-align: center;
-}
-
-/* 툴바 영역 (필요시) */
-.hottable-toolbar {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 1.5rem;
-    gap: 1rem;
-}
-
-.hottable-toolbar-left,
-.hottable-toolbar-right {
-    display: flex;
-    align-items: center;
-    gap: 0.8rem;
-}
-
-/* Select 박스 */
-.instance-select,
-.time-range-select {
-    padding: 8px 12px;
-    border: 1px solid #d1d5db;
-    border-radius: 8px;
-    background: white;
-    font-size: 0.875rem;
-    color: #374151;
-    cursor: pointer;
-    transition: all 0.2s ease;
-}
-
-.instance-select:hover,
-.time-range-select:hover {
-    border-color: #8b5cf6;
-}
-
-.instance-select:focus,
-.time-range-select:focus {
-    outline: none;
-    border-color: #8b5cf6;
-    box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.1);
-}
-
-/* 새로고침 버튼 */
-.btn-refresh {
-    padding: 8px 16px;
-    background: #8b5cf6;
-    color: white;
-    border: none;
-    border-radius: 8px;
-    font-size: 0.875rem;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-}
-
-.btn-refresh:hover {
-    background: #7c3aed;
-    transform: translateY(-1px);
-}
-
-.btn-refresh:active {
-    transform: translateY(0);
-}
-
-/* 로딩 상태 */
-.hottable-loading {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    min-height: 400px;
-    font-size: 1.1rem;
-    color: #6b7280;
-}
-
-/* 에러 상태 */
-.hottable-error {
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    min-height: 400px;
-    gap: 1rem;
-}
-
-.hottable-error-message {
-    font-size: 1.1rem;
-    color: #dc2626;
-    font-weight: 600;
-}
-
-.hottable-error-detail {
-    font-size: 0.9rem;
-    color: #6b7280;
 }
 
 /* 반응형 - 태블릿 (1024px 이하) */
 @media (max-width: 1024px) {
-    .hottable-chart-grid {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
-
-    .hottable-stat-item {
-        min-width: 70px;
-    }
-
-    .hottable-stat-label {
-        font-size: 0.75rem;
-    }
-
-    .hottable-stat-value {
-        font-size: 0.9rem;
+    .hottable-summary-cards {
+        flex-wrap: wrap;
     }
 }
 
@@ -239,39 +32,8 @@
         padding: 1rem 0;
     }
 
-    .hottable-chart-grid {
-        grid-template-columns: 1fr;
-        gap: 1rem;
-    }
-
-    .hottable-toolbar {
+    .hottable-summary-cards {
         flex-direction: column;
-        align-items: stretch;
-    }
-
-    .hottable-toolbar-left,
-    .hottable-toolbar-right {
-        width: 100%;
-        justify-content: space-between;
-    }
-
-    .hottable-chart-footer,
-    .hottable-gauge-footer {
-        flex-direction: column;
-        align-items: stretch;
-        gap: 0.6rem;
-    }
-
-    .hottable-stat-item {
-        flex-direction: row;
-        justify-content: space-between;
-        align-items: center;
-        min-width: unset;
-    }
-
-    .hottable-stat-label,
-    .hottable-stat-value {
-        text-align: left;
     }
 
     .hottable-gauge-container {
@@ -284,26 +46,4 @@
     .hottable-page {
         padding: 0.75rem 0;
     }
-
-    .hottable-chart-grid {
-        gap: 0.75rem;
-    }
-
-    .hottable-chart-card {
-        padding: 0.875rem 1rem;
-    }
-
-    .hottable-stat-label {
-        font-size: 0.7rem;
-    }
-
-    .hottable-stat-value {
-        font-size: 0.85rem;
-    }
-
-    .hottable-status-badge .status-text {
-        font-size: 0.75rem;
-        padding: 5px 12px;
-    }
 }
-
