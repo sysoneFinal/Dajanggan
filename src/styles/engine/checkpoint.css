@@ -4,6 +4,13 @@
     padding: 1.5rem 0;
 }
 
+/* 요약 카드 */
+.checkpoint-summary-cards {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 0.9rem;
+}
+
 /* 차트 그리드 */
 .checkpoint-chart-grid {
     display: grid;
@@ -241,6 +248,10 @@
 
 /* 반응형 - 태블릿 (1024px 이하) */
 @media (max-width: 1024px) {
+    .checkpoint-summary-cards {
+        flex-wrap: wrap;
+    }
+
     .checkpoint-chart-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
     }
@@ -262,6 +273,10 @@
 @media (max-width: 768px) {
     .checkpoint-page {
         padding: 1rem 0;
+    }
+
+    .checkpoint-summary-cards {
+        flex-direction: column;
     }
 
     .checkpoint-chart-grid {
@@ -331,4 +346,3 @@
         padding: 5px 12px;
     }
 }
-

@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import Chart from "../../components/chart/ChartComponent";
+import SummaryCard from "../../components/layout/SummaryCard";
 import "../../styles/engine/checkpoint.css";
 import GaugeChart from "../../components/chart/GaugeChart";
 import WidgetCard from "../../components/util/WidgetCard";
@@ -48,6 +49,13 @@ interface CheckpointData {
         average: number;
         max: number;
         min: number;
+    };
+    recentStats?: {
+        buffersWritten: number;
+        avgTotalProcessTime: number;
+        checkpointDistance: number;
+        checkpointInterval: number;  // 변경: requestTimedRatio → checkpointInterval (분 단위)
+        avgWalGenerationSpeed: number;
     };
 }
 
@@ -114,6 +122,14 @@ const mockData: CheckpointData = {
         max: 5500,
         min: 2400,
     },
+    // 최근 5분 평균 통계
+    recentStats: {
+        buffersWritten: 4280,
+        avgTotalProcessTime: 1.78,
+        checkpointDistance: 85,
+        checkpointInterval: 4.8,  // 변경: 평균 Checkpoint 간격 (분)
+        avgWalGenerationSpeed: 9.2,
+    },
 };
 
 /** API 요청 */
@@ -141,10 +157,71 @@ export default function CheckPointPage() {
     const dashboard = data || mockData;
 
     const gaugeStatus = getGaugeStatus(dashboard.requestRatio.value);
-    // const statusText = getStatusText(dashboard.requestRatio.value);
+
+    // 최근 5분 평균 통계 (API에서 받아오거나 더미 데이터 사용)
+    const recentStats = dashboard.recentStats || {
+        buffersWritten: 4280,
+        avgTotalProcessTime: 1.78,
+        checkpointDistance: 85,
+        checkpointInterval: 4.8,
+        avgWalGenerationSpeed: 9.2,
+    };
+
+    // 요약 카드 데이터 계산 (최근 5분 평균 기준)
+    const summaryCards = [
+        {
+            label: "기록된 버퍼",
+            value: recentStats.buffersWritten.toLocaleString(),
+            diff: 180,
+            desc: "최근 5분 누적",
+            status: "info" as const,
+        },
+        {
+            label: "평균 처리 시간",
+            value: `${recentStats.avgTotalProcessTime}s`,
+            diff: -0.12,
+            desc: "최근 5분 평균 (Sync+Write)",
+            status: "info" as const,
+        },
+        {
+            label: "체크포인트 거리",
+            value: `${recentStats.checkpointDistance}%`,
+            diff: 5,
+            desc: "최근 5분 평균",
+            status: "info" as const,
+        },
+        {
+            label: "Checkpoint 간격",  // 변경
+            value: `${recentStats.checkpointInterval}분`,  // 변경
+            diff: 0.3,
+            desc: "최근 5분 평균 간격",
+            status: "info" as const,
+        },
+        {
+            label: "평균 WAL 생성 속도",
+            value: `${recentStats.avgWalGenerationSpeed}GB/h`,
+            diff: 0.8,
+            desc: "최근 5분 평균",
+            status: "info" as const,
+        },
+    ];
 
     return (
         <div className="checkpoint-page">
+            {/* 상단 요약 카드 */}
+            <div className="checkpoint-summary-cards">
+                {summaryCards.map((card, idx) => (
+                    <SummaryCard
+                        key={idx}
+                        label={card.label}
+                        value={card.value}
+                        diff={card.diff}
+                        desc={card.desc}
+                        status={card.status}
+                    />
+                ))}
+            </div>
+
             {/* 첫 번째 행: 3개 카드 (4+4+4=12) */}
             <ChartGridLayout>
                 {/* Checkpoint 요청 비율 */}
