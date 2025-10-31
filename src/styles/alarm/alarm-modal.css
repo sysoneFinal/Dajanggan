@@ -22,6 +22,7 @@
 
 /* 알림 리스트 (좌측) */
 .am-alerts-list{ 
+  width: 510px;
   border:1px solid #e5e7eb; border-radius:12px; 
   display:flex; flex-direction:column; max-height:calc(90vh - 180px);
 }
@@ -39,6 +40,7 @@
 
 /* 알림 아이템 */
 .am-alert-item{ 
+  width: 100%;
   padding:12px; margin-bottom:8px; border-radius:8px; 
   border:1px solid #e5e7eb; cursor:pointer; transition:all 0.15s;
   background:#fff;
@@ -109,3 +111,38 @@
 .am-tag--warn{ background:#fff7ed; color:#9a3412; }
 .am-tag--caution{ background:#eef2ff; color:#3730a3; }
 .am-tag--ok{ background:#e5f9ef; color:#047857; }
+
+.am-modal--narrow {
+  width: 530px; /* 좁은 창의 너비 */
+  max-height: 90vh;
+  height: 800px; 
+  display: flex;
+  flex-direction: column;
+}
+
+.am-modal--wide {
+  max-height: 90vh;
+  height: 800px;
+  display: flex;
+  flex-direction: column;
+}
+
+.am-modal__layout {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+}
+
+.am-alerts-list {
+  overflow-y: auto;
+}
+
+.am-modal__content {
+  overflow-y: auto;
+  flex: 1;
+}
+
+.am-tablewrap {
+  max-height: 300px; /* 테이블 영역 고정 높이 */
+  overflow-y: auto;
+}

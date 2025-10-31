@@ -73,7 +73,7 @@ const DEMO_ALERTS = [
     occurredAt: "2025-10-12 12:30",
     description: "연결 풀 사용률 85% 초과",
     isRead: true,
-  },
+  }, 
 ];
 
 // 알림별 상세 데이터
@@ -146,11 +146,7 @@ const DEMO_ALERT_DETAILS: Record<string, AlertDetailData> = {
 export default function AlertDetailModal({ open, data, onClose, onAcknowledge }: Props) {
   const dlgRef = useRef<HTMLDivElement>(null);
   const [alerts, setAlerts] = useState(DEMO_ALERTS);
-  const [currentData, setCurrentData] = useState(data);
-
-  useEffect(() => {
-    setCurrentData(data);
-  }, [data]);
+  const [currentData, setCurrentData] = useState<typeof data | null>(null);
 
   useEffect(() => {
     if (!open) return;
@@ -171,8 +167,8 @@ export default function AlertDetailModal({ open, data, onClose, onAcknowledge }:
   };
 
   const latencySeries = useMemo(
-    () => [{ name: "Latency (ms)", data: currentData.latency.data }],
-    [currentData.latency.data]
+    () => currentData ? [{ name: "Latency (ms)", data: currentData.latency.data }] : [],
+    [currentData]
   );
 
   const handleDeleteAlert = (id: string) => {
@@ -206,16 +202,23 @@ export default function AlertDetailModal({ open, data, onClose, onAcknowledge }:
       className="am-modal__backdrop"
       onMouseDown={onBackdropClick}
     >
-      <div className="am-modal am-modal--wide" ref={dlgRef}>
+      <div className={`am-modal ${currentData ? 'am-modal--wide' : 'am-modal--narrow'}`} ref={dlgRef}>
         <header className="am-modal__header">
           <div className="am-modal__titlewrap">
-            <span className={`am-badge am-badge--${currentData.severity.toLowerCase()}`}>{currentData.severity}</span>
-            <h2 id="alert-detail-title" className="am-modal__title">{currentData.title}</h2>
+            {currentData && (
+              <>
+                <span className={`am-badge am-badge--${currentData.severity.toLowerCase()}`}>{currentData.severity}</span>
+                <h2 id="alert-detail-title" className="am-modal__title">{currentData.title}</h2>
+              </>
+            )}
+            {!currentData && <h2 id="alert-detail-title" className="am-modal__title">알림 상세</h2>}
           </div>
           <button className="am-iconbtn" aria-label="닫기" onClick={onClose}>×</button>
         </header>
 
-        <p className="am-modal__subtitle">{currentData.occurredAt} · {currentData.description}</p>
+        {currentData && (
+          <p className="am-modal__subtitle">{currentData.occurredAt} · {currentData.description}</p>
+        )}
 
         <div className="am-modal__layout">
           {/* 좌측: 알림 리스트 */}
@@ -231,7 +234,7 @@ export default function AlertDetailModal({ open, data, onClose, onAcknowledge }:
                 alerts.map((alert) => (
                   <div
                     key={alert.id}
-                    className={`am-alert-item ${alert.isRead ? 'am-alert-item--read' : ''} ${alert.id === currentData.id ? 'am-alert-item--active' : ''}`}
+                    className={`am-alert-item ${alert.isRead ? 'am-alert-item--read' : ''} ${currentData && alert.id === currentData.id ? 'am-alert-item--active' : ''}`}
                     onClick={() => handleSelectAlert(alert.id)}
                   >
                     <div className="am-alert-item__header">
@@ -271,88 +274,90 @@ export default function AlertDetailModal({ open, data, onClose, onAcknowledge }:
           </aside>
 
           {/* 우측: 기존 내용 */}
-          <div className="am-modal__content">
-            <div className="am-modal__grid">
-              {/* 좌측: 차트 */}
-              <section className="am-card am-chart">
-                <header className="am-card__header">
-                  <h3>latency Trend <span className="am-dim">(24h)</span></h3>
-                </header>
-                <Chart
-                  type="line"
-                  series={latencySeries}
-                  categories={currentData.latency.labels}
-                  height={360}
-                  width="100%"
-                  showLegend={false}
-                  showToolbar={false}
-                  colors={["#6366F1"]}
-                  customOptions={{
-                    chart: { redrawOnParentResize: true, redrawOnWindowResize: true },
-                    stroke: { width: 2, curve: "smooth" },
-                    grid: { borderColor: "#E5E7EB", strokeDashArray: 4 },
-                    markers: { size: 3 },
-                    yaxis: { min: 0 },
-                    tooltip: { x: { show: true } },
-                  }}
-                  tooltipFormatter={(v) => `${Math.round(v).toLocaleString()}`}
-                />
-              </section>
+          {currentData && (
+            <div className="am-modal__content">
+              <div className="am-modal__grid">
+                {/* 좌측: 차트 */}
+                <section className="am-card am-chart">
+                  <header className="am-card__header">
+                    <h3>latency Trend <span className="am-dim">(24h)</span></h3>
+                  </header>
+                  <Chart
+                    type="line"
+                    series={latencySeries}
+                    categories={currentData.latency.labels}
+                    height={360}
+                    width="100%"
+                    showLegend={false}
+                    showToolbar={false}
+                    colors={["#6366F1"]}
+                    customOptions={{
+                      chart: { redrawOnParentResize: true, redrawOnWindowResize: true },
+                      stroke: { width: 2, curve: "smooth" },
+                      grid: { borderColor: "#E5E7EB", strokeDashArray: 4 },
+                      markers: { size: 3 },
+                      yaxis: { min: 0 },
+                      tooltip: { x: { show: true } },
+                    }}
+                    tooltipFormatter={(v) => `${Math.round(v).toLocaleString()}`}
+                  />
+                </section>
 
-              {/* 우측: 요약 & 버튼 */}
-              <aside className="am-side">
-                <div className="am-summary">
-                  <h4>요약</h4>
-                  <dl>
-                    <div><dt>현재값</dt><dd>{String(currentData.summary.current)}</dd></div>
-                    <div><dt>임계치</dt><dd>{String(currentData.summary.threshold)}</dd></div>
-                    <div><dt>지속시간</dt><dd>{currentData.summary.duration}</dd></div>
-                  </dl>
-                  <button
-                    className="am-btn am-btn--primary"
-                    onClick={() => onAcknowledge?.(currentData.id)}
-                  >
-                    Acknowledge
-                  </button>
-                </div>
-              </aside>
-            </div>
-
-            {/* 관련 객체 테이블 */}
-            <section className="am-card">
-              <header className="am-card__header">
-                <h3>관련 객체</h3>
-              </header>
-              <div className="am-tablewrap">
-                <table className="am-table">
-                  <thead>
-                    <tr>
-                      <th>유형</th>
-                      <th>이름</th>
-                      <th>지표값</th>
-                      <th>상태</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {currentData.related.map((r, i) => (
-                      <tr key={i}>
-                        <td>{r.type}</td>
-                        <td>{r.name}</td>
-                        <td>{r.metric}</td>
-                        <td>
-                          <span className={`am-tag am-tag--${(
-                            r.level === "위험" ? "critical" :
-                            r.level === "경고" ? "warn" :
-                            r.level === "주의" ? "caution" : "ok"
-                          )}`}>{r.level}</span>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                {/* 우측: 요약 & 버튼 */}
+                <aside className="am-side">
+                  <div className="am-summary">
+                    <h4>요약</h4>
+                    <dl>
+                      <div><dt>현재값</dt><dd>{String(currentData.summary.current)}</dd></div>
+                      <div><dt>임계치</dt><dd>{String(currentData.summary.threshold)}</dd></div>
+                      <div><dt>지속시간</dt><dd>{currentData.summary.duration}</dd></div>
+                    </dl>
+                    <button
+                      className="am-btn am-btn--primary"
+                      onClick={() => onAcknowledge?.(currentData.id)}
+                    >
+                      Acknowledge
+                    </button>
+                  </div>
+                </aside>
               </div>
-            </section>
-          </div>
+
+              {/* 관련 객체 테이블 */}
+              <section className="am-card">
+                <header className="am-card__header">
+                  <h3>관련 객체</h3>
+                </header>
+                <div className="am-tablewrap">
+                  <table className="am-table">
+                    <thead>
+                      <tr>
+                        <th>유형</th>
+                        <th>이름</th>
+                        <th>지표값</th>
+                        <th>상태</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {currentData.related.map((r, i) => (
+                        <tr key={i}>
+                          <td>{r.type}</td>
+                          <td>{r.name}</td>
+                          <td>{r.metric}</td>
+                          <td>
+                            <span className={`am-tag am-tag--${(
+                              r.level === "위험" ? "critical" :
+                              r.level === "경고" ? "warn" :
+                              r.level === "주의" ? "caution" : "ok"
+                            )}`}>{r.level}</span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </section>
+            </div>
+          )}
         </div>
       </div>
     </div>
