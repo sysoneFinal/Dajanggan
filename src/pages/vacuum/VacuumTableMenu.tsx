@@ -84,11 +84,16 @@ export default function VacuumTableMenu({
   tables,
   selectedTable,
   onChange,
-  autovacuumEnabled = true,
-  lastVacuumText,
   onToggle,
   expanded=true,
 }: VacuumTableMenuProps) {
+    const handleTableChange = (table: string) => {
+    onChange(table);
+    // 테이블 선택 시 토글이 닫혀있으면 열기
+    if (!expanded && onToggle) {
+      onToggle();
+    }
+  };
   return (
     <section className="vd-card vd-card--headerbar">
       <div className="vd-hbar">
@@ -97,21 +102,13 @@ export default function VacuumTableMenu({
           <TableDropdown
             tables={tables}
             value={selectedTable}
-            onChange={onChange}
+            onChange={handleTableChange}
           />
         </h2>
-
-        <div className="vd-badges">
-          <span className={`vd-badge ${autovacuumEnabled ? "vd-badge--ok" : "vd-badge--warn"}`}>
-            Autovacuum: {autovacuumEnabled ? "enabled" : "disabled"}
-          </span>
-          {lastVacuumText && <span className="vd-badge">Last VACUUM: {lastVacuumText}</span>}
-        </div>
-
-           <button
+        <button
           type="button"
           className="vd-backbtn"
-         onClick={() => { console.log("[VacuumTableMenu] toggle"); onToggle?.(); }}
+         onClick={() => { onToggle?.(); }}
           aria-expanded={expanded}
         >
           {expanded ? "▲" : "▼"}

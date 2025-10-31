@@ -19,7 +19,6 @@
   grid-template-rows: auto 1fr; 
 }
 
-
 .vd-card{  
  border-radius: 1rem;
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.05);
@@ -27,9 +26,7 @@
   flex-direction: column;
   justify-content: center;
   background: rgba(255, 255, 255, 0.45);
-  backdrop-filter: blur(12px);
   width: 100%;
-  overflow: hidden;
   padding: 1.25rem 1.5rem;
 }
 .vd-card__header{ display:flex; height:20px ; align-items:center; justify-content:space-between; margin-bottom:8px; }
@@ -112,7 +109,6 @@
   border-radius: 9999px; padding: 8px 12px; transition: .15s;
 }
 .vd-backbtn:hover { background: #e5e7eb; }
-
 /* ─── 드롭다운 Pill ─── */
 .vd-dd { position: relative; display: inline-block; }
 .vd-pill {
@@ -123,6 +119,7 @@
 .vd-pill--dropdown { cursor: pointer; }
 .vd-pill__chev { transition: transform .15s ease; opacity: .8; }
 .vd-pill--dropdown.is-open .vd-pill__chev { transform: rotate(180deg); }
+
 
 /* 드롭다운 메뉴 */
 .vd-dd__menu {

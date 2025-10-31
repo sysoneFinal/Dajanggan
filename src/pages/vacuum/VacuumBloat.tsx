@@ -1,6 +1,5 @@
 import { useMemo, useState, useRef } from "react";
 import Chart from "../../components/chart/ChartComponent";
-import ChartGridLayout from "../../components/layout/ChartGridLayout"
 import WidgetCard from "../../components/util/WidgetCard"
 import SummaryCard from "../../components/layout/SummaryCard";
 import "/src/styles/vacuum/VacuumPage.css";
