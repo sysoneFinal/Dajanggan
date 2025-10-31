@@ -163,7 +163,7 @@ export default function AlarmRuleList({ rows = demoRows }: { rows?: AlarmRuleRow
   };
 
   const handleRowClick = (id: number) => {
-    navigate("/database/vacuum/sessionDetail", {
+    navigate("/alarm-rule-detail", {
       state: { table: id },
     });
   };

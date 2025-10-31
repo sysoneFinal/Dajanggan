@@ -123,7 +123,7 @@ function ProgressMini({ series }: { series: number[] }) {
 export default function VacuumPage({ data = demo }: { data?: DashboardData }) {
   const navigate = useNavigate();
   const handleRowClick = (tableName: string) => {
-    navigate("/database/vacuum/sessionDetail", {
+    navigate("/database/vacuum/session-detail", {
       state: { tableName: tableName }, 
     });
   };

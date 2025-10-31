@@ -80,6 +80,7 @@ export default function VacuumRecordDetailPage({ data = demo }: { data?: VacuumR
     "Data Read from Cache": data.summary["Data Read from Cache"],
     "Data Read from Disk": data.summary["Data Read from Disk"],
     "Data Flushed to Disk": data.summary["Data Flushed to Disk"],
+    
   };
 
   const tuples = {

@@ -32,6 +32,7 @@ import MemoryPage from "../pages/system/MemoryPage.tsx";
 import DiskPage from "../pages/system/DiskPage.tsx";
 import AlarmList from "../pages/alarm/AlarmList";
 import AlarmRuleRegister from "../pages/alarm/AlarmRuleRegister.tsx";
+import AlarmRuleDetail from "../pages/alarm/AlarmRuleDetail.tsx";
 import CheckPointListPage from "../pages/engine/CheckPointListPage.tsx";
 import BGWriterListPage from "../pages/engine/BGWriterListPage.tsx";
 import DiskListPage from "../pages/system/DiskListPage.tsx";
@@ -95,11 +96,11 @@ const routeList = [
   // Vacuum
   { path: "/database/vacuum/overview", element: <VacuumOverview /> },
   { path: "/database/vacuum/maintenance", element: <VacuumMaintenance /> },
-  { path: "/database/vacuum/sessionDetail", element: <VacuumSessionDetail /> },
+  { path: "/database/vacuum/session-detail", element: <VacuumSessionDetail /> },
   { path: "/database/vacuum/history", element: <VacuumHistory /> },
   { path: "/database/vacuum/risk", element: <VacuumRisk /> },
   { path: "/database/vacuum/bloat", element: <VacuumBloat /> },
-  { path: "/database/vacuum/bloatDetail", element: <VacuumBloatDetail /> },
+  { path: "/database/vacuum/bloat-detail", element: <VacuumBloatDetail /> },
   
 
 
@@ -115,6 +116,7 @@ const routeList = [
   // 알람
   { path: "/alarm", element: <AlarmList /> },
   { path: "/alarm-rule", element: <AlarmRuleRegister /> },
+  { path: "/alarm-rule-detail", element: <AlarmRuleDetail /> },
 ];
 
 
