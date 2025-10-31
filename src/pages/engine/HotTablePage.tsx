@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import Chart from "../../components/chart/ChartComponent";
 import GaugeChart from "../../components/chart/GaugeChart";
+import SummaryCard from "../../components/layout/SummaryCard";
 import "../../styles/engine/hottable.css";
 import WidgetCard from "../../components/util/WidgetCard";
 import ChartGridLayout from "../../components/layout/ChartGridLayout";
@@ -39,6 +40,13 @@ interface HotTableData {
         insertCounts: number[];
         updateCounts: number[];
         deleteCounts: number[];
+    };
+    recentStats?: {
+        hotUpdateRatio: number;
+        liveDeadTupleRatio: string;
+        deadTupleCount: number;
+        seqScanRatio: number;           // 변경: totalScans → seqScanRatio (%)
+        updateDeleteRatio: number;      // 변경: totalDml → updateDeleteRatio (배율)
     };
 }
 
@@ -84,6 +92,14 @@ const mockData: HotTableData = {
         updateCounts: [80000, 60000, 50000, 70000, 40000],
         deleteCounts: [20000, 15000, 10000, 18000, 8000],
     },
+    // 최근 5분 평균 통계
+    recentStats: {
+        hotUpdateRatio: 76,
+        liveDeadTupleRatio: "648:1",
+        deadTupleCount: 1850,
+        seqScanRatio: 18,           // 변경: Sequential Scan 비율 (%)
+        updateDeleteRatio: 2.3,     // 변경: (Update+Delete) / Insert 배율
+    },
 };
 
 /** API 요청 */
@@ -110,7 +126,6 @@ const vacuumDelayToPercent = (hours: number): number => {
     return Math.min((hours / maxHours) * 100, 100);
 };
 
-
 /** 메인 컴포넌트 */
 export default function HotTablePage() {
     const { data } = useQuery({
@@ -126,8 +141,70 @@ export default function HotTablePage() {
     const vacuumGaugeStatus = getVacuumGaugeStatus(dashboard.vacuumDelay.delayHours);
     const vacuumPercent = vacuumDelayToPercent(dashboard.vacuumDelay.delayHours);
 
+    // 최근 5분 평균 통계 (API에서 받아오거나 더미 데이터 사용)
+    const recentStats = dashboard.recentStats || {
+        hotUpdateRatio: 76,
+        liveDeadTupleRatio: "648:1",
+        deadTupleCount: 1850,
+        seqScanRatio: 18,
+        updateDeleteRatio: 2.3,
+    };
+
+    // 요약 카드 데이터 계산 (최근 5분 평균 기준)
+    const summaryCards = [
+        {
+            label: "HOT 업데이트 비율",
+            value: `${recentStats.hotUpdateRatio}%`,
+            diff: 2.1,
+            desc: "최근 5분 평균",
+            status: recentStats.hotUpdateRatio < 60 ? ("warning" as const) : ("info" as const),
+        },
+        {
+            label: "Live/Dead Tuple 비율",
+            value: recentStats.liveDeadTupleRatio,
+            diff: 15,
+            desc: "최근 5분 평균",
+            status: "info" as const,
+        },
+        {
+            label: "Dead Tuple 수",
+            value: recentStats.deadTupleCount.toLocaleString(),
+            diff: 120,
+            desc: "최근 5분 평균",
+            status: recentStats.deadTupleCount > 3000 ? ("warning" as const) : ("info" as const),
+        },
+        {
+            label: "Seq Scan 비율",  // 변경
+            value: `${recentStats.seqScanRatio}%`,  // 변경
+            diff: -2,
+            desc: "최근 5분 평균",
+            status: recentStats.seqScanRatio > 30 ? ("warning" as const) : ("info" as const),
+        },
+        {
+            label: "Update/Delete 비율",  // 변경
+            value: `${recentStats.updateDeleteRatio}:1`,  // 변경
+            diff: 0.1,
+            desc: "최근 5분 평균",
+            status: recentStats.updateDeleteRatio > 3 ? ("warning" as const) : ("info" as const),
+        },
+    ];
+
     return (
         <div className="hottable-page">
+            {/* 상단 요약 카드 */}
+            <div className="hottable-summary-cards">
+                {summaryCards.map((card, idx) => (
+                    <SummaryCard
+                        key={idx}
+                        label={card.label}
+                        value={card.value}
+                        diff={card.diff}
+                        desc={card.desc}
+                        status={card.status}
+                    />
+                ))}
+            </div>
+
             {/* 첫 번째 행: 2개의 게이지 + 1개 차트 */}
             <ChartGridLayout>
                 {/* 테이블 캐시 적중률 */}
@@ -143,7 +220,7 @@ export default function HotTablePage() {
 
                 {/* Vacuum 지연 시간 */}
                 <WidgetCard title="Vacuum 지연 시간" span={2}>
-                        <div className="hottable-gauge-container">
+                    <div className="hottable-gauge-container">
                         <GaugeChart
                             value={vacuumPercent}
                             status={vacuumGaugeStatus}

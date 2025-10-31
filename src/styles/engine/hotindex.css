@@ -4,6 +4,13 @@
     padding: 1.5rem 0;
 }
 
+/* 요약 카드 */
+.hotindex-summary-cards {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 0.9rem;
+}
+
 /* 차트 그리드 */
 .hotindex-chart-grid {
     display: grid;
@@ -65,105 +72,12 @@
     text-align: center;
 }
 
-/* 툴바 영역 (필요시) */
-.hotindex-toolbar {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 1.5rem;
-    gap: 1rem;
-}
-
-.hotindex-toolbar-left,
-.hotindex-toolbar-right {
-    display: flex;
-    align-items: center;
-    gap: 0.8rem;
-}
-
-/* Select 박스 */
-.instance-select,
-.time-range-select {
-    padding: 8px 12px;
-    border: 1px solid #d1d5db;
-    border-radius: 8px;
-    background: white;
-    font-size: 0.875rem;
-    color: #374151;
-    cursor: pointer;
-    transition: all 0.2s ease;
-}
-
-.instance-select:hover,
-.time-range-select:hover {
-    border-color: #8b5cf6;
-}
-
-.instance-select:focus,
-.time-range-select:focus {
-    outline: none;
-    border-color: #8b5cf6;
-    box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.1);
-}
-
-/* 새로고침 버튼 */
-.btn-refresh {
-    padding: 8px 16px;
-    background: #8b5cf6;
-    color: white;
-    border: none;
-    border-radius: 8px;
-    font-size: 0.875rem;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-}
-
-.btn-refresh:hover {
-    background: #7c3aed;
-    transform: translateY(-1px);
-}
-
-.btn-refresh:active {
-    transform: translateY(0);
-}
-
-/* 로딩 상태 */
-.hotindex-loading {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    min-height: 400px;
-    font-size: 1.1rem;
-    color: #6b7280;
-}
-
-/* 에러 상태 */
-.hotindex-error {
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    min-height: 400px;
-    gap: 1rem;
-}
-
-.hotindex-error-message {
-    font-size: 1.1rem;
-    color: #dc2626;
-    font-weight: 600;
-}
-
-.hotindex-error-detail {
-    font-size: 0.9rem;
-    color: #6b7280;
-}
-
 /* 반응형 - 태블릿 (1024px 이하) */
 @media (max-width: 1024px) {
+    .hotindex-summary-cards {
+        flex-wrap: wrap;
+    }
+
     .hotindex-chart-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
     }
@@ -187,20 +101,13 @@
         padding: 1rem 0;
     }
 
+    .hotindex-summary-cards {
+        flex-direction: column;
+    }
+
     .hotindex-chart-grid {
         grid-template-columns: 1fr;
         gap: 1rem;
-    }
-
-    .hotindex-toolbar {
-        flex-direction: column;
-        align-items: stretch;
-    }
-
-    .hotindex-toolbar-left,
-    .hotindex-toolbar-right {
-        width: 100%;
-        justify-content: space-between;
     }
 
     .hotindex-chart-footer {

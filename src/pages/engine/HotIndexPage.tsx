@@ -1,229 +1,287 @@
 import { useQuery } from "@tanstack/react-query";
 import Chart from "../../components/chart/ChartComponent";
+import GaugeChart from "../../components/chart/GaugeChart";
+import SummaryCard from "../../components/layout/SummaryCard";
 import "../../styles/engine/hotindex.css";
 import WidgetCard from "../../components/util/WidgetCard";
 import ChartGridLayout from "../../components/layout/ChartGridLayout";
 
-/** Hot Index API 응답 타입 */
-interface HotIndexData {
-    usageDistribution: {
-        categories: string[];
-        data: number[];
-    };
-    topUsage: {
-        categories: string[];
-        data: number[];
-        total: number;
-    };
-    inefficientIndexes: {
-        categories: string[];
-        data: number[];
-        total: number;
-    };
+/** Hot Table API 응답 타입 */
+interface HotTableData {
     cacheHitRatio: {
+        tableName: string;
+        value: number;
+    };
+    vacuumDelay: {
+        tableName: string;
+        delayHours: number;
+        delaySec: number;
+    };
+    deadTupleTrend: {
+        categories: string[];
+        tables: Array<{
+            name: string;
+            data: number[];
+        }>;
+    };
+    totalDeadTuple: {
         categories: string[];
         data: number[];
-        average: number;
-        min: number;
-        max: number;
-    };
-    efficiency: {
-        categories: string[];
-        indexes: number[];
-    };
-    accessTrend: {
-        categories: string[];
-        reads: number[];
-        writes: number[];
-        totalReads: number;
-        totalWrites: number;
-    };
-    scanSpeed: {
-        categories: string[];
-        data: number[];
+        total: number;
         average: number;
         max: number;
-        min: number;
+    };
+    topQueryTables: {
+        tableNames: string[];
+        scanCounts: number[];
+    };
+    topDmlTables: {
+        tableNames: string[];
+        insertCounts: number[];
+        updateCounts: number[];
+        deleteCounts: number[];
+    };
+    recentStats?: {
+        liveTuples: number;
+        tableBloat: number;
+        lastVacuum: number;
+        lastAnalyze: number;
+        hotUpdateRatio: number;
     };
 }
 
 /** 더미 데이터 */
-const mockData: HotIndexData = {
-    usageDistribution: {
-        categories: [
-            "idx_products_category: 15%",
-            "idx_payments_order_id: 14%",
-            "idx_orders_user_id: 18%",
-            "idx_users_email: 19%",
-            "Others: 35%"
-        ],
-        data: [15, 14, 18, 19, 34]
-    },
-    topUsage: {
-        categories: [
-            "idx_users_email",
-            "idx_orders_user_id",
-            "idx_products_category",
-            "idx_payments_order_id",
-            "idx_inventory_product_id"
-        ],
-        data: [50000, 45000, 40000, 35000, 32000],
-        total: 202000
-    },
-    inefficientIndexes: {
-        categories: [
-            "idx_old_created_date",
-            "idx_legacy_status",
-            "idx_temp_field_old",
-            "idx_unused_column",
-            "idx_duplicate_index_old"
-        ],
-        data: [2.3, 1.8, 1.5, 0.8, 0.5],
-        total: 40
-    },
+const mockData: HotTableData = {
     cacheHitRatio: {
+        tableName: "orders",
+        value: 94.3,
+    },
+    vacuumDelay: {
+        tableName: "orders",
+        delayHours: 3.6,
+        delaySec: 12960,
+    },
+    deadTupleTrend: {
         categories: [
             "0:00", "2:00", "4:00", "6:00", "8:00", "10:00",
-            "12:00", "14:00", "16:00", "18:00", "20:00", "22:00"
+            "12:00", "14:00", "16:00", "18:00", "20:00", "23:00"
         ],
-        data: [92, 91, 90, 85, 86, 92, 95, 93, 90, 87, 88, 90],
-        average: 90,
-        min: 85,
-        max: 95
+        tables: [
+            { name: "orders", data: [1000, 1500, 2000, 2500, 3000, 3500, 4000, 4500, 5000, 5500, 6000, 6200] },
+            { name: "users", data: [500, 600, 700, 800, 900, 1000, 1100, 1200, 1300, 1400, 1500, 1600] },
+            { name: "products", data: [300, 400, 500, 600, 700, 800, 900, 1000, 1100, 1200, 1300, 1400] },
+        ],
     },
-    efficiency: {
+    totalDeadTuple: {
         categories: [
-            "52000", "48000", "41000", "38000", "35000",
-            "32000", "8000", "5000", "25000"
+            "0:00", "2:00", "4:00", "6:00", "8:00", "10:00",
+            "12:00", "14:00", "16:00", "18:00", "20:00", "23:00"
         ],
-        indexes: [490, 450, 420, 350, 470, 280, 380, 500, 120]
+        data: [5000, 8000, 12000, 15000, 18000, 22000, 25000, 28000, 30000, 32000, 35000, 38000],
+        total: 268000,
+        average: 22333,
+        max: 38000,
     },
-    accessTrend: {
-        categories: [
-            "00:00", "04:00", "08:00", "12:00", "16:00", "20:00", "24:00"
-        ],
-        reads: [800, 1500, 2800, 3000, 2200, 1200, 1000],
-        writes: [200, 400, 600, 1000, 800, 400, 200],
-        totalReads: 12500,
-        totalWrites: 3600
+    topQueryTables: {
+        tableNames: ["orders", "users", "products", "payments", "inventory"],
+        scanCounts: [1000000, 850000, 720000, 650000, 580000],
     },
-    scanSpeed: {
-        categories: [
-            "00:00", "04:00", "08:00", "12:00", "16:00", "20:00", "24:00"
-        ],
-        data: [2.2, 2.0, 4.8, 6.0, 5.2, 3.5, 2.5],
-        average: 3.7,
-        max: 6.0,
-        min: 2.0
-    }
+    topDmlTables: {
+        tableNames: ["orders", "users", "products", "payments", "inventory"],
+        insertCounts: [50000, 30000, 25000, 40000, 20000],
+        updateCounts: [80000, 60000, 50000, 70000, 40000],
+        deleteCounts: [20000, 15000, 10000, 18000, 8000],
+    },
+    // 최근 5분 평균 통계
+    recentStats: {
+        liveTuples: 1200000,
+        tableBloat: 8.5,
+        lastVacuum: 2.4,
+        lastAnalyze: 3.1,
+        hotUpdateRatio: 76.3,
+    },
 };
 
 /** API 요청 */
-async function fetchHotIndexData() {
-    const res = await fetch("/api/dashboard/hotindex");
-    if (!res.ok) throw new Error("Failed to fetch hot index data");
+async function fetchHotTableData() {
+    const res = await fetch("/api/dashboard/hottable");
+    if (!res.ok) throw new Error("Failed to fetch hot table data");
     return res.json();
 }
 
+const getCacheGaugeStatus = (value: number): "normal" | "warning" | "critical" => {
+    if (value >= 95) return "normal";
+    if (value >= 85) return "warning";
+    return "critical";
+};
+
+const getVacuumGaugeStatus = (hours: number): "normal" | "warning" | "critical" => {
+    if (hours < 6) return "normal";
+    if (hours < 24) return "warning";
+    return "critical";
+};
+
+const vacuumDelayToPercent = (hours: number): number => {
+    const maxHours = 48;
+    return Math.min((hours / maxHours) * 100, 100);
+};
 
 /** 메인 컴포넌트 */
-export default function HotIndexPage() {
+export default function HotTablePage() {
     const { data } = useQuery({
-        queryKey: ["hotIndexDashboard"],
-        queryFn: fetchHotIndexData,
+        queryKey: ["hotTableDashboard"],
+        queryFn: fetchHotTableData,
         retry: 1,
     });
 
     const dashboard = data || mockData;
 
+    const cacheGaugeStatus = getCacheGaugeStatus(dashboard.cacheHitRatio.value);
+
+    const vacuumGaugeStatus = getVacuumGaugeStatus(dashboard.vacuumDelay.delayHours);
+    const vacuumPercent = vacuumDelayToPercent(dashboard.vacuumDelay.delayHours);
+
+    // 최근 5분 평균 통계 (API에서 받아오거나 더미 데이터 사용)
+    const recentStats = dashboard.recentStats || {
+        liveTuples: 1200000,
+        tableBloat: 8.5,
+        lastVacuum: 2.4,
+        lastAnalyze: 3.1,
+        hotUpdateRatio: 76.3,
+    };
+
+    // 요약 카드 데이터 계산 (최근 5분 평균 기준)
+    const summaryCards = [
+        {
+            label: "활성 튜플",
+            value: `${(recentStats.liveTuples / 1000000).toFixed(1)}M`,
+            diff: 8500,
+            desc: "최근 5분 평균",
+            status: "info" as const,
+        },
+        {
+            label: "테이블 비대화",
+            value: `${recentStats.tableBloat}%`,
+            diff: -1.2,
+            desc: "최근 5분 평균",
+            status: "info" as const,
+        },
+        {
+            label: "마지막 VACUUM",
+            value: `${recentStats.lastVacuum}h`,
+            diff: 0.3,
+            desc: "가장 오래된 테이블",
+            status: "info" as const,
+        },
+        {
+            label: "마지막 ANALYZE",
+            value: `${recentStats.lastAnalyze}h`,
+            diff: 0.5,
+            desc: "가장 오래된 테이블",
+            status: "info" as const,
+        },
+        {
+            label: "HOT 업데이트 비율",
+            value: `${recentStats.hotUpdateRatio}%`,
+            diff: 2.1,
+            desc: "최근 5분 평균",
+            status: "info" as const,
+        },
+    ];
+
     return (
         <div className="hotindex-page">
-            {/* 첫 번째 행: 3개 차트 */}
-            <ChartGridLayout>
-                {/* 인덱스 사용 비중 */}
-                <WidgetCard title="인덱스 사용 비중" span={3}>
-                    <Chart
-                        type="pie"
-                        series={dashboard.usageDistribution.data}
-                        categories={dashboard.usageDistribution.categories}
-                        height={300}
-                        colors={["#8E79FF", "#77B2FB", "#51DAA8", "#FEA29B", "#6B7280"]}
-                        showLegend={true}
+            {/* 상단 요약 카드 */}
+            <div className="hotindex-summary-cards">
+                {summaryCards.map((card, idx) => (
+                    <SummaryCard
+                        key={idx}
+                        label={card.label}
+                        value={card.value}
+                        diff={card.diff}
+                        desc={card.desc}
+                        status={card.status}
                     />
+                ))}
+            </div>
+
+            {/* 첫 번째 행: 2개의 게이지 + 1개 차트 */}
+            <ChartGridLayout>
+                {/* 테이블 캐시 적중률 */}
+                <WidgetCard title="테이블 캐시 적중률" span={2}>
+                    <div className="hotindex-gauge-container">
+                        <GaugeChart
+                            value={dashboard.cacheHitRatio.value}
+                            status={cacheGaugeStatus}
+                            type="semi-circle"
+                        />
+                    </div>
                 </WidgetCard>
 
-                {/* 인덱스 액세스 추이 */}
-                <WidgetCard title="인덱스 액세스 추이 (Last 24 Hours)" span={5}>
+                {/* Vacuum 지연 시간 */}
+                <WidgetCard title="Vacuum 지연 시간" span={2}>
+                    <div className="hottable-gauge-container">
+                        <GaugeChart
+                            value={vacuumPercent}
+                            status={vacuumGaugeStatus}
+                            type="semi-circle"
+                        />
+                    </div>
+                </WidgetCard>
+
+                {/* 테이블별 Dead Tuple 추이 */}
+                <WidgetCard title="테이블별 Dead Tuple 추이 (Last 24 Hours)" span={4}>
                     <Chart
                         type="line"
-                        series={[
-                            { name: "Reads", data: dashboard.accessTrend.reads },
-                            { name: "Writes", data: dashboard.accessTrend.writes },
-                        ]}
-                        categories={dashboard.accessTrend.categories}
+                        series={dashboard.deadTupleTrend.tables.map((table) => ({
+                            name: table.name,
+                            data: table.data,
+                        }))}
+                        categories={dashboard.deadTupleTrend.categories}
+                        colors={["#8E79FF", "#77B2FB", "#FEA29B"]}
                         height={250}
-                        colors={["#8E79FF", "#FEA29B"]}
                     />
                 </WidgetCard>
-                {/* 인덱스 캐시 적중률 추세 */}
-                <WidgetCard title="인덱스 캐시 적중률 추세 (Last 24 Hours)" span={4}>
+                {/* DB 전체 Dead Tuple 추이 */}
+                <WidgetCard title="DB 전체 Dead Tuple 추이 (Last 24 Hours)" span={4}>
                     <Chart
-                        type="line"
-                        series={[{ name: "Index Hit Ratio (%)", data: dashboard.cacheHitRatio.data }]}
-                        categories={dashboard.cacheHitRatio.categories}
-                        height={250}
+                        type="area"
+                        series={[{ name: "Total Dead Tuples", data: dashboard.totalDeadTuple.data }]}
+                        categories={dashboard.totalDeadTuple.categories}
                         colors={["#8E79FF"]}
-                        xaxisOptions={{
-                            labels: { rotate: 0, rotateAlways: false }
-                        }}
+                        height={250}
                     />
                 </WidgetCard>
             </ChartGridLayout>
 
-            {/* 두 번째 행: 4개 차트 */}
+            {/* 두 번째 행: 3개 차트 */}
             <ChartGridLayout>
-                {/* 인덱스 스캔 속도 추이 */}
-                <WidgetCard title="인덱스 스캔 속도 추이 (Last 24 Hours)" span={3}>
-                    <Chart
-                        type="line"
-                        series={[{ name: "Index 스캔 속도 (ms)", data: dashboard.scanSpeed.data }]}
-                        categories={dashboard.scanSpeed.categories}
-                        height={250}
-                        colors={["#8E79FF"]}
-                    />
-                </WidgetCard>
-
-                {/* 인덱스 효율성 */}
-                <WidgetCard title="인덱스 효율성 (Scatter)" span={3}>
-                    <Chart
-                        type="scatter"
-                        series={[{ name: "Indexes", data: dashboard.efficiency.indexes }]}
-                        categories={dashboard.efficiency.categories}
-                        height={250}
-                        colors={["#8E79FF"]}
-                    />
-                </WidgetCard>
-
-                {/* Top-N 인덱스 사용량 */}
-                <WidgetCard title="Top-N 인덱스 사용량 (Last 24 Hours)" span={3}>
+                {/* Top-N 테이블 조회량 */}
+                <WidgetCard title="Top-N 테이블 조회량 (Last 24 Hours)" span={6}>
                     <Chart
                         type="bar"
-                        series={[{ name: "Index Scans", data: dashboard.topUsage.data }]}
-                        categories={dashboard.topUsage.categories}
-                        height={250}
+                        series={[{ name: "Scan Count", data: dashboard.topQueryTables.scanCounts }]}
+                        categories={dashboard.topQueryTables.tableNames}
                         colors={["#8E79FF"]}
+                        height={250}
                     />
                 </WidgetCard>
 
-                {/* 비효율 인덱스 Top-N */}
-                <WidgetCard title="비효율 인덱스 Top-N" span={3}>
+                {/* Top-N 테이블 DML량 */}
+                <WidgetCard title="Top-N 테이블 DML량 (Last 24 Hours)" span={6}>
                     <Chart
                         type="bar"
-                        series={[{ name: "Efficiency (%)", data: dashboard.inefficientIndexes.data }]}
-                        categories={dashboard.inefficientIndexes.categories}
+                        series={[
+                            { name: "Delete", data: dashboard.topDmlTables.deleteCounts },
+                            { name: "Insert", data: dashboard.topDmlTables.insertCounts },
+                            { name: "Update", data: dashboard.topDmlTables.updateCounts },
+                        ]}
+                        categories={dashboard.topDmlTables.tableNames}
+                        colors={["#FEA29B", "#8E79FF", "#77B2FB"]}
                         height={250}
-                        colors={["#FEA29B"]}
+                        isStacked={true}
                     />
+
                 </WidgetCard>
             </ChartGridLayout>
         </div>

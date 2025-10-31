@@ -1,6 +1,7 @@
 import { useState } from "react";
 import Chart from "../../components/chart/ChartComponent";
 import GaugeChart from "../../components/chart/GaugeChart";
+import SummaryCard from "../../components/layout/SummaryCard";
 import WidgetCard from "../../components/util/WidgetCard";
 import ChartGridLayout from "../../components/layout/ChartGridLayout";
 import "../../styles/system/cpu.css";
@@ -38,6 +39,13 @@ interface CPUData {
         io: number[];
         lock: number[];
         other: number[];
+    };
+    recentStats?: {
+        systemUserCpuRatio: string;
+        ioWait: number;
+        cpuQueueLength: number;
+        contextSwitches: number;
+        postgresqlBackendCpu: number;
     };
 }
 
@@ -94,6 +102,14 @@ const dummyData: CPUData = {
         lock: [10, 8, 12, 10, 10, 8, 10, 8, 10, 12, 10],
         other: [5, 3, 3, 5, 5, 4, 3, 3, 4, 3, 5],
     },
+    // 최근 5분 평균 통계
+    recentStats: {
+        systemUserCpuRatio: "18.5/23.8",
+        ioWait: 18.5,
+        cpuQueueLength: 2.3,
+        contextSwitches: 12450,
+        postgresqlBackendCpu: 41.2,
+    },
 };
 
 // Gauge 색상 결정
@@ -109,8 +125,70 @@ export default function CPUPage() {
 
     const gaugeColor = getGaugeColor(data.cpuUsage.value);
 
+    // 최근 5분 평균 통계
+    const recentStats = data.recentStats || {
+        systemUserCpuRatio: "18.5/23.8",
+        ioWait: 18.5,
+        cpuQueueLength: 2.3,
+        contextSwitches: 12450,
+        postgresqlBackendCpu: 41.2,
+    };
+
+    // 요약 카드 데이터 계산 (최근 5분 평균 기준)
+    const summaryCards = [
+        {
+            label: "System/User CPU 비율",
+            value: recentStats.systemUserCpuRatio,
+            diff: 1.2,
+            desc: "최근 5분 평균",
+            status: "info" as const,
+        },
+        {
+            label: "I/O Wait",
+            value: `${recentStats.ioWait}%`,
+            diff: 2.3,
+            desc: "최근 5분 평균",
+            status: "info" as const,
+        },
+        {
+            label: "CPU 대기열 길이",
+            value: recentStats.cpuQueueLength.toString(),
+            diff: 0.5,
+            desc: "최근 5분 평균",
+            status: "info" as const,
+        },
+        {
+            label: "컨텍스트 전환",
+            value: `${recentStats.contextSwitches.toLocaleString()}/s`,
+            diff: 850,
+            desc: "최근 5분 평균",
+            status: "info" as const,
+        },
+        {
+            label: "PostgreSQL Backend CPU",
+            value: `${recentStats.postgresqlBackendCpu}%`,
+            diff: 3.2,
+            desc: "최근 5분 평균",
+            status: "info" as const,
+        },
+    ];
+
     return (
         <div className="cpu-page">
+            {/* 상단 요약 카드 */}
+            <div className="cpu-summary-cards">
+                {summaryCards.map((card, idx) => (
+                    <SummaryCard
+                        key={idx}
+                        label={card.label}
+                        value={card.value}
+                        diff={card.diff}
+                        desc={card.desc}
+                        status={card.status}
+                    />
+                ))}
+            </div>
+
             {/* 첫 번째 행: 게이지 + 2개 차트 */}
             <ChartGridLayout>
                 <WidgetCard title="CPU 사용률" span={2}>
