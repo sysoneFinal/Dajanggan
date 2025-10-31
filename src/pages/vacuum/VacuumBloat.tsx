@@ -1,6 +1,10 @@
-import { useMemo } from "react";
+import { useMemo, useState, useRef } from "react";
 import Chart from "../../components/chart/ChartComponent";
+import WidgetCard from "../../components/util/WidgetCard"
+import SummaryCard from "../../components/layout/SummaryCard";
 import "/src/styles/vacuum/VacuumPage.css";
+import BloatDetailPage from "./VacuumBloatDetail";
+
 
 /* ---------- 타입/데모데이터 ---------- */
 
@@ -46,13 +50,25 @@ const demo: DashboardData = {
   Kpi: {
     tableBloat: "305.3GB",
     criticalTable: 42,
-    bloatGrowth: "+31GB (+6.5+)",
+    bloatGrowth: "+31GB",
   }
 };
 
 
 /* ---------- 페이지 ---------- */
 export default function VacuumPage({ data = demo }: { data?: DashboardData }) {
+    const [expanded, setExpanded] = useState(false); // 드릴다운 펼침상태
+    const detailRef = useRef<HTMLDivElement>(null);
+
+    const toggle = () => {
+    setExpanded((prev) => {
+      const next = !prev;
+      if (next) setTimeout(() => detailRef.current?.scrollIntoView({ behavior: "smooth" }), 0);
+      return next;
+    });
+  };
+
+
     const WARN_H = 4;
     const ALERT_H = 6;
 
@@ -82,46 +98,21 @@ export default function VacuumPage({ data = demo }: { data?: DashboardData }) {
     [data.bloatDistribution.data]
   );
   
-  return (
-    <div className="vd-root">
-        <div className="vd-grid">
-            <section className="vd-card2">
-                <header className="vd-card2__header">
-                    <h5>Est. Table Bloat <span className="vd-dim"></span></h5>
-                </header>
-                <h1>{data.Kpi.tableBloat}</h1>
-            </section>
-
-             <section className="vd-card2">
-                <header className="vd-card2__header">
-                    <h5>Critical Tables <span className="vd-dim"></span></h5>
-                </header>
-                 <h1>{data.Kpi.criticalTable}</h1>
-            </section>
-
-             <section className="vd-card2">
-                <header className="vd-card2__header">
-                    <h5>Bloat Growth<span className="vd-dim">(30d)</span></h5>
-                </header>
-                 <h1>{data.Kpi.bloatGrowth}</h1>
-            </section>
-        </div>
-
-      <div className="vd-grid">
-        <section className="vd-card vd-chart">
-          <header className="vd-card__header">
-            <h3>Xmin Horizon Monitor <span className="vd-dim">(last 7d)</span></h3>
-          </header>
-
+ // VacuumPage.tsx
+return (
+  <div className="vd-root">
+    <div className="vd-main-layout">
+      {/* 좌측: A - Xmin Horizon (대형) */}
+      <div className="vd-left-large">
+        <WidgetCard title="Xmin Horizon Monitor (last 7d)">
           <Chart
-            type="area"                                 // 면적 라인
+            type="area"
             series={xminHorizonMonitorSeries}
-            categories={data.xminHorizonMonitor.labels} // "7d ago ~ Today" 식 라벨이면 더 그럴듯
-            height={380}
+            categories={data.xminHorizonMonitor.labels}
+            height={450}  // 높이 증가
             width="100%"
             showToolbar={false}
-            colors={["#22C55E", "#F59E0B", "#EF4444"]}  // 초록/주황/빨강
-            customOptions={{
+             customOptions={{
               chart: { redrawOnParentResize: true, redrawOnWindowResize: true, toolbar: { show: false } },
               dataLabels: { enabled: false },
               stroke: {
@@ -148,7 +139,7 @@ export default function VacuumPage({ data = demo }: { data?: DashboardData }) {
                 tickAmount: 4,
                 labels: { formatter: (v: number) => `${v}h` },
               },
-              // 오른쪽 끝에 Warn/Alert 텍스트(겹쳐도 자연스러움)
+              // 오른쪽 끝에 Warn/Alert 텍스트
               annotations: {
                 yaxis: [
                   {
@@ -177,59 +168,61 @@ export default function VacuumPage({ data = demo }: { data?: DashboardData }) {
                 shared: true,
                 y: { formatter: (val: number) => `${val.toFixed(2)}h` }
               }
-            }}
+            }} // 기존 옵션 유지
           />
-        </section>
+        </WidgetCard>
+      </div>
 
-        <section className="vd-card vd-chart">
-          <header className="vd-card__header">
-            <h3>Total Bloat Trend <span className="vd-dim"> (Last 30 Days) </span></h3>
-          </header>
+      {/* 우측 스택 */}
+      <div className="vd-right-stack">
+        {/* 상단: KPI 3개 (C, F, E) */}
+        <div className="vd-kpi-row">
+          <SummaryCard
+            label="Est. Table Bloat"
+            value={data.Kpi.tableBloat}
+            diff={3}
+          />
+          <SummaryCard
+            label="Critical Tables"
+            value={data.Kpi.criticalTable}
+            diff={3}
+          />
+          <SummaryCard
+            label="Bloat Growth"
+            value={data.Kpi.bloatGrowth}
+            diff={3}
+            desc="30d"
+          />
+        </div>
+
+        <div className="vd-chart-row">
+        {/* G: Total Bloat Trend */}
+        <WidgetCard title="Total Bloat Trend (Last 30 Days)">
           <Chart
             type="line"
             series={bloatTrendSeries}
             categories={data.bloatTrend.labels}
-            height={400}
+            height={300}
             width="100%"
-            showLegend={false}
-            showToolbar={false}
-            colors={["#6366F1"]}
-            customOptions={{
-                chart: { redrawOnParentResize: true, redrawOnWindowResize: true },
-                stroke: { width: 2, curve: "smooth" },
-                grid: { borderColor: "#E5E7EB", strokeDashArray: 4 },
-                markers: { size: 0 },
-                yaxis: {min:0},
-            }}
-            tooltipFormatter={(v) => `${Math.round(v).toLocaleString()}`}
-            />
-        </section>
+          />
+        </WidgetCard>
 
-
-        <section className="vd-card vd-chart">
-          <header className="vd-card__header">
-            <h3>latency Trend <span className="vd-dim">(24h)</span></h3>
-          </header>
+        {/* D: Bloat Distribution */}
+        <WidgetCard title="Bloat Distribution by Percentage (24h)">
           <Chart
             type="bar"
             series={bloatDistributionSeries}
             categories={data.bloatDistribution.labels}
-            height={400}
+            height={300}
             width="100%"
-            showLegend={false}
-            showToolbar={false}
-            colors={["#6366F1"]}
-            customOptions={{
-                chart: { redrawOnParentResize: true, redrawOnWindowResize: true },
-                stroke: { width: 2, curve: "smooth" },
-                grid: { borderColor: "#E5E7EB", strokeDashArray: 4 },
-                markers: { size: 4 },
-                yaxis: { min: 0 },
-            }}
-            tooltipFormatter={(v) => `${Math.round(v).toLocaleString()}`}
-            />
-        </section>
+          />
+        </WidgetCard>
+        </div>
       </div>
     </div>
-  );
+
+    <div ref={detailRef} className="mt-8" />
+    <BloatDetailPage onToggle={toggle} expanded={expanded} />
+  </div>
+);
 }

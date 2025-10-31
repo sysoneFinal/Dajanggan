@@ -1,8 +1,6 @@
-// src/components/VacuumTableMenu.tsx
 import { useEffect, useMemo, useRef, useState } from "react";
 import "/src/styles/vacuum/VacuumPage.css";
 
-/** ─ TableDropdown: 내부 전용 ─ */
 function TableDropdown({
   tables,
   value,
@@ -13,7 +11,8 @@ function TableDropdown({
   value: string;
   onChange: (v: string) => void;
   maxHeight?: number;
-}) {
+}) 
+{
   const [open, setOpen] = useState(false);
   const btnRef = useRef<HTMLButtonElement | null>(null);
   const popRef = useRef<HTMLDivElement | null>(null);
@@ -74,19 +73,27 @@ type VacuumTableMenuProps = {
   tables: string[];               // 드롭다운 목록
   selectedTable: string;          // 선택된 테이블
   onChange: (table: string) => void; // 선택 변경 콜백
-  dbName?: string;
   autovacuumEnabled?: boolean;
-  lastVacuumText?: string;        // "YYYY-MM-DD HH:mm"
+  lastVacuumText?: string; 
+
+  onToggle?: () => void;
+  expanded?: boolean;
 };
 
 export default function VacuumTableMenu({
   tables,
   selectedTable,
   onChange,
-  dbName = "appdb",
-  autovacuumEnabled = true,
-  lastVacuumText,
+  onToggle,
+  expanded=true,
 }: VacuumTableMenuProps) {
+    const handleTableChange = (table: string) => {
+    onChange(table);
+    // 테이블 선택 시 토글이 닫혀있으면 열기
+    if (!expanded && onToggle) {
+      onToggle();
+    }
+  };
   return (
     <section className="vd-card vd-card--headerbar">
       <div className="vd-hbar">
@@ -95,20 +102,16 @@ export default function VacuumTableMenu({
           <TableDropdown
             tables={tables}
             value={selectedTable}
-            onChange={onChange}
+            onChange={handleTableChange}
           />
         </h2>
-
-        <div className="vd-badges">
-          <span className="vd-badge">DB: {dbName}</span>
-          <span className={`vd-badge ${autovacuumEnabled ? "vd-badge--ok" : "vd-badge--warn"}`}>
-            Autovacuum: {autovacuumEnabled ? "enabled" : "disabled"}
-          </span>
-          {lastVacuumText && <span className="vd-badge">Last VACUUM: {lastVacuumText}</span>}
-        </div>
-
-        <button className="vd-backbtn" onClick={() => history.back()}>
-          ← Back
+        <button
+          type="button"
+          className="vd-backbtn"
+         onClick={() => { onToggle?.(); }}
+          aria-expanded={expanded}
+        >
+          {expanded ? "▲" : "▼"}
         </button>
       </div>
     </section>
