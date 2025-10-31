@@ -222,7 +222,7 @@ export default function VacuumPage({ data = demo }: { data?: DashboardData }) {
           <h3>Top-3 Bloat Tables</h3>
         </header>
         <div className="vd-tablewrap">
-          <table className="vd-table">
+          <table className="vd-table2">
             <thead>
               <tr>
                 <th>TABLE</th>
@@ -249,7 +249,7 @@ export default function VacuumPage({ data = demo }: { data?: DashboardData }) {
           <h3>Vacuum Blockers / Inaccessible Tables</h3>
         </header>
         <div className="vd-tablewrap">
-          <table className="vd-table">
+          <table className="vd-table2">
             <thead>
               <tr>
                 <th>TABLE</th>

@@ -1,4 +1,6 @@
 import { useMemo } from "react";
+import { useNavigate } from "react-router-dom";
+
 import Chart from "../../components/chart/ChartComponent";
 import ChartGridLayout from "../../components/layout/ChartGridLayout"
 import WidgetCard from "../../components/util/WidgetCard"
@@ -119,7 +121,12 @@ function ProgressMini({ series }: { series: number[] }) {
 
 /* ---------- 페이지 ---------- */
 export default function VacuumPage({ data = demo }: { data?: DashboardData }) {
-  // Overview에서 하던 그대로: useMemo로 series 만들기
+  const navigate = useNavigate();
+  const handleRowClick = (tableName: string) => {
+    navigate("/database/vacuum/sessionDetail", {
+      state: { tableName: tableName }, 
+    });
+  };
   const deadtupleSeries = useMemo(
     () => [
             { name: "Dead Tuple 증가 속도", data: data.deadtuple.data[0] },
@@ -138,6 +145,7 @@ export default function VacuumPage({ data = demo }: { data?: DashboardData }) {
     () => [{ name: "latency", data: data.latency.data }],
     [data.latency.data]
   );
+
 
   return (
     <div className="vd-root">
@@ -256,7 +264,8 @@ export default function VacuumPage({ data = demo }: { data?: DashboardData }) {
             </thead>
             <tbody>
               {data.sessions.map((s) => (
-                <tr key={s.table}>
+                <tr key={s.table}
+                    onClick={() => handleRowClick(s.table)}>
                   <td className="vd-td-strong">{s.table}</td>
                   <td><ProgressMini series={s.progressSeries} /></td>
                   <td>{s.phase}</td>

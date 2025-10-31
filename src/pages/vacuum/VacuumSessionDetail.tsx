@@ -41,8 +41,6 @@ const demo: VacuumRecord = {
   summary: {
     "Time Elapsed": "1:09:09",
     "CPU Time": "user: 1543.44 s, system: 235.07 s",
-    "Index Vacuum Phases": "1",
-    "Aggressive Vacuum": "Yes",
     "Pages Removed": "0 / 0 B",
     "Pages Remaining": "22,979,917 / 175.3 GB",
     "Pages Skipped Due To Pin": "0 / 0 B",
@@ -50,6 +48,7 @@ const demo: VacuumRecord = {
     "Tuples Deleted": "424,711",
     "Tuples Remaining": "1,745,563,359",
     "Tuples Dead But Not Removable": "13,014,687",
+    "Max Dead Tuples / Phase" : "178,956,969",
     "Data Read from Cache": "182 GB",
     "Data Read from Disk": "364.9 GB",
     "Data Flushed to Disk": "54.5 GB",
@@ -87,6 +86,7 @@ export default function VacuumRecordDetailPage({ data = demo }: { data?: VacuumR
     "Tuples Deleted": data.summary["Tuples Deleted"],
     "Tuples Remaining": data.summary["Tuples Remaining"],
     "Tuples Dead But Not Removable": data.summary["Tuples Dead But Not Removable"],
+    "Max Dead Tuples / Phase" : data.summary["Max Dead Tuples / Phase"],
   };
 
   const pages = {
@@ -96,11 +96,6 @@ export default function VacuumRecordDetailPage({ data = demo }: { data?: VacuumR
     "Pages Skipped Due To Pin": data.summary["Pages Skipped Due To Pin"],
   };
 
-  const basicInfo = {
-    "Index Vacuum Phases": data.summary["Index Vacuum Phases"],
-    "Aggressive Vacuum": data.summary["Aggressive Vacuum"],
-  };
-
   return (
     <div className="vd-root">
       {/* 상단 메타정보 */}
@@ -108,28 +103,24 @@ export default function VacuumRecordDetailPage({ data = demo }: { data?: VacuumR
         <section className="vd-card">
           <header className="vd-card__header">
             <h2>VACUUM - {data.tableName} <span className="vd-dim">({data.startTime.split(" ")[0]} {data.startTime.split(",")[1]})</span></h2>
-          <div className="vd-kpis">
-            <div className="vd-chip">
-              <span className="vd-chip__label">Duration</span>
-              <span className="vd-chip__value">{data.duration}</span>
+            <div className="vd-kpis">
+              <div className="vd-chip">
+                <span className="vd-chip__label">Autovacuum</span>
+                <span className="vd-chip__value">{data.autovacuum ? "Yes" : "No"}</span>
+              </div>
+              <div className="vd-chip">
+                <span className="vd-chip__label">Start</span>
+                <span className="vd-chip__value">{data.startTime}</span>
+              </div>
+              <div className="vd-chip">
+                <span className="vd-chip__label">End</span>
+                <span className="vd-chip__value">{data.endTime}</span>
+              </div>
+              <div className="vd-chip">
+                <span className="vd-chip__label">Duration</span>
+                <span className="vd-chip__value">{data.duration}</span>
+              </div>
             </div>
-            <div className="vd-chip">
-              <span className="vd-chip__label">Autovacuum</span>
-              <span className="vd-chip__value">{data.autovacuum ? "Yes" : "No"}</span>
-            </div>
-          <div className="vd-kpis" style={{ marginTop: '4px' }}>
-            <div className="vd-chip">
-              <span className="vd-chip__label">Start</span>
-              <span className="vd-chip__value">{data.startTime}</span>
-            </div>
-          </div>
-           <div className="vd-kpis" style={{ marginTop: '4px' }}>
-            <div className="vd-chip">
-              <span className="vd-chip__label">End</span>
-              <span className="vd-chip__value">{data.endTime}</span>
-            </div>
-          </div>
-          </div>
           </header>
         </section>
       </div>
@@ -144,7 +135,7 @@ export default function VacuumRecordDetailPage({ data = demo }: { data?: VacuumR
             type="area"
             series={progressSeries}
             categories={data.progress.labels}
-            height={400}
+            height="100%"
             width="100%"
             showLegend={true}
             showToolbar={false}
@@ -170,7 +161,7 @@ export default function VacuumRecordDetailPage({ data = demo }: { data?: VacuumR
             <h3>성능 지표</h3>
           </header>
           <div className="vd-tablewrap">
-            <table className="vd-table">
+            <table className="vd-table2">
               <tbody>
                 {Object.entries(performanceMetrics).map(([key, value]) => (
                   <tr key={key}>
@@ -188,7 +179,7 @@ export default function VacuumRecordDetailPage({ data = demo }: { data?: VacuumR
             <h3>데이터 I/O</h3>
           </header>
           <div className="vd-tablewrap">
-            <table className="vd-table">
+            <table className="vd-table2">
               <tbody>
                 {Object.entries(dataIO).map(([key, value]) => (
                   <tr key={key}>
@@ -207,7 +198,7 @@ export default function VacuumRecordDetailPage({ data = demo }: { data?: VacuumR
             <h3>튜플</h3>
           </header>
           <div className="vd-tablewrap">
-            <table className="vd-table">
+            <table className="vd-table2">
               <tbody>
                 {Object.entries(tuples).map(([key, value]) => (
                   <tr key={key}>
@@ -225,7 +216,7 @@ export default function VacuumRecordDetailPage({ data = demo }: { data?: VacuumR
             <h3>페이지</h3>
           </header>
           <div className="vd-tablewrap">
-            <table className="vd-table">
+            <table className="vd-table2">
               <tbody>
                 {Object.entries(pages).map(([key, value]) => (
                   <tr key={key}>
@@ -238,26 +229,7 @@ export default function VacuumRecordDetailPage({ data = demo }: { data?: VacuumR
           </div>
         </section>
       </div>
-
-      {/* 기타 정보 */}
-        <section className="vd-card">
-          <header className="vd-card__header">
-            <h3>기타</h3>
-          </header>
-          <div className="vd-tablewrap">
-            <table className="vd-table">
-              <tbody>
-                {Object.entries(basicInfo).map(([key, value]) => (
-                  <tr key={key}>
-                    <td><strong>{key}</strong></td>
-                    <td>{value}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </section>
     </div>
-    </div>
+  </div>
   );
 }

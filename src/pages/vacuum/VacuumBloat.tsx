@@ -99,37 +99,21 @@ export default function VacuumPage({ data = demo }: { data?: DashboardData }) {
     [data.bloatDistribution.data]
   );
   
-  return (
-    <div className="vd-root">
-        <div className="vd-grid">
-           <SummaryCard
-              label="Est. Table Bloat"
-              value={data.Kpi.tableBloat}
-              diff={3}
-            />
-             <SummaryCard
-              label="Critical Tables"
-              value={data.Kpi.criticalTable}
-              diff={3}
-            />
-            <SummaryCard
-              label="Bloat Growth"
-              value={data.Kpi.bloatGrowth}
-              diff={3}
-              desc="30d"
-            />
-        </div>
-
-      <ChartGridLayout>
-        <WidgetCard title="Xmin Horizon Monitor (last 7d)" span={4}>
+ // VacuumPage.tsx
+return (
+  <div className="vd-root">
+    <div className="vd-main-layout">
+      {/* 좌측: A - Xmin Horizon (대형) */}
+      <div className="vd-left-large">
+        <WidgetCard title="Xmin Horizon Monitor (last 7d)">
           <Chart
-            type="area"                                 // 면적 라인
+            type="area"
             series={xminHorizonMonitorSeries}
-            categories={data.xminHorizonMonitor.labels} // "7d ago ~ Today" 식 라벨이면 더 그럴듯
-            height={380}
+            categories={data.xminHorizonMonitor.labels}
+            height={450}  // 높이 증가
             width="100%"
             showToolbar={false}
-            customOptions={{
+             customOptions={{
               chart: { redrawOnParentResize: true, redrawOnWindowResize: true, toolbar: { show: false } },
               dataLabels: { enabled: false },
               stroke: {
@@ -185,32 +169,61 @@ export default function VacuumPage({ data = demo }: { data?: DashboardData }) {
                 shared: true,
                 y: { formatter: (val: number) => `${val.toFixed(2)}h` }
               }
-            }}
+            }} // 기존 옵션 유지
           />
         </WidgetCard>
-        <WidgetCard title="Total Bloat Trend (Last 30 Days)" span={4}>
+      </div>
+
+      {/* 우측 스택 */}
+      <div className="vd-right-stack">
+        {/* 상단: KPI 3개 (C, F, E) */}
+        <div className="vd-kpi-row">
+          <SummaryCard
+            label="Est. Table Bloat"
+            value={data.Kpi.tableBloat}
+            diff={3}
+          />
+          <SummaryCard
+            label="Critical Tables"
+            value={data.Kpi.criticalTable}
+            diff={3}
+          />
+          <SummaryCard
+            label="Bloat Growth"
+            value={data.Kpi.bloatGrowth}
+            diff={3}
+            desc="30d"
+          />
+        </div>
+
+        <div className="vd-chart-row">
+        {/* G: Total Bloat Trend */}
+        <WidgetCard title="Total Bloat Trend (Last 30 Days)">
           <Chart
             type="line"
             series={bloatTrendSeries}
             categories={data.bloatTrend.labels}
-            height={400}
+            height={300}
             width="100%"
-            />
+          />
         </WidgetCard>
 
-        <WidgetCard title="Bloat Distribution by Percentage (24h)" span={4}>
+        {/* D: Bloat Distribution */}
+        <WidgetCard title="Bloat Distribution by Percentage (24h)">
           <Chart
             type="bar"
             series={bloatDistributionSeries}
             categories={data.bloatDistribution.labels}
-            height={400}
+            height={300}
             width="100%"
-            />
+          />
         </WidgetCard>
-        </ChartGridLayout>
-      <div ref={detailRef} className="mt-8" />
-
-     <BloatDetailPage onToggle={toggle} expanded={expanded} />
+        </div>
+      </div>
     </div>
-  );
+
+    <div ref={detailRef} className="mt-8" />
+    <BloatDetailPage onToggle={toggle} expanded={expanded} />
+  </div>
+);
 }
