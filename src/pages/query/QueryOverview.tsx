@@ -2,6 +2,9 @@ import { useState, useMemo, useEffect } from "react";
 import Chart from "../../components/chart/ChartComponent";
 import Pagination from "../../components/util/Pagination";
 import CsvButton from "../../components/util/CsvButton";
+import SummaryCard from "../../components/layout/SummaryCard";
+import ChartGridLayout from "../../components/layout/ChartGridLayout";
+import WidgetCard from "../../components/util/WidgetCard";
 import "/src/styles/query/query-overview.css";
 
 /**
@@ -16,15 +19,9 @@ import "/src/styles/query/query-overview.css";
 type MetricData = {
   label: string;
   value: string | number;
-  status?: "normal" | "warn" | "danger";
+  status?: "info" | "warning" | "critical";
   diff: number;
   desc: string;
-};
-
-type SlowQuery = {
-  text: string;
-  timestamp: string;
-  executionTime: string;
 };
 
 type ResourceType = "메모리" | "CPU" | "I/O" | "실행시간";
@@ -52,19 +49,7 @@ type SlowQueryItem = {
 
 type SortOption = "최근 발생순" | "실행시간 느린순" | "실행시간 빠른순";
 
-/* ---------- 트렌드 아이콘 SVG ---------- */
-const TrendUpIcon = () => (
-  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <path d="M8 12V4M8 4L4 8M8 4L12 8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-  </svg>
-);
-
-const TrendDownIcon = () => (
-  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <path d="M8 4V12M8 12L12 8M8 12L4 8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-  </svg>
-);
-
+/* ---------- 아이콘 SVG ---------- */
 const ChevronRightIcon = () => (
   <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
     <path d="M7 4L13 10L7 16" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
@@ -76,30 +61,30 @@ const demoMetrics: MetricData[] = [
   {
     label: "현재 TPS",
     value: "1,250",
-    status: "normal",
+    status: "info",
     diff: 8.5,
-    desc: "이전 대비"
+    desc: "최근 5분 평균 기준"
   },
   {
     label: "현재 QPS",
     value: "5,500",
-    status: "warn",
+    status: "warning",
     diff: 12.3,
-    desc: "이전 대비"
+    desc: "최근 5분 평균 기준"
   },
   {
     label: "활성 세션 수",
     value: 185,
-    status: "danger",
+    status: "critical",
     diff: -5.2,
-    desc: "이전 대비"
+    desc: "최근 5분 평균 기준"
   },
   {
     label: "평균 응답 시간",
     value: "12ms",
-    status: "normal",
+    status: "info",
     diff: 2.1,
-    desc: "이전 대비"
+    desc: "최근 5분 평균 기준"
   },
 ];
 
@@ -249,9 +234,7 @@ export default function QueryOverview() {
   });
   const [resourceType, setResourceType] = useState<ResourceType>("메모리");
   const [sortOption, setSortOption] = useState<SortOption>("최근 발생순");
-  const [currentSlowPage, setCurrentSlowPage] = useState(1);
   const [currentFullSlowPage, setCurrentFullSlowPage] = useState(1);
-  const slowItemsPerPage = 5;
   const fullSlowItemsPerPage = 5;
 
   // TPS/QPS 차트 시리즈
@@ -266,7 +249,10 @@ export default function QueryOverview() {
   // 리소스별 Top Query 목록 (최대 5개)
   const topQueries = useMemo(() => demoTopQueries[resourceType].slice(0, 5), [resourceType]);
 
-  // 슬로우 쿼리 정렬
+  // 슬로우 쿼리 TOP 5 (정렬 없이 항상 상위 5개)
+  const topFiveSlowQueries = useMemo(() => demoSlowQueries.slice(0, 5), []);
+
+  // 슬로우 쿼리 리스트 정렬 (독립적으로 관리)
   const sortedSlowQueries = useMemo(() => {
     const queries = [...demoSlowQueries];
     
@@ -286,13 +272,6 @@ export default function QueryOverview() {
     
     return queries;
   }, [sortOption]);
-
-  // TOP 5 슬로우 쿼리 페이지네이션
-  const totalSlowPages = Math.ceil(sortedSlowQueries.length / slowItemsPerPage);
-  const currentSlowQueries = sortedSlowQueries.slice(
-    (currentSlowPage - 1) * slowItemsPerPage,
-    currentSlowPage * slowItemsPerPage
-  );
 
   // 전체 슬로우 쿼리 페이지네이션
   const totalFullSlowPages = Math.ceil(sortedSlowQueries.length / fullSlowItemsPerPage);
@@ -353,43 +332,25 @@ export default function QueryOverview() {
 
   return (
     <div className="qo-root">
-      {/* 메트릭 카드 */}
+      {/* 메트릭 카드 - SummaryCard 컴포넌트 사용 */}
       <section className="qo-metrics">
-        {demoMetrics.map((card, idx) => {
-          const isUp = card.diff > 0;
-          const isDown = card.diff < 0;
-          const trendClass = isUp ? "up" : isDown ? "down" : "flat";
-          const statusClass = card.status && card.status !== "normal" ? `status-${card.status}` : "";
-
-          return (
-            <div key={idx} className={`qo-metric-card ${statusClass}`}>
-              <p className="qo-metric-label">{card.label}</p>
-              <h2 className="qo-metric-value">{card.value}</h2>
-
-              <div className="qo-summary-bottom">
-                <div className={`qo-trend ${trendClass}`}>
-                  {isUp ? (
-                    <TrendUpIcon />
-                  ) : isDown ? (
-                    <TrendDownIcon />
-                  ) : (
-                    <span className="qo-trend-dash">–</span>
-                  )}
-                  <span className="qo-trend-value">{isUp ? `+${card.diff}` : card.diff}</span>
-                </div>
-                <span className="qo-desc">{card.desc}</span>
-              </div>
-            </div>
-          );
-        })}
+        {demoMetrics.map((card, idx) => (
+          <SummaryCard
+            key={idx}
+            label={card.label}
+            value={card.value}
+            diff={card.diff}
+            desc={card.desc}
+            status={card.status}
+          />
+        ))}
       </section>
 
-      {/* TPS/QPS 그래프 + 리소스 사용률 */}
-      <div className="qo-grid-2col">
-        <section className="qo-card">
-          <div className="qo-card__header">
-            <div className="qo-card__title">TPS/QPS 실시간 그래프</div>
-            <div className="qo-legend">
+      {/* TPS/QPS 그래프 + 리소스 사용률 - ChartGridLayout 사용 */}
+      <ChartGridLayout>
+        <WidgetCard title="TPS/QPS 실시간 그래프" span={9} height={350}>
+          <div style={{ width: '100%', height: '100%' }}>
+            <div className="qo-legend" style={{ marginBottom: '0.75rem', justifyContent: 'flex-end' }}>
               <div className="qo-legend-item">
                 <span className="qo-legend-dot" style={{ background: "#7B61FF" }}></span>
                 TPS
@@ -399,44 +360,39 @@ export default function QueryOverview() {
                 QPS
               </div>
             </div>
-          </div>
-          <Chart
-            type="area"
-            series={trendChartSeries}
-            categories={["0:00", "1:00", "2:00", "3:00", "4:00", "5:00", "6:00", "7:00", "8:00", "9:00", "10:00", "11:00"]}
-            colors={["#7B61FF", "#FF928A"]}
-            height={280}
-            showLegend={false}
-            showToolbar={false}
-            customOptions={{
-              chart: { 
-                redrawOnParentResize: true, 
-                redrawOnWindowResize: true 
-              },
-              stroke: {
-                curve: "smooth",
-                width: 2,
-              },
-              fill: {
-                type: "gradient",
-                gradient: {
-                  shadeIntensity: 1,
-                  opacityFrom: 0.7,
-                  opacityTo: 0.2,
-                  stops: [0, 90, 100],
+            <Chart
+              type="area"
+              series={trendChartSeries}
+              categories={["0:00", "1:00", "2:00", "3:00", "4:00", "5:00", "6:00", "7:00", "8:00", "9:00", "10:00", "11:00"]}
+              colors={["#7B61FF", "#FF928A"]}
+              height={280}
+              showLegend={false}
+              showToolbar={false}
+              customOptions={{
+                chart: { 
+                  redrawOnParentResize: true, 
+                  redrawOnWindowResize: true 
                 },
-              },
-              dataLabels: { enabled: false },
-            }}
-          />
-        </section>
-
-        <section className="qo-card qo-card-resource">
-          <div className="qo-card__header">
-            <div className="qo-card__title">
-              리소스 사용률
-            </div>
+                stroke: {
+                  curve: "smooth",
+                  width: 2,
+                },
+                fill: {
+                  type: "gradient",
+                  gradient: {
+                    shadeIntensity: 1,
+                    opacityFrom: 0.7,
+                    opacityTo: 0.2,
+                    stops: [0, 90, 100],
+                  },
+                },
+                dataLabels: { enabled: false },
+              }}
+            />
           </div>
+        </WidgetCard>
+
+        <WidgetCard title="리소스 사용률" span={3} height={350}>
           <div className="qo-resource-wrapper">
             <div className="qo-resource-item">
               <div className="qo-resource-label">CPU</div>
@@ -478,13 +434,14 @@ export default function QueryOverview() {
               <div className="qo-resource-value">{Math.round(resourceUsage.disk)}%</div>
             </div>
           </div>
-        </section>
-      </div>
+        </WidgetCard>
+      </ChartGridLayout>
 
-      {/* Top-N 쿼리 + 슬로우 쿼리 (3컬럼) */}
-      <div className="qo-grid-3col">
-        <section className="qo-card qo-card-fixed-height">
-          <div className="qo-card__header">
+      {/* 하단 3개 카드 - 각각 독립 카드로 분리 */}
+      <div className="qo-bottom-cards">
+        {/* Top N 쿼리 카드 */}
+        <div className="qo-top-query-card">
+          <div className="qo-widget-header">
             <div className="qo-card__title">{resourceType} 사용량 Top 5</div>
             <div className="qo-tabs">
               <ResourceTab
@@ -550,68 +507,74 @@ export default function QueryOverview() {
               );
             })}
           </div>
-        </section>
+        </div>
 
-        <section className="qo-card qo-card-slow-top5">
-          <div className="qo-card__header">
+        {/* 슬로우 쿼리 TOP 5 카드 */}
+        <div className="qo-slow-top5-card">
+          <div className="qo-widget-header">
             <div className="qo-card__title">
               슬로우 쿼리 TOP 5
             </div>
             <CsvButton onClick={handleExport} />
           </div>
-          <div className="qo-query-list-wrapper">
+          <div className="qo-query-list-wrapper-top5">
             <div className="qo-query-list">
-              {currentSlowQueries.map((query, index) => (
+              {topFiveSlowQueries.map((query, index) => (
                 <div key={index} className="qo-query-item">
-                  <div className="qo-query-content">
-                    <div className="qo-query-text">{query.query}</div>
-                    <div className="qo-query-timestamp">{query.occurredAt}</div>
+                  <div className="qo-query-item-header">
+                    <div className="qo-query-content">
+                      <div className="qo-query-text">{query.query}</div>
+                    </div>
+                    <div className="qo-query-time">{query.executionTime}</div>
                   </div>
-                  <div className="qo-query-time">{query.executionTime}</div>
+                  <div className="qo-query-timestamp">발생: {query.occurredAt}</div>
                 </div>
               ))}
             </div>
-            <div className="qo-pagination-wrapper">
-              <Pagination
-                currentPage={currentSlowPage}
-                totalPages={totalSlowPages}
-                onPageChange={(page: number) => setCurrentSlowPage(page)}
-              />
-            </div>
           </div>
-        </section>
+        </div>
 
-        {/* 슬로우 쿼리 리스트 (간소화) */}
-        <section className="qo-card qo-card-slow-list">
-          <div className="qo-card__header">
+        {/* 슬로우 쿼리 리스트 카드 */}
+        <div className="qo-slow-list-card">
+          <div className="qo-widget-header">
             <div className="qo-card__title">
               슬로우 쿼리
             </div>
-            <CsvButton onClick={handleExport} />
+            <div className="qo-header-right">
+              <div className="qo-sort-options">
+                <SortButton
+                  active={sortOption === "최근 발생순"}
+                  label="최근 발생순"
+                  onClick={() => {
+                    setSortOption("최근 발생순");
+                    setCurrentFullSlowPage(1);
+                  }}
+                />
+                <SortButton
+                  active={sortOption === "실행시간 느린순"}
+                  label="실행시간 느린순"
+                  onClick={() => {
+                    setSortOption("실행시간 느린순");
+                    setCurrentFullSlowPage(1);
+                  }}
+                />
+                <SortButton
+                  active={sortOption === "실행시간 빠른순"}
+                  label="실행시간 빠른순"
+                  onClick={() => {
+                    setSortOption("실행시간 빠른순");
+                    setCurrentFullSlowPage(1);
+                  }}
+                />
+              </div>
+              <CsvButton onClick={handleExport} />
+            </div>
           </div>
 
-          <div className="qo-sort-options">
-            <SortButton
-              active={sortOption === "최근 발생순"}
-              label="최근 발생순"
-              onClick={() => setSortOption("최근 발생순")}
-            />
-            <SortButton
-              active={sortOption === "실행시간 느린순"}
-              label="실행시간 느린순"
-              onClick={() => setSortOption("실행시간 느린순")}
-            />
-            <SortButton
-              active={sortOption === "실행시간 빠른순"}
-              label="실행시간 빠른순"
-              onClick={() => setSortOption("실행시간 빠른순")}
-            />
-          </div>
-
-          <div className="qo-slow-list-wrapper">
-            <div className="qo-slow-list-compact">
+          <div className="qo-slow-list-wrapper-tall">
+            <div className="qo-slow-list-content">
               {currentFullSlowQueries.map((slowQuery) => (
-                <div key={slowQuery.id} className="qo-slow-card">
+                <div key={slowQuery.id} className="qo-slow-card-fixed">
                   <div className="qo-slow-card-header">
                     <div className="qo-slow-card-left">
                       <div className="qo-slow-card-query">{slowQuery.query}</div>
@@ -625,9 +588,7 @@ export default function QueryOverview() {
                       {slowQuery.severity}
                     </div>
                   </div>
-                  <div className="qo-slow-card-suggestion">
-                    {slowQuery.suggestion}
-                  </div>
+                  <div className="qo-slow-card-suggestion">{slowQuery.suggestion}</div>
                   <div className="qo-slow-card-footer">
                     <span className="qo-slow-card-time">
                       실행: {slowQuery.executionTime}
@@ -639,7 +600,8 @@ export default function QueryOverview() {
                 </div>
               ))}
             </div>
-            <div className="qo-pagination-wrapper">
+            {/* 페이지네이션 공통 컴포넌트 사용 */}
+            <div className="qo-pagination-fixed">
               <Pagination
                 currentPage={currentFullSlowPage}
                 totalPages={totalFullSlowPages}
@@ -647,7 +609,7 @@ export default function QueryOverview() {
               />
             </div>
           </div>
-        </section>
+        </div>
       </div>
     </div>
   );
