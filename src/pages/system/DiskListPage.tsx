@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import {Fragment, useMemo, useState} from "react";
 import {
     useReactTable,
     getCoreRowModel,
@@ -10,6 +10,7 @@ import {
     type SortingState,
 } from "@tanstack/react-table";
 import Pagination from "../../components/util/Pagination";
+import CsvButton from "../../components/util/CsvButton";
 import "../../styles/system/disklist.css";
 
 // 데이터 타입 정의
@@ -82,7 +83,7 @@ export default function DiskListPage() {
     const [data] = useState<DiskIOData[]>(mockData);
     const [sorting, setSorting] = useState<SortingState>([]);
     const [currentPage, setCurrentPage] = useState(1);
-    const pageSize = 14;
+    const pageSize = 10;
 
     // 컬럼 정의
     const columns = useMemo<ColumnDef<DiskIOData>[]>(
@@ -132,19 +133,19 @@ export default function DiskListPage() {
                 header: "상태",
                 cell: (info) => {
                     const value = info.getValue() as string;
-                    const getBadgeClass = () => {
-                        switch (value) {
-                            case "정상":
-                                return "badge-normal";
-                            case "주의":
-                                return "badge-warning";
-                            case "위험":
-                                return "badge-danger";
-                            default:
-                                return "badge-normal";
-                        }
-                    };
-                    return <span className={`badge ${getBadgeClass()}`}>{value}</span>;
+                    let className = "";
+                    switch (value) {
+                        case "정상":
+                            className = "info";
+                            break;
+                        case "주의":
+                            className = "warn";
+                            break;
+                        case "위험":
+                            className = "error";
+                            break;
+                    }
+                    return <span className={className}>{value}</span>;
                 },
             },
         ],
@@ -231,63 +232,64 @@ export default function DiskListPage() {
     };
 
     return (
-        <div className="diskio-container">
-            <div className="diskio-header">
-                <div className="diskio-actions">
-                    <button className="csv-export-button" onClick={handleExportCSV}>
-                        CSV 내보내기
-                    </button>
-                </div>
-            </div>
+        <main className="diskio-page">
+            {/* 필터 선택 영역 */}
+            <section className="diskio-page__filters">
+                <CsvButton onClick={handleExportCSV} tooltip="CSV 파일 저장"/>
+            </section>
 
-            <div className="table-wrapper">
-                <table className="diskio-table">
-                    <thead>
+            {/* DiskIO 테이블 */}
+            <section className="diskio-page__table">
+                <div className="diskio-table-header">
                     {table.getHeaderGroups().map((headerGroup) => (
-                        <tr key={headerGroup.id}>
+                        <Fragment key={headerGroup.id}>
                             {headerGroup.headers.map((header) => (
-                                <th
+                                <div
                                     key={header.id}
                                     onClick={header.column.getToggleSortingHandler()}
+                                    style={{ cursor: 'pointer' }}
                                 >
                                     {flexRender(
                                         header.column.columnDef.header,
                                         header.getContext()
                                     )}
                                     {header.column.getIsSorted() && (
-                                        <span className="sort-icon active">
-                                                {header.column.getIsSorted() === "asc"
-                                                    ? " ▲"
-                                                    : " ▼"}
-                                            </span>
+                                        <span className="sort-icon">
+                                            {header.column.getIsSorted() === "asc" ? " ▲" : " ▼"}
+                                        </span>
                                     )}
-                                </th>
+                                </div>
                             ))}
-                        </tr>
+                        </Fragment>
                     ))}
-                    </thead>
-                    <tbody>
-                    {table.getRowModel().rows.map((row) => (
-                        <tr key={row.id}>
+                </div>
+
+                {table.getRowModel().rows.length > 0 ? (
+                    table.getRowModel().rows.map((row) => (
+                        <div key={row.id} className="diskio-table-row">
                             {row.getVisibleCells().map((cell) => (
-                                <td key={cell.id}>
+                                <div key={cell.id}>
                                     {flexRender(
                                         cell.column.columnDef.cell,
                                         cell.getContext()
                                     )}
-                                </td>
+                                </div>
                             ))}
-                        </tr>
-                    ))}
-                    </tbody>
-                </table>
-            </div>
+                        </div>
+                    ))
+                ) : (
+                    <div className="diskio-table-empty">데이터가 없습니다.</div>
+                )}
+            </section>
 
-            <Pagination
-                currentPage={currentPage}
-                totalPages={totalPages}
-                onPageChange={handlePageChange}
-            />
-        </div>
+            {/* 페이지네이션 */}
+            {totalPages > 1 && (
+                <Pagination
+                    currentPage={currentPage}
+                    totalPages={totalPages}
+                    onPageChange={handlePageChange}
+                />
+            )}
+        </main>
     );
 }

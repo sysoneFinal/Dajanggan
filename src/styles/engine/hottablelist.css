@@ -1,90 +1,83 @@
-.hottable-container {
-    padding: 24px;
-    min-height: 100vh;
+:root {
+    font-size: 16px;
 }
 
-.hottable-header {
+.hottable-page {
+    padding: 2rem;
     display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 24px;
-}
-
-
-.hottable-actions {
-    display: flex;
-    gap: 12px;
-    align-items: center;
-}
-
-.csv-export-button {
-    padding: 8px 16px;
-    background-color: #ffffff;
-    color: #6B7280;
-    border: none;
-    border-radius: 6px;
-    cursor: pointer;
-    font-size: 14px;
-    font-weight: 500;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-
-.csv-export-button:hover {
-    background-color: #F9FAFB;
-}
-
-.table-wrapper {
-    overflow-x: auto;
-    border-radius: 8px;
-    border: 1px solid #E5E7EB;
-    background-color: #ffffff;
-}
-
-.hottable-table {
+    flex-direction: column;
+    gap: 2vh;
     width: 100%;
-    border-collapse: collapse;
+    min-height: 85vh;
 }
 
-.hottable-table thead tr {
-    background-color: #F9FAFB;
+/* 필터 */
+.hottable-page__filters {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.75rem;
+    align-items: center;
 }
 
-.hottable-table th {
-    padding: 12px 16px;
+.hottable-page__filters > div {
+    min-width: 200px;
+}
+
+/* 테이블 */
+.hottable-page__table {
+    background: rgba(255, 255, 255, 0.6);
+    border-radius: 0.7rem;
+    border: 1px solid rgba(255, 255, 255, 0.7);
+    box-shadow: 0 0.6rem 1.8rem rgba(0, 0, 0, 0.08);
+    overflow-x: auto;
+}
+
+.hottable-table-header,
+.hottable-table-row {
+    display: grid;
+    grid-template-columns: repeat(10, minmax(8rem, 1fr));
     text-align: center;
-    border-bottom: 2px solid #E5E7EB;
-    font-weight: 600;
-    font-size: 14px;
-    color: #374151;
-    cursor: pointer;
-    user-select: none;
-    white-space: nowrap;
+    padding: 1.1rem;
+    align-items: center;
+    font-size: 1rem;
 }
 
-.hottable-table th:hover {
-    background-color: #F3F4F6;
+.hottable-table-header {
+    background: rgb(241, 239, 243, 0.8);
+    font-weight: 700;
+    color: #2e2f33;
 }
 
-.hottable-table tbody tr {
-    border-bottom: 1px solid #E5E7EB;
-    transition: background-color 0.15s;
+.hottable-table-row {
+    border-top: 1px solid rgba(0, 0, 0, 0.05);
+    color: #2e2f33;
 }
 
-.hottable-table tbody tr:hover {
-    background-color: #F9FAFB;
+.hottable-table-row:nth-child(even) {
+    background: rgba(255, 255, 255, 0.5);
 }
 
-.hottable-table tbody tr:last-child {
-    border-bottom: none;
-}
-
-.hottable-table td {
-    padding: 12px 16px;
-    font-size: 14px;
-    color: #374151;
+.hottable-table-empty {
+    padding: 3rem;
     text-align: center;
+    color: #6b7280;
+    font-size: 1rem;
+}
+
+/* 상태 레벨 색상 */
+.info {
+    color: #7B61FF;
+    font-weight: 700;
+}
+
+.warn {
+    color: #FFD66B;
+    font-weight: 700;
+}
+
+.error {
+    color: #FF928A;
+    font-weight: 700;
 }
 
 /* 프로그레스 바 스타일 */
@@ -97,7 +90,7 @@
 
 .progress-bar-wrapper {
     flex: 1;
-    max-width: 180px;
+    max-width: 150px;
 }
 
 .progress-bar-track {
@@ -123,68 +116,22 @@
     text-align: right;
 }
 
-/* 배지 스타일 */
-.badge {
-    padding: 4px 12px;
-    border-radius: 4px;
-    font-size: 12px;
-    font-weight: 500;
-    display: inline-block;
-}
-
-.badge-normal {
-    background-color: #DBEAFE;
-    color: #1E40AF;
-}
-
-.badge-warning {
-    background-color: #FEF3C7;
-    color: #92400E;
-}
-
-.badge-danger {
-    background-color: #FEE2E2;
-    color: #991B1B;
-}
-
 /* 정렬 아이콘 */
 .sort-icon {
     margin-left: 4px;
     font-size: 12px;
-    opacity: 0.5;
-}
-
-.sort-icon.active {
-    opacity: 1;
+    opacity: 0.7;
 }
 
 /* 반응형 */
-@media (max-width: 1024px) {
-    .hottable-container {
-        padding: 16px;
+@media (max-width: 768px) {
+    .hottable-page__filters {
+        flex-wrap: wrap;
     }
 
-    .hottable-header {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 16px;
-    }
-
-    .hottable-actions {
-        width: 100%;
-    }
-
-    .csv-export-button {
-        width: 100%;
-    }
-
-    .progress-bar-wrapper {
-        max-width: 120px;
-    }
-
-    .hottable-table th,
-    .hottable-table td {
-        padding: 8px;
-        font-size: 12px;
+    .hottable-table-header,
+    .hottable-table-row {
+        grid-template-columns: repeat(10, minmax(6rem, 1fr));
+        font-size: 0.8rem;
     }
 }
