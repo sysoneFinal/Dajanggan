@@ -4,6 +4,12 @@
     padding: 1.5rem 0;
 }
 
+/* 요약 카드 */
+.bgwriter-summary-cards {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 0.9rem;
+}
 
 /* 차트 카드 (WidgetCard 래퍼) */
 .bgwriter-chart-card {
@@ -216,6 +222,10 @@
 
 /* 반응형 - 태블릿 (1024px 이하) */
 @media (max-width: 1024px) {
+    .bgwriter-summary-cards {
+        flex-wrap: wrap;
+    }
+
     .bgwriter-stat-item {
         min-width: 70px;
     }
@@ -233,6 +243,10 @@
 @media (max-width: 768px) {
     .bgwriter-page {
         padding: 1rem 0;
+    }
+
+    .bgwriter-summary-cards {
+        flex-direction: column;
     }
 
     .bgwriter-toolbar {

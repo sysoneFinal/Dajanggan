@@ -1,6 +1,7 @@
 import { useState } from "react";
 import Chart from "../../components/chart/ChartComponent";
 import GaugeChart from "../../components/chart/GaugeChart";
+import SummaryCard from "../../components/layout/SummaryCard";
 import WidgetCard from "../../components/util/WidgetCard";
 import ChartGridLayout from "../../components/layout/ChartGridLayout";
 import "../../styles/system/disk.css";
@@ -47,6 +48,13 @@ interface DiskIOData {
         categories: string[];
         walBytes: number[];
         average: number;
+    };
+    recentStats?: {
+        diskQueueLength: number;
+        iopsSaturation: number;        // 변경: avgIops → iopsSaturation (%)
+        avgLatency: number;
+        walBottleneck: number;         // 변경: avgWalWriteSpeed → walBottleneck (%)
+        readWriteRatio: string;
     };
 }
 
@@ -95,6 +103,14 @@ const dummyData: DiskIOData = {
         walBytes: [2500000, 4500000, 5200000, 4800000, 3200000, 3800000, 4200000, 3500000, 3000000, 5800000, 5200000, 2800000],
         average: 4125000,
     },
+    // 최근 5분 평균 통계
+    recentStats: {
+        diskQueueLength: 3.2,
+        iopsSaturation: 82,        // 변경: 현재 IOPS / 최대 IOPS (%)
+        avgLatency: 4.8,
+        walBottleneck: 8,          // 변경: WAL 병목 비율 (%)
+        readWriteRatio: "62/38",
+    },
 };
 
 const getDiskUtilizationColor = (value: number): string => {
@@ -103,15 +119,76 @@ const getDiskUtilizationColor = (value: number): string => {
     return "#FF928A"; // 빨간색 (위험)
 };
 
-
 // 메인 컴포넌트
 export default function DiskPage() {
     const [data] = useState<DiskIOData>(dummyData);
 
     const DiskUtilizationColor = getDiskUtilizationColor(data.diskUsage);
 
+    // 최근 5분 평균 통계
+    const recentStats = data.recentStats || {
+        diskQueueLength: 3.2,
+        iopsSaturation: 82,
+        avgLatency: 4.8,
+        walBottleneck: 8,
+        readWriteRatio: "62/38",
+    };
+
+    // 요약 카드 데이터 계산 (최근 5분 평균 기준)
+    const summaryCards = [
+        {
+            label: "디스크 대기열 길이",
+            value: recentStats.diskQueueLength.toString(),
+            diff: 0.8,
+            desc: "최근 5분 평균",
+            status: recentStats.diskQueueLength > 2 ? ("warning" as const) : ("info" as const),
+        },
+        {
+            label: "IOPS 포화도",  // 변경
+            value: `${recentStats.iopsSaturation}%`,  // 변경
+            diff: 5,
+            desc: "최근 5분 평균",
+            status: recentStats.iopsSaturation > 90 ? ("warning" as const) : ("info" as const),
+        },
+        {
+            label: "평균 응답 시간",
+            value: `${recentStats.avgLatency}ms`,
+            diff: -0.5,
+            desc: "최근 5분 평균",
+            status: recentStats.avgLatency > 10 ? ("warning" as const) : ("info" as const),
+        },
+        {
+            label: "WAL 병목 여부",  // 변경
+            value: `${recentStats.walBottleneck}%`,  // 변경
+            diff: -2,
+            desc: "최근 5분 평균",
+            status: recentStats.walBottleneck > 15 ? ("warning" as const) : ("info" as const),
+        },
+        {
+            label: "읽기/쓰기 비율",
+            value: recentStats.readWriteRatio,
+            diff: 2,
+            desc: "최근 5분 평균",
+            status: "info" as const,
+        },
+    ];
+
     return (
         <div className="checkpoint-page">
+            {/* 상단 요약 카드 */}
+            <div className="disk-summary-cards">
+                {summaryCards.map((card, idx) => (
+                    <SummaryCard
+                        key={idx}
+                        label={card.label}
+                        value={card.value}
+                        diff={card.diff}
+                        desc={card.desc}
+                        status={card.status}
+                    />
+                ))}
+            </div>
+
             {/* 첫 번째 행: 게이지 + 2개 차트 */}
             <ChartGridLayout>
                 <WidgetCard title="DISK 사용률" span={2}>

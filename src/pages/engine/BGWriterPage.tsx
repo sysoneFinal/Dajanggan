@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import Chart from "../../components/chart/ChartComponent";
 import GaugeChart from "../../components/chart/GaugeChart";
+import SummaryCard from "../../components/layout/SummaryCard";
 import "../../styles/engine/bgwriter.css";
 import WidgetCard from "../../components/util/WidgetCard";
 import ChartGridLayout from "../../components/layout/ChartGridLayout";
@@ -44,6 +45,13 @@ interface BGWriterData {
         bgwriterTotal: number;
         checkpointTotal: number;
     };
+    recentStats?: {
+        cleanBufferReuseRate: number;
+        avgCleanRate: number;
+        backendDirectWriteRate: number;   // 변경: bgwriterExecutions → backendDirectWriteRate (%)
+        bgwriterVsCheckpointRatio: number;
+        maxwrittenReachRate: number;      // 변경: maxwrittenCleanCount → maxwrittenReachRate (%)
+    };
 }
 
 /** 더미 데이터 */
@@ -62,6 +70,14 @@ const mockData: BGWriterData = {
         average: 126,
         max: 195,
         min: 95,
+    },
+    // 최근 5분 평균 통계
+    recentStats: {
+        cleanBufferReuseRate: 78,
+        avgCleanRate: 118,
+        backendDirectWriteRate: 2.8,    // 변경: Backend가 직접 쓴 비율 (%)
+        bgwriterVsCheckpointRatio: 38.5,
+        maxwrittenReachRate: 6.7,       // 변경: 제한 도달률 (%)
     },
     bufferFlushRatio: {
         categories: [
@@ -128,13 +144,75 @@ export default function BGWriterPage() {
 
     const gaugeStatus = getGaugeStatus(dashboard.backendFlushRatio.value);
 
+    // 최근 5분 평균 통계 (API에서 받아오거나 더미 데이터 사용)
+    const recentStats = dashboard.recentStats || {
+        cleanBufferReuseRate: 78,
+        avgCleanRate: 118,
+        backendDirectWriteRate: 2.8,
+        bgwriterVsCheckpointRatio: 38.5,
+        maxwrittenReachRate: 6.7,
+    };
+
+    // 요약 카드 데이터 계산 (최근 5분 평균 기준)
+    const summaryCards = [
+        {
+            label: "Clean 버퍼 재활용률",
+            value: `${recentStats.cleanBufferReuseRate}%`,
+            diff: 2.5,
+            desc: "최근 5분 평균",
+            status: recentStats.cleanBufferReuseRate < 60 ? ("warning" as const) : ("info" as const),
+        },
+        {
+            label: "평균 Clean Rate",
+            value: `${recentStats.avgCleanRate}/s`,
+            diff: 3,
+            desc: "최근 5분 평균",
+            status: "info" as const,
+        },
+        {
+            label: "Backend 직접 쓰기 비율",  // 변경
+            value: `${recentStats.backendDirectWriteRate}%`,  // 변경
+            diff: -0.5,
+            desc: "최근 5분 평균",
+            status: recentStats.backendDirectWriteRate > 10 ? ("warning" as const) : ("info" as const),
+        },
+        {
+            label: "BGWriter/Checkpoint 비율",
+            value: `${recentStats.bgwriterVsCheckpointRatio}%`,
+            diff: 1.5,
+            desc: "최근 5분 평균",
+            status: recentStats.bgwriterVsCheckpointRatio < 30 ? ("warning" as const) : ("info" as const),
+        },
+        {
+            label: "BGWriter 제한 도달률",  // 변경
+            value: `${recentStats.maxwrittenReachRate}%`,  // 변경
+            diff: -1.2,
+            desc: "최근 5분 평균",
+            status: recentStats.maxwrittenReachRate > 10 ? ("warning" as const) : ("info" as const),
+        },
+    ];
+
     return (
         <div className="bgwriter-page">
+            {/* 상단 요약 카드 */}
+            <div className="bgwriter-summary-cards">
+                {summaryCards.map((card, idx) => (
+                    <SummaryCard
+                        key={idx}
+                        label={card.label}
+                        value={card.value}
+                        diff={card.diff}
+                        desc={card.desc}
+                        status={card.status}
+                    />
+                ))}
+            </div>
+
             {/* 첫 번째 행: 3개 카드 (4+4+4=12) */}
             <ChartGridLayout>
                 {/* Backend Flush 비율 */}
                 <WidgetCard title="Backend Flush 비율" span={2}>
-                        <div className="bgwriter-gauge-container">
+                    <div className="bgwriter-gauge-container">
                         <GaugeChart
                             value={dashboard.backendFlushRatio.value}
                             status={gaugeStatus}
@@ -175,16 +253,16 @@ export default function BGWriterPage() {
 
             {/* 두 번째 행: 3개 카드 (4+4+4=12) */}
             <ChartGridLayout>
-            {/* BGWriter 활동량 추세 */}
-            <WidgetCard title="BGWriter 활동량 추세 (Last 24 Hours)" span={4}>
-                <Chart
-                    type="line"
-                    series={[{ name: "Buffers Clean/sec", data: dashboard.cleanRate.data }]}
-                    categories={dashboard.cleanRate.categories}
-                    colors={["#8E79FF"]}
-                    height={250}
-                />
-            </WidgetCard>
+                {/* BGWriter 활동량 추세 */}
+                <WidgetCard title="BGWriter 활동량 추세 (Last 24 Hours)" span={4}>
+                    <Chart
+                        type="line"
+                        series={[{ name: "Buffers Clean/sec", data: dashboard.cleanRate.data }]}
+                        categories={dashboard.cleanRate.categories}
+                        colors={["#8E79FF"]}
+                        height={250}
+                    />
+                </WidgetCard>
                 {/* Clean 스캔 상한 도달 추이 */}
                 <WidgetCard title="Clean 스캔 상한 도달 추이 (Last 24 Hours)" span={4}>
                     <Chart

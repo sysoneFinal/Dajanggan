@@ -1,6 +1,7 @@
 import { useState } from "react";
 import Chart from "../../components/chart/ChartComponent";
 import GaugeChart from "../../components/chart/GaugeChart";
+import SummaryCard from "../../components/layout/SummaryCard";
 import WidgetCard from "../../components/util/WidgetCard";
 import ChartGridLayout from "../../components/layout/ChartGridLayout";
 import "../../styles/system/memory.css";
@@ -49,6 +50,13 @@ interface MemoryData {
     topBufferObjects: {
         labels: string[];
         data: number[];
+    };
+    recentStats?: {
+        pageFaultRate: number;
+        backendWaitTime: number;
+        workMemUsage: number;
+        evictionCacheMissRate: number;    // 변경: avgEviction → evictionCacheMissRate (%)
+        backendFsyncCount: number;        // 변경: avgFsync → backendFsyncCount (횟수)
     };
 }
 
@@ -109,6 +117,14 @@ const dummyData: MemoryData = {
         labels: ["orders", "users", "products", "payments", "inventory", "audit_log"],
         data: [18.5, 15.2, 12.8, 10.3, 8.7, 6.2],
     },
+    // 최근 5분 평균 통계
+    recentStats: {
+        pageFaultRate: 12,
+        backendWaitTime: 0.8,
+        workMemUsage: 340,
+        evictionCacheMissRate: 3.2,    // 변경: Eviction으로 인한 캐시 미스율 (%)
+        backendFsyncCount: 0,          // 변경: Backend가 직접 fsync한 횟수
+    },
 };
 
 // Gauge 색상 결정 (Memory Utilization)
@@ -133,8 +149,70 @@ export default function MemoryPage() {
     const hitRatioColor = getHitRatioColor(data.bufferHitRatio.value);
     const sharedBufferColor = getMemoryUtilizationColor(data.sharedBufferUsage.value);
 
+    // 최근 5분 평균 통계 (API에서 받아오거나 더미 데이터 사용)
+    const recentStats = data.recentStats || {
+        pageFaultRate: 12,
+        backendWaitTime: 0.8,
+        workMemUsage: 340,
+        evictionCacheMissRate: 3.2,
+        backendFsyncCount: 0,
+    };
+
+    // 요약 카드 데이터 계산 (최근 5분 평균 기준)
+    const summaryCards = [
+        {
+            label: "페이지 폴트 발생률",
+            value: `${recentStats.pageFaultRate}/s`,
+            diff: -2,
+            desc: "최근 5분 평균",
+            status: recentStats.pageFaultRate > 20 ? ("warning" as const) : ("info" as const),
+        },
+        {
+            label: "Backend 대기 시간",
+            value: `${recentStats.backendWaitTime}ms`,
+            diff: -0.1,
+            desc: "최근 5분 평균",
+            status: recentStats.backendWaitTime > 2 ? ("warning" as const) : ("info" as const),
+        },
+        {
+            label: "작업 메모리 사용량",
+            value: `${recentStats.workMemUsage}MB`,
+            diff: 25,
+            desc: "최근 5분 최대값",
+            status: "info" as const,
+        },
+        {
+            label: "Eviction 캐시 미스율",  // 변경
+            value: `${recentStats.evictionCacheMissRate}%`,  // 변경
+            diff: -0.3,
+            desc: "최근 5분 평균",
+            status: recentStats.evictionCacheMissRate > 10 ? ("warning" as const) : ("info" as const),
+        },
+        {
+            label: "Backend Fsync 발생",  // 변경
+            value: `${recentStats.backendFsyncCount}회`,  // 변경
+            diff: 0,
+            desc: "최근 5분 누적",
+            status: recentStats.backendFsyncCount > 0 ? ("warning" as const) : ("info" as const),
+        },
+    ];
+
     return (
         <div className="memory-page">
+            {/* 상단 요약 카드 */}
+            <div className="memory-summary-cards">
+                {summaryCards.map((card, idx) => (
+                    <SummaryCard
+                        key={idx}
+                        label={card.label}
+                        value={card.value}
+                        diff={card.diff}
+                        desc={card.desc}
+                        status={card.status}
+                    />
+                ))}
+            </div>
+
             {/* 첫 번째 행: 3개의 게이지 */}
             <ChartGridLayout>
                 <WidgetCard title="Memory 사용률" span={2}>
