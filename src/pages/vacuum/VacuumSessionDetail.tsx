@@ -90,9 +90,9 @@ export default function VacuumRecordDetailPage({ data = demo }: { data?: VacuumR
   };
 
   const pages = {
+    "Pages Remaining": data.summary["Pages Remaining"],
     "Pages Skipped Frozen": data.summary["Pages Skipped Frozen"],
     "Pages Removed": data.summary["Pages Removed"],
-    "Pages Remaining": data.summary["Pages Remaining"],
     "Pages Skipped Due To Pin": data.summary["Pages Skipped Due To Pin"],
   };
 
@@ -107,22 +107,35 @@ export default function VacuumRecordDetailPage({ data = demo }: { data?: VacuumR
       <div className="vd-grid4">
         <section className="vd-card">
           <header className="vd-card__header">
-            <h2>VACUUM Record · {data.tableName} <span className="vd-dim">({data.startTime.split(" ")[0]} {data.startTime.split(",")[1]})</span></h2>
-          </header>
-          <div className="vd-info-grid">
-            <div><strong>Start Time</strong><span>{data.startTime}</span></div>
-            <div><strong>Duration</strong><span>{data.duration}</span></div>
-            <div><strong>End Time</strong><span>{data.endTime}</span></div>
-            <div><strong>Autovacuum</strong><span>{data.autovacuum ? "Yes" : "No"}</span></div>
-            <div><strong>Postgres Role</strong><span>{data.role}</span></div>
-            <div><strong>Heap Blocks Total</strong><span>{data.heapBlocksTotal}</span></div>
-            <div><strong>Max Dead Tuples / Phase</strong><span>{data.deadTuplesPerPhase}</span></div>
+            <h2>VACUUM - {data.tableName} <span className="vd-dim">({data.startTime.split(" ")[0]} {data.startTime.split(",")[1]})</span></h2>
+          <div className="vd-kpis">
+            <div className="vd-chip">
+              <span className="vd-chip__label">Duration</span>
+              <span className="vd-chip__value">{data.duration}</span>
+            </div>
+            <div className="vd-chip">
+              <span className="vd-chip__label">Autovacuum</span>
+              <span className="vd-chip__value">{data.autovacuum ? "Yes" : "No"}</span>
+            </div>
+          <div className="vd-kpis" style={{ marginTop: '4px' }}>
+            <div className="vd-chip">
+              <span className="vd-chip__label">Start</span>
+              <span className="vd-chip__value">{data.startTime}</span>
+            </div>
           </div>
+           <div className="vd-kpis" style={{ marginTop: '4px' }}>
+            <div className="vd-chip">
+              <span className="vd-chip__label">End</span>
+              <span className="vd-chip__value">{data.endTime}</span>
+            </div>
+          </div>
+          </div>
+          </header>
         </section>
       </div>
 
       {/* Progress 차트 */}
-      <div className="vd-grid4">
+      <div className="vd-grid5">
         <section className="vd-card vd-chart">
           <header className="vd-card__header">
             <h3>Progress</h3>
@@ -149,7 +162,6 @@ export default function VacuumRecordDetailPage({ data = demo }: { data?: VacuumR
             }}
           />
         </section>
-      </div>
 
       {/* 성능 및 데이터 I/O */}
       <div className="vd-grid3">
@@ -188,10 +200,8 @@ export default function VacuumRecordDetailPage({ data = demo }: { data?: VacuumR
             </table>
           </div>
         </section>
-      </div>
 
-      {/* 튜플 및 페이지 */}
-      <div className="vd-grid3">
+
         <section className="vd-card">
           <header className="vd-card__header">
             <h3>튜플</h3>
@@ -230,7 +240,6 @@ export default function VacuumRecordDetailPage({ data = demo }: { data?: VacuumR
       </div>
 
       {/* 기타 정보 */}
-      <div className="vd-grid4">
         <section className="vd-card">
           <header className="vd-card__header">
             <h3>기타</h3>
@@ -248,7 +257,7 @@ export default function VacuumRecordDetailPage({ data = demo }: { data?: VacuumR
             </table>
           </div>
         </section>
-      </div>
+    </div>
     </div>
   );
 }
