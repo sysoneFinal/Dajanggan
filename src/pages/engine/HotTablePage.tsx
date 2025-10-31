@@ -1,9 +1,12 @@
-import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import Chart from "../../components/chart/ChartComponent";
 import GaugeChart from "../../components/chart/GaugeChart";
+import SummaryCard from "../../components/layout/SummaryCard";
 import "../../styles/engine/hottable.css";
+import WidgetCard from "../../components/util/WidgetCard";
+import ChartGridLayout from "../../components/layout/ChartGridLayout";
 
-// API 응답 전체 구조
+/** Hot Table API 응답 타입 */
 interface HotTableData {
     cacheHitRatio: {
         tableName: string;
@@ -38,10 +41,17 @@ interface HotTableData {
         updateCounts: number[];
         deleteCounts: number[];
     };
+    recentStats?: {
+        hotUpdateRatio: number;
+        liveDeadTupleRatio: string;
+        deadTupleCount: number;
+        seqScanRatio: number;           // 변경: totalScans → seqScanRatio (%)
+        updateDeleteRatio: number;      // 변경: totalDml → updateDeleteRatio (배율)
+    };
 }
 
-// 더미 데이터
-const dummyData: HotTableData = {
+/** 더미 데이터 */
+const mockData: HotTableData = {
     cacheHitRatio: {
         tableName: "orders",
         value: 94.3,
@@ -82,281 +92,198 @@ const dummyData: HotTableData = {
         updateCounts: [80000, 60000, 50000, 70000, 40000],
         deleteCounts: [20000, 15000, 10000, 18000, 8000],
     },
+    // 최근 5분 평균 통계
+    recentStats: {
+        hotUpdateRatio: 76,
+        liveDeadTupleRatio: "648:1",
+        deadTupleCount: 1850,
+        seqScanRatio: 18,           // 변경: Sequential Scan 비율 (%)
+        updateDeleteRatio: 2.3,     // 변경: (Update+Delete) / Insert 배율
+    },
 };
 
-// Gauge 색상 결정 (캐시 적중률)
-const getCacheGaugeColor = (value: number): string => {
-    if (value >= 95) return "#10B981"; // 녹색 (정상)
-    if (value >= 85) return "#F59E0B"; // 주황색 (주의)
-    return "#EF4444"; // 빨간색 (위험)
+/** API 요청 */
+async function fetchHotTableData() {
+    const res = await fetch("/api/dashboard/hottable");
+    if (!res.ok) throw new Error("Failed to fetch hot table data");
+    return res.json();
+}
+
+const getCacheGaugeStatus = (value: number): "normal" | "warning" | "critical" => {
+    if (value >= 95) return "normal";
+    if (value >= 85) return "warning";
+    return "critical";
 };
 
-// Gauge 색상 결정 (Vacuum 지연)
-const getVacuumGaugeColor = (hours: number): string => {
-    if (hours < 6) return "#10B981"; // 녹색 (정상)
-    if (hours < 24) return "#F59E0B"; // 주황색 (주의)
-    return "#EF4444"; // 빨간색 (위험)
+const getVacuumGaugeStatus = (hours: number): "normal" | "warning" | "critical" => {
+    if (hours < 6) return "normal";
+    if (hours < 24) return "warning";
+    return "critical";
 };
 
-// Gauge 상태 텍스트 (캐시 적중률)
-const getCacheStatusText = (value: number): string => {
-    if (value >= 95) return "정상";
-    if (value >= 85) return "주의";
-    return "위험";
-};
-
-// Gauge 상태 텍스트 (Vacuum 지연)
-const getVacuumStatusText = (hours: number): string => {
-    if (hours < 6) return "정상";
-    if (hours < 24) return "주의";
-    return "위험";
-};
-
-// Vacuum 지연 시간을 퍼센트로 변환 (24시간 기준 100%)
 const vacuumDelayToPercent = (hours: number): number => {
     const maxHours = 48;
     return Math.min((hours / maxHours) * 100, 100);
 };
 
-// 차트 카드 컴포넌트
-interface ChartCardProps {
-    title: string;
-    statusBadge?: string;
-    children: React.ReactNode;
-    footer?: React.ReactNode;
-}
+/** 메인 컴포넌트 */
+export default function HotTablePage() {
+    const { data } = useQuery({
+        queryKey: ["hotTableDashboard"],
+        queryFn: fetchHotTableData,
+        retry: 1,
+    });
 
-function ChartCard({ title, statusBadge, children, footer }: ChartCardProps) {
+    const dashboard = data || mockData;
+
+    const cacheGaugeStatus = getCacheGaugeStatus(dashboard.cacheHitRatio.value);
+
+    const vacuumGaugeStatus = getVacuumGaugeStatus(dashboard.vacuumDelay.delayHours);
+    const vacuumPercent = vacuumDelayToPercent(dashboard.vacuumDelay.delayHours);
+
+    // 최근 5분 평균 통계 (API에서 받아오거나 더미 데이터 사용)
+    const recentStats = dashboard.recentStats || {
+        hotUpdateRatio: 76,
+        liveDeadTupleRatio: "648:1",
+        deadTupleCount: 1850,
+        seqScanRatio: 18,
+        updateDeleteRatio: 2.3,
+    };
+
+    // 요약 카드 데이터 계산 (최근 5분 평균 기준)
+    const summaryCards = [
+        {
+            label: "HOT 업데이트 비율",
+            value: `${recentStats.hotUpdateRatio}%`,
+            diff: 2.1,
+            desc: "최근 5분 평균",
+            status: recentStats.hotUpdateRatio < 60 ? ("warning" as const) : ("info" as const),
+        },
+        {
+            label: "Live/Dead Tuple 비율",
+            value: recentStats.liveDeadTupleRatio,
+            diff: 15,
+            desc: "최근 5분 평균",
+            status: "info" as const,
+        },
+        {
+            label: "Dead Tuple 수",
+            value: recentStats.deadTupleCount.toLocaleString(),
+            diff: 120,
+            desc: "최근 5분 평균",
+            status: recentStats.deadTupleCount > 3000 ? ("warning" as const) : ("info" as const),
+        },
+        {
+            label: "Seq Scan 비율",  // 변경
+            value: `${recentStats.seqScanRatio}%`,  // 변경
+            diff: -2,
+            desc: "최근 5분 평균",
+            status: recentStats.seqScanRatio > 30 ? ("warning" as const) : ("info" as const),
+        },
+        {
+            label: "Update/Delete 비율",  // 변경
+            value: `${recentStats.updateDeleteRatio}:1`,  // 변경
+            diff: 0.1,
+            desc: "최근 5분 평균",
+            status: recentStats.updateDeleteRatio > 3 ? ("warning" as const) : ("info" as const),
+        },
+    ];
+
     return (
-        <div className="chart-card">
-            <div className="chart-header">
-                <div className="chart-title-group">
-                    <h3 className="chart-title">{title}</h3>
-                </div>
-                {statusBadge && (
-                    <span
-                        className={`status-badge ${
-                            statusBadge === "정상"
-                                ? "status-normal"
-                                : statusBadge === "주의"
-                                    ? "status-warning"
-                                    : "status-danger"
-                        }`}
-                    >
-            {statusBadge}
-          </span>
-                )}
+        <div className="hottable-page">
+            {/* 상단 요약 카드 */}
+            <div className="hottable-summary-cards">
+                {summaryCards.map((card, idx) => (
+                    <SummaryCard
+                        key={idx}
+                        label={card.label}
+                        value={card.value}
+                        diff={card.diff}
+                        desc={card.desc}
+                        status={card.status}
+                    />
+                ))}
             </div>
 
-            {/* 내용 */}
-            <div className="chart-content">{children}</div>
-
-            {/* 푸터 */}
-            {footer && <div className="chart-footer">{footer}</div>}
-        </div>
-    );
-}
-
-// 통계 아이템 컴포넌트
-interface StatItemProps {
-    label: string;
-    value: string;
-    color?: string;
-}
-
-function StatItem({ label, value, color }: StatItemProps) {
-    return (
-        <div className="stat-item">
-      <span className="stat-label" style={{ color }}>
-        {label}
-      </span>
-            <span className="stat-value">{value}</span>
-        </div>
-    );
-}
-
-// 메인 페이지
-export default function HotTablePage() {
-    const [data] = useState<HotTableData>(dummyData);
-
-    const cacheGaugeColor = getCacheGaugeColor(data.cacheHitRatio.value);
-    const cacheStatus = getCacheStatusText(data.cacheHitRatio.value);
-
-    const vacuumGaugeColor = getVacuumGaugeColor(data.vacuumDelay.delayHours);
-    const vacuumStatus = getVacuumStatusText(data.vacuumDelay.delayHours);
-    const vacuumPercent = vacuumDelayToPercent(data.vacuumDelay.delayHours);
-
-    return (
-        <div className="hot-table-page">
-            <div className="hot-table-grid">
-                <div className="hot-table-row">
-                    <ChartCard
-                        title="테이블 캐시 적중률"
-                        statusBadge={cacheStatus}
-                        footer={
-                            <>
-                                <StatItem label="테이블" value={data.cacheHitRatio.tableName} />
-                                <StatItem label="Cache Hit Ratio" value={`${data.cacheHitRatio.value}%`} />
-                            </>
-                        }
-                    >
+            {/* 첫 번째 행: 2개의 게이지 + 1개 차트 */}
+            <ChartGridLayout>
+                {/* 테이블 캐시 적중률 */}
+                <WidgetCard title="테이블 캐시 적중률" span={2}>
+                    <div className="hottable-gauge-container">
                         <GaugeChart
-                            value={data.cacheHitRatio.value}
+                            value={dashboard.cacheHitRatio.value}
+                            status={cacheGaugeStatus}
                             type="semi-circle"
-                            color={cacheGaugeColor}
-                            label="Cache Hit Ratio"
                         />
-                    </ChartCard>
+                    </div>
+                </WidgetCard>
 
-                    <ChartCard
-                        title="Vacuum 지연 시간"
-                        statusBadge={vacuumStatus}
-                        footer={
-                            <>
-                                <StatItem label="테이블" value={data.vacuumDelay.tableName} />
-                                <StatItem label="지연 시간" value={`${data.vacuumDelay.delayHours.toFixed(1)}시간`} />
-                            </>
-                        }
-                    >
+                {/* Vacuum 지연 시간 */}
+                <WidgetCard title="Vacuum 지연 시간" span={2}>
+                    <div className="hottable-gauge-container">
                         <GaugeChart
                             value={vacuumPercent}
+                            status={vacuumGaugeStatus}
                             type="semi-circle"
-                            color={vacuumGaugeColor}
-                            label="Delay (hours)"
                         />
-                    </ChartCard>
+                    </div>
+                </WidgetCard>
 
-                    <ChartCard
-                        title="테이블별 Dead Tuple 추이"
-                        footer={
-                            <>
-                                {data.deadTupleTrend.tables.map((table, idx) => (
-                                    <StatItem
-                                        key={table.name}
-                                        label={`● ${table.name}`}
-                                        value={`${table.data[table.data.length - 1].toLocaleString()}`}
-                                        color={["#8B5CF6", "#10B981", "#F59E0B"][idx]}
-                                    />
-                                ))}
-                            </>
-                        }
-                    >
-                        <Chart
-                            type="line"
-                            series={data.deadTupleTrend.tables.map(table => ({
-                                name: table.name,
-                                data: table.data
-                            }))}
-                            categories={data.deadTupleTrend.categories}
-                            height={250}
-                            colors={["#8B5CF6", "#10B981", "#F59E0B"]}
-                            showGrid={true}
-                            showLegend={true}
-                            xaxisOptions={{
-                                title: { text: "시간", style: { fontSize: "12px", color: "#6B7280" } },
-                            }}
-                            yaxisOptions={{
-                                title: { text: "Dead Tuples", style: { fontSize: "12px", color: "#6B7280" } },
-                                labels: { formatter: (val: number) => val.toLocaleString() },
-                            }}
-                            tooltipFormatter={(value: number) => `${value.toLocaleString()} tuples`}
-                        />
-                    </ChartCard>
-                </div>
+                {/* 테이블별 Dead Tuple 추이 */}
+                <WidgetCard title="테이블별 Dead Tuple 추이 (Last 24 Hours)" span={4}>
+                    <Chart
+                        type="line"
+                        series={dashboard.deadTupleTrend.tables.map((table) => ({
+                            name: table.name,
+                            data: table.data,
+                        }))}
+                        categories={dashboard.deadTupleTrend.categories}
+                        colors={["#8E79FF", "#77B2FB", "#FEA29B"]}
+                        height={250}
+                    />
+                </WidgetCard>
+                {/* DB 전체 Dead Tuple 추이 */}
+                <WidgetCard title="DB 전체 Dead Tuple 추이 (Last 24 Hours)" span={4}>
+                    <Chart
+                        type="area"
+                        series={[{ name: "Total Dead Tuples", data: dashboard.totalDeadTuple.data }]}
+                        categories={dashboard.totalDeadTuple.categories}
+                        colors={["#8E79FF"]}
+                        height={250}
+                    />
+                </WidgetCard>
+            </ChartGridLayout>
 
-                <div className="hot-table-row">
-                    <ChartCard
-                        title="DB 전체 Dead Tuple 추이"
-                        footer={
-                            <>
-                                <StatItem label="총합" value={data.totalDeadTuple.total.toLocaleString()} />
-                                <StatItem label="평균" value={data.totalDeadTuple.average.toLocaleString()} />
-                                <StatItem label="최대" value={data.totalDeadTuple.max.toLocaleString()} />
-                            </>
-                        }
-                    >
-                        <Chart
-                            type="area"
-                            series={[{ name: "Total Dead Tuples", data: data.totalDeadTuple.data }]}
-                            categories={data.totalDeadTuple.categories}
-                            height={250}
-                            colors={["#EF4444"]}
-                            showGrid={true}
-                            showLegend={false}
-                            xaxisOptions={{
-                                title: { text: "시간", style: { fontSize: "12px", color: "#6B7280" } },
-                            }}
-                            yaxisOptions={{
-                                title: { text: "Dead Tuples", style: { fontSize: "12px", color: "#6B7280" } },
-                                labels: { formatter: (val: number) => val.toLocaleString() },
-                            }}
-                            tooltipFormatter={(value: number) => `${value.toLocaleString()} tuples`}
-                        />
-                    </ChartCard>
+            {/* 두 번째 행: 3개 차트 */}
+            <ChartGridLayout>
+                {/* Top-N 테이블 조회량 */}
+                <WidgetCard title="Top-N 테이블 조회량 (Last 24 Hours)" span={6}>
+                    <Chart
+                        type="bar"
+                        series={[{ name: "Scan Count", data: dashboard.topQueryTables.scanCounts }]}
+                        categories={dashboard.topQueryTables.tableNames}
+                        colors={["#8E79FF"]}
+                        height={250}
+                    />
+                </WidgetCard>
 
-                    <ChartCard
-                        title="Top-N 테이블 조회량"
-                        footer={
-                            <>
-                                <StatItem label="1위" value={data.topQueryTables.tableNames[0]} />
-                                <StatItem label="조회수" value={data.topQueryTables.scanCounts[0].toLocaleString()} />
-                            </>
-                        }
-                    >
-                        <Chart
-                            type="bar"
-                            series={[{ name: "Scan Count", data: data.topQueryTables.scanCounts }]}
-                            categories={data.topQueryTables.tableNames}
-                            height={250}
-                            colors={["#3B82F6"]}
-                            showGrid={true}
-                            showLegend={false}
-                            xaxisOptions={{
-                                title: { text: "테이블", style: { fontSize: "12px", color: "#6B7280" } },
-                            }}
-                            yaxisOptions={{
-                                title: { text: "Scan Count", style: { fontSize: "12px", color: "#6B7280" } },
-                                labels: { formatter: (val: number) => val.toLocaleString() },
-                            }}
-                            tooltipFormatter={(value: number) => `${value.toLocaleString()} scans`}
-                        />
-                    </ChartCard>
+                {/* Top-N 테이블 DML량 */}
+                <WidgetCard title="Top-N 테이블 DML량 (Last 24 Hours)" span={6}>
+                    <Chart
+                        type="bar"
+                        series={[
+                            { name: "Delete", data: dashboard.topDmlTables.deleteCounts },
+                            { name: "Insert", data: dashboard.topDmlTables.insertCounts },
+                            { name: "Update", data: dashboard.topDmlTables.updateCounts },
+                        ]}
+                        categories={dashboard.topDmlTables.tableNames}
+                        colors={["#FEA29B", "#8E79FF", "#77B2FB"]}
+                        height={250}
+                        isStacked={true}
+                    />
 
-                    <ChartCard
-                        title="Top-N 테이블 DML량"
-                        footer={
-                            <>
-                                <StatItem label="● Delete" value="삭제" color="#EF4444" />
-                                <StatItem label="● Insert" value="삽입" color="#3B82F6" />
-                                <StatItem label="● Update" value="수정" color="#F59E0B" />
-                            </>
-                        }
-                    >
-                        <Chart
-                            type="bar"
-                            series={[
-                                { name: "Delete", data: data.topDmlTables.deleteCounts },
-                                { name: "Insert", data: data.topDmlTables.insertCounts },
-                                { name: "Update", data: data.topDmlTables.updateCounts },
-                            ]}
-                            categories={data.topDmlTables.tableNames}
-                            height={250}
-                            colors={["#EF4444", "#3B82F6", "#F59E0B"]}
-                            showGrid={true}
-                            showLegend={true}
-                            isStacked={true}
-                            xaxisOptions={{
-                                title: { text: "테이블", style: { fontSize: "12px", color: "#6B7280" } },
-                            }}
-                            yaxisOptions={{
-                                title: { text: "DML Count", style: { fontSize: "12px", color: "#6B7280" } },
-                                labels: { formatter: (val: number) => val.toLocaleString() },
-                            }}
-                            tooltipFormatter={(value: number) => `${value.toLocaleString()} operations`}
-                        />
-                    </ChartCard>
-                </div>
-            </div>
+                </WidgetCard>
+            </ChartGridLayout>
         </div>
     );
 }
