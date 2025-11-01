@@ -6,7 +6,7 @@
   padding: 2rem;
   display: flex;
   flex-direction: column;
-  gap: 2vh;
+  gap: 1vh;
   width: 100%;
   min-height: 85vh;
 }
@@ -19,68 +19,14 @@
   flex-wrap: wrap;
 }
 
-.summary-card {
-  flex: 1 1 calc(25% - 0.75rem);
-  background: rgba(255, 255, 255, 0.55);
-  border: 1px solid rgba(255, 255, 255, 0.8);
-  border-radius: 1rem;
-  box-shadow: 0 0.4rem 1.4rem rgba(0, 0, 0, 0.06);
-  backdrop-filter: blur(6px);
-  padding: 0.8rem 1rem;
-  min-height: 90px;
-}
-.event-log__summary .summary-card:nth-child(1),
-.event-log__summary .summary-card:nth-child(3) {
-  background: rgba(255, 255, 255, 0.6);
-  backdrop-filter: blur(14px);
-}
-
-.event-log__summary .summary-card:nth-child(2),
-.event-log__summary .summary-card:nth-child(4) {
-  background: rgba(255, 255, 255, 0.2);
-  backdrop-filter: blur(8px);
-}
-.summary-card.warn-active {
-  border-color: rgba(245, 158, 11, 0.45);
-  box-shadow: 0 0 10px rgba(245, 158, 11, 0.25);
-}
-
-.summary-card.danger-active {
-  border-color: rgba(239, 68, 68, 0.45);
-  box-shadow: 0 0 10px rgba(239, 68, 68, 0.25);
-}
-
-
-.summary-card h4 {
-  font-size: 0.85rem;
-  color: #6b7280;
-}
-
-.summary-value {
-  font-size: 1.6rem;
-  font-weight: 700;
-}
-
-.summary-value.warn {
-  color: #f59e0b;
-}
-.summary-value.danger {
-  color: #ef4444;
-}
-.summary-value.normal {
-  color: #1f2937;
-}
-
-
 /* 필터 */
 .event-log__filters {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(150px, 1fr)) auto; /* 마지막만 auto */
+  display: flex;
+  flex-wrap: wrap;
   gap: 0.75rem;
   align-items: center;
   margin-top: 1.5rem;
 }
-
 
 /*  테이블 */
 .event-log__table {
@@ -111,6 +57,12 @@
   border-top: 1px solid rgba(0, 0, 0, 0.05);
   color: #2e2f33;
 }
+
+
+.e-table-row:hover {
+  background-color: rgba(127, 129, 242, 0.08) !important; /* 은은한 보라빛 하이라이트 */
+}
+
 
 .e-table-row:nth-child(even) {
   background: rgba(255, 255, 255, 0.5);
@@ -160,12 +112,7 @@
 }
 
 @media (max-width: 768px) {
-  .summary-card h4 {
-    font-size: 0.8rem;
-  }
-  .summary-value {
-    font-size: 1.5rem;
-  }
+
   .table-header,
   .table-row {
     grid-template-columns: repeat(5, minmax(6rem, 1fr));
