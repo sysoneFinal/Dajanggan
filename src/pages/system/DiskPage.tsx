@@ -1,7 +1,7 @@
 import { useState } from "react";
 import Chart from "../../components/chart/ChartComponent";
 import GaugeChart from "../../components/chart/GaugeChart";
-import SummaryCard from "../../components/layout/SummaryCard";
+import SummaryCard from "../../components/util/SummaryCard";
 import WidgetCard from "../../components/util/WidgetCard";
 import ChartGridLayout from "../../components/layout/ChartGridLayout";
 import "../../styles/system/disk.css";

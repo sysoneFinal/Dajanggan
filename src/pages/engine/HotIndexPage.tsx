@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import Chart from "../../components/chart/ChartComponent";
-import SummaryCard from "../../components/layout/SummaryCard";
+import SummaryCard from "../../components/util/SummaryCard";
 import "../../styles/engine/hotindex.css";
 import WidgetCard from "../../components/util/WidgetCard";
 import ChartGridLayout from "../../components/layout/ChartGridLayout";
