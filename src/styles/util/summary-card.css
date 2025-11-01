@@ -15,14 +15,14 @@
 }
 
 .summary-card .label {
-  font-size: 0.95rem;
+  font-size: 0.85rem;
   color: #6b7280;
   font-weight: 500;
   margin: 0;
 }
 
 .summary-card h2 {
-  font-size: 1.7rem;
+  font-size: 1.4rem;
   font-weight: 700;
   margin: 0.25rem 0 0.3rem;
   line-height: 1.1;
@@ -30,7 +30,7 @@
 }
 
 .summary-card .desc {
-  font-size: 0.95rem;
+  font-size: 0.8rem;
   color: #6b7280;
   margin: 0;
 }
@@ -75,6 +75,9 @@
 /* 기본 (info) */
 .summary-card.info {
   border: 1px solid rgba(255, 255, 255, 0.4);
+}
+.summary-card.info:hover {
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08);
 }
 
 /* 경고 (warning) */
