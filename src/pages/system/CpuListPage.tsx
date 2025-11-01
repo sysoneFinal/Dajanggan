@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import {Fragment, useMemo, useState} from "react";
 import {
     useReactTable,
     getCoreRowModel,
@@ -10,6 +10,8 @@ import {
     type SortingState,
 } from "@tanstack/react-table";
 import Pagination from "../../components/util/Pagination";
+import CsvButton from "../../components/util/CsvButton";
+import MultiSelectDropdown from "../../components/util/MultiSelectDropdown";
 import "../../styles/system/cpulist.css";
 
 interface CPUData {
@@ -111,15 +113,14 @@ const mockData: CPUData[] = [
 export default function CPUListPage() {
     const [data] = useState<CPUData[]>(mockData);
     const [sorting, setSorting] = useState<SortingState>([]);
-    const [timeFilter, setTimeFilter] = useState("최근 24시간");
     const [currentPage, setCurrentPage] = useState(1);
-    const pageSize = 14;
+    const pageSize = 10;
 
     // 프로그레스 바 색상 결정 함수
     const getCPUColor = (cpu: number) => {
-        if (cpu >= 80) return "#EF4444"; // 빨강 (위험)
-        if (cpu >= 60) return "#F59E0B"; // 주황 (주의)
-        return "#10B981"; // 녹색 (정상)
+        if (cpu >= 80) return "#FF928A"; // 빨강 (위험)
+        if (cpu >= 60) return "#FFD66B"; // 주황 (주의)
+        return "#7B61FF"; // 녹색 (정상)
     };
 
     // 컬럼 정의
@@ -194,19 +195,19 @@ export default function CPUListPage() {
                 header: "상태",
                 cell: (info) => {
                     const value = info.getValue() as string;
-                    const getBadgeClass = () => {
-                        switch (value) {
-                            case "정상":
-                                return "badge-normal";
-                            case "주의":
-                                return "badge-warning";
-                            case "위험":
-                                return "badge-danger";
-                            default:
-                                return "badge-normal";
-                        }
-                    };
-                    return <span className={`badge ${getBadgeClass()}`}>{value}</span>;
+                    let className = "";
+                    switch (value) {
+                        case "정상":
+                            className = "info";
+                            break;
+                        case "주의":
+                            className = "warn";
+                            break;
+                        case "위험":
+                            className = "error";
+                            break;
+                    }
+                    return <span className={className}>{value}</span>;
                 },
             },
         ],
@@ -295,74 +296,83 @@ export default function CPUListPage() {
     };
 
     return (
-        <div className="cpu-container">
-            <div className="cpu-header">
-                <div className="cpu-actions">
-                    <select
-                        className="time-filter-dropdown"
-                        value={timeFilter}
-                        onChange={(e) => setTimeFilter(e.target.value)}
-                    >
-                        <option value="최근 1시간">최근 1시간</option>
-                        <option value="최근 6시간">최근 6시간</option>
-                        <option value="최근 24시간">최근 24시간</option>
-                        <option value="최근 7일">최근 7일</option>
-                    </select>
+        <main className="cpu-page">
+            {/* 필터 선택 영역 */}
+            <section className="cpu-page__filters">
+                <MultiSelectDropdown
+                    label="시간 선택"
+                    options={[
+                        "최근 1시간",
+                        "최근 6시간",
+                        "최근 24시간",
+                        "최근 7일",
+                    ]}
+                    onChange={(values) => console.log("선택된 시간:", values)}
+                />
+                <MultiSelectDropdown
+                    label="상태"
+                    options={[
+                        "정상",
+                        "주의",
+                        "위험",
+                    ]}
+                    onChange={(values) => console.log("선택된 상태:", values)}
+                />
+                <CsvButton onClick={handleExportCSV} tooltip="CSV 파일 저장"/>
+            </section>
 
-                    <button className="csv-export-button" onClick={handleExportCSV}>
-                        CSV 내보내기
-                    </button>
-                </div>
-            </div>
-
-            <div className="table-wrapper">
-                <table className="cpu-table">
-                    <thead>
+            {/* CPU 테이블 */}
+            <section className="cpu-page__table">
+                <div className="cpu-table-header">
                     {table.getHeaderGroups().map((headerGroup) => (
-                        <tr key={headerGroup.id}>
+                        <Fragment key={headerGroup.id}>
                             {headerGroup.headers.map((header) => (
-                                <th
+                                <div
                                     key={header.id}
                                     onClick={header.column.getToggleSortingHandler()}
+                                    style={{ cursor: 'pointer' }}
                                 >
                                     {flexRender(
                                         header.column.columnDef.header,
                                         header.getContext()
                                     )}
                                     {header.column.getIsSorted() && (
-                                        <span className="sort-icon active">
-                                                {header.column.getIsSorted() === "asc"
-                                                    ? " ▲"
-                                                    : " ▼"}
-                                            </span>
+                                        <span className="sort-icon">
+                                            {header.column.getIsSorted() === "asc" ? " ▲" : " ▼"}
+                                        </span>
                                     )}
-                                </th>
+                                </div>
                             ))}
-                        </tr>
+                        </Fragment>
                     ))}
-                    </thead>
-                    <tbody>
-                    {table.getRowModel().rows.map((row) => (
-                        <tr key={row.id}>
+                </div>
+
+                {table.getRowModel().rows.length > 0 ? (
+                    table.getRowModel().rows.map((row) => (
+                        <div key={row.id} className="cpu-table-row">
                             {row.getVisibleCells().map((cell) => (
-                                <td key={cell.id}>
+                                <div key={cell.id}>
                                     {flexRender(
                                         cell.column.columnDef.cell,
                                         cell.getContext()
                                     )}
-                                </td>
+                                </div>
                             ))}
-                        </tr>
-                    ))}
-                    </tbody>
-                </table>
-            </div>
+                        </div>
+                    ))
+                ) : (
+                    <div className="cpu-table-empty">데이터가 없습니다.</div>
+                )}
+            </section>
 
-            <Pagination
-                currentPage={currentPage}
-                totalPages={totalPages}
-                onPageChange={handlePageChange}
-            />
-        </div>
+            {/* 페이지네이션 */}
+            {totalPages > 1 && (
+                <Pagination
+                    currentPage={currentPage}
+                    totalPages={totalPages}
+                    onPageChange={handlePageChange}
+                />
+            )}
+        </main>
     );
 }

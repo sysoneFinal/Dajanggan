@@ -11,161 +11,153 @@ import {
 } from "@tanstack/react-table";
 import Pagination from "../../components/util/Pagination";
 import CsvButton from "../../components/util/CsvButton";
-import MultiSelectDropdown from "../../components/util/MultiSelectDropdown";
-import "../../styles/system/memorylist.css";
+import "/src/styles/engine/hotindexlist.css";
 
 // 데이터 타입 정의
-interface MemoryData {
+interface HotIndexData {
     id: string;
-    objectName: string;
-    type: string;
-    bufferCount: number;
-    usagePercent: number;
-    dirtyCount: number;
-    dirtyPercent: number;
-    hitPercent: number;
-    status: "정상" | "주의" | "위험";
+    indexName: string;
+    tableName: string;
+    size: string;
+    usageCount: number;
+    efficiency: number;
+    cacheHit: number;
+    lastUsed: string;
+    status: "정상" | "비효율" | "미사용";
 }
 
 // 임시 목 데이터
-const mockData: MemoryData[] = [
+const mockData: HotIndexData[] = [
     {
         id: "1",
-        objectName: "orders",
-        type: "table",
-        bufferCount: 12450,
-        usagePercent: 15.2,
-        dirtyCount: 845,
-        dirtyPercent: 6.8,
-        hitPercent: 98.6,
+        indexName: "idx_users_email",
+        tableName: "users",
+        size: "124 MB",
+        usageCount: 8540,
+        efficiency: 94.2,
+        cacheHit: 98.5,
+        lastUsed: "1분 전",
         status: "정상",
     },
     {
         id: "2",
-        objectName: "idx_orders_user_id",
-        type: "index",
-        bufferCount: 4820,
-        usagePercent: 5.9,
-        dirtyCount: 124,
-        dirtyPercent: 2.6,
-        hitPercent: 99.2,
+        indexName: "idx_orders_user_id",
+        tableName: "orders",
+        size: "256 MB",
+        usageCount: 12450,
+        efficiency: 88.7,
+        cacheHit: 98.3,
+        lastUsed: "5분 전",
         status: "정상",
     },
     {
         id: "3",
-        objectName: "users",
-        type: "table",
-        bufferCount: 8540,
-        usagePercent: 10.4,
-        dirtyCount: 1240,
-        dirtyPercent: 14.5,
-        hitPercent: 96.8,
-        status: "주의",
+        indexName: "idx_products_name",
+        tableName: "products",
+        size: "89 MB",
+        usageCount: 3240,
+        efficiency: 62.4,
+        cacheHit: 91.2,
+        lastUsed: "12분 전",
+        status: "비효율",
     },
     {
         id: "4",
-        objectName: "inventory",
-        type: "table",
-        bufferCount: 15680,
-        usagePercent: 19.1,
-        dirtyCount: 3450,
-        dirtyPercent: 22.0,
-        hitPercent: 94.2,
-        status: "위험",
+        indexName: "idx_old_status",
+        tableName: "orders",
+        size: "45 MB",
+        usageCount: 0,
+        efficiency: 0.0,
+        cacheHit: 0.0,
+        lastUsed: "30분 전",
+        status: "미사용",
     },
     {
         id: "5",
-        objectName: "idx_products_name",
-        type: "index",
-        bufferCount: 3240,
-        usagePercent: 3.9,
-        dirtyCount: 89,
-        dirtyPercent: 2.7,
-        hitPercent: 97.5,
+        indexName: "idx_inventory_sku",
+        tableName: "inventory",
+        size: "156 MB",
+        usageCount: 6540,
+        efficiency: 91.5,
+        cacheHit: 98.5,
+        lastUsed: "2분 전",
         status: "정상",
     },
     {
         id: "6",
-        objectName: "cart_items",
-        type: "table",
-        bufferCount: 5840,
-        usagePercent: 7.1,
-        dirtyCount: 980,
-        dirtyPercent: 16.6,
-        hitPercent: 95.6,
-        status: "주의",
-    },
-    {
-        id: "7",
-        objectName: "reviews",
-        type: "table",
-        bufferCount: 6920,
-        usagePercent: 8.4,
-        dirtyCount: 456,
-        dirtyPercent: 6.6,
-        hitPercent: 98.1,
-        status: "정상",
-    },
-    {
-        id: "8",
-        objectName: "idx_inventory_sku",
-        type: "index",
-        bufferCount: 2840,
-        usagePercent: 3.5,
-        dirtyCount: 45,
-        dirtyPercent: 1.6,
-        hitPercent: 99.6,
-        status: "정상",
+        indexName: "idx_temp_hash",
+        tableName: "cart_items",
+        size: "34 MB",
+        usageCount: 0,
+        efficiency: 0.0,
+        cacheHit: 0.0,
+        lastUsed: "15분 전",
+        status: "미사용",
     },
 ];
 
-export default function MemoryListPage() {
-    const [data] = useState<MemoryData[]>(mockData);
+export default function HotIndexListPage() {
+    const [data] = useState<HotIndexData[]>(mockData);
     const [sorting, setSorting] = useState<SortingState>([]);
     const [currentPage, setCurrentPage] = useState(1);
+    const [showUnusedOnly, setShowUnusedOnly] = useState(false);
+    const [showInefficientOnly, setShowInefficientOnly] = useState(false);
     const pageSize = 10;
 
+    // 필터링된 데이터
+    const filteredData = useMemo(() => {
+        let result = data;
+        if (showUnusedOnly) {
+            result = result.filter((row) => row.status === "미사용");
+        }
+        if (showInefficientOnly) {
+            result = result.filter((row) => row.status === "비효율");
+        }
+        return result;
+    }, [data, showUnusedOnly, showInefficientOnly]);
+
     // 프로그레스 바 색상 결정 함수
-    const getUsageColor = (percent: number) => {
-        if (percent >= 15) return "#FFD66B"; // 주황
-        return "#7B61FF"; // 녹색
-    };
-
-    const getDirtyColor = (percent: number) => {
-        if (percent >= 20) return "#FF928A"; // 빨강
-        if (percent >= 10) return "#FFD66B"; // 주황
-        return "#7B61FF"; // 녹색
-    };
-
-    const getHitColor = (percent: number) => {
-        if (percent >= 98) return "#7B61FF"; // 녹색
-        if (percent >= 95) return "#FFD66B"; // 주황
+    const getEfficiencyColor = (percent: number) => {
+        if (percent >= 80) return "#7B61FF"; // 녹색
+        if (percent >= 60) return "#FFD66B"; // 주황
         return "#FF928A"; // 빨강
     };
 
-    const columns = useMemo<ColumnDef<MemoryData>[]>(
+    const getCacheHitColor = (percent: number) => {
+        if (percent >= 95) return "#7B61FF"; // 녹색
+        if (percent >= 85) return "#FFD66B"; // 주황
+        return "#FF928A"; // 빨강
+    };
+
+    // 컬럼 정의
+    const columns = useMemo<ColumnDef<HotIndexData>[]>(
         () => [
             {
-                accessorKey: "objectName",
-                header: "객체명",
+                accessorKey: "indexName",
+                header: "인덱스 명",
                 cell: (info) => info.getValue(),
             },
             {
-                accessorKey: "type",
-                header: "타입",
+                accessorKey: "tableName",
+                header: "테이블 명",
                 cell: (info) => info.getValue(),
             },
             {
-                accessorKey: "bufferCount",
-                header: "버퍼(개)",
+                accessorKey: "size",
+                header: "크기",
+                cell: (info) => info.getValue(),
+            },
+            {
+                accessorKey: "usageCount",
+                header: "사용(회/일)",
                 cell: (info) => (info.getValue() as number).toLocaleString(),
             },
             {
-                accessorKey: "usagePercent",
-                header: "점유율(%)",
+                accessorKey: "efficiency",
+                header: "효율성(%)",
                 cell: (info) => {
                     const value = info.getValue() as number;
-                    const color = getUsageColor(value);
+                    const color = getEfficiencyColor(value);
                     return (
                         <div className="progress-cell">
                             <div className="progress-bar-wrapper">
@@ -185,16 +177,11 @@ export default function MemoryListPage() {
                 },
             },
             {
-                accessorKey: "dirtyCount",
-                header: "Dirty(개)",
-                cell: (info) => (info.getValue() as number).toLocaleString(),
-            },
-            {
-                accessorKey: "dirtyPercent",
-                header: "Dirty 비율(%)",
+                accessorKey: "cacheHit",
+                header: "캐시 Hit(%)",
                 cell: (info) => {
                     const value = info.getValue() as number;
-                    const color = getDirtyColor(value);
+                    const color = getCacheHitColor(value);
                     return (
                         <div className="progress-cell">
                             <div className="progress-bar-wrapper">
@@ -214,28 +201,9 @@ export default function MemoryListPage() {
                 },
             },
             {
-                accessorKey: "hitPercent",
-                header: "Hit 비율(%)",
-                cell: (info) => {
-                    const value = info.getValue() as number;
-                    const color = getHitColor(value);
-                    return (
-                        <div className="progress-cell">
-                            <div className="progress-bar-wrapper">
-                                <div className="progress-bar-track">
-                                    <div
-                                        className="progress-bar-fill"
-                                        style={{
-                                            width: `${value}%`,
-                                            backgroundColor: color,
-                                        }}
-                                    />
-                                </div>
-                            </div>
-                            <span className="progress-value">{value}%</span>
-                        </div>
-                    );
-                },
+                accessorKey: "lastUsed",
+                header: "마지막 사용",
+                cell: (info) => info.getValue(),
             },
             {
                 accessorKey: "status",
@@ -247,10 +215,10 @@ export default function MemoryListPage() {
                         case "정상":
                             className = "info";
                             break;
-                        case "주의":
+                        case "비효율":
                             className = "warn";
                             break;
-                        case "위험":
+                        case "미사용":
                             className = "error";
                             break;
                     }
@@ -261,8 +229,9 @@ export default function MemoryListPage() {
         []
     );
 
+    // 테이블 인스턴스 생성
     const table = useReactTable({
-        data,
+        data: filteredData,
         columns,
         state: {
             sorting,
@@ -279,7 +248,7 @@ export default function MemoryListPage() {
         manualPagination: false,
     });
 
-    const totalPages = Math.ceil(data.length / pageSize);
+    const totalPages = Math.ceil(filteredData.length / pageSize);
 
     const handlePageChange = (page: number) => {
         setCurrentPage(page);
@@ -288,23 +257,23 @@ export default function MemoryListPage() {
     // CSV 내보내기 함수
     const handleExportCSV = () => {
         const headers = [
-            "객체명",
-            "타입",
-            "버퍼(개)",
-            "점유율(%)",
-            "Dirty(개)",
-            "Dirty 비율(%)",
-            "Hit 비율(%)",
+            "인덱스 명",
+            "테이블 명",
+            "크기",
+            "사용(회/일)",
+            "효율성(%)",
+            "캐시 Hit(%)",
+            "마지막 사용",
             "상태",
         ];
-        const csvData = data.map((row) => [
-            row.objectName,
-            row.type,
-            row.bufferCount,
-            row.usagePercent,
-            row.dirtyCount,
-            row.dirtyPercent,
-            row.hitPercent,
+        const csvData = filteredData.map((row) => [
+            row.indexName,
+            row.tableName,
+            row.size,
+            row.usageCount,
+            row.efficiency,
+            row.cacheHit,
+            row.lastUsed,
             row.status,
         ]);
 
@@ -321,7 +290,7 @@ export default function MemoryListPage() {
         const url = URL.createObjectURL(blob);
 
         const now = new Date();
-        const fileName = `memory_${now.getFullYear()}${String(
+        const fileName = `hotindex_${now.getFullYear()}${String(
             now.getMonth() + 1
         ).padStart(2, "0")}${String(now.getDate()).padStart(2, "0")}_${String(
             now.getHours()
@@ -338,32 +307,39 @@ export default function MemoryListPage() {
     };
 
     return (
-        <main className="memory-page">
+        <main className="hotindex-page">
             {/* 필터 선택 영역 */}
-            <section className="memory-page__filters">
-                <MultiSelectDropdown
-                    label="타입"
-                    options={[
-                        "table",
-                        "index",
-                    ]}
-                    onChange={(values) => console.log("선택된 타입:", values)}
-                />
-                <MultiSelectDropdown
-                    label="상태"
-                    options={[
-                        "정상",
-                        "주의",
-                        "위험",
-                    ]}
-                    onChange={(values) => console.log("선택된 상태:", values)}
-                />
+            <section className="hotindex-page__filters">
+                <div className="filter-toggles">
+                    <label className="toggle-label">
+                        <input
+                            type="checkbox"
+                            checked={showUnusedOnly}
+                            onChange={(e) => {
+                                setShowUnusedOnly(e.target.checked);
+                                setCurrentPage(1);
+                            }}
+                        />
+                        <span>미사용 인덱스만 보기</span>
+                    </label>
+                    <label className="toggle-label">
+                        <input
+                            type="checkbox"
+                            checked={showInefficientOnly}
+                            onChange={(e) => {
+                                setShowInefficientOnly(e.target.checked);
+                                setCurrentPage(1);
+                            }}
+                        />
+                        <span>비효율 인덱스만 보기</span>
+                    </label>
+                </div>
                 <CsvButton onClick={handleExportCSV} tooltip="CSV 파일 저장"/>
             </section>
 
-            {/* Memory 테이블 */}
-            <section className="memory-page__table">
-                <div className="memory-table-header">
+            {/* HotIndex 테이블 */}
+            <section className="hotindex-page__table">
+                <div className="hotindex-table-header">
                     {table.getHeaderGroups().map((headerGroup) => (
                         <Fragment key={headerGroup.id}>
                             {headerGroup.headers.map((header) => (
@@ -389,7 +365,7 @@ export default function MemoryListPage() {
 
                 {table.getRowModel().rows.length > 0 ? (
                     table.getRowModel().rows.map((row) => (
-                        <div key={row.id} className="memory-table-row">
+                        <div key={row.id} className="hotindex-table-row">
                             {row.getVisibleCells().map((cell) => (
                                 <div key={cell.id}>
                                     {flexRender(
@@ -401,7 +377,7 @@ export default function MemoryListPage() {
                         </div>
                     ))
                 ) : (
-                    <div className="memory-table-empty">데이터가 없습니다.</div>
+                    <div className="hotindex-table-empty">데이터가 없습니다.</div>
                 )}
             </section>
 

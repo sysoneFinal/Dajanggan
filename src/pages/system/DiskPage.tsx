@@ -1,6 +1,9 @@
 import { useState } from "react";
 import Chart from "../../components/chart/ChartComponent";
 import GaugeChart from "../../components/chart/GaugeChart";
+import SummaryCard from "../../components/layout/SummaryCard";
+import WidgetCard from "../../components/util/WidgetCard";
+import ChartGridLayout from "../../components/layout/ChartGridLayout";
 import "../../styles/system/disk.css";
 
 // API 응답 전체 구조
@@ -45,6 +48,13 @@ interface DiskIOData {
         categories: string[];
         walBytes: number[];
         average: number;
+    };
+    recentStats?: {
+        diskQueueLength: number;
+        iopsSaturation: number;        // 변경: avgIops → iopsSaturation (%)
+        avgLatency: number;
+        walBottleneck: number;         // 변경: avgWalWriteSpeed → walBottleneck (%)
+        readWriteRatio: string;
     };
 }
 
@@ -93,305 +103,276 @@ const dummyData: DiskIOData = {
         walBytes: [2500000, 4500000, 5200000, 4800000, 3200000, 3800000, 4200000, 3500000, 3000000, 5800000, 5200000, 2800000],
         average: 4125000,
     },
+    // 최근 5분 평균 통계
+    recentStats: {
+        diskQueueLength: 3.2,
+        iopsSaturation: 82,        // 변경: 현재 IOPS / 최대 IOPS (%)
+        avgLatency: 4.8,
+        walBottleneck: 8,          // 변경: WAL 병목 비율 (%)
+        readWriteRatio: "62/38",
+    },
 };
 
-// 상태 판정 함수
-const getStatusText = (usage: number): string => {
-    if (usage >= 80) return "위험";
-    if (usage >= 60) return "주의";
-    return "정상";
+const getDiskUtilizationColor = (value: number): string => {
+    if (value >= 80 && value <= 95) return "#7B61FF"; // 녹색 (적정)
+    if (value < 80) return "#FFD66B"; // 파란색 (여유)
+    return "#FF928A"; // 빨간색 (위험)
 };
-
-// 차트 카드 컴포넌트
-interface ChartCardProps {
-    title: string;
-    statusBadge?: string;
-    children: React.ReactNode;
-    footer?: React.ReactNode;
-}
-
-function ChartCard({ title, statusBadge, children, footer }: ChartCardProps) {
-    return (
-        <div className="chart-card">
-            {/* 헤더 */}
-            <div className="chart-header">
-                <div className="chart-title-group">
-                    <h3 className="chart-title">{title}</h3>
-                </div>
-                {statusBadge && (
-                    <span
-                        className={`status-badge ${
-                            statusBadge === "정상"
-                                ? "status-normal"
-                                : statusBadge === "주의"
-                                    ? "status-warning"
-                                    : "status-danger"
-                        }`}
-                    >
-                        {statusBadge}
-                    </span>
-                )}
-            </div>
-
-            {/* 내용 */}
-            <div className="chart-content">{children}</div>
-
-            {/* 푸터 */}
-            {footer && <div className="chart-footer">{footer}</div>}
-        </div>
-    );
-}
-
-// 통계 아이템 컴포넌트
-interface StatItemProps {
-    label: string;
-    value: string;
-    color?: string;
-}
-
-function StatItem({ label, value, color }: StatItemProps) {
-    return (
-        <div className="stat-item">
-            <span className="stat-label" style={{ color }}>
-                {label}
-            </span>
-            <span className="stat-value">{value}</span>
-        </div>
-    );
-}
 
 // 메인 컴포넌트
 export default function DiskPage() {
     const [data] = useState<DiskIOData>(dummyData);
 
-    const statusText = getStatusText(data.diskUsage);
+    const DiskUtilizationColor = getDiskUtilizationColor(data.diskUsage);
+
+    // 최근 5분 평균 통계
+    const recentStats = data.recentStats || {
+        diskQueueLength: 3.2,
+        iopsSaturation: 82,
+        avgLatency: 4.8,
+        walBottleneck: 8,
+        readWriteRatio: "62/38",
+    };
+
+    // 요약 카드 데이터 계산 (최근 5분 평균 기준)
+    const summaryCards = [
+        {
+            label: "디스크 대기열 길이",
+            value: recentStats.diskQueueLength.toString(),
+            diff: 0.8,
+            desc: "최근 5분 평균",
+            status: recentStats.diskQueueLength > 2 ? ("warning" as const) : ("info" as const),
+        },
+        {
+            label: "IOPS 포화도",  // 변경
+            value: `${recentStats.iopsSaturation}%`,  // 변경
+            diff: 5,
+            desc: "최근 5분 평균",
+            status: recentStats.iopsSaturation > 90 ? ("warning" as const) : ("info" as const),
+        },
+        {
+            label: "평균 응답 시간",
+            value: `${recentStats.avgLatency}ms`,
+            diff: -0.5,
+            desc: "최근 5분 평균",
+            status: recentStats.avgLatency > 10 ? ("warning" as const) : ("info" as const),
+        },
+        {
+            label: "WAL 병목 여부",  // 변경
+            value: `${recentStats.walBottleneck}%`,  // 변경
+            diff: -2,
+            desc: "최근 5분 평균",
+            status: recentStats.walBottleneck > 15 ? ("warning" as const) : ("info" as const),
+        },
+        {
+            label: "읽기/쓰기 비율",
+            value: recentStats.readWriteRatio,
+            diff: 2,
+            desc: "최근 5분 평균",
+            status: "info" as const,
+        },
+    ];
 
     return (
         <div className="checkpoint-page">
-            <div className="checkpoint-grid">
-                <div className="checkpoint-row">
-                    <ChartCard
-                        title="DISK 사용률"
-                        statusBadge={statusText}
-                        footer={
-                            <StatItem label="현재 사용률" value={`${data.diskUsage}%`} />
-                        }
-                    >
-                        <GaugeChart
-                            value={data.diskUsage}
-                            type="semi-circle"
-                            color="#8B5CF6"
-                            label="Backend Flush"
-                        />
-                    </ChartCard>
-
-                    <ChartCard title="프로세스별 디스크 I/O 쓰기량">
-                        <Chart
-                            type="column"
-                            series={data.processIO.series}
-                            categories={data.processIO.categories}
-                            height={250}
-                            colors={["#9333EA", "#10B981", "#3B82F6", "#F59E0B"]}
-                            isStacked={true}
-                            showLegend={true}
-                            showGrid={true}
-                            customOptions={{
-                                dataLabels: {
-                                    enabled: false,
-                                    style: {
-                                        colors: ['transparent']
-                                    }
-                                },
-                                plotOptions: {
-                                    bar: {
-                                        dataLabels: {
-                                            total: {
-                                                enabled: false
-                                            }
-                                        }
-                                    }
-                                }
-                            }}
-                            xaxisOptions={{
-                                title: { text: "시간", style: { fontSize: "12px", color: "#6B7280" } },
-                            }}
-                            yaxisOptions={{
-                                title: { text: "I/O 쓰기량", style: { fontSize: "12px", color: "#6B7280" } },
-                                labels: {
-                                    formatter: (val: number) => `${(val / 1000).toFixed(1)}K`,
-                                },
-                            }}
-                        />
-                    </ChartCard>
-                    <ChartCard title="Reads vs Writes (100%)">
-                        <Chart
-                            type="bar"
-                            series={[
-                                { name: "Reads (%)", data: data.readsWrites.reads },
-                                { name: "Writes (%)", data: data.readsWrites.writes },
-                            ]}
-                            categories={data.readsWrites.categories}
-                            height={250}
-                            colors={["#10B981", "#EF4444"]}
-                            isStacked={true}
-                            showLegend={true}
-                            showGrid={true}
-                            customOptions={{
-                                plotOptions: {
-                                    bar: {
-                                        horizontal: true,
-                                    },
-                                },
-                                yaxis: {
-                                    max: 100,
-                                },
-                            }}
-                        />
-                    </ChartCard>
-                </div>
-                <div className="checkpoint-row">
-                    <ChartCard
-                        title="Disk I/O 지연시간 (ms)"
-                        footer={
-                            <>
-                                <StatItem label="평균" value={`${data.latency.average.toFixed(1)}ms`} />
-                                <StatItem label="최대" value={`${data.latency.max}ms`} />
-                                <StatItem label="최소" value={`${data.latency.min}ms`} />
-                            </>
-                        }
-                    >
-                        <Chart
-                            type="line"
-                            series={[
-                                { name: "지연시간 (ms)", data: data.latency.readLatency },
-                            ]}
-                            categories={data.latency.categories}
-                            height={250}
-                            colors={["#EF4444"]}
-                            showLegend={false}
-                            showGrid={true}
-                            xaxisOptions={{
-                                title: { text: "시간", style: { fontSize: "12px", color: "#6B7280" } },
-                            }}
-                            yaxisOptions={{
-                                title: { text: "지연시간 (ms)", style: { fontSize: "12px", color: "#6B7280" } },
-                                labels: { formatter: (val: number) => `${val}ms` },
-                            }}
-                            tooltipFormatter={(value: number) => `${value}ms`}
-                        />
-                    </ChartCard>
-                    <ChartCard title="Disk 처리 효율 (IOPS vs MB/s)">
-                        <Chart
-                            type="line"
-                            series={[
-                                { name: "IOPS", data: data.throughput.iops },
-                                { name: "처리량 (MB/s)", data: data.throughput.throughputMB },
-                            ]}
-                            categories={data.throughput.categories}
-                            height={250}
-                            colors={["#3B82F6", "#10B981"]}
-                            showLegend={true}
-                            showGrid={true}
-                            xaxisOptions={{
-                                title: { text: "시간", style: { fontSize: "12px", color: "#6B7280" } },
-                            }}
-                            yaxisOptions={[
-                                {
-                                    title: { text: "IOPS" },
-                                    labels: {
-                                        formatter: (val: number) => `${(val / 1000).toFixed(0)}K`,
-                                    },
-                                },
-                                {
-                                    opposite: true,
-                                    title: { text: "MB/s" },
-                                    labels: {
-                                        formatter: (val: number) => `${val}MB`,
-                                    },
-                                },
-                            ]}
-                        />
-                    </ChartCard>
-                    <ChartCard title="평균 블록 I/O 시간 추이">
-                        <Chart
-                            type="line"
-                            series={[
-                                { name: "Read Latency (ms)", data: data.blockLatency.readLatency },
-                                { name: "Write Latency (ms)", data: data.blockLatency.writeLatency },
-                            ]}
-                            categories={data.blockLatency.categories}
-                            height={250}
-                            colors={["#3B82F6", "#EF4444"]}
-                            showLegend={true}
-                            showGrid={true}
-                            xaxisOptions={{
-                                title: { text: "시간", style: { fontSize: "12px", color: "#6B7280" } },
-                            }}
-                            yaxisOptions={{
-                                title: { text: "지연시간 (ms)", style: { fontSize: "12px", color: "#6B7280" } },
-                                labels: { formatter: (val: number) => `${val}ms` },
-                            }}
-                            tooltipFormatter={(value: number) => `${value}ms`}
-                        />
-                    </ChartCard>
-                </div>
-                <div className="checkpoint-row">
-                    <ChartCard
-                        title="버퍼 교체(Evictions) 추이"
-                        footer={
-                            <StatItem label="평균 교체율" value={`${data.evictions.average}/sec`} />
-                        }
-                    >
-                        <Chart
-                            type="line"
-                            series={[{ name: "Evictions/sec", data: data.evictions.evictionRate }]}
-                            categories={data.evictions.categories}
-                            height={250}
-                            colors={["#F59E0B"]}
-                            showLegend={false}
-                            showGrid={true}
-                            xaxisOptions={{
-                                title: { text: "시간", style: { fontSize: "12px", color: "#6B7280" } },
-                            }}
-                            yaxisOptions={{
-                                title: { text: "Evictions/sec", style: { fontSize: "12px", color: "#6B7280" } },
-                                labels: { formatter: (val: number) => `${val}` },
-                            }}
-                            tooltipFormatter={(value: number) => `${value}/sec`}
-                        />
-                    </ChartCard>
-                    <ChartCard
-                        title="WAL 쓰기량 변화"
-                        footer={
-                            <StatItem
-                                label="평균 WAL"
-                                value={`${(data.walBytes.average / 1000000).toFixed(1)}MB/s`}
-                            />
-                        }
-                    >
-                        <Chart
-                            type="area"
-                            series={[{ name: "WAL Bytes/sec", data: data.walBytes.walBytes }]}
-                            categories={data.walBytes.categories}
-                            height={250}
-                            colors={["#9333EA"]}
-                            showLegend={false}
-                            showGrid={true}
-                            xaxisOptions={{
-                                title: { text: "시간", style: { fontSize: "12px", color: "#6B7280" } },
-                            }}
-                            yaxisOptions={{
-                                title: { text: "WAL Bytes", style: { fontSize: "12px", color: "#6B7280" } },
-                                labels: {
-                                    formatter: (val: number) => `${(val / 1000000).toFixed(1)}M`,
-                                },
-                            }}
-                            tooltipFormatter={(value: number) => `${(value / 1000000).toFixed(2)}MB/s`}
-                        />
-                    </ChartCard>
-                    <div className="chart-card" style={{ visibility: "hidden" }}></div>
-                </div>
+            {/* 상단 요약 카드 */}
+            <div className="disk-summary-cards">
+                {summaryCards.map((card, idx) => (
+                    <SummaryCard
+                        key={idx}
+                        label={card.label}
+                        value={card.value}
+                        diff={card.diff}
+                        desc={card.desc}
+                        status={card.status}
+                    />
+                ))}
             </div>
+
+            {/* 첫 번째 행: 게이지 + 2개 차트 */}
+            <ChartGridLayout>
+                <WidgetCard title="DISK 사용률" span={2}>
+                    <GaugeChart
+                        value={data.diskUsage}
+                        type="semi-circle"
+                        color={DiskUtilizationColor}
+                    />
+                </WidgetCard>
+
+                <WidgetCard title="프로세스별 디스크 I/O 쓰기량" span={5}>
+                    <Chart
+                        type="line"
+                        series={data.processIO.series}
+                        categories={data.processIO.categories}
+                        height={250}
+                        colors={["#8E79FF", "#FEA29B", "#77B2FB", "#51DAA8"]}
+                        isStacked={true}
+                        showLegend={true}
+                        showGrid={true}
+                        xaxisOptions={{
+                            title: { text: "시간", style: { fontSize: "12px", color: "#6B7280" } },
+                        }}
+                        yaxisOptions={{
+                            title: { text: "I/O 쓰기량", style: { fontSize: "12px", color: "#6B7280" } },
+                            labels: {
+                                formatter: (val: number) => `${(val / 1000).toFixed(1)}K`,
+                            },
+                        }}
+                    />
+                </WidgetCard>
+                <WidgetCard title="평균 블록 I/O 시간 추이" span={5}>
+                    <Chart
+                        type="line"
+                        series={[
+                            { name: "Read Latency (ms)", data: data.blockLatency.readLatency },
+                            { name: "Write Latency (ms)", data: data.blockLatency.writeLatency },
+                        ]}
+                        categories={data.blockLatency.categories}
+                        height={250}
+                        colors={["#8E79FF", "#FEA29B"]}
+                        showLegend={true}
+                        showGrid={true}
+                        xaxisOptions={{
+                            title: { text: "시간", style: { fontSize: "12px", color: "#6B7280" } },
+                        }}
+                        yaxisOptions={{
+                            title: { text: "지연시간 (ms)", style: { fontSize: "12px", color: "#6B7280" } },
+                            labels: { formatter: (val: number) => `${val}ms` },
+                        }}
+                        tooltipFormatter={(value: number) => `${value}ms`}
+                    />
+                </WidgetCard>
+
+            </ChartGridLayout>
+
+            {/* 두 번째 행: 3개 차트 */}
+            <ChartGridLayout>
+                <WidgetCard title="Disk I/O 지연시간 (ms)" span={4}>
+                    <Chart
+                        type="line"
+                        series={[
+                            { name: "지연시간 (ms)", data: data.latency.readLatency },
+                        ]}
+                        categories={data.latency.categories}
+                        height={250}
+                        colors={["#8E79FF"]}
+                        showLegend={false}
+                        showGrid={true}
+                        xaxisOptions={{
+                            title: { text: "시간", style: { fontSize: "12px", color: "#6B7280" } },
+                        }}
+                        yaxisOptions={{
+                            title: { text: "지연시간 (ms)", style: { fontSize: "12px", color: "#6B7280" } },
+                            labels: { formatter: (val: number) => `${val}ms` },
+                        }}
+                        tooltipFormatter={(value: number) => `${value}ms`}
+                    />
+                </WidgetCard>
+
+                <WidgetCard title="Disk 처리 효율 (IOPS vs MB/s)" span={4}>
+                    <Chart
+                        type="line"
+                        series={[
+                            { name: "IOPS", data: data.throughput.iops },
+                            { name: "처리량 (MB/s)", data: data.throughput.throughputMB },
+                        ]}
+                        categories={data.throughput.categories}
+                        height={250}
+                        colors={["#8E79FF", "#FEA29B"]}
+                        showLegend={true}
+                        showGrid={true}
+                        xaxisOptions={{
+                            title: { text: "시간", style: { fontSize: "12px", color: "#6B7280" } },
+                        }}
+                        yaxisOptions={[
+                            {
+                                title: { text: "IOPS" },
+                                labels: {
+                                    formatter: (val: number) => `${(val / 1000).toFixed(0)}K`,
+                                },
+                            },
+                            {
+                                opposite: true,
+                                title: { text: "MB/s" },
+                                labels: {
+                                    formatter: (val: number) => `${val}MB`,
+                                },
+                            },
+                        ]}
+                    />
+                </WidgetCard>
+                <WidgetCard title="WAL 쓰기량 변화" span={4}>
+                    <Chart
+                        type="area"
+                        series={[{ name: "WAL Bytes/sec", data: data.walBytes.walBytes }]}
+                        categories={data.walBytes.categories}
+                        height={250}
+                        colors={["#8E79FF"]}
+                        showLegend={false}
+                        showGrid={true}
+                        xaxisOptions={{
+                            title: { text: "시간", style: { fontSize: "12px", color: "#6B7280" } },
+                        }}
+                        yaxisOptions={{
+                            title: { text: "WAL Bytes", style: { fontSize: "12px", color: "#6B7280" } },
+                            labels: {
+                                formatter: (val: number) => `${(val / 1000000).toFixed(1)}M`,
+                            },
+                        }}
+                        tooltipFormatter={(value: number) => `${(value / 1000000).toFixed(2)}MB/s`}
+                    />
+                </WidgetCard>
+
+            </ChartGridLayout>
+
+            {/* 세 번째 행: 2개 차트 */}
+            <ChartGridLayout>
+                <WidgetCard title="버퍼 교체(Evictions) 추이" span={6}>
+                    <Chart
+                        type="line"
+                        series={[{ name: "Evictions/sec", data: data.evictions.evictionRate }]}
+                        categories={data.evictions.categories}
+                        height={250}
+                        colors={["#8E79FF"]}
+                        showLegend={false}
+                        showGrid={true}
+                        xaxisOptions={{
+                            title: { text: "시간", style: { fontSize: "12px", color: "#6B7280" } },
+                        }}
+                        yaxisOptions={{
+                            title: { text: "Evictions/sec", style: { fontSize: "12px", color: "#6B7280" } },
+                            labels: { formatter: (val: number) => `${val}` },
+                        }}
+                        tooltipFormatter={(value: number) => `${value}/sec`}
+                    />
+                </WidgetCard>
+
+                <WidgetCard title="Reads vs Writes (100%)" span={6}>
+                    <Chart
+                        type="bar"
+                        series={[
+                            { name: "Reads (%)", data: data.readsWrites.reads },
+                            { name: "Writes (%)", data: data.readsWrites.writes },
+                        ]}
+                        categories={data.readsWrites.categories}
+                        height={250}
+                        colors={["#8E79FF", "#FEA29B"]}
+                        isStacked={true}
+                        showLegend={true}
+                        showGrid={true}
+                        customOptions={{
+                            plotOptions: {
+                                bar: {
+                                    horizontal: true,
+                                },
+                            },
+                            yaxis: {
+                                max: 100,
+                            },
+                        }}
+                    />
+                </WidgetCard>
+            </ChartGridLayout>
         </div>
     );
 }

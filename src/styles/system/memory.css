@@ -1,271 +1,37 @@
 .memory-page {
-    padding: 24px;
-    min-height: 100vh;
-}
-
-.memory-grid {
     display: flex;
     flex-direction: column;
-    gap: 20px;
+    padding: 1.5rem 0;
 }
 
-.memory-row {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 20px;
-}
-
-.memory-row-2col {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 20px;
-}
-
-.chart-card {
-    background: white;
-    border-radius: 12px;
-    padding: 20px;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-    transition: box-shadow 0.2s;
+/* 요약 카드 */
+.memory-summary-cards {
     display: flex;
-    flex-direction: column;
-    gap: 16px;
-    min-height: 400px;
+    gap: 1rem;
+    margin-bottom: 0.9rem;
 }
 
-.chart-card:hover {
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+/* 반응형 - 태블릿 (1024px 이하) */
+@media (max-width: 1024px) {
+    .memory-summary-cards {
+        flex-wrap: wrap;
+    }
 }
 
-/* 차트 헤더 */
-.chart-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    padding-bottom: 12px;
-    border-bottom: 1px solid #e5e7eb;
+/* 반응형 - 모바일 (768px 이하) */
+@media (max-width: 768px) {
+    .memory-page {
+        padding: 1rem 0;
+    }
+
+    .memory-summary-cards {
+        flex-direction: column;
+    }
 }
 
-.chart-title-group {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-}
-
-.chart-title {
-    font-size: 16px;
-    font-weight: 600;
-    color: #111827;
-    margin: 0;
-}
-
-.chart-subtitle {
-    font-size: 12px;
-    color: #6b7280;
-}
-
-.chart-info {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-}
-
-.info-icon {
-    font-size: 14px;
-    color: #9ca3af;
-    cursor: help;
-}
-
-.info-text {
-    font-size: 12px;
-    color: #6b7280;
-}
-
-/* 상태 뱃지 */
-.status-badge {
-    padding: 4px 12px;
-    border-radius: 12px;
-    font-size: 12px;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    white-space: nowrap;
-}
-
-.status-normal {
-    background: #d1fae5;
-    color: #065f46;
-}
-
-.status-warning {
-    background: #fef3c7;
-    color: #92400e;
-}
-
-.status-danger {
-    background: #fee2e2;
-    color: #991b1b;
-}
-
-/* 차트 컨텐츠 */
-.chart-content {
-    flex: 1;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    min-height: 250px;
-}
-
-/* 차트 푸터 */
-.chart-footer {
-    display: flex;
-    justify-content: space-around;
-    padding-top: 12px;
-    border-top: 1px solid #e5e7eb;
-    gap: 12px;
-    flex-wrap: wrap;
-}
-
-/* 통계 아이템 */
-.stat-item {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 4px;
-    min-width: 80px;
-}
-
-.stat-label {
-    font-size: 12px;
-    color: #6b7280;
-    font-weight: 500;
-    text-align: center;
-}
-
-.stat-value {
-    font-size: 14px;
-    color: #111827;
-    font-weight: 700;
-    text-align: center;
-}
-
-/* Gauge 차트 스타일 */
-.chart-card .gauge-container {
-    margin: 0 auto;
-}
-
-.chart-card .gauge-value {
-    font-size: 36px;
-    font-weight: 700;
-    color: #111827;
-    margin: 8px 0;
-}
-
-.chart-card .gauge-desc {
-    font-size: 12px;
-    color: #6b7280;
-    margin: 0;
-}
-
-/* 로딩 상태 */
-.loading-spinner {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    min-height: 250px;
-}
-
-.spinner {
-    border: 3px solid #e5e7eb;
-    border-top: 3px solid #8b5cf6;
-    border-radius: 50%;
-    width: 40px;
-    height: 40px;
-    animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
-}
-
-/* 에러 상태 */
-.error-message {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    min-height: 250px;
-    color: #ef4444;
-    text-align: center;
-    gap: 8px;
-}
-
-.error-icon {
-    font-size: 48px;
-}
-
-.error-text {
-    font-size: 14px;
-    font-weight: 500;
-}
-
-/* 빈 데이터 상태 */
-.empty-state {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    min-height: 250px;
-    color: #9ca3af;
-    text-align: center;
-    gap: 8px;
-}
-
-.empty-icon {
-    font-size: 48px;
-}
-
-.empty-text {
-    font-size: 14px;
-}
-
-/* 툴팁 */
-.tooltip {
-    position: relative;
-    display: inline-block;
-}
-
-.tooltip .tooltip-text {
-    visibility: hidden;
-    background-color: #1f2937;
-    color: white;
-    text-align: center;
-    border-radius: 6px;
-    padding: 8px 12px;
-    position: absolute;
-    z-index: 1;
-    bottom: 125%;
-    left: 50%;
-    transform: translateX(-50%);
-    white-space: nowrap;
-    font-size: 12px;
-    opacity: 0;
-    transition: opacity 0.3s;
-}
-
-.tooltip:hover .tooltip-text {
-    visibility: visible;
-    opacity: 1;
-}
-
-.tooltip .tooltip-text::after {
-    content: "";
-    position: absolute;
-    top: 100%;
-    left: 50%;
-    margin-left: -5px;
-    border-width: 5px;
-    border-style: solid;
-    border-color: #1f2937 transparent transparent transparent;
+/* 작은 모바일 (480px 이하) */
+@media (max-width: 480px) {
+    .memory-page {
+        padding: 0.75rem 0;
+    }
 }

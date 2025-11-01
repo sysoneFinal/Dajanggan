@@ -2,7 +2,7 @@
     font-size: 16px;
 }
 
-.checkpoint-page {
+.hottable-page {
     padding: 2rem;
     display: flex;
     flex-direction: column;
@@ -12,19 +12,19 @@
 }
 
 /* 필터 */
-.checkpoint-page__filters {
+.hottable-page__filters {
     display: flex;
     justify-content: flex-end;
     gap: 0.75rem;
     align-items: center;
 }
 
-.checkpoint-page__filters > div {
+.hottable-page__filters > div {
     min-width: 200px;
 }
 
 /* 테이블 */
-.checkpoint-page__table {
+.hottable-page__table {
     background: rgba(255, 255, 255, 0.6);
     border-radius: 0.7rem;
     border: 1px solid rgba(255, 255, 255, 0.7);
@@ -32,32 +32,32 @@
     overflow-x: auto;
 }
 
-.checkpoint-table-header,
-.checkpoint-table-row {
+.hottable-table-header,
+.hottable-table-row {
     display: grid;
-    grid-template-columns: repeat(8, minmax(8rem, 1fr));
+    grid-template-columns: repeat(10, minmax(8rem, 1fr));
     text-align: center;
     padding: 1.1rem;
     align-items: center;
     font-size: 1rem;
 }
 
-.checkpoint-table-header {
+.hottable-table-header {
     background: rgb(241, 239, 243, 0.8);
     font-weight: 700;
     color: #2e2f33;
 }
 
-.checkpoint-table-row {
+.hottable-table-row {
     border-top: 1px solid rgba(0, 0, 0, 0.05);
     color: #2e2f33;
 }
 
-.checkpoint-table-row:nth-child(even) {
+.hottable-table-row:nth-child(even) {
     background: rgba(255, 255, 255, 0.5);
 }
 
-.checkpoint-table-empty {
+.hottable-table-empty {
     padding: 3rem;
     text-align: center;
     color: #6b7280;
@@ -80,23 +80,40 @@
     font-weight: 700;
 }
 
-/* 배지 스타일 */
-.badge {
-    padding: 4px 12px;
+/* 프로그레스 바 스타일 */
+.progress-cell {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    justify-content: center;
+}
+
+.progress-bar-wrapper {
+    flex: 1;
+    max-width: 150px;
+}
+
+.progress-bar-track {
+    width: 100%;
+    height: 8px;
+    background-color: #E5E7EB;
     border-radius: 4px;
-    font-size: 12px;
+    overflow: hidden;
+    position: relative;
+}
+
+.progress-bar-fill {
+    height: 100%;
+    border-radius: 4px;
+    transition: width 0.3s ease, background-color 0.3s ease;
+}
+
+.progress-value {
+    font-size: 13px;
     font-weight: 500;
-    display: inline-block;
-}
-
-.badge-timed {
-    background-color: #DBEAFE;
-    color: #1E40AF;
-}
-
-.badge-requested {
-    background-color: #FEF3C7;
-    color: #92400E;
+    color: #374151;
+    min-width: 45px;
+    text-align: right;
 }
 
 /* 정렬 아이콘 */
@@ -108,13 +125,13 @@
 
 /* 반응형 */
 @media (max-width: 768px) {
-    .checkpoint-page__filters {
+    .hottable-page__filters {
         flex-wrap: wrap;
     }
 
-    .checkpoint-table-header,
-    .checkpoint-table-row {
-        grid-template-columns: repeat(8, minmax(6rem, 1fr));
+    .hottable-table-header,
+    .hottable-table-row {
+        grid-template-columns: repeat(10, minmax(6rem, 1fr));
         font-size: 0.8rem;
     }
 }
