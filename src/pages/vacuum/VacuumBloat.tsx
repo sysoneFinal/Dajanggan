@@ -1,7 +1,7 @@
 import { useMemo, useState, useRef } from "react";
 import Chart from "../../components/chart/ChartComponent";
 import WidgetCard from "../../components/util/WidgetCard"
-import SummaryCard from "../../components/layout/SummaryCard";
+import SummaryCard from "../../components/util/SummaryCard";
 import "/src/styles/vacuum/VacuumPage.css";
 import BloatDetailPage from "./VacuumBloatDetail";
 

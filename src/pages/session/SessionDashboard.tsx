@@ -6,7 +6,7 @@ import DeadlockModal from "../../components/session/DeadlockModal";
 import type { DeadlockDetail } from "../../components/session/DeadlockModal";
 import WidgetCard from "../../components/util/WidgetCard";
 import ChartGridLayout from "../../components/layout/ChartGridLayout";
-import SummaryCard from "../../components/layout/SummaryCard";
+import SummaryCard from "../../components/util/SummaryCard";
 import "../../styles/session/session-dashboard.css";
 
 
