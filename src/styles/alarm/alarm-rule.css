@@ -23,6 +23,7 @@
   box-shadow:0 0 0 3px rgba(127,129,242,.15);
 }
 
+
 /* 숫자 입력 스핀 제거 + 라인 높이 안정화 */
 .ar-input::-webkit-outer-spin-button,
 .ar-input::-webkit-inner-spin-button{ -webkit-appearance: none; margin:0; }
@@ -33,7 +34,7 @@
 /* 그리드 (상단 셀렉트 영역) */
 .ar-grid {
  display: grid;
-  grid-template-columns: repeat(2, 1fr); /* 한 줄에 2칸 */
+  grid-template-columns: repeat(3, 1fr); /* 한 줄에 2칸 */
   gap: 20px 40px; /* 세로, 가로 간격 */
   align-items: start;
   max-width: 1100px; /* 중앙 폭 제한 */

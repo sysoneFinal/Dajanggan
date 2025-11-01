@@ -2,7 +2,7 @@
     font-size: 16px;
 }
 
-.checkpoint-page {
+.vacuum-page {
     padding: 2rem;
     display: flex;
     flex-direction: column;
@@ -12,19 +12,19 @@
 }
 
 /* 필터 */
-.checkpoint-page__filters {
+.vacuum-page__filters {
     display: flex;
     justify-content: flex-end;
     gap: 0.75rem;
     align-items: center;
 }
 
-.checkpoint-page__filters > div {
+.vacuum-page__filters > div {
     min-width: 200px;
 }
 
 /* 테이블 */
-.checkpoint-page__table {
+.vacuum-page__table {
     background: rgba(255, 255, 255, 0.6);
     border-radius: 0.7rem;
     border: 1px solid rgba(255, 255, 255, 0.7);
@@ -32,32 +32,40 @@
     overflow-x: auto;
 }
 
-.checkpoint-table-header,
-.checkpoint-table-row {
+.vacuum-table-header,
+.vacuum-table-row {
     display: grid;
-    grid-template-columns: repeat(8, minmax(8rem, 1fr));
+    grid-template-columns: repeat(9, minmax(9rem, 1fr));
     text-align: center;
     padding: 1.1rem;
     align-items: center;
     font-size: 1rem;
 }
 
-.checkpoint-table-header {
+.vacuum-table-header {
     background: rgb(241, 239, 243, 0.8);
     font-weight: 700;
     color: #2e2f33;
 }
 
-.checkpoint-table-row {
+.vacuum-table-row {
     border-top: 1px solid rgba(0, 0, 0, 0.05);
     color: #2e2f33;
 }
 
-.checkpoint-table-row:nth-child(even) {
+.vacuum-table-row:nth-child(even) {
     background: rgba(255, 255, 255, 0.5);
 }
 
-.checkpoint-table-empty {
+.vacuum-table-row--hover {
+  transition: background-color 0.2s ease;
+}
+
+.vacuum-table-row--hover:hover {
+  background-color: rgba(127, 129, 242, 0.08) !important; /* 은은한 보라빛 하이라이트 */
+}
+
+.vacuum-table-empty {
     padding: 3rem;
     text-align: center;
     color: #6b7280;
@@ -108,12 +116,12 @@
 
 /* 반응형 */
 @media (max-width: 768px) {
-    .checkpoint-page__filters {
+    .vacuum-page__filters {
         flex-wrap: wrap;
     }
 
-    .checkpoint-table-header,
-    .checkpoint-table-row {
+    .vacuum-table-header,
+    .vacuum-table-row {
         grid-template-columns: repeat(8, minmax(6rem, 1fr));
         font-size: 0.8rem;
     }

@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import {Fragment, useMemo, useState} from "react";
 import {
     useReactTable,
     getCoreRowModel,
@@ -10,6 +10,8 @@ import {
     type SortingState,
 } from "@tanstack/react-table";
 import Pagination from "../../components/util/Pagination";
+import CsvButton from "../../components/util/CsvButton";
+import MultiSelectDropdown from "../../components/util/MultiSelectDropdown";
 import "/src/styles/engine/checkpointlist.css";
 
 // 데이터 타입 정의
@@ -137,82 +139,13 @@ const mockData: CheckpointData[] = [
         bufferCount: 8241,
         status: "주의",
     },
-    {
-        id: "11",
-        timestamp: "2025-10-23 22:15:25",
-        type: "timed",
-        writeTime: 1.5,
-        syncTime: 1.7,
-        totalTime: 3.2,
-        walGenerated: "2.2GB",
-        bufferCount: 4351,
-        status: "정상",
-    },
-    {
-        id: "12",
-        timestamp: "2025-10-23 23:31:25",
-        type: "requested",
-        writeTime: 4.8,
-        syncTime: 2.5,
-        totalTime: 7.3,
-        walGenerated: "3.5GB",
-        bufferCount: 10541,
-        status: "위험",
-    },
-    {
-        id: "13",
-        timestamp: "2025-10-24 00:40:45",
-        type: "timed",
-        writeTime: 2.3,
-        syncTime: 2.6,
-        totalTime: 4.9,
-        walGenerated: "1.6GB",
-        bufferCount: 7241,
-        status: "정상",
-    },
-    {
-        id: "14",
-        timestamp: "2025-10-24 01:20:45",
-        type: "requested",
-        writeTime: 3.2,
-        syncTime: 2.9,
-        totalTime: 6.1,
-        walGenerated: "2.0GB",
-        bufferCount: 8841,
-        status: "주의",
-    },
-    {
-        id: "15",
-        timestamp: "2025-10-24 02:15:25",
-        type: "timed",
-        writeTime: 1.6,
-        syncTime: 1.8,
-        totalTime: 3.4,
-        walGenerated: "2.4GB",
-        bufferCount: 4851,
-        status: "정상",
-    },
-    {
-        id: "16",
-        timestamp: "2025-10-24 03:31:25",
-        type: "requested",
-        writeTime: 5.1,
-        syncTime: 2.7,
-        totalTime: 7.8,
-        walGenerated: "3.7GB",
-        bufferCount: 11241,
-        status: "위험",
-    },
 ];
 
 export default function CheckPointListPage() {
     const [data] = useState<CheckpointData[]>(mockData);
     const [sorting, setSorting] = useState<SortingState>([]);
-    const [timeFilter, setTimeFilter] = useState("최근 24시간");
-
-    // 페이지네이션 상태 (14개로 변경)
     const [currentPage, setCurrentPage] = useState(1);
-    const pageSize = 14; // 페이지당 14개 항목
+    const pageSize = 10;
 
     // 컬럼 정의
     const columns = useMemo<ColumnDef<CheckpointData>[]>(
@@ -229,8 +162,8 @@ export default function CheckPointListPage() {
                     const value = info.getValue() as string;
                     return (
                         <span className={`badge ${value === "timed" ? "badge-timed" : "badge-requested"}`}>
-              {value}
-            </span>
+                            {value}
+                        </span>
                     );
                 },
             },
@@ -264,19 +197,19 @@ export default function CheckPointListPage() {
                 header: "상태",
                 cell: (info) => {
                     const value = info.getValue() as string;
-                    const getBadgeClass = () => {
-                        switch (value) {
-                            case "정상":
-                                return "badge-normal";
-                            case "주의":
-                                return "badge-warning";
-                            case "위험":
-                                return "badge-danger";
-                            default:
-                                return "badge-normal";
-                        }
-                    };
-                    return <span className={`badge ${getBadgeClass()}`}>{value}</span>;
+                    let className = "";
+                    switch (value) {
+                        case "정상":
+                            className = "info";
+                            break;
+                        case "주의":
+                            className = "warn";
+                            break;
+                        case "위험":
+                            className = "error";
+                            break;
+                    }
+                    return <span className={className}>{value}</span>;
                 },
             },
         ],
@@ -302,10 +235,8 @@ export default function CheckPointListPage() {
         manualPagination: false,
     });
 
-    // 총 페이지 수 계산
     const totalPages = Math.ceil(data.length / pageSize);
 
-    // 페이지 변경 핸들러
     const handlePageChange = (page: number) => {
         setCurrentPage(page);
     };
@@ -348,70 +279,88 @@ export default function CheckPointListPage() {
     };
 
     return (
-        <div className="checkpoint-container">
-            <div className="checkpoint-header">
-                <div className="checkpoint-actions">
-                    <select
-                        className="time-filter-dropdown"
-                        value={timeFilter}
-                        onChange={(e) => setTimeFilter(e.target.value)}
-                    >
-                        <option value="최근 1시간">최근 1시간</option>
-                        <option value="최근 6시간">최근 6시간</option>
-                        <option value="최근 24시간">최근 24시간</option>
-                        <option value="최근 7일">최근 7일</option>
-                    </select>
+        <main className="checkpoint-page">
+            {/* 필터 선택 영역 */}
+            <section className="checkpoint-page__filters">
+                <MultiSelectDropdown
+                    label="시간 선택"
+                    options={[
+                        "최근 1시간",
+                        "최근 6시간",
+                        "최근 24시간",
+                        "최근 7일",
+                    ]}
+                    onChange={(values) => console.log("선택된 시간:", values)}
+                />
+                <MultiSelectDropdown
+                    label="유형"
+                    options={[
+                        "timed",
+                        "requested",
+                    ]}
+                    onChange={(values) => console.log("선택된 유형:", values)}
+                />
+                <MultiSelectDropdown
+                    label="상태"
+                    options={[
+                        "정상",
+                        "주의",
+                        "위험",
+                    ]}
+                    onChange={(values) => console.log("선택된 상태:", values)}
+                />
+                <CsvButton onClick={handleExportCSV} tooltip="CSV 파일 저장"/>
+            </section>
 
-                    <button className="csv-export-button" onClick={handleExportCSV}>
-                        CSV 내보내기
-                    </button>
-                </div>
-            </div>
-
-            <div className="table-wrapper">
-                <table className="checkpoint-table">
-                    <thead>
+            {/* Checkpoint 테이블 */}
+            <section className="checkpoint-page__table">
+                <div className="checkpoint-table-header">
                     {table.getHeaderGroups().map((headerGroup) => (
-                        <tr key={headerGroup.id}>
+                        <Fragment key={headerGroup.id}>
                             {headerGroup.headers.map((header) => (
-                                <th
+                                <div
                                     key={header.id}
                                     onClick={header.column.getToggleSortingHandler()}
+                                    style={{ cursor: 'pointer' }}
                                 >
                                     {flexRender(
                                         header.column.columnDef.header,
                                         header.getContext()
                                     )}
                                     {header.column.getIsSorted() && (
-                                        <span className="sort-icon active">
-                        {header.column.getIsSorted() === "asc" ? " ▲" : " ▼"}
-                      </span>
+                                        <span className="sort-icon">
+                                            {header.column.getIsSorted() === "asc" ? " ▲" : " ▼"}
+                                        </span>
                                     )}
-                                </th>
+                                </div>
                             ))}
-                        </tr>
+                        </Fragment>
                     ))}
-                    </thead>
-                    <tbody>
-                    {table.getRowModel().rows.map((row) => (
-                        <tr key={row.id}>
+                </div>
+
+                {table.getRowModel().rows.length > 0 ? (
+                    table.getRowModel().rows.map((row) => (
+                        <div key={row.id} className="checkpoint-table-row">
                             {row.getVisibleCells().map((cell) => (
-                                <td key={cell.id}>
+                                <div key={cell.id}>
                                     {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                                </td>
+                                </div>
                             ))}
-                        </tr>
-                    ))}
-                    </tbody>
-                </table>
-            </div>
+                        </div>
+                    ))
+                ) : (
+                    <div className="checkpoint-table-empty">데이터가 없습니다.</div>
+                )}
+            </section>
 
             {/* 페이지네이션 */}
-            <Pagination
-                currentPage={currentPage}
-                totalPages={totalPages}
-                onPageChange={handlePageChange}
-            />
-        </div>
+            {totalPages > 1 && (
+                <Pagination
+                    currentPage={currentPage}
+                    totalPages={totalPages}
+                    onPageChange={handlePageChange}
+                />
+            )}
+        </main>
     );
 }

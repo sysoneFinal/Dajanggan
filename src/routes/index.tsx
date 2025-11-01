@@ -56,7 +56,6 @@ const routeList = [
   { path: "/instance/cpu/dashboard", element: <CpuPage /> },
   { path: "/instance/cpu/usage", element: <CPUListPage /> },
 
-  // memory
   { path: "/instance/memory/dashboard", element: <MemoryPage /> },
   { path: "/instance/memory/buffer-usage", element: <MemoryListPage /> },
 
