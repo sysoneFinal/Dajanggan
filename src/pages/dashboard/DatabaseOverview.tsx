@@ -1,8 +1,11 @@
 import React, { useState, useTransition } from "react";
 import { useQuery } from "@tanstack/react-query";
-import clsx from "clsx";
 import Chart from "../../components/chart/ChartComponent";
 import "@/styles/dashboard/databaseSummary.css";
+import WidgetCard from "../../components/util/WidgetCard";
+import ChartGridLayout from "../../components/layout/ChartGridLayout";
+import rightArrowIcon from "../../assets/icon/right-arrow.svg";
+import CircleGaugeChart from "../../components/chart/CircleGaugeChart";
 
 interface Database {
   name: string;
@@ -14,10 +17,16 @@ interface MetricData {
   tps: number[];
   waitEvent: { name: string; value: number }[];
   diskIO: { read: number; hit: number; time: string }[];
-  vacuum: { lastVacuum: string; autoVacuumCount: number };
+  vacuum: {
+    lastVacuum: string;
+    autoVacuumCount: number;
+    trend: { time: string; count: number }[]; 
+  };
   slowQueries: { query: string; time: string; calls: number }[];
   events: { type: string; time: string; severity: string }[];
+  eventSummary: { info: number; warning: number; critical: number };
 }
+
 
 export default function DatabaseDashboard() {
   const [selectedDB, setSelectedDB] = useState<string>("wiki-miki");
@@ -26,43 +35,67 @@ export default function DatabaseDashboard() {
   /** DB 리스트 */
   const databases: Database[] = [
     { name: "wiki-miki", activity: 47 },
-    { name: "dp-prod", activity: 80 },
-    { name: "sales-db", activity: 65 },
+    { name: "dp-prod", activity: 87 },
+    { name: "sales-db", activity: 75 },
     { name: "log-db", activity: 24 },
-    { name: "log-db", activity: 24 },
-    { name: "log-db", activity: 24 },
-    { name: "log-db", activity: 24 },
+    { name: "user-db", activity: 80 },
+    { name: "user-db", activity: 80 },
+    { name: "user-db", activity: 80 },
+    { name: "user-db", activity: 80 },
+
   ];
 
-  /** React Query: 메트릭 데이터 */
-  const { data, isLoading } = useQuery<MetricData>({
-    queryKey: ["metrics", selectedDB],
-    queryFn: async () => ({
-      activeSessions: [4, 8, 12, 7, 16, 10, 18, 15],
-      tps: [200, 400, 600, 500, 900, 1000, 800],
-      waitEvent: [
-        { name: "I/O", value: 2 },
-        { name: "Lock", value: 8 },
-        { name: "LWLock", value: 3 },
-        { name: "Client", value: 6 },
+/** React Query: 메트릭 데이터 */
+const { data, isLoading } = useQuery<MetricData>({
+  queryKey: ["metrics", selectedDB],
+  queryFn: async () => ({
+    activeSessions: [4, 8, 12, 7, 16, 10, 18, 15],
+    tps: [200, 400, 600, 500, 900, 1000, 800],
+    waitEvent: [
+      { name: "I/O", value: 2 },
+      { name: "Lock", value: 8 },
+      { name: "LWLock", value: 3 },
+      { name: "Client", value: 6 },
+    ],
+    diskIO: [
+      { read: 4000, hit: 16000, time: "13:00" },
+      { read: 6000, hit: 18000, time: "13:05" },
+      { read: 12000, hit: 20000, time: "13:10" },
+    ],
+    vacuum: {
+      lastVacuum: "13m ago",
+      autoVacuumCount: 132,
+      trend: [
+        { time: "10:05", count: 121 },
+        { time: "10:10", count: 124 },
+        { time: "10:15", count: 130 },
+        { time: "10:20", count: 132 },
+        { time: "10:25", count: 128 },
+        { time: "10:30", count: 129 },
+        { time: "10:35", count: 133 },
+        { time: "10:40", count: 136 },
+        { time: "10:45", count: 135 },
+        { time: "10:50", count: 137 },
       ],
-      diskIO: [
-        { read: 4000, hit: 16000, time: "13:00" },
-        { read: 6000, hit: 18000, time: "13:05" },
-        { read: 12000, hit: 20000, time: "13:10" },
-      ],
-      vacuum: { lastVacuum: "13m ago", autoVacuumCount: 132 },
-      slowQueries: [
-        { query: "SELECT * FROM orders", time: "4.3s", calls: 12 },
-        { query: "SELECT * FROM users", time: "3.5s", calls: 10 },
-        { query: "SELECT * FROM logs", time: "3.0s", calls: 7 },
-      ],
-      events: [
-        { type: "High Disk I/O", time: "2m", severity: "Critical" },
-        { type: "CPU Spike", time: "4m", severity: "Warning" },
-      ],
-    }),
-  });
+    },
+    slowQueries: [
+      { query: "SELECT * FROM orders", time: "4.3s", calls: 12 },
+      { query: "SELECT * FROM users", time: "3.5s", calls: 10 },
+      { query: "SELECT * FROM logs", time: "3.0s", calls: 7 },
+    ],
+    eventSummary: {
+      info: 13,
+      warning: 7,
+      critical: 1,
+    },
+    events: [
+      { type: "High Disk I/O", time: "2m", severity: "critical" },
+      { type: "CPU Spike", time: "4m", severity: "warning" },
+      { type: "Memory Alert", time: "6m", severity: "warning" },
+    ],
+  }),
+});
+
 
   const handleSelectDB = (db: string) => {
     startTransition(() => setSelectedDB(db));
@@ -72,333 +105,199 @@ export default function DatabaseDashboard() {
 
   return (
     <div className="database-dashboard">
-      {/* Database Activity */}
-      <div className="db-card database-activity-section">
-        <h4>Database Activity</h4>
-        <p>Database를 선택하여 상태를 확인하세요.</p>
 
-        <div className="database-list">
-          {databases.map((db) => (
-            <div
-              key={db.name}
-              className={clsx("database-item", {
-                active: selectedDB === db.name,
-              })}
-              onClick={() => handleSelectDB(db.name)}
-            >
-              <div className="progress-bar">
-                <div
-                className="progress-fill"
-                data-level={
-                    db.activity >= 80 ? "high" : db.activity >= 50 ? "medium" : "low"
-                }
-                style={{ width: `${db.activity}%` }}
-                />
-
-              </div>
-              <div className="db-name">{db.name}</div>
-              <div className="db-percent">{db.activity}%</div>
+      {/* 1번째 행  */}
+      <ChartGridLayout>
+        <WidgetCard title="Database Activity" span={2}> 
+          <div className="db-sm-container">
+            <div className="db-sm-header">
+              <p className="db-sm-desc">
+                Database를 선택하여 상태를 확인하세요.
+              </p>
             </div>
-          ))}
-        </div>
-      </div>
 
-      {/* Active Sessions */}
-      <div className="db-card active-sessions">
-        <Chart
-        type="line"
-        series={[{ name: "활성 세션 수", data: data.activeSessions }]}
-        categories={["13:30", "13:33", "13:36", "13:39", "13:42", "13:45"]}
-        titleOptions={{
-            text: "Active Sessions",
-            align: "left",
-            color: "#111827",
-            fontSize: "14px",
-            fontWeight: 600,
-        }}
-        colors={["#8979FF"]} 
-        height={280}
-        tooltipFormatter={(v) => `${v} sessions`}
-        customOptions={{
-        stroke: {
-            width: 3,
-            curve: "straight",
-            colors: ["#8979FF"], 
-        },
-        markers: {
-            size: 5,
-            colors: ["#ffffff"], 
-            strokeColors: "#6366F1", 
-            strokeWidth: 2,
-            hover: { size: 7 },
-        },
-        grid: {
-            borderColor: "#E5E7EB",
-            strokeDashArray: 4,
-        },
-        fill: {
-            type: "solid", 
-            colors: ["#8979FF"],
-            opacity: 0.5, 
-        },
-        
-        yaxis: {
-            labels: { style: { colors: "#6B7280", fontSize: "12px" } },
-        },
-        xaxis: {
-            labels: { style: { colors: "#6B7280", fontSize: "12px" } },
-        },
-            chart: {
-            toolbar: { show: false },
-            zoom: { enabled: false },
-            foreColor: "#4B5563",
-            animations: {
-                enabled: true,
-                easing: "easeinout",
-                speed: 800,
-            },
-            },
-        }}
-        />
-      </div>
+            <div className="db-sm-list">
+              {databases.map((db) => (
+                <button
+                  key={db.name}
+                  className={`db-sm-item ${selectedDB === db.name ? "active" : ""}`}
+                  onClick={() => handleSelectDB(db.name)}
+                >
+                  <span className="db-sm-name">{db.name}</span>
+                  <img src={rightArrowIcon} alt="Select Database" />
+                </button>
+              ))}
+            </div>
+          </div>
+        </WidgetCard>
+        <WidgetCard span={5} title="Active Sessions Over Time" >
+          <Chart
+          type="line"
+          series={[{ name: "활성 세션 수", data: data.activeSessions }]}
+          categories={["13:30", "13:33", "13:36", "13:39", "13:42=", "13:45"]}
+          tooltipFormatter={(v) => `${v} sessions`}
+          />
+        </WidgetCard>
+        <WidgetCard span={5} title="Transactions Per Second (TPS)">
+          <Chart
+          type="line"
+          series={[{ name: "TPS", data: data.tps }]}
+          categories={["13:30", "13:33", "13:36", "13:39", "13:42", "13:45"]}
+          tooltipFormatter={(v) => `${v} sessions`}
+          />
+        </WidgetCard>
 
-      {/* TPS */}
-      <div className="db-card tps">
-        <Chart
-        type="line"
-        series={[{ name: "TPS", data: data.tps }]}
-        categories={["13:30", "13:33", "13:36", "13:39", "13:42", "13:45"]}
-        titleOptions={{
-            text: "TPS (초당 트랜잭션 수)",
-            align: "left",
-            color: "#111827",
-            fontSize: "14px",
-            fontWeight: 600,
-        }}
-        colors={["#8979FF"]} 
-        height={280}
-        tooltipFormatter={(v) => `${v} sessions`}
-        customOptions={{
-        stroke: {
-            width: 3,
-            curve: "straight",
-            colors: ["#8979FF"], 
-        },
-        markers: {
-            size: 5,
-            colors: ["#ffffff"], 
-            strokeColors: "#6366F1", 
-            strokeWidth: 2,
-            hover: { size: 7 },
-        },
-        grid: {
-            borderColor: "#E5E7EB",
-            strokeDashArray: 4,
-        },
-        fill: {
-            type: "solid", 
-            colors: ["#8979FF"],
-            opacity: 0.5, 
-        },
-        
-        yaxis: {
-            labels: { style: { colors: "#6B7280", fontSize: "12px" } },
-        },
-        xaxis: {
-            labels: { style: { colors: "#6B7280", fontSize: "12px" } },
-        },
-            chart: {
-            toolbar: { show: false },
-            zoom: { enabled: false },
-            foreColor: "#4B5563",
-            animations: {
-                enabled: true,
-                easing: "easeinout",
-                speed: 800,
-            },
-            },
-        }}
-        />
-      </div>
+      </ChartGridLayout>
 
-      {/* Wait Event */}
-      <div className="db-card wait-event">
-        <Chart
-        type="donut"
-        series={data.waitEvent.map((e) => e.value)}
-        categories={data.waitEvent.map((e) => e.name)}
-        titleOptions={{
-            text: "최근 30분 내 Wait Event Type",
-            align: "left",
-            color: "#111827",
-            fontSize: "14px",
-            fontWeight: 600,
-        }}
-        colors={[
-            "rgba(81, 76, 166, 1)",
-            "#7B61FF",
-            "#BFB7FF",
-            "#D5D3F7",
-            "#7F81F2",
-        ]}
-        height={280}
-        tooltipFormatter={(v) => `${v} events`} 
-        customOptions={{
-            legend: {
-            position: "right",
-            labels: { colors: "#6B7280" },
-            },
-            dataLabels: {
-            enabled: true,
-            style: { fontSize: "13px", fontWeight: 500 },
-            formatter: (val: number, opts: any) => {
-                const seriesIndex = opts.seriesIndex;
-                const label = opts.w.globals.labels[seriesIndex];
-                const value = opts.w.globals.series[seriesIndex];
-                return `${label}: ${value}`; 
-            },
-            dropShadow: { enabled: false },
-            },
-            tooltip: {
-            y: {
-                formatter: (val: number) => `${val}회`, 
-            },
-            },
-        }}
-        />
+      {/* 2번째 행  */}
 
-
-      </div>
-
-      {/* Vacuum  --------------수정해야함@@@ radial bar 안됨!! */}
-      <div className="db-card vacuum">
-        <h4>Vacuum</h4>
-        <Chart
-            type="radialBar"
-            series={[47]}
-            categories={["Dead Tuples"]}
-            colors={["#7B61FF"]}
-            height={200}
-            customOptions={{
-                plotOptions: {
-                radialBar: {
-                    hollow: {
-                    size: "60%",
-                    },
-                    track: {
-                    background: "#E5E7EB",
-                    },
-                    dataLabels: {
-                    show: true,
-                    name: {
-                        show: true,
-                        fontSize: "14px",
-                        color: "#6B7280",
-                        offsetY: 10,
-                    },
-                    value: {
-                        show: true,
-                        fontSize: "24px",
-                        fontWeight: 600,
-                        color: "#111827",
-                        offsetY: -10,
-                        formatter: (val: number) => `${Math.round(val)}%`,
-                    },
-                    },
-                },
-                },
-            }}
+      <ChartGridLayout>
+        <div className="db-sm-gauge-vacuum-box">
+          <div className="db-sm-gauge-container">
+            <CircleGaugeChart
+              label="Connection Usage" 
+              value={75}
             />
+            <div className="wait-event-chart">
 
-        <div className="vacuum-info">
-          <div>
-            <span>Last Vacuum:</span> {data.vacuum.lastVacuum}
+            <Chart
+            type="donut"
+            series={data.waitEvent.map((e) => e.value)}
+            categories={data.waitEvent.map((e) => e.name)}
+            tooltipFormatter={(v) => `${v} events`} 
+            height={150}
+            showLegend={false}
+            showDonutTotal={true}
+            colors={["#866ffcff", "#7d7fffff", "#b1a7ffff", "#d2d0fbff"]}
+            enableDonutShadow
+            donutTitle="Wait Event"  
+            />
+            </div>
+
+            <CircleGaugeChart
+              label="Dead Tuples" 
+              value={47}
+            />
           </div>
-          <div>
-            <span>AutoVacuum Count:</span> {data.vacuum.autoVacuumCount}
-          </div>
-        </div>
-      </div>
-
-        {/* Slow Query */}
-        <div className="sq-card slow-query">
-        <h4 className="section-title">slow query Top 3</h4>
-
-        <ul className="slow-query-list">
-            {data.slowQueries.map((q, i) => (
-            <li key={i} className="query-item">
-                <div className="query-text">
-                {q.query.length > 35 ? q.query.slice(0, 35) + " ..." : q.query}
+          {data?.vacuum?.trend && (
+            <div className="vacuum-card">
+              <div className="vacuum-card-header">
+                <div className="vacuum-card-title">AutoVacuum Count</div>
+                <div className="vacuum-card-count">
+                  <span className="count-label">Count</span>
+                  <span className="count-value">
+                    {data.vacuum.trend[data.vacuum.trend.length - 1]?.count ?? 0}
+                  </span>
                 </div>
+              </div>
 
-                <div className="query-meta">
-                <span className="divider" />
-                <span className="query-time">{q.time}</span>
-                <span className="divider" />
-                <span className="query-calls">{q.calls} calls</span>
-                </div>
-            </li>
-            ))}
-        </ul>
+              <Chart
+                type="line"
+                series={[
+                  {
+                    name: "AutoVacuum Count",
+                    data: data.vacuum.trend.map((d) => d.count),
+                  },
+                ]}
+                categories={data.vacuum.trend.map((d) => d.time)}
+                height={90}
+                showLegend={false}
+              />
+            </div>
+          )}
         </div>
+        
 
-
-      {/*  Disk I/O */}
-      <div className="db-card disk-io">
-        <Chart
-          type="area"
-          titleOptions={{ text: "Disk I/O Activity" }}
+        <WidgetCard title="CPU/Memory (Last 30min)" span={6}>
+          <Chart
+          type="line"
           series={[
-            { name: "blks_hit", data: data.diskIO.map((d) => d.hit) },
-            { name: "blks_read", data: data.diskIO.map((d) => d.read) },
+              { name: "blks_hit", data: data.diskIO.map((d) => d.hit) },
+              { name: "blks_read", data: data.diskIO.map((d) => d.read) },
           ]}
           categories={data.diskIO.map((d) => d.time)}
-          colors={["#7B61FF", "#FF928A"]}
-          height={280}
-        />
-      </div>
+          />
+        </WidgetCard>
 
-      <div className="event-summary-card">
-      <h4 className="event-title">EVENT Summary</h4>
 
-      <div className="event-stats">
-        <div className="stat info">
-          <div className="label">Info</div>
-          <div className="value">13</div>
-        </div>
-        <div className="stat warning">
-          <div className="label">Warning</div>
-          <div className="value">7</div>
-        </div>
-        <div className="stat critical">
-          <div className="label">Critical</div>
-          <div className="value">1</div>
-        </div>
-      </div>
+          <WidgetCard title="" span={5} className="no-style">
+            <div className="sq-card slow-query">
+            <h4 className="section-title">slow query Top 3</h4>
 
-      <div className="recent-section">
-        <h5 className="recent-title">Recent Event</h5>
-        <div className="recent-table">
-          <div className="table-header">
-            <span>Type</span>
-            <span>Time</span>
-            <span>Severity</span>
+            <ul className="slow-query-list">
+                {data.slowQueries.map((q, i) => (
+                <li key={i} className="query-item">
+                    <div className="query-text">
+                    {q.query.length > 35 ? q.query.slice(0, 35) + " ..." : q.query}
+                    </div>
+
+                    <div className="query-meta">
+                    <span className="divider" />
+                    <span className="query-time">{q.time}</span>
+                    <span className="divider" />
+                    <span className="query-calls">{q.calls} calls</span>
+                    </div>
+                </li>
+                ))}
+            </ul>
+            </div>
+          </WidgetCard>  
+      </ChartGridLayout>
+      
+      {/* 3번째 행  */}
+      <ChartGridLayout>
+
+        <WidgetCard title="Disk I/O Activity" span={6} height="auto">
+          <Chart
+          type="area"
+          series={[
+              { name: "blks_hit", data: data.diskIO.map((d) => d.hit) },
+              { name: "blks_read", data: data.diskIO.map((d) => d.read) },
+          ]}
+          categories={data.diskIO.map((d) => d.time)}
+          height={300}
+          />
+        </WidgetCard>
+        <WidgetCard title="System Events" span={6} height="auto">
+          <div className="event-summary-card">
+            <div className="event-stats">
+              <div className="stat info">
+                <div className="label">Info</div>
+                <div className="value">{data.eventSummary.info}</div>
+              </div>
+              <div className="stat warning">
+                <div className="label">Warning</div>
+                <div className="value">{data.eventSummary.warning}</div>
+              </div>
+              <div className="stat critical">
+                <div className="label">Critical</div>
+                <div className="value">{data.eventSummary.critical}</div>
+              </div>
+            </div>
+
+            <div className="recent-section">
+              <h5 className="recent-title">Recent Event</h5>
+              <div className="recent-table">
+                <div className="table-header">
+                  <span>Type</span>
+                  <span>Time</span>
+                  <span>Severity</span>
+                </div>
+
+                {data.events.slice(0, 3).map((event, index) => (
+                  <div key={index} className="table-row">
+                    <span>{event.type}</span>
+                    <span>{event.time}</span>
+                    <span className={`severity ${event.severity.toLowerCase()}`}>
+                      {event.severity.charAt(0).toUpperCase() + event.severity.slice(1)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
-
-          <div className="table-row">
-            <span>High Disk I/O</span>
-            <span>2m</span>
-            <span className="severity critical">Critical</span>
-          </div>
-
-          <div className="table-row">
-            <span>CPU Spike</span>
-            <span>4m</span>
-            <span className="severity warning">Warning</span>
-          </div>
-        </div>
-      </div>
-    </div>
+        </WidgetCard>
+      </ChartGridLayout>
 
     </div>
   );
