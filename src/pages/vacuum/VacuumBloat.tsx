@@ -104,13 +104,14 @@ return (
     <div className="vd-main-layout">
       {/* 좌측: A - Xmin Horizon (대형) */}
       <div className="vd-left-large">
-        <WidgetCard title="Xmin Horizon Monitor (last 7d)">
+        <WidgetCard title="Xmin Horizon Monitor (last 7d)"
+                    height="clamp(320px, 43vh, 520px)"  >
           <Chart
             type="area"
             series={xminHorizonMonitorSeries}
             categories={data.xminHorizonMonitor.labels}
-            height={450}  // 높이 증가
             width="100%"
+            height="350px"
             showToolbar={false}
              customOptions={{
               chart: { redrawOnParentResize: true, redrawOnWindowResize: true, toolbar: { show: false } },
@@ -202,7 +203,6 @@ return (
             type="line"
             series={bloatTrendSeries}
             categories={data.bloatTrend.labels}
-            height={300}
             width="100%"
           />
         </WidgetCard>
@@ -213,7 +213,6 @@ return (
             type="bar"
             series={bloatDistributionSeries}
             categories={data.bloatDistribution.labels}
-            height={300}
             width="100%"
           />
         </WidgetCard>

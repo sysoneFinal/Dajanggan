@@ -128,7 +128,7 @@ export default function VacuumRecordDetailPage({ data = demo }: { data?: VacuumR
 
       {/* Progress 차트 */}
       <div className="vd-grid5">
-        <section className="vd-card vd-chart">
+        <section className="vd-card vd-chart2">
           <header className="vd-card__header">
             <h3>Progress</h3>
           </header>

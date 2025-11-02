@@ -24,7 +24,6 @@
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.05);
   display: flex;
   flex-direction: column;
-  justify-content: center;
   background: rgba(255, 255, 255, 0.45);
   width: 100%;
   padding: 1.25rem 1.5rem;
@@ -82,6 +81,9 @@
 .vd-progress__fill{ height:100%; background:linear-gradient(90deg,#6366F1,#60A5FA); border-radius:999px; }
 
 /* 차트가 초기 0폭으로 렌더되는 걸 방지하는 안전장치 */
+.vd-chart2 {
+  height: 500px; /* 예: 기본 380~400px 정도에서 줄이기 */
+}
 .vd-card.vd-chart { min-height: 260px; }
 .vd-card .apexcharts-canvas { min-height: 240px; width:100% !important; }
 
@@ -152,6 +154,8 @@
   /* A 카드가 들어갈 공간 */
   grid-row: 1 / -1;  /* 전체 높이 차지 */
 }
+
+
 
 .vd-right-stack {
   display: grid;

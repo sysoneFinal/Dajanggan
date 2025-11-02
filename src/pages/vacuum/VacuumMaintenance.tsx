@@ -186,7 +186,6 @@ export default function VacuumPage({ data = demo }: { data?: DashboardData }) {
             type="line"
             series={deadtupleSeries}
             categories={data.deadtuple.labels}
-            height={380}
             width="100%"
             customOptions={{
               chart: { redrawOnParentResize: true, redrawOnWindowResize: true },
@@ -208,7 +207,6 @@ export default function VacuumPage({ data = demo }: { data?: DashboardData }) {
             type="line"
             series={autovacuumSeries} // ★ yAxisIndex 붙이지 마세요 (ApexCharts는 지원 X)
             categories={data.autovacuum.labels}
-            height={400}
             width="100%"
              customOptions={{
               chart: { redrawOnParentResize: true, redrawOnWindowResize: true },
@@ -230,7 +228,6 @@ export default function VacuumPage({ data = demo }: { data?: DashboardData }) {
             type="line"
             series={latencySeries}
             categories={data.latency.labels}
-            height={400}
             width="100%"
             customOptions={{
               chart: { redrawOnParentResize: true, redrawOnWindowResize: true },
