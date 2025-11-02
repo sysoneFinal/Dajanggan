@@ -158,7 +158,7 @@ export default function ExecutionStatus() {
   const chartRefTime: TimeFilter = "24h";
   const chartData = demoDataByTime[chartRefTime];
 
-  const boxPlot = useMemo(() => {
+  const boxPlotData = useMemo(() => {
     const rep: Record<string, number> = {
       "1": 1,
       "2-3": 2.5,
@@ -176,29 +176,26 @@ export default function ExecutionStatus() {
     const q1 = weightedQuantile(bins, 0.25);
     const median = weightedQuantile(bins, 0.5);
     const q3 = weightedQuantile(bins, 0.75);
-    const iqr = q3 - q1;
-    const lowerFence = q1 - 1.5 * iqr;
-    const upperFence = q3 + 1.5 * iqr;
+    const min = Math.min(...bins.map(b => b.value));
+    const max = Math.max(...bins.map(b => b.value));
 
-    let whiskerMin = q1, whiskerMax = q3;
-    for (const b of bins) {
-      if (b.value >= lowerFence) { whiskerMin = Math.min(whiskerMin, b.value); break; }
-    }
-    for (let i = bins.length - 1; i >= 0; i--) {
-      const v = bins[i].value;
-      if (v <= upperFence) { whiskerMax = Math.max(whiskerMax, v); break; }
-    }
-
-    const outliers = bins
-      .filter((b) => b.value < lowerFence || b.value > upperFence)
-      .map((b) => b.value);
-
-    return { q1, median, q3, whiskerMin, whiskerMax, outliers };
+    return {
+      series: [{
+        name: "쿼리 수",
+        type: "boxPlot",
+        data: [{
+          x: "10:00",
+          y: [min, q1, median, q3, max]
+        }, {
+          x: "11:00",
+          y: [min, q1, median, q3, max]
+        }, {
+          x: "12:00",
+          y: [min, q1, median, q3, max]
+        }]
+      }]
+    };
   }, [chartData]);
-
-  const outlierSeries = useMemo(() => ([
-    { name: "이상치(●)", data: boxPlot.outliers.map((v) => ({ x: "All", y: v })) },
-  ]), [boxPlot.outliers]);
 
   const queryTypeSeries = useMemo(() => chartData.queryTypeDistribution.data, [chartData]);
 
@@ -303,13 +300,17 @@ export default function ExecutionStatus() {
             <h4 className="es-chart-title">트랜잭션당 쿼리 수 분포</h4>
             <div className="es-chart-body">
               <Chart
-                type="scatter"
-                series={outlierSeries}
-                categories={["All"]}
+                type="boxPlot"
+                series={boxPlotData.series}
+                categories={["10:00", "11:00", "12:00"]}
                 height="100%"
                 showLegend={false}
                 showToolbar={false}
-                colors={["var(--color-danger)"]}
+                colors={["var(--color-normal)"]}
+                titleOptions={{
+                  text: "",
+                  align: "left"
+                }}
                 customOptions={{
                   chart: {
                     animations: { enabled: false },
@@ -317,60 +318,25 @@ export default function ExecutionStatus() {
                     redrawOnWindowResize: true,
                   },
                   xaxis: {
-                    categories: ["All"],
-                    title: { text: "All (전체 트랜잭션)", style: { fontSize: "10px", fontWeight: 600 } },
+                    categories: ["10:00", "11:00", "12:00"],
+                    title: { 
+                      text: "시간", 
+                      style: { fontSize: "11px", fontWeight: 600 } 
+                    },
                   },
                   yaxis: {
-                    title: { text: "트랜잭션당 쿼리 수", style: { fontSize: "10px", fontWeight: 600 } },
-                    min: Math.max(0, Math.floor(boxPlot.whiskerMin - 2)),
+                    title: { 
+                      text: "쿼리 수", 
+                      style: { fontSize: "11px", fontWeight: 600 } 
+                    },
                   },
                   grid: { borderColor: "var(--border)", strokeDashArray: 4 },
-                  dataLabels: { enabled: false },
-                  markers: { size: 4, strokeWidth: 1 },
-                  annotations: {
-                    yaxis: [
-                      {
-                        y: boxPlot.q1,
-                        y2: boxPlot.q3,
-                        borderColor: "var(--color-normal)",
-                        fillColor: "rgba(123,97,255,.12)",
-                        opacity: 1,
-                        label: {
-                          text: `IQR: ${boxPlot.q1.toFixed(1)} ~ ${boxPlot.q3.toFixed(1)}`,
-                          style: { color: "#111827", background: "#fff", fontSize: "9px", fontWeight: 600 },
-                        },
-                      },
-                      {
-                        y: boxPlot.median,
-                        borderColor: "var(--color-normal)",
-                        label: {
-                          text: `Median: ${boxPlot.median.toFixed(1)}`,
-                          style: { color: "#111827", background: "#fff", fontSize: "9px", fontWeight: 600 },
-                        },
-                      },
-                      {
-                        y: boxPlot.whiskerMin,
-                        borderColor: "var(--muted)",
-                        strokeDashArray: 4,
-                        label: {
-                          text: `Whisker min: ${boxPlot.whiskerMin.toFixed(1)}`,
-                          style: { color: "#6b7280", background: "#fff", fontSize: "9px", fontWeight: 600 },
-                        },
-                      },
-                      {
-                        y: boxPlot.whiskerMax,
-                        borderColor: "var(--muted)",
-                        strokeDashArray: 4,
-                        label: {
-                          text: `Whisker max: ${boxPlot.whiskerMax.toFixed(1)}`,
-                          style: { color: "#6b7280", background: "#fff", fontSize: "9px", fontWeight: 600 },
-                        },
-                      },
-                    ],
-                  },
                   tooltip: {
-                    y: { formatter: (v: number) => `${v.toFixed(1)} 쿼리/트랜잭션` },
-                  },
+                    enabled: true,
+                    y: {
+                      formatter: (val: number) => `${val.toFixed(1)} 쿼리`
+                    }
+                  }
                 }}
               />
             </div>
@@ -386,6 +352,7 @@ export default function ExecutionStatus() {
                 height="100%"
                 showLegend={true}
                 showToolbar={false}
+                showDonutTotal={false}
                 colors={[
                   "var(--color-normal)",
                   "var(--color-danger)",
@@ -398,7 +365,7 @@ export default function ExecutionStatus() {
                     redrawOnParentResize: true,
                     redrawOnWindowResize: true,
                   },
-                  legend: { position: "right", fontSize: "10px", fontWeight: 600 },
+                  legend: { position: "right", fontSize: "11px", fontWeight: 600 },
                   dataLabels: {
                     enabled: true,
                     formatter: (_: number, opts: any) => {
@@ -408,11 +375,13 @@ export default function ExecutionStatus() {
                       const pct = Math.round((v / total) * 100);
                       return `${pct}%`;
                     },
-                    style: { fontSize: "10px", fontWeight: 700 },
+                    style: { fontSize: "11px", fontWeight: 700 },
                     dropShadow: { enabled: false },
                   },
                   stroke: { width: 0 },
-                  tooltip: { y: { formatter: (v: number) => `${v.toLocaleString()} 건` } },
+                  tooltip: {
+                    enabled: false
+                  },
                 }}
               />
             </div>

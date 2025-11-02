@@ -312,7 +312,6 @@ export default function Chart({
           },
         };
         options.title = {
-          text: titleOptions?.text || "BoxPlot Chart",
           align: titleOptions?.align || "left",
           style: {
             color: titleOptions?.color || "#111827",
