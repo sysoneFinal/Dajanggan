@@ -21,21 +21,22 @@ type AlarmRuleRow = {
   id: number;
   instance: string;
   database: string;
+  section: string;
   metric: "vacuum" | "Long Transactions / Blockers" | "Dead tuple";
   enabled: boolean;
 };
 
 const base: AlarmRuleRow[] = [
-  { id: 1, instance: "orders",   database: "page",    metric: "vacuum", enabled: false },
-  { id: 2, instance: "sessions", database: "orders",  metric: "vacuum", enabled: true  },
-  { id: 3, instance: "orders",   database: "sessions",metric: "vacuum", enabled: true  },
-  { id: 4, instance: "sessions", database: "orders",  metric: "Long Transactions / Blockers", enabled: true },
-  { id: 5, instance: "orders",   database: "sessions",metric: "Long Transactions / Blockers", enabled: true },
-  { id: 6, instance: "sessions", database: "page",    metric: "Long Transactions / Blockers", enabled: true },
-  { id: 7, instance: "orders",   database: "orders",  metric: "Dead tuple", enabled: true },
-  { id: 8, instance: "sessions", database: "sessions",metric: "Dead tuple", enabled: true },
-  { id: 9, instance: "orders",   database: "sessions",metric: "Dead tuple", enabled: true },
-  { id:10, instance: "sessions", database: "page",    metric: "Dead tuple", enabled: true },
+  { id: 1, instance: "orders",   database: "page",    section: "vacuum", metric: "vacuum", enabled: false },
+  { id: 2, instance: "sessions", database: "orders",  section: "vacuum", metric: "vacuum", enabled: true  },
+  { id: 3, instance: "orders",   database: "sessions", section: "vacuum", metric: "vacuum", enabled: true  },
+  { id: 4, instance: "sessions", database: "orders",  section: "Hot index", metric: "Long Transactions / Blockers", enabled: true },
+  { id: 5, instance: "orders",   database: "sessions", section: "Hot index", metric: "Long Transactions / Blockers", enabled: true },
+  { id: 6, instance: "sessions", database: "page",    section: "Hot index", metric: "Long Transactions / Blockers", enabled: true },
+  { id: 7, instance: "orders",   database: "orders", section: "Hot table",  metric: "Dead tuple", enabled: true },
+  { id: 8, instance: "sessions", database: "sessions", section: "Session", metric: "Dead tuple", enabled: true },
+  { id: 9, instance: "orders",   database: "sessions", section: "Session", metric: "Dead tuple", enabled: true },
+  { id:10, instance: "sessions", database: "page",     section: "Session", metric: "Dead tuple", enabled: true },
 ];
 
 const demoRows: AlarmRuleRow[] = Array.from({ length: 33 }, (_, i) => {
@@ -48,7 +49,7 @@ export default function AlarmRuleList({ rows = demoRows }: { rows?: AlarmRuleRow
   const [data] = useState<AlarmRuleRow[]>(rows);
   const [sorting, setSorting] = useState<SortingState>([]);
   const [currentPage, setCurrentPage] = useState(1);
-  const pageSize = 10;
+  const pageSize = 15;
   const [openSlack, setOpenSlack] = useState(false);
 
   // 컬럼 정의
@@ -62,6 +63,11 @@ export default function AlarmRuleList({ rows = demoRows }: { rows?: AlarmRuleRow
       {
         accessorKey: "database",
         header: "데이터베이스",
+        cell: (info) => info.getValue(),
+      },
+      {
+        accessorKey: "section",
+        header: "구분",
         cell: (info) => info.getValue(),
       },
       {
@@ -148,7 +154,7 @@ export default function AlarmRuleList({ rows = demoRows }: { rows?: AlarmRuleRow
 
   const goNew = () => navigate("/alarm-rule");
   
-  const onEdit = (id: number) => navigate(`/alerts/rules/${id}/edit`);
+  const onEdit = (id: number) => navigate(`/alarm-rule-edit`);
   
   const onDelete = (id: number) => {
     if (confirm("이 규칙을 삭제하시겠습니까?")) {
@@ -157,17 +163,18 @@ export default function AlarmRuleList({ rows = demoRows }: { rows?: AlarmRuleRow
   };
 
   const handleRowClick = (id: number) => {
-    navigate("/database/vacuum/sessionDetail", {
+    navigate("/alarm-rule-detail", {
       state: { table: id },
     });
   };
 
   // CSV 내보내기 함수
   const handleExportCSV = () => {
-    const headers = ["인스턴스", "데이터베이스", "지표", "활성화 상태"];
+    const headers = ["인스턴스", "데이터베이스", "구분", "지표", "활성화 상태"];
     const csvData = data.map((row) => [
       row.instance,
       row.database,
+      row.section,
       row.metric,
       row.enabled ? "활성화" : "비활성화",
     ]);
@@ -197,16 +204,32 @@ export default function AlarmRuleList({ rows = demoRows }: { rows?: AlarmRuleRow
 
   return (
     <main className="alarm-page">
-      {/* 필터 및 버튼 영역 */}
       <section className="alarm-page__filters">
+        <div className="filter-left">
+          <button className="al-btn" onClick={() => setOpenSlack(true)}>
+            Slack 연동 설정
+          </button>
+          <button className="al-btn" onClick={goNew}>알림 규칙 생성</button>
+        </div>
+       <div className="alarm-page__filters">
         <MultiSelectDropdown
           label="인스턴스"
           options={["orders", "sessions"]}
           onChange={(values) => console.log("선택된 인스턴스:", values)}
         />
         <MultiSelectDropdown
+          label="데이터베이스"
+          options={["orders", "sessions"]}
+          onChange={(values) => console.log("선택된 데이터베이스:", values)}
+        />
+        <MultiSelectDropdown
+          label="구분"
+          options={["page", "sessions"]}
+          onChange={(values) => console.log("선택된 구분:", values)}
+        />
+        <MultiSelectDropdown
           label="지표"
-          options={["vacuum", "Long Transactions / Blockers", "Dead tuple"]}
+          options={["vacuum", "Hot table", "Hot index"]}
           onChange={(values) => console.log("선택된 지표:", values)}
         />
         <MultiSelectDropdown
@@ -215,10 +238,7 @@ export default function AlarmRuleList({ rows = demoRows }: { rows?: AlarmRuleRow
           onChange={(values) => console.log("선택된 상태:", values)}
         />
         <CsvButton onClick={handleExportCSV} tooltip="CSV 파일 저장" />
-        <button className="al-btn" onClick={() => setOpenSlack(true)}>
-          <span style={{ marginRight: 6 }}>🔔</span> Slack 연동 설정
-        </button>
-        <button className="al-btn" onClick={goNew}>알림 규칙 생성</button>
+        </div>
       </section>
 
       {/* 알림 규칙 테이블 */}
