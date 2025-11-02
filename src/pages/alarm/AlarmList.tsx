@@ -154,7 +154,7 @@ export default function AlarmRuleList({ rows = demoRows }: { rows?: AlarmRuleRow
 
   const goNew = () => navigate("/alarm-rule");
   
-  const onEdit = (id: number) => navigate(`/alerts/rules/${id}/edit`);
+  const onEdit = (id: number) => navigate(`/alarm-rule-edit`);
   
   const onDelete = (id: number) => {
     if (confirm("이 규칙을 삭제하시겠습니까?")) {
