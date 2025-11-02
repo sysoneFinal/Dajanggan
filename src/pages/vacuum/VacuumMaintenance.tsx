@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import Chart from "../../components/chart/ChartComponent";
 import ChartGridLayout from "../../components/layout/ChartGridLayout"
 import WidgetCard from "../../components/util/WidgetCard"
-import SummaryCard from "../../components/layout/SummaryCard";
+import SummaryCard from "../../components/util/SummaryCard";
 import "/src/styles/vacuum/VacuumPage.css";
 
 /* ---------- 타입/데모데이터 ---------- */

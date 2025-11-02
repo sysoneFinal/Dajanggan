@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useLayoutEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import "../../styles/util/dropdown-select.css";
 
 interface MultiSelectDropdownProps {
@@ -10,7 +10,6 @@ interface MultiSelectDropdownProps {
 const MultiSelectDropdown = ({ label, options, onChange }: MultiSelectDropdownProps) => {
   const [isOpen, setIsOpen] = useState(false);
   const [selected, setSelected] = useState<string[]>([]);
-  const [menuWidth, setMenuWidth] = useState<number>(0);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   /** 드롭다운 토글 */
@@ -38,31 +37,23 @@ const MultiSelectDropdown = ({ label, options, onChange }: MultiSelectDropdownPr
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  /** label 크기 기반으로 width 자동 계산 */
-  useLayoutEffect(() => {
-    if (dropdownRef.current) {
-      const width = dropdownRef.current.getBoundingClientRect().width;
-      setMenuWidth(width);
-    }
-  }, [dropdownRef.current, selected, isOpen]);
-
   return (
     <div className="dropdown-select" ref={dropdownRef}>
-      <button
-        type="button"
-        className="dropdown-label"
-        onClick={toggleDropdown}
-      >
-        {selected.length > 0 ? selected.join(", ") : label}
+      <button type="button" className="dropdown-label" onClick={toggleDropdown}>
+        <div className="selected-tags">
+          {selected.length > 0
+            ? selected.map((tag) => (
+                <span key={tag} className="tag-chip">
+                  {tag}
+                </span>
+              ))
+            : label}
+        </div>
         <span className={`arrow ${isOpen ? "open" : ""}`}>∨</span>
       </button>
 
       {isOpen && (
-        <div
-          className="dropdown-menu multi"
-          role="listbox"
-          style={{ width: `${menuWidth}px` }}
-        >
+        <div className="dropdown-menu multi" role="listbox">
           {options.map((opt) => {
             const isChecked = selected.includes(opt);
             return (
