@@ -23,7 +23,6 @@ import LayoutBuilder from "../components/dashboard/Layout";
 import DashboardEditor from "../components/dashboard/DashboardEditor";
 import ExecutionStatus from "../pages/query/ExecutionStatus";
 import QueryOverview from "../pages/query/QueryOverview";
-import TopQuery from "../pages/query/TopQuery";
 import QueryTuner from "../pages/query/QueryTuner";
 import BGWriterPage from "../pages/engine/BGWriterPage";
 import HotTablePage from "../pages/engine/HotTablePage";
@@ -91,8 +90,7 @@ const routeList = [
   // 쿼리
   { path: "/database/query/dashboard", element: <QueryOverview /> },
   { path: "/database/query/execution-stats", element: <ExecutionStatus /> },
-  { path: "/database/query/top-n-query", element: <TopQuery /> },
-    { path: "/database/query/query-analysis", element: <QueryTuner /> },
+  { path: "/database/query/query-analysis", element: <QueryTuner /> },
 
   // Vacuum
   { path: "/database/vacuum/overview", element: <VacuumOverview /> },
