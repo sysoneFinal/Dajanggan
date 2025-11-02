@@ -82,12 +82,12 @@
 /* ========================================
    리소스 사용률
 ======================================== */
-.qo-resource-wrapper { display: flex; flex-direction: column; gap: 1.5rem; padding: 0.9375rem 0; width: 100%; }
-.qo-resource-item { display: flex; flex-direction: column; gap: 0.75rem; }
-.qo-resource-label { color: #374151; font-size: 0.9375rem; font-weight: 600; }
-.qo-resource-bar-container { width: 100%; height: 1.75rem; background: rgba(229, 231, 235, 0.5); border-radius: 0.75rem; overflow: hidden; position: relative; }
+.qo-resource-wrapper { display: flex; flex-direction: column; gap: 1rem; padding: 0.5rem 0; width: 100%; }
+.qo-resource-item { display: flex; flex-direction: column; gap: 0.5rem; }
+.qo-resource-label { color: #374151; font-size: 0.875rem; font-weight: 600; }
+.qo-resource-bar-container { width: 100%; height: 1.5rem; background: rgba(229, 231, 235, 0.5); border-radius: 0.75rem; overflow: hidden; position: relative; }
 .qo-resource-bar { height: 100%; border-radius: 0.75rem; transition: width 1.2s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.5s ease; position: relative; animation: barPulse 3s ease-in-out infinite; }
-.qo-resource-value { color: #111827; font-size: 1rem; font-weight: 700; text-align: right; }
+.qo-resource-value { color: #111827; font-size: 0.9375rem; font-weight: 700; text-align: right; }
 
 /* ========================================
    슬로우 쿼리 정렬
