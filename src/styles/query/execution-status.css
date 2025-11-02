@@ -1,59 +1,73 @@
-:root{
-  --bg:#f3f5f7; --card:#ffffff; --text:#111827; --muted:#6b7280;
-  --border:#e5e7eb; --shadow:0 18px 50px rgba(8,15,23,.12);
-}
+:root { --bg: #f3f5f7; --card: #ffffff; --text: #111827; --muted: #6b7280; --border: #e5e7eb; --shadow: 0 1.125rem 3.125rem rgba(8, 15, 23, 0.12); --color-normal: #7B61FF; --color-warn: #FFD66B; --color-danger: #FF928A; --color-success: #51DAA8; }
 
-.es-root{ padding:20px; max-width:100%; }
+/* ======================================== 메인 컨테이너 ======================================== */
+.es-root { padding: 1.25rem; max-width: 100%; box-sizing: border-box; }
 
-/* 카드 헤더 내부 컨트롤 */
-.es-controls{ display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
+/* ======================================== 2컬럼 레이아웃 (좌 넓게, 우 좁게) ======================================== */
+.es-layout { display: grid; grid-template-columns: 2.5fr 1fr; gap: 1rem; align-items: start; }
 
-.es-time-filters{ display:flex; gap:4px; background:var(--bg); padding:4px; border-radius:10px; }
-.es-time-btn{ background:transparent; border:none; border-radius:8px; padding:8px 16px; font-size:14px; font-weight:600; color:var(--muted); cursor:pointer; transition:all 0.2s; }
-.es-time-btn:hover{ background:rgba(0,0,0,0.05); color:var(--text); }
-.es-time-btn--active{ background:#111827; color:#fff; }
-
-.es-csv-btn{ display:flex; align-items:center; gap:6px; background:var(--card); border:1px solid var(--border); border-radius:10px; padding:10px 16px; font-size:14px; font-weight:600; color:var(--text); cursor:pointer; transition:all 0.2s; }
-.es-csv-btn:hover{ border-color:#6366F1; color:#6366F1; }
-.es-csv-icon{ font-size:16px; }
-
-/* 카드 */
-.es-card{ background:var(--card); border-radius:18px; box-shadow:var(--shadow); padding:20px; margin-bottom:20px; }
-.es-card__header{ display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; }
-.es-card__header h3{ margin:0; font-size:18px; font-weight:700; }
+/* ======================================== 좌측: 리스트 카드 ======================================== */
+.es-left-card { background: var(--card); border: 0.0625rem solid var(--border); border-radius: 1rem; box-shadow: var(--shadow); padding: 1.5rem; display: flex; flex-direction: column; height: calc(100vh - 10rem); min-height: 43.75rem; overflow: visible; }
+.es-card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem; flex-shrink: 0; }
+.es-card-title { margin: 0; font-size: 1.25rem; font-weight: 800; color: var(--text); letter-spacing: 0.01rem; }
 
 /* 테이블 */
-.es-tablewrap{ width:100%; overflow:auto; margin-bottom:16px; }
-.es-table{ width:100%; border-collapse:collapse; font-size:14px; }
-.es-table thead th{ text-align:left; color:var(--muted); font-weight:700; font-size:12px; padding:12px 16px; border-bottom:2px solid #eef0f3; }
-.es-th-sortable{ cursor:pointer; user-select:none; transition:all 0.2s; }
-.es-th-sortable:hover{ color:var(--text); background:rgba(0,0,0,0.02); }
-.es-sort{ margin-left:4px; font-size:10px; display:inline-block; }
-.es-sort--inactive{ opacity:0.3; }
-.es-sort--active{ opacity:1; color:#6366F1; font-weight:700; }
-.es-table tbody td{ padding:14px 16px; border-bottom:1px solid #f1f3f6; vertical-align:middle; }
-.es-table tbody tr:hover{ background:#f9fafb; }
-.es-td-id{ font-weight:700; color:#6366F1; }
-.es-td-query{ color:var(--text); font-weight:500; max-width:300px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.es-table { background: rgba(255, 255, 255, 0.8); border: 0.0625rem solid var(--border); border-radius: 0.75rem; overflow: hidden; display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; }
 
-/* 차트 그리드 */
-.es-grid{ display:grid; grid-template-columns:1fr 1fr; gap:20px; }
-.es-card.es-chart { min-height:380px; }
-.es-card .apexcharts-canvas { min-height:300px; width:100% !important; }
+/* 헤더 */
+.es-thead { display: grid; grid-template-columns: 1fr 3fr 1.2fr 1fr 1fr 1fr; align-items: center; text-align: center; padding: 1rem; font-size: 0.875rem; font-weight: 700; background: rgba(241, 239, 243, 0.8); color: #2e2f33; border-bottom: 0.0625rem solid var(--border); flex: 0 0 auto; }
+.es-thead .sortable { cursor: pointer; user-select: none; transition: all 0.2s ease; display: inline-flex; align-items: center; justify-content: center; gap: 0.25rem; }
+.es-thead .sortable:hover { color: var(--color-normal); }
+.es-thead .sort-icon { font-size: 0.75rem; opacity: 0.6; transition: opacity 0.2s ease; }
+.es-thead .sortable:hover .sort-icon { opacity: 1; }
 
-/* 반응형 */
-@media (max-width: 1024px){ 
-  .es-grid{ grid-template-columns:1fr; }
+/* 바디 */
+.es-tbody { flex: 1 1 auto; min-height: 0; overflow-y: auto; overflow-x: hidden; }
+
+/* 행 */
+.es-row { display: grid; grid-template-columns: 1fr 3fr 1.2fr 1fr 1fr 1fr; align-items: center; text-align: center; padding: 1rem; font-size: 0.875rem; color: #2e2f33; border-top: 0.0625rem solid rgba(0, 0, 0, 0.04); cursor: pointer; transition: all 0.2s ease; }
+.es-row:nth-child(even) { background: rgba(255, 255, 255, 0.5); }
+.es-row:hover { background: rgba(127, 129, 242, 0.08); transform: translateX(0.125rem); }
+.es-row .cell-id { font-weight: 700; color: var(--color-normal); }
+.es-row .cell-q { font-weight: 600; color: #2e2f33; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 0 0.5rem; text-align: left; }
+
+/* 빈 상태 */
+.es-empty { padding: 2.5rem 1.25rem; text-align: center; font-size: 0.875rem; color: var(--muted); }
+
+/* 페이지네이션 */
+.es-pagination { margin-top: 1rem; display: flex; justify-content: center; flex: 0 0 auto; }
+
+/* ======================================== 우측: 차트 카드들 (독립적 크기) ======================================== */
+.es-right-cards { display: flex; flex-direction: column; gap: 1rem; }
+
+/* 차트 카드 */
+.es-chart-card { background: var(--card); border: 0.0625rem solid var(--border); border-radius: 1rem; box-shadow: var(--shadow); padding: 1.25rem; display: flex; flex-direction: column; overflow: visible; }
+
+/* 첫 번째 차트 (트랜잭션당 쿼리 수 분포) */
+.es-chart-card:first-child { height: 23.75rem; }
+
+/* 두 번째 차트 (쿼리 타입별 분포) */
+.es-chart-card:last-child { height: 18.125rem; }
+
+.es-chart-title { margin: 0 0 0.75rem 0; font-size: 0.9375rem; font-weight: 700; color: var(--muted); flex-shrink: 0; letter-spacing: 0.01rem; }
+.es-chart-body { flex: 1; min-height: 0; position: relative; }
+
+/* Apex 캔버스 */
+.es-chart-card .apexcharts-canvas { width: 100% !important; height: 100% !important; }
+
+/* ======================================== 반응형 ======================================== */
+@media (max-width: 1200px) {
+  .es-layout { grid-template-columns: 1fr; }
+  .es-left-card { height: auto; min-height: 37.5rem; }
+  .es-chart-card:first-child { height: 25rem; }
+  .es-chart-card:last-child { height: 21.875rem; }
 }
 
-@media (max-width: 768px){
-  .es-root{ padding:12px; }
-  .es-card__header{ flex-direction:column; align-items:flex-start; gap:12px; }
-  .es-controls{ width:100%; justify-content:flex-start; }
-  .es-time-filters{ flex:1; }
-  .es-time-btn{ flex:1; padding:8px 12px; }
-  .es-csv-btn{ width:100%; justify-content:center; }
-  .es-table{ font-size:12px; }
-  .es-table thead th, .es-table tbody td{ padding:10px 12px; }
-  .es-td-query{ max-width:150px; }
+@media (max-width: 768px) {
+  .es-thead, .es-row { grid-template-columns: 0.8fr 2fr 1fr 1fr 1fr 1fr; font-size: 0.75rem; padding: 0.75rem 0.5rem; }
+  .es-card-title { font-size: 1.125rem; }
+  .es-chart-title { font-size: 0.875rem; }
+  .es-left-card { height: auto; min-height: 31.25rem; }
+  .es-chart-card:first-child { height: 20rem; }
+  .es-chart-card:last-child { height: 18.75rem; }
 }
