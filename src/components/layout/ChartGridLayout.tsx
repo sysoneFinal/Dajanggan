@@ -1,5 +1,3 @@
-// src/layouts/ChartGridLayout.tsx
-import React from "react";
 import "@/styles/layout/chart-grid-layout.css";
 
 interface ChartGridLayoutProps {

@@ -1,124 +1,147 @@
 :root {
-  font-size: 16px; /* 브라우저 기본 1rem = 16px 기준 */
+  font-size: 16px;
 }
 
-/*  기본  */
+/* === 전체 섹션 === */
 .session-section {
-  background: linear-gradient(90deg, rgba(255, 255, 255, 0.6) 100%);
-  border-radius: 1.2rem;
-  border: 1px solid rgba(255, 255, 255, 0.8);
-  box-shadow: 0 0.625rem 1.875rem rgba(0, 0, 0, 0.08);
-  padding: 1.5rem 2rem;
+  padding: 2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1vh;
   width: 100%;
-  max-width: 120rem;
-  margin: 3rem auto;
+  min-height: 85vh;
 }
 
+/* === 상단 헤더 === */
 .session-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 1.2rem;
   flex-wrap: wrap;
-  gap: 0.625rem;
+  gap: 0.75rem;
 }
 
 .session-title {
-  color: #6b7280;
-  font-size: 1.3rem; 
-  margin: 0;
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: #2e2f33;
 }
 
 .session-sub {
+  font-size: 1rem;
   color: #6b7280;
-  font-size: 1.1rem;
-  margin-top: 0.3rem;
+  margin-top: 0.2rem;
 }
 
+/* === CSV 버튼 === */
 .export-btn {
-  background: #1e1e1e;
-  color: #ffffff;
-  font-size: 1rem;
-  border: none;
-  border-radius: 0.625rem;
-  padding: 0.5rem 0.875rem;
-  cursor: pointer;
+  border: 1px solid #c3c3c3;
+  border-radius: 0.6rem;
+  padding: 0.4rem 0.8rem;
+  background: #fff;
+  font-size: 0.9rem;
   font-weight: 600;
+  cursor: pointer;
   transition: all 0.2s ease;
 }
 .export-btn:hover {
-  background: #3b36c9;
+  background: #7f81f2;
+  color: #fff;
+  border-color: #7f81f2;
 }
 
-/*  테이블  */
+/* === 요약 카드 === */
+.session-summary {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  margin-bottom: 1rem;
+}
+
+/* === 필터 영역 === */
+.session-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+  margin-top: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+
+/* === 테이블 === */
 .session-table-container {
-  overflow-x: auto;
   background: rgba(255, 255, 255, 0.6);
-  border-radius: 0.75rem;
+  border-radius: 0.7rem;
+  border: 1px solid rgba(255, 255, 255, 0.7);
+  box-shadow: 0 0.6rem 1.8rem rgba(0, 0, 0, 0.08);
+  overflow-x: auto;
 }
 
 .session-table-header,
 .session-table-row {
   display: grid;
-  grid-template-columns: repeat(9, 1fr);
+  grid-template-columns: repeat(9, minmax(7rem, 1fr));
   text-align: center;
-  padding: 1.3rem 0;
-  min-width: 70rem;
+  padding: 1.1rem;
+  align-items: center;
+  font-size: 1rem;
 }
 
 .session-table-header {
-  background: #efefef;
+  background: rgba(241, 239, 243, 0.8);
   font-weight: 700;
-  font-size: 1rem;
-  color: #000;
+  color: #2e2f33;
 }
 
 .session-table-row {
-  border-bottom: 1px solid #e5e7eb;
-  font-size: 1.125rem;
-  color: #111;
-  background: rgba(255, 255, 255, 0.7);
+  border-top: 1px solid rgba(0, 0, 0, 0.05);
+  color: #2e2f33;
+  background: rgba(255, 255, 255, 0.55);
+  transition: background-color 0.15s ease;
   cursor: pointer;
 }
 
-.session-table-row:nth-child(even) {
-  background: rgba(250, 250, 250, 0.9);
+.session-table-row:hover {
+  background-color: rgba(127, 129, 242, 0.08) !important; /* 은은한 보라빛 하이라이트 */
 }
-/* 상태 전체를 감싸는 작은 박스 */
+
+.session-table-row:nth-child(even) {
+  background: rgba(255, 255, 255, 0.5);
+}
+
+/* === 상태 표시 === */
 .state-wrapper {
   display: flex;
   justify-content: center;
   align-items: center;
 }
 
-
 .state {
   display: inline-block;
-  padding: 0.15rem 0.5rem;   
-  font-size: 0.85rem;        
+  padding: 0.15rem 0.6rem;
   border-radius: 0.4rem;
+  font-size: 0.85rem;
   font-weight: 600;
-  letter-spacing: 0.2px;
-  min-width: 4.5rem;        
+  min-width: 4.5rem;
   text-transform: lowercase;
   text-align: center;
+  letter-spacing: 0.2px;
 }
 
-/* Active (정상) */
 .state.active {
   color: #312e81;
   background: rgba(199, 210, 254, 0.4);
   border: 1px solid rgba(165, 180, 252, 0.3);
 }
 
-/* Waiting (대기) */
 .state.waiting {
   color: #78350f;
   background: rgba(253, 230, 138, 0.4);
   border: 1px solid rgba(250, 204, 21, 0.25);
 }
 
-/* Idle 등 기타 */
 .state.idle,
 .state.idle-in-transaction {
   color: #4b5563;
@@ -126,7 +149,6 @@
   border: 1px solid rgba(209, 213, 219, 0.5);
 }
 
-/* Disabled or Error */
 .state.disabled,
 .state.error {
   color: #7f1d1d;
@@ -134,144 +156,26 @@
   border: 1px solid rgba(239, 68, 68, 0.25);
 }
 
-
-
+/*  쿼리 컬럼  */
 .query-text {
   font-family: monospace;
-  font-size: 1rem;
+  font-size: 0.95rem;
   color: #374151;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-/*  페이지네이션  */
-.pagination-container {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: 0.625rem;
-  margin-top: 1.5rem;
-}
 
-.page-btn {
-  padding: 0.5rem 1rem;
-  border-radius: 0.5rem;
-  font-size: 0.95rem;
-  background: #fff;
-  border: 1px solid #d1d5db;
-  color: #111;
-  transition: all 0.2s ease;
-  cursor: pointer;
-}
-.page-btn.active {
-  background: #000;
-  color: #fff;
-  border-color: #000;
-}
-.page-btn:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
-}
-
-
-/*  반응형 설정  */
-/* 1440px 이하 */
-@media (max-width: 1440px) {
-  .session-section {
-    padding: 20px;
-    margin: 2rem auto;
-    max-width: 1200px;
-  }
-
-  .session-title {
-    font-size: 19px;
-  }
-
-  .session-sub {
-    font-size: 16px;
-  }
-
+/*  반응형  */
+@media (max-width: 768px) {
   .session-table-header,
   .session-table-row {
-    font-size: 16px;
+    grid-template-columns: repeat(5, minmax(6rem, 1fr));
+    font-size: 0.8rem;
   }
 
   .query-text {
-    font-size: 14px;
-  }
-}
-
-/* 1024px 이하 (태블릿) */
-@media (max-width: 1024px) {
-  .session-section {
-    padding: 18px;
-    margin: 2rem 1rem;
-  }
-
-  .session-table-header {
-    display: none; /* 헤더 제거, 모바일 카드 형태로 대체 */
-  }
-
-  .session-table-row {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    text-align: left;
-    background: rgba(255, 255, 255, 0.8);
-    border-radius: 12px;
-    padding: 16px;
-    margin-bottom: 10px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-    font-size: 15px;
-  }
-
-  .session-table-row > div {
-    width: 100%;
-    display: flex;
-    justify-content: space-between;
-    border-bottom: 1px dashed rgba(0, 0, 0, 0.05);
-    padding: 6px 0;
-  }
-
-  .session-table-row > div:last-child {
-    border-bottom: none;
-  }
-
-  .query-text {
-    white-space: normal;
-    font-size: 14px;
-  }
-
-  .pagination-container {
-    flex-wrap: wrap;
-    gap: 8px;
-  }
-}
-
-/* 768px 이하 (모바일) */
-@media (max-width: 768px) {
-  .session-section {
-    padding: 16px;
-    margin: 1.5rem 0.5rem;
-    border-radius: 14px;
-  }
-
-  .session-title {
-    font-size: 17px;
-  }
-
-  .session-sub {
-    font-size: 14px;
-  }
-
-  .export-btn {
-    font-size: 14px;
-    padding: 6px 12px;
-  }
-
-  .page-btn {
-    padding: 6px 10px;
-    font-size: 13px;
+    font-size: 0.8rem;
   }
 }

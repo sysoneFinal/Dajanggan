@@ -1,8 +1,16 @@
 import { useMemo, useState } from "react";
 import Chart from "../../components/chart/ChartComponent";
+import ChartGridLayout from "../../components/layout/ChartGridLayout"
+import WidgetCard from "../../components/util/WidgetCard"
+import SummaryCard from "../../components/util/SummaryCard";
 import "/src/styles/vacuum/VacuumPage.css";
 import VacuumTableMenu from "./VacuumTableMenu";
 
+type Props = {
+  data?: BloatDetailData;
+  expanded?: boolean;
+  onToggle?: () => void;
+};
 
 /* ---------- 타입/데모데이터 ---------- */
 type BloatDetailData = {
@@ -46,7 +54,7 @@ const demo: BloatDetailData = {
 
 
 /* ---------- 페이지 ---------- */
-export default function BloatDetailPage({ data = demo }: { data?: BloatDetailData }) {
+export default function BloatDetailPage({ data = demo, onToggle, expanded=true, }:Props) {
   const bloatTrendSeries = useMemo(() => [{ name: "Bloat %", data: data.bloatTrend.data }], [data]);
   const deadTuplesSeries = useMemo(() => [{ name: "Dead Tuples", data: data.deadTuplesTrend.data }], [data]);
   const indexBloatSeries = useMemo(
@@ -72,37 +80,35 @@ export default function BloatDetailPage({ data = demo }: { data?: BloatDetailDat
             onChange={(t: string) => {
               setSelectedTable(t);
             }}
-            dbName="appdb"
             autovacuumEnabled={true}
             lastVacuumText="2025-10-20 11:30"
+            onToggle={onToggle}
+            expanded={expanded}
           />
       </div>
       {/* ---------- KPI ---------- */}
+      <div className={`vd-collapse ${expanded ? "is-open" : ""}`} aria-hidden={!expanded}  style={{ display: expanded ? "block" : "none" }}  >
       <div className="vd-grid">
-        <section className="vd-card2">
-          <header className="vd-card2__header"><h5>Bloat %</h5></header>
-          <h1>{data.kpi.bloatPct}</h1>
-          <p className="vd-dim">Wasted space ratio</p>
-        </section>
-        <section className="vd-card2">
-          <header className="vd-card2__header"><h5>Table Size</h5></header>
-          <h1>{data.kpi.tableSize}</h1>
-          <p className="vd-dim">incl. toast & indexes</p>
-        </section>
-        <section className="vd-card2">
-          <header className="vd-card2__header"><h5>Wasted Space</h5></header>
-          <h1>{data.kpi.wastedSpace}</h1>
-          <p className="vd-dim">Bloat size estimate</p>
-        </section>
+        <SummaryCard
+          label="Bloat %"
+          value={data.kpi.bloatPct}
+          diff={3}
+        />
+        <SummaryCard
+          label="Table Size"
+          value={data.kpi.tableSize}
+          diff={3}
+        />
+        <SummaryCard
+          label="Wasted Space"
+          value={data.kpi.wastedSpace}
+          diff={3}
+        />
       </div>
 
       {/* ---------- 차트 ---------- */}
-      <div className="vd-grid4">
-        {/* Bloat % Trend */}
-        <section className="vd-card vd-chart">
-          <header className="vd-card__header">
-            <h3>Bloat % Trend <span className="vd-dim">(Last 30 Days)</span></h3>
-          </header>
+      <ChartGridLayout>
+        <WidgetCard title="Bloat % Trend(Last 30 Days)" span={4}>
           <Chart
             type="line"
             series={bloatTrendSeries}
@@ -117,50 +123,27 @@ export default function BloatDetailPage({ data = demo }: { data?: BloatDetailDat
               yaxis: { min: 0, title: { text: "Bloat %" } },
             }}
           />
-        </section>
-
-        {/* Dead Tuples Trend */}
-        <section className="vd-card vd-chart">
-          <header className="vd-card__header">
-            <h3>Dead Tuples Trend <span className="vd-dim">(Last 30 Days)</span></h3>
-          </header>
+        </WidgetCard>
+        <WidgetCard title="Dead Tuples Trend (Last 30 Days)" span={4}>
           <Chart
             type="line"
             series={deadTuplesSeries}
             categories={data.deadTuplesTrend.labels}
             height={380}
             width="100%"
-            showLegend={false}
-            colors={["#6366F1"]}
-            customOptions={{
-              stroke: { width: 2, curve: "smooth" },
-              grid: { borderColor: "#E5E7EB", strokeDashArray: 4 },
-              yaxis: { min: 0, title: { text: "Dead Tuples Count" } },
-            }}
           />
-        </section>
+        </WidgetCard>
 
-        {/* Index Bloat Trend */}
-        <section className="vd-card vd-chart">
-          <header className="vd-card__header">
-            <h3>Index Bloat Trend <span className="vd-dim">(Last 30 Days)</span></h3>
-          </header>
+         <WidgetCard title="Index Bloat Trend (Last 30 Days)" span={4}>
           <Chart
             type="line"
             series={indexBloatSeries}
             categories={data.indexBloatTrend.labels}
             height={400}
             width="100%"
-            showLegend={true}
-            colors={["#EF4444", "#6366F1", "#F59E0B", "#10B981"]}
-            customOptions={{
-              stroke: { width: 2, curve: "smooth" },
-              grid: { borderColor: "#E5E7EB", strokeDashArray: 4 },
-              yaxis: { min: 0, title: { text: "Bloat %" } },
-              legend: { position: "bottom" },
-            }}
           />
-        </section>
+        </WidgetCard>
+        </ChartGridLayout>
       </div>
     </div>
   );

@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect } from "react";
 import Chart from "../../components/chart/ChartComponent";
 import Pagination from "../../components/util/Pagination";
 import CsvButton from "../../components/util/CsvButton";
-import SummaryCard from "../../components/layout/SummaryCard";
+import SummaryCard from "../../components/util/SummaryCard";
 import ChartGridLayout from "../../components/layout/ChartGridLayout";
 import WidgetCard from "../../components/util/WidgetCard";
 import "/src/styles/query/query-overview.css";
