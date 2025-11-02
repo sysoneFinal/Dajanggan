@@ -229,7 +229,7 @@ export default function QueryTuner() {
           {hasExecuted && (
             <section className="qt-card">
               <div className="qt-card-header">
-                <h3>💡 AI 개선 제안</h3>
+                <h3>AI 개선 제안</h3>
               </div>
               <div className="qt-suggestions">
                 {demoAISuggestions.map((suggestion, index) => (
@@ -271,7 +271,7 @@ export default function QueryTuner() {
           {hasExecuted && (
             <section className="qt-card qt-card--performance">
               <div className="qt-card-header">
-                <h3>📊 Before / After 예상 성능</h3>
+                <h3>Before / After 예상 성능</h3>
               </div>
               <div className="qt-performance">
                 <div className="qt-performance-section">
