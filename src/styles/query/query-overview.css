@@ -164,38 +164,3 @@
   to { opacity: 1; transform: translateY(0); }
 }
 
-/* ========================================
-   반응형 - 태블릿 (1400px 이하)
-======================================== */
-@media (max-width: 1400px) {
-  .qo-metrics { display: grid; grid-template-columns: repeat(2, 1fr); }
-}
-
-/* ========================================
-   반응형 - 태블릿 (1200px 이하)
-======================================== */
-@media (max-width: 1200px) {
-  .chart-grid-layout { grid-template-columns: repeat(6, 1fr); }
-  .qo-bottom-cards { grid-template-columns: repeat(6, 1fr); }
-  .qo-bottom-cards > *:nth-child(1),
-  .qo-bottom-cards > *:nth-child(2) { grid-column: span 6; }
-  .qo-bottom-cards > *:nth-child(3) { grid-column: span 6; }
-}
-
-/* ========================================
-   반응형 - 모바일 (768px 이하)
-======================================== */
-@media (max-width: 768px) {
-  .qo-root { padding: 0.75rem; }
-  .qo-metrics { flex-direction: column; gap: 0.75rem; }
-  .qo-widget-header { flex-direction: column; align-items: flex-start; gap: 0.75rem; }
-  .qo-legend { flex-direction: column; gap: 0.5rem; }
-  .qo-query-text { font-size: 0.75rem; }
-  .qo-tabs { width: 100%; }
-  .qo-tab { flex: 1; min-width: calc(50% - 0.25rem); }
-  .qo-sort-options { width: 100%; }
-  .qo-sort-btn { flex: 1; }
-  .chart-grid-layout { grid-template-columns: 1fr; }
-  .qo-bottom-cards { grid-template-columns: 1fr; }
-  .qo-bottom-cards > * { grid-column: span 1 !important; }
-}
