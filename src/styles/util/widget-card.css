@@ -1,0 +1,38 @@
+.widget-card {
+  border-radius: 1rem;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.05);
+  padding: 0.7rem 1rem;
+  display: flex;
+  flex-direction: column;
+  background: rgba(255, 255, 255, 0.45);
+  backdrop-filter: blur(12px);
+  width: 100%;
+  min-height: 0;
+  height: 100%;
+}
+
+.widget-title {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #6b7280;
+  margin: 0.4rem;
+  text-align: left;
+}
+
+.widget-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: flex-start;
+  overflow: hidden; 
+  min-height: 0;   
+}
+
+
+.widget-card.no-style {
+  background: transparent !important;
+  box-shadow: none !important;
+  border: none !important;
+  padding: 0 !important;
+}

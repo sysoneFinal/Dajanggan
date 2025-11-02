@@ -1,0 +1,120 @@
+:root {
+    font-size: 16px;
+}
+
+.checkpoint-page {
+    padding: 2rem;
+    display: flex;
+    flex-direction: column;
+    gap: 2vh;
+    width: 100%;
+    min-height: 85vh;
+}
+
+/* 필터 */
+.checkpoint-page__filters {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.75rem;
+    align-items: center;
+}
+
+.checkpoint-page__filters > div {
+    min-width: 200px;
+}
+
+/* 테이블 */
+.checkpoint-page__table {
+    background: rgba(255, 255, 255, 0.6);
+    border-radius: 0.7rem;
+    border: 1px solid rgba(255, 255, 255, 0.7);
+    box-shadow: 0 0.6rem 1.8rem rgba(0, 0, 0, 0.08);
+    overflow-x: auto;
+}
+
+.checkpoint-table-header,
+.checkpoint-table-row {
+    display: grid;
+    grid-template-columns: repeat(8, minmax(8rem, 1fr));
+    text-align: center;
+    padding: 1.1rem;
+    align-items: center;
+    font-size: 1rem;
+}
+
+.checkpoint-table-header {
+    background: rgb(241, 239, 243, 0.8);
+    font-weight: 700;
+    color: #2e2f33;
+}
+
+.checkpoint-table-row {
+    border-top: 1px solid rgba(0, 0, 0, 0.05);
+    color: #2e2f33;
+}
+
+.checkpoint-table-row:nth-child(even) {
+    background: rgba(255, 255, 255, 0.5);
+}
+
+.checkpoint-table-empty {
+    padding: 3rem;
+    text-align: center;
+    color: #6b7280;
+    font-size: 1rem;
+}
+
+/* 상태 레벨 색상 */
+.info {
+    color: #7B61FF;
+    font-weight: 700;
+}
+
+.warn {
+    color: #FFD66B;
+    font-weight: 700;
+}
+
+.error {
+    color: #FF928A;
+    font-weight: 700;
+}
+
+/* 배지 스타일 */
+.badge {
+    padding: 4px 12px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 500;
+    display: inline-block;
+}
+
+.badge-timed {
+    background-color: #DBEAFE;
+    color: #1E40AF;
+}
+
+.badge-requested {
+    background-color: #FEF3C7;
+    color: #92400E;
+}
+
+/* 정렬 아이콘 */
+.sort-icon {
+    margin-left: 4px;
+    font-size: 12px;
+    opacity: 0.7;
+}
+
+/* 반응형 */
+@media (max-width: 768px) {
+    .checkpoint-page__filters {
+        flex-wrap: wrap;
+    }
+
+    .checkpoint-table-header,
+    .checkpoint-table-row {
+        grid-template-columns: repeat(8, minmax(6rem, 1fr));
+        font-size: 0.8rem;
+    }
+}

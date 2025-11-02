@@ -17,16 +17,16 @@ export const SIDEBAR_MENU = [
             { label: "Buffer Usage", path: "/instance/memory/buffer-usage" },
         ]}, 
       { label: "Disk I/O",  children: [
-            { label: "Dashboard", path: "/instance/io/dashboard" },
-            { label: "I/O Breakdown", path: "/instance/io/breakdown" },
+            { label: "Dashboard", path: "/instance/disk/dashboard" },
+            { label: "I/O Breakdown", path: "/instance/disk/breakdown" },
         ]}, 
       { label: "Checkpoint",    children: [
             { label: "Dashboard", path: "/instance/checkpoint/dashboard" },
-            { label: "Checkpoint History", path: "/instance/checkpoint/history" },` `    
+            { label: "Checkpoint History", path: "/instance/checkpoint/list" },` `
       ]},
       { label: "BG Writer", children:[
-            { label: "Dashboard", path: "/instance/bg-writer/dashboard" },
-            { label: "BGWriter Efficiency", path: "/instance/bg-writer/efficiency" }
+            { label: "Dashboard", path: "/instance/bgwriter/dashboard" },
+            { label: "BGWriter Efficiency", path: "/instance/bgwriter/efficiency" }
       ]},
       { label: "Event", path: "/instance/event" }
     ],
@@ -57,8 +57,10 @@ export const SIDEBAR_MENU = [
       {
         label: "Vacuum",
         children: [
-          { label: "Dashboard", path: "/database/vacuum/dashboard" },
-          { label: "Detail", path: "/database/vacuum/detail" },
+          { label: "Maintenance", path: "/database/vacuum/maintenance" },
+          { label: "History", path: "/database/vacuum/history" },
+          { label: "Risk", path: "/database/vacuum/risk" },
+          { label: "Bloat", path: "/database/vacuum/bloat" },
         ],
       },
       {

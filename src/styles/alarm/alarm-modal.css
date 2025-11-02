@@ -1,0 +1,148 @@
+/* components/alert/alarm-modal.css */
+.am-modal__backdrop{
+  position:fixed; inset:0; background:rgba(15,23,42,.45);
+  display:flex; align-items:center; justify-content:center; z-index:50;
+}
+.am-modal{
+  width:min(1120px, 92vw); max-height:90vh; overflow:auto;
+  background:#fff; border-radius:16px; box-shadow:0 30px 80px rgba(2,6,23,.25);
+  padding:20px 20px 28px;
+}
+.am-modal--wide{
+  width:min(1400px, 95vw);
+}
+.am-modal__header{ display:flex; justify-content:space-between; align-items:center; gap:12px; }
+.am-modal__titlewrap{ display:flex; align-items:center; gap:10px; }
+.am-modal__title{ font-size:18px; font-weight:700; margin:0; }
+.am-modal__subtitle{ margin:4px 0 14px; color:#6b7280; }
+.am-iconbtn{ border:0; background:transparent; font-size:26px; line-height:1; cursor:pointer; padding:4px 8px; }
+
+/* 좌우 레이아웃 */
+.am-modal__layout{ display:grid; grid-template-columns: 300px 1fr; gap:20px; }
+
+/* 알림 리스트 (좌측) */
+.am-alerts-list{ 
+  width: 510px;
+  border:1px solid #e5e7eb; border-radius:12px; 
+  display:flex; flex-direction:column; max-height:calc(90vh - 180px);
+}
+.am-alerts-list__header{ 
+  padding:12px 16px; border-bottom:1px solid #e5e7eb; 
+  display:flex; justify-content:space-between; align-items:center;
+}
+.am-alerts-list__header h3{ margin:0; font-size:14px; font-weight:700; }
+.am-alerts-count{ 
+  background:#f3f4f6; color:#374151; 
+  padding:2px 8px; border-radius:999px; font-size:12px; font-weight:600;
+}
+.am-alerts-list__body{ overflow-y:auto; padding:8px; }
+.am-alerts-empty{ padding:40px 16px; text-align:center; color:#9ca3af; font-size:14px; }
+
+/* 알림 아이템 */
+.am-alert-item{ 
+  width: 100%;
+  padding:12px; margin-bottom:8px; border-radius:8px; 
+  border:1px solid #e5e7eb; cursor:pointer; transition:all 0.15s;
+  background:#fff;
+}
+.am-alert-item:hover{ background:#f9fafb; border-color:#d1d5db; }
+.am-alert-item--active{ 
+  background:#eef2ff; border-color:#818cf8; 
+}
+.am-alert-item--read{ opacity:0.6; }
+
+.am-alert-item__header{ 
+  display:flex; justify-content:space-between; align-items:center; 
+  margin-bottom:6px; 
+}
+.am-alert-item__actions{ display:flex; gap:4px; }
+.am-alert-action-btn{ 
+  border:0; background:transparent; cursor:pointer; 
+  font-size:16px; padding:2px 4px; color:#6b7280;
+  line-height:1; border-radius:4px;
+}
+.am-alert-action-btn:hover{ background:#e5e7eb; color:#111827; }
+.am-alert-action-btn--delete:hover{ background:#fee2e2; color:#dc2626; }
+
+.am-alert-item__title{ 
+  margin:0 0 4px; font-size:13px; font-weight:600; 
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+}
+.am-alert-item__desc{ 
+  margin:0 0 6px; font-size:12px; color:#6b7280; 
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+}
+.am-alert-item__time{ font-size:11px; color:#9ca3af; }
+
+/* 상세 내용 (우측) */
+.am-modal__content{ display:flex; flex-direction:column; gap:16px; }
+
+.am-modal__grid{ display:grid; grid-template-columns: 1fr 280px; gap:16px; }
+.am-side{ display:flex; }
+.am-summary{ width:100%; border:1px solid #e5e7eb; border-radius:12px; padding:16px; }
+.am-summary h4{ margin:0 0 10px; font-size:14px; }
+.am-summary dl{ display:grid; grid-template-columns:80px 1fr; row-gap:8px; column-gap:8px; margin:0 0 14px; }
+.am-summary dt{ color:#6b7280; }
+.am-summary dd{ margin:0; font-weight:600; }
+
+.am-card{ background:#fff; border:1px solid #e5e7eb; border-radius:12px; }
+.am-card__header{ padding:12px 14px; border-bottom:1px solid #e5e7eb; }
+.am-card__header h3{ margin:0; font-size:14px; }
+.am-dim{ color:#9ca3af; font-weight:500; }
+
+.am-chart{ padding:8px 10px 14px; }
+
+.am-tablewrap{ overflow:auto; }
+.am-table{ width:100%; border-collapse:collapse; font-size:14px; }
+.am-table th, .am-table td{ padding:10px 12px; border-bottom:1px solid #e5e7eb; text-align:left; }
+
+.am-btn{ display:inline-flex; align-items:center; justify-content:center;
+  padding:10px 14px; border-radius:10px; border:1px solid transparent; cursor:pointer; font-weight:600; }
+.am-btn--primary{ background:#111827; color:#fff; }
+.am-btn--primary:hover{ filter:brightness(1.05); }
+
+.am-badge{ padding:4px 8px; border-radius:999px; font-size:12px; font-weight:700; }
+.am-badge--critical{ background:#fee2e2; color:#b91c1c; }
+.am-badge--warning{ background:#fef3c7; color:#b45309; }
+.am-badge--info{ background:#e0e7ff; color:#3730a3; }
+
+.am-tag{ padding:4px 10px; border-radius:999px; font-size:12px; font-weight:700; }
+.am-tag--critical{ background:#fee2e2; color:#b91c1c; }
+.am-tag--warn{ background:#fff7ed; color:#9a3412; }
+.am-tag--caution{ background:#eef2ff; color:#3730a3; }
+.am-tag--ok{ background:#e5f9ef; color:#047857; }
+
+.am-modal--narrow {
+  width: 530px; /* 좁은 창의 너비 */
+  max-height: 90vh;
+  height: 800px; 
+  display: flex;
+  flex-direction: column;
+}
+
+.am-modal--wide {
+  max-height: 90vh;
+  height: 800px;
+  display: flex;
+  flex-direction: column;
+}
+
+.am-modal__layout {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+}
+
+.am-alerts-list {
+  overflow-y: auto;
+}
+
+.am-modal__content {
+  overflow-y: auto;
+  flex: 1;
+}
+
+.am-tablewrap {
+  max-height: 300px; /* 테이블 영역 고정 높이 */
+  overflow-y: auto;
+}

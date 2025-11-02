@@ -6,14 +6,19 @@ import Overview from "../pages/dashboard/Overview";
 import EventPage from "../pages/eventlog/EventLogPage";
 import InstanceRegister from "../pages/instance/InstanceRegister";
 import InstancePage from "../pages/instance/InstancePage";
-import VacuumPage from "../pages/vacuum/VacuumPage";
+import VacuumOverview from "../pages/vacuum/VacuumOverview";
+import VacuumMaintenance from "../pages/vacuum/VacuumMaintenance";
+import VacuumSessionDetail from "../pages/vacuum/VacuumSessionDetail";
+import VacuumHistory from "../pages/vacuum/VacuumHistory";
+import VacuumRisk from "../pages/vacuum/VacuumRisk";
+import VacuumBloat from "../pages/vacuum/VacuumBloat";
+import VacuumBloatDetail from "../pages/vacuum/VacuumBloatDetail";
 import CpuPage from "../pages/system/CpuPage";
 import CheckpointPage from "../pages/engine/CheckPointPage";
-import SessionPage from "../pages/session/SessionPage";
+import SessionDashboard from "../pages/session/SessionDashboard";
 import DatabaseDashboard from "../pages/dashboard/DatabaseOverview";
 import SessionListPage from "../pages/session/SessionListPage";
 
-import AlarmPage from "../pages/alarm/AlarmPage";
 import LayoutBuilder from "../components/dashboard/Layout";
 import DashboardEditor from "../components/dashboard/DashboardEditor";
 import ExecutionStatus from "../pages/query/ExecutionStatus";
@@ -24,6 +29,16 @@ import BGWriterPage from "../pages/engine/BGWriterPage";
 import HotTablePage from "../pages/engine/HotTablePage";
 import HotIndexPage from "../pages/engine/HotIndexPage.tsx";
 import MemoryPage from "../pages/system/MemoryPage.tsx";
+import DiskPage from "../pages/system/DiskPage.tsx";
+import AlarmList from "../pages/alarm/AlarmList";
+import AlarmRuleRegister from "../pages/alarm/AlarmRuleRegister.tsx";
+import CheckPointListPage from "../pages/engine/CheckPointListPage.tsx";
+import BGWriterListPage from "../pages/engine/BGWriterListPage.tsx";
+import DiskListPage from "../pages/system/DiskListPage.tsx";
+import CPUListPage from "../pages/system/CpuListPage.tsx";
+import MemoryListPage from "../pages/system/MemoryListPage.tsx";
+import HotIndexListPage from "../pages/engine/HotIndexListPage.tsx";
+import HotTableListPage from "../pages/engine/HotTableListPage.tsx";
 
 const routeList = [
   // 헤더 없는 초기 페이지
@@ -36,26 +51,39 @@ const routeList = [
 
   // Instance 단위
   { path: "/instance/event", element: <EventPage /> },
+
+  // cpu
   { path: "/instance/cpu/dashboard", element: <CpuPage /> },
-  // { path: "/instance/disk/dashboard", element: <DiskPage /> },
+  { path: "/instance/cpu/usage", element: <CPUListPage /> },
+
   { path: "/instance/memory/dashboard", element: <MemoryPage /> },
+  { path: "/instance/memory/buffer-usage", element: <MemoryListPage /> },
+
+  // disk i/o
+  { path: "/instance/disk/dashboard", element: <DiskPage /> },
+  { path: "/instance/disk/breakdown", element: <DiskListPage /> },
+
+  // CheckPoint
   { path: "/instance/checkpoint/dashboard", element: <CheckpointPage /> },
-  { path: "/instance/bg-writer/dashboard", element: <BGWriterPage /> },
-  
+  { path: "/instance/checkpoint/list", element: <CheckPointListPage /> },
+
+  // BGWriter
+  { path: "/instance/bgwriter/dashboard", element: <BGWriterPage /> },
+  { path: "/instance/bgwriter/efficiency", element: <BGWriterListPage /> },
 
   // Database 단위
   { path: "/database/summary", element: <DatabaseDashboard /> },
 
   // Hot Table
     { path: "/database/hottable/dashboard", element: <HotTablePage /> },
-    // { path: "/database/hottable/active", element: <HotTableListPage /> },
+    { path: "/database/hottable/detail", element: <HotTableListPage /> },
 
   // Hot Index
   { path: "/database/hotindex/dashboard", element: <HotIndexPage /> },
-  // { path: "/database/hotindex/active", element: <HotIndexListPage /> },
+  { path: "/database/hotindex/detail", element: <HotIndexListPage /> },
 
   // 세션
-  { path: "/database/session/dashboard", element: <SessionPage /> },
+  { path: "/database/session/dashboard", element: <SessionDashboard /> },
   { path: "/database/session/active", element: <SessionListPage /> },
 
   // 쿼리
@@ -65,8 +93,16 @@ const routeList = [
     { path: "/database/query/query-analysis", element: <QueryTuner /> },
 
   // Vacuum
-  { path: "/database/vacuum/dashboard", element: <VacuumPage /> },
+  { path: "/database/vacuum/overview", element: <VacuumOverview /> },
+  { path: "/database/vacuum/maintenance", element: <VacuumMaintenance /> },
+  { path: "/database/vacuum/sessionDetail", element: <VacuumSessionDetail /> },
+  { path: "/database/vacuum/history", element: <VacuumHistory /> },
+  { path: "/database/vacuum/risk", element: <VacuumRisk /> },
+  { path: "/database/vacuum/bloat", element: <VacuumBloat /> },
+  { path: "/database/vacuum/bloatDetail", element: <VacuumBloatDetail /> },
   
+
+
 
   // 기타
   { path: "/instance-management", element: <InstancePage /> },
@@ -74,14 +110,11 @@ const routeList = [
 
   { path: "/checkpoint", element: <CheckpointPage /> },
   
-
-  // DB 단위 
-  { path: "/session", element: <SessionPage /> },
-  { path: "/vacuum", element: <VacuumPage /> },
-
+  // 알람
 
   // 알람
-  { path: "/alarm", element: <AlarmPage /> },
+  { path: "/alarm", element: <AlarmList /> },
+  { path: "/alarm-rule", element: <AlarmRuleRegister /> },
 ];
 
 

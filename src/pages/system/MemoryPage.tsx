@@ -1,6 +1,9 @@
 import { useState } from "react";
 import Chart from "../../components/chart/ChartComponent";
 import GaugeChart from "../../components/chart/GaugeChart";
+import SummaryCard from "../../components/util/SummaryCard";
+import WidgetCard from "../../components/util/WidgetCard";
+import ChartGridLayout from "../../components/layout/ChartGridLayout";
 import "../../styles/system/memory.css";
 
 // API 응답 전체 구조
@@ -47,6 +50,13 @@ interface MemoryData {
     topBufferObjects: {
         labels: string[];
         data: number[];
+    };
+    recentStats?: {
+        pageFaultRate: number;
+        backendWaitTime: number;
+        workMemUsage: number;
+        evictionCacheMissRate: number;    // 변경: avgEviction → evictionCacheMissRate (%)
+        backendFsyncCount: number;        // 변경: avgFsync → backendFsyncCount (횟수)
     };
 }
 
@@ -107,342 +117,238 @@ const dummyData: MemoryData = {
         labels: ["orders", "users", "products", "payments", "inventory", "audit_log"],
         data: [18.5, 15.2, 12.8, 10.3, 8.7, 6.2],
     },
+    // 최근 5분 평균 통계
+    recentStats: {
+        pageFaultRate: 12,
+        backendWaitTime: 0.8,
+        workMemUsage: 340,
+        evictionCacheMissRate: 3.2,    // 변경: Eviction으로 인한 캐시 미스율 (%)
+        backendFsyncCount: 0,          // 변경: Backend가 직접 fsync한 횟수
+    },
 };
 
 // Gauge 색상 결정 (Memory Utilization)
 const getMemoryUtilizationColor = (value: number): string => {
-    if (value >= 80 && value <= 95) return "#10B981"; // 녹색 (적정)
-    if (value < 80) return "#3B82F6"; // 파란색 (여유)
-    return "#EF4444"; // 빨간색 (위험)
+    if (value >= 80 && value <= 95) return "#7B61FF"; // 녹색 (적정)
+    if (value < 80) return "#FFD66B"; // 파란색 (여유)
+    return "#FF928A"; // 빨간색 (위험)
 };
 
 // Gauge 색상 결정 (Buffer Hit Ratio)
 const getHitRatioColor = (value: number): string => {
-    if (value >= 95) return "#10B981"; // 녹색 (우수)
-    if (value >= 90) return "#F59E0B"; // 주황색 (개선 가능)
-    return "#EF4444"; // 빨간색 (낮음)
+    if (value >= 95) return "#7B61FF"; // 녹색 (우수)
+    if (value >= 90) return "#FFD66B"; // 주황색 (개선 가능)
+    return "#FF928A"; // 빨간색 (낮음)
 };
-
-// Gauge 상태 텍스트
-const getMemoryStatus = (value: number): string => {
-    if (value >= 80 && value <= 95) return "정상";
-    if (value < 80) return "여유";
-    return "주의";
-};
-
-const getHitRatioStatus = (value: number): string => {
-    if (value >= 95) return "정상";
-    if (value >= 90) return "주의";
-    return "위험";
-};
-
-// 차트 카드 컴포넌트
-interface ChartCardProps {
-    title: string;
-    statusBadge?: string;
-    children: React.ReactNode;
-    footer?: React.ReactNode;
-}
-
-function ChartCard({ title, statusBadge, children, footer }: ChartCardProps) {
-    return (
-        <div className="chart-card">
-            <div className="chart-header">
-                <div className="chart-title-group">
-                    <h3 className="chart-title">{title}</h3>
-                </div>
-                {statusBadge && (
-                    <span
-                        className={`status-badge ${
-                            statusBadge === "정상"
-                                ? "status-normal"
-                                : statusBadge === "주의"
-                                    ? "status-warning"
-                                    : "status-danger"
-                        }`}
-                    >
-                        {statusBadge}
-                    </span>
-                )}
-            </div>
-            <div className="chart-content">{children}</div>
-            {footer && <div className="chart-footer">{footer}</div>}
-        </div>
-    );
-}
-
-// 통계 아이템 컴포넌트
-interface StatItemProps {
-    label: string;
-    value: string;
-    color?: string;
-}
-
-function StatItem({ label, value, color }: StatItemProps) {
-    return (
-        <div className="stat-item">
-            <span className="stat-label" style={{ color }}>
-                {label}
-            </span>
-            <span className="stat-value">{value}</span>
-        </div>
-    );
-}
 
 // 메인 Memory 페이지
 export default function MemoryPage() {
     const [data] = useState<MemoryData>(dummyData);
 
     const memoryUtilizationColor = getMemoryUtilizationColor(data.memoryUtilization.value);
-    const memoryStatus = getMemoryStatus(data.memoryUtilization.value);
-
     const hitRatioColor = getHitRatioColor(data.bufferHitRatio.value);
-    const hitRatioStatus = getHitRatioStatus(data.bufferHitRatio.value);
-
     const sharedBufferColor = getMemoryUtilizationColor(data.sharedBufferUsage.value);
-    const sharedBufferStatus = getMemoryStatus(data.sharedBufferUsage.value);
+
+    // 최근 5분 평균 통계 (API에서 받아오거나 더미 데이터 사용)
+    const recentStats = data.recentStats || {
+        pageFaultRate: 12,
+        backendWaitTime: 0.8,
+        workMemUsage: 340,
+        evictionCacheMissRate: 3.2,
+        backendFsyncCount: 0,
+    };
+
+    // 요약 카드 데이터 계산 (최근 5분 평균 기준)
+    const summaryCards = [
+        {
+            label: "페이지 폴트 발생률",
+            value: `${recentStats.pageFaultRate}/s`,
+            diff: -2,
+            desc: "최근 5분 평균",
+            status: recentStats.pageFaultRate > 20 ? ("warning" as const) : ("info" as const),
+        },
+        {
+            label: "Backend 대기 시간",
+            value: `${recentStats.backendWaitTime}ms`,
+            diff: -0.1,
+            desc: "최근 5분 평균",
+            status: recentStats.backendWaitTime > 2 ? ("warning" as const) : ("info" as const),
+        },
+        {
+            label: "작업 메모리 사용량",
+            value: `${recentStats.workMemUsage}MB`,
+            diff: 25,
+            desc: "최근 5분 최대값",
+            status: "info" as const,
+        },
+        {
+            label: "Eviction 캐시 미스율",  // 변경
+            value: `${recentStats.evictionCacheMissRate}%`,  // 변경
+            diff: -0.3,
+            desc: "최근 5분 평균",
+            status: recentStats.evictionCacheMissRate > 10 ? ("warning" as const) : ("info" as const),
+        },
+        {
+            label: "Backend Fsync 발생",  // 변경
+            value: `${recentStats.backendFsyncCount}회`,  // 변경
+            diff: 0,
+            desc: "최근 5분 누적",
+            status: recentStats.backendFsyncCount > 0 ? ("warning" as const) : ("info" as const),
+        },
+    ];
 
     return (
         <div className="memory-page">
-            <div className="memory-grid">
-                <div className="memory-row">
-                    <ChartCard
-                        title="MEMORY 사용률"
-                        statusBadge={memoryStatus}
-                        footer={
-                            <>
-                                <StatItem
-                                    label="사용 중"
-                                    value={data.memoryUtilization.usedBuffers.toLocaleString()}
-                                />
-                                <StatItem
-                                    label="전체"
-                                    value={data.memoryUtilization.totalBuffers.toLocaleString()}
-                                />
-                            </>
-                        }
-                    >
-                        <GaugeChart
-                            value={data.memoryUtilization.value}
-                            type="semi-circle"
-                            color={memoryUtilizationColor}
-                            label="MEMORY utilization rate"
-                        />
-                    </ChartCard>
-
-                    <ChartCard
-                        title="Buffer 캐시 적중률"
-                        statusBadge={hitRatioStatus}
-                        footer={
-                            <>
-                                <StatItem
-                                    label="Hit"
-                                    value={`${(data.bufferHitRatio.hitCount / 1000000).toFixed(1)}M`}
-                                />
-                                <StatItem
-                                    label="Total"
-                                    value={`${(data.bufferHitRatio.totalCount / 1000000).toFixed(1)}M`}
-                                />
-                            </>
-                        }
-                    >
-                        <GaugeChart
-                            value={data.bufferHitRatio.value}
-                            type="semi-circle"
-                            color={hitRatioColor}
-                            label="Hit Ratio"
-                        />
-                    </ChartCard>
-
-                    <ChartCard
-                        title="Shared Buffer 사용 현황"
-                        statusBadge={sharedBufferStatus}
-                        footer={
-                            <>
-                                <StatItem
-                                    label="Active"
-                                    value={data.sharedBufferUsage.activeBuffers.toLocaleString()}
-                                />
-                                <StatItem
-                                    label="Total"
-                                    value={data.sharedBufferUsage.totalBuffers.toLocaleString()}
-                                />
-                            </>
-                        }
-                    >
-                        <GaugeChart
-                            value={data.sharedBufferUsage.value}
-                            type="semi-circle"
-                            color={sharedBufferColor}
-                            label="Buffer Usage"
-                        />
-                    </ChartCard>
-                </div>
-
-                <div className="memory-row">
-                    <ChartCard
-                        title="버퍼 교체율"
-                        footer={
-                            <>
-                                <StatItem label="평균" value={`${data.evictionRate.average}/s`} />
-                                <StatItem label="최대" value={`${data.evictionRate.max}/s`} />
-                                <StatItem label="최소" value={`${data.evictionRate.min}/s`} />
-                            </>
-                        }
-                    >
-                        <Chart
-                            type="line"
-                            series={[{ name: "Evictions/sec", data: data.evictionRate.data }]}
-                            categories={data.evictionRate.categories}
-                            height={250}
-                            colors={["#EF4444"]}
-                            showGrid={true}
-                            showLegend={false}
-                            xaxisOptions={{
-                                title: { text: "시간", style: { fontSize: "12px", color: "#6B7280" } },
-                            }}
-                            yaxisOptions={{
-                                title: { text: "Evictions/sec", style: { fontSize: "12px", color: "#6B7280" } },
-                                labels: { formatter: (val: number) => `${val}/s` },
-                            }}
-                            tooltipFormatter={(value: number) => `${value}/s`}
-                        />
-                    </ChartCard>
-
-                    <ChartCard
-                        title="버퍼 플러시 발생 추세"
-                        footer={
-                            <>
-                                <StatItem label="평균" value={`${data.fsyncRate.average}/s`} />
-                                <StatItem label="최대" value={`${data.fsyncRate.max}/s`} />
-                                <StatItem
-                                    label="Backend Fsync"
-                                    value={data.fsyncRate.backendFsync === 0 ? "정상" : `${data.fsyncRate.backendFsync}`}
-                                />
-                            </>
-                        }
-                    >
-                        <Chart
-                            type="line"
-                            series={[{ name: "Fsyncs/sec", data: data.fsyncRate.data }]}
-                            categories={data.fsyncRate.categories}
-                            height={250}
-                            colors={["#F59E0B"]}
-                            showGrid={true}
-                            showLegend={false}
-                            xaxisOptions={{
-                                title: { text: "시간", style: { fontSize: "12px", color: "#6B7280" } },
-                            }}
-                            yaxisOptions={{
-                                title: { text: "Fsyncs/sec", style: { fontSize: "12px", color: "#6B7280" } },
-                                labels: { formatter: (val: number) => `${val}/s` },
-                            }}
-                            tooltipFormatter={(value: number) => `${value}/s`}
-                        />
-                    </ChartCard>
-
-                    <ChartCard
-                        title="Eviction 대비 Flush 비율"
-                        footer={
-                            <>
-                                <StatItem
-                                    label="● Evictions"
-                                    value={`평균 ${data.evictionRate.average}/s`}
-                                    color="#EF4444"
-                                />
-                                <StatItem
-                                    label="● Fsyncs"
-                                    value={`평균 ${data.fsyncRate.average}/s`}
-                                    color="#F59E0B"
-                                />
-                            </>
-                        }
-                    >
-                        <Chart
-                            type="line"
-                            series={[
-                                { name: "Evictions/sec", data: data.evictionFlushRatio.evictions },
-                                { name: "Fsyncs/sec", data: data.evictionFlushRatio.fsyncs },
-                            ]}
-                            categories={data.evictionFlushRatio.categories}
-                            height={250}
-                            colors={["#EF4444", "#F59E0B"]}
-                            showGrid={true}
-                            showLegend={true}
-                            xaxisOptions={{
-                                title: { text: "시간", style: { fontSize: "12px", color: "#6B7280" } },
-                            }}
-                            yaxisOptions={{
-                                title: { text: "Events/sec", style: { fontSize: "12px", color: "#6B7280" } },
-                                labels: { formatter: (val: number) => `${val}/s` },
-                            }}
-                            tooltipFormatter={(value: number) => `${value}/s`}
-                        />
-                    </ChartCard>
-                </div>
-
-                <div className="memory-row">
-                    <ChartCard
-                        title="Shared Buffers 히트율"
-                        footer={
-                            <>
-                                <StatItem
-                                    label="평균 Hit Ratio"
-                                    value={`${data.sharedBuffersHitRatio.average}%`}
-                                />
-                            </>
-                        }
-                    >
-                        <Chart
-                            type="line"
-                            series={[{ name: "Hit Ratio (%)", data: data.sharedBuffersHitRatio.data }]}
-                            categories={data.sharedBuffersHitRatio.categories}
-                            height={250}
-                            colors={["#10B981"]}
-                            showGrid={true}
-                            showLegend={false}
-                            xaxisOptions={{
-                                title: { text: "시간", style: { fontSize: "12px", color: "#6B7280" } },
-                            }}
-                            yaxisOptions={{
-                                title: { text: "Hit Ratio (%)", style: { fontSize: "12px", color: "#6B7280" } },
-                                labels: { formatter: (val: number) => `${val}%` },
-                                min: 85,
-                                max: 100,
-                            }}
-                            tooltipFormatter={(value: number) => `${value}%`}
-                        />
-                    </ChartCard>
-
-                    <ChartCard
-                        title="Top-N 버퍼 점유 객체"
-                        footer={
-                            <>
-                                <StatItem
-                                    label="총 점유율"
-                                    value={`${data.topBufferObjects.data.reduce((a, b) => a + b, 0).toFixed(1)}%`}
-                                />
-                            </>
-                        }
-                    >
-                        <Chart
-                            type="bar"
-                            series={[{ name: "% of Pool", data: data.topBufferObjects.data }]}
-                            categories={data.topBufferObjects.labels}
-                            height={250}
-                            colors={["#8B5CF6"]}
-                            showGrid={true}
-                            showLegend={false}
-                            xaxisOptions={{
-                                title: { text: "객체명", style: { fontSize: "12px", color: "#6B7280" } },
-                            }}
-                            tooltipFormatter={(value: number) => `${value}%`}
-                        />
-                    </ChartCard>
-
-                    <div style={{ gridColumn: "span 1" }}></div>
-                </div>
+            {/* 상단 요약 카드 */}
+            <div className="memory-summary-cards">
+                {summaryCards.map((card, idx) => (
+                    <SummaryCard
+                        key={idx}
+                        label={card.label}
+                        value={card.value}
+                        diff={card.diff}
+                        desc={card.desc}
+                        status={card.status}
+                    />
+                ))}
             </div>
+
+            {/* 첫 번째 행: 3개의 게이지 */}
+            <ChartGridLayout>
+                <WidgetCard title="Memory 사용률" span={2}>
+                    <GaugeChart
+                        value={data.memoryUtilization.value}
+                        type="semi-circle"
+                        color={memoryUtilizationColor}
+                    />
+                </WidgetCard>
+
+                <WidgetCard title="Buffer Hit Ratio" span={2}>
+                    <GaugeChart
+                        value={data.bufferHitRatio.value}
+                        type="semi-circle"
+                        color={hitRatioColor}
+                    />
+                </WidgetCard>
+
+                <WidgetCard title="Shared Buffer 사용 현황" span={2}>
+                    <GaugeChart
+                        value={data.sharedBufferUsage.value}
+                        type="semi-circle"
+                        color={sharedBufferColor}
+                    />
+                </WidgetCard>
+
+                <WidgetCard title="Eviction 대비 Flush 비율" span={6}>
+                    <Chart
+                        type="line"
+                        series={[
+                            { name: "Evictions/sec", data: data.evictionFlushRatio.evictions },
+                            { name: "Fsyncs/sec", data: data.evictionFlushRatio.fsyncs },
+                        ]}
+                        categories={data.evictionFlushRatio.categories}
+                        height={250}
+                        colors={["#8E79FF", "#FEA29B"]}
+                        showGrid={true}
+                        showLegend={true}
+                        xaxisOptions={{
+                            title: { text: "시간", style: { fontSize: "12px", color: "#6B7280" } },
+                        }}
+                        yaxisOptions={{
+                            title: { text: "Events/sec", style: { fontSize: "12px", color: "#6B7280" } },
+                            labels: { formatter: (val: number) => `${val}/s` },
+                        }}
+                        tooltipFormatter={(value: number) => `${value}/s`}
+                    />
+                </WidgetCard>
+
+            </ChartGridLayout>
+
+            {/* 두 번째 행: 3개 차트 */}
+            <ChartGridLayout>
+                <WidgetCard title="버퍼 교체율" span={6}>
+                    <Chart
+                        type="line"
+                        series={[{ name: "Evictions/sec", data: data.evictionRate.data }]}
+                        categories={data.evictionRate.categories}
+                        height={250}
+                        colors={["#8E79FF"]}
+                        showGrid={true}
+                        showLegend={false}
+                        xaxisOptions={{
+                            title: { text: "시간", style: { fontSize: "12px", color: "#6B7280" } },
+                        }}
+                        yaxisOptions={{
+                            title: { text: "Evictions/sec", style: { fontSize: "12px", color: "#6B7280" } },
+                            labels: { formatter: (val: number) => `${val}/s` },
+                        }}
+                        tooltipFormatter={(value: number) => `${value}/s`}
+                    />
+                </WidgetCard>
+
+                <WidgetCard title="버퍼 플러시 발생 추세" span={6}>
+                    <Chart
+                        type="line"
+                        series={[{ name: "Fsyncs/sec", data: data.fsyncRate.data }]}
+                        categories={data.fsyncRate.categories}
+                        height={250}
+                        colors={["#8E79FF"]}
+                        showGrid={true}
+                        showLegend={false}
+                        xaxisOptions={{
+                            title: { text: "시간", style: { fontSize: "12px", color: "#6B7280" } },
+                        }}
+                        yaxisOptions={{
+                            title: { text: "Fsyncs/sec", style: { fontSize: "12px", color: "#6B7280" } },
+                            labels: { formatter: (val: number) => `${val}/s` },
+                        }}
+                        tooltipFormatter={(value: number) => `${value}/s`}
+                    />
+                </WidgetCard>
+
+
+            </ChartGridLayout>
+
+            {/* 세 번째 행: 2개 차트 */}
+            <ChartGridLayout>
+                <WidgetCard title="Shared Buffers 히트율" span={6}>
+                    <Chart
+                        type="line"
+                        series={[{ name: "Hit Ratio (%)", data: data.sharedBuffersHitRatio.data }]}
+                        categories={data.sharedBuffersHitRatio.categories}
+                        height={250}
+                        colors={["#8E79FF"]}
+                        showGrid={true}
+                        showLegend={false}
+                        xaxisOptions={{
+                            title: { text: "시간", style: { fontSize: "12px", color: "#6B7280" } },
+                        }}
+                        yaxisOptions={{
+                            title: { text: "Hit Ratio (%)", style: { fontSize: "12px", color: "#6B7280" } },
+                            labels: { formatter: (val: number) => `${val}%` },
+                            min: 85,
+                            max: 100,
+                        }}
+                        tooltipFormatter={(value: number) => `${value}%`}
+                    />
+                </WidgetCard>
+
+                <WidgetCard title="Top-N 버퍼 점유 객체" span={6}>
+                    <Chart
+                        type="bar"
+                        series={[{ name: "% of Pool", data: data.topBufferObjects.data }]}
+                        categories={data.topBufferObjects.labels}
+                        height={250}
+                        colors={["#FEA29B"]}
+                        showGrid={true}
+                        showLegend={false}
+                        xaxisOptions={{
+                            title: { text: "객체명", style: { fontSize: "12px", color: "#6B7280" } },
+                        }}
+                        tooltipFormatter={(value: number) => `${value}%`}
+                    />
+                </WidgetCard>
+            </ChartGridLayout>
         </div>
     );
 }

@@ -1,0 +1,165 @@
+:root {
+    font-size: 16px;
+}
+
+.hotindex-page {
+    padding: 2rem;
+    display: flex;
+    flex-direction: column;
+    gap: 2vh;
+    width: 100%;
+    min-height: 85vh;
+}
+
+/* 필터 */
+.hotindex-page__filters {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.75rem;
+    align-items: center;
+}
+
+.filter-toggles {
+    display: flex;
+    gap: 16px;
+    align-items: center;
+}
+
+.toggle-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    font-size: 14px;
+    color: #374151;
+}
+
+.toggle-label input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    cursor: pointer;
+}
+
+.toggle-label span {
+    user-select: none;
+}
+
+/* 테이블 */
+.hotindex-page__table {
+    background: rgba(255, 255, 255, 0.6);
+    border-radius: 0.7rem;
+    border: 1px solid rgba(255, 255, 255, 0.7);
+    box-shadow: 0 0.6rem 1.8rem rgba(0, 0, 0, 0.08);
+    overflow-x: auto;
+}
+
+.hotindex-table-header,
+.hotindex-table-row {
+    display: grid;
+    grid-template-columns: repeat(8, minmax(8rem, 1fr));
+    text-align: center;
+    padding: 1.1rem;
+    align-items: center;
+    font-size: 1rem;
+}
+
+.hotindex-table-header {
+    background: rgb(241, 239, 243, 0.8);
+    font-weight: 700;
+    color: #2e2f33;
+}
+
+.hotindex-table-row {
+    border-top: 1px solid rgba(0, 0, 0, 0.05);
+    color: #2e2f33;
+}
+
+.hotindex-table-row:nth-child(even) {
+    background: rgba(255, 255, 255, 0.5);
+}
+
+.hotindex-table-empty {
+    padding: 3rem;
+    text-align: center;
+    color: #6b7280;
+    font-size: 1rem;
+}
+
+/* 상태 레벨 색상 */
+.info {
+    color: #7B61FF;
+    font-weight: 700;
+}
+
+.warn {
+    color: #FFD66B;
+    font-weight: 700;
+}
+
+.error {
+    color: #FF928A;
+    font-weight: 700;
+}
+
+/* 프로그레스 바 스타일 */
+.progress-cell {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    justify-content: center;
+}
+
+.progress-bar-wrapper {
+    flex: 1;
+    max-width: 150px;
+}
+
+.progress-bar-track {
+    width: 100%;
+    height: 8px;
+    background-color: #E5E7EB;
+    border-radius: 4px;
+    overflow: hidden;
+    position: relative;
+}
+
+.progress-bar-fill {
+    height: 100%;
+    border-radius: 4px;
+    transition: width 0.3s ease, background-color 0.3s ease;
+}
+
+.progress-value {
+    font-size: 13px;
+    font-weight: 500;
+    color: #374151;
+    min-width: 45px;
+    text-align: right;
+}
+
+/* 정렬 아이콘 */
+.sort-icon {
+    margin-left: 4px;
+    font-size: 12px;
+    opacity: 0.7;
+}
+
+/* 반응형 */
+@media (max-width: 768px) {
+    .hotindex-page__filters {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .filter-toggles {
+        flex-direction: column;
+        align-items: flex-start;
+        width: 100%;
+    }
+
+    .hotindex-table-header,
+    .hotindex-table-row {
+        grid-template-columns: repeat(8, minmax(6rem, 1fr));
+        font-size: 0.8rem;
+    }
+}

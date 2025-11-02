@@ -1,0 +1,29 @@
+/*  공통 차트 그리드  */
+.chart-grid-layout {
+  display: grid;
+  grid-template-columns: repeat(12, 1fr); 
+  grid-auto-rows: minmax(240px, auto);
+  gap: 1rem; 
+  padding-bottom: 0.8rem;
+  width: 100%;
+  box-sizing: border-box;
+  align-items: stretch; 
+  /* 자식이 부모의 높이에 맞게 늘어남 */
+}
+
+/*  반응형  */
+@media (max-width: 1024px) {
+  .chart-grid-layout {
+    grid-template-columns: repeat(6, 1fr);
+    gap: 1rem;
+    padding: 0 0.5rem 0.9rem;
+  }
+}
+
+@media (max-width: 768px) {
+  .chart-grid-layout {
+    grid-template-columns: 1fr;
+    gap: 0.6rem;
+    padding: 0 0.5rem 0.9rem;
+  }
+}

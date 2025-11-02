@@ -1,0 +1,37 @@
+.disk-page {
+    display: flex;
+    flex-direction: column;
+    padding: 1.5rem 0;
+}
+
+/* 요약 카드 */
+.disk-summary-cards {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 0.9rem;
+}
+
+/* 반응형 - 태블릿 (1024px 이하) */
+@media (max-width: 1024px) {
+    .disk-summary-cards {
+        flex-wrap: wrap;
+    }
+}
+
+/* 반응형 - 모바일 (768px 이하) */
+@media (max-width: 768px) {
+    .disk-page {
+        padding: 1rem 0;
+    }
+
+    .disk-summary-cards {
+        flex-direction: column;
+    }
+}
+
+/* 작은 모바일 (480px 이하) */
+@media (max-width: 480px) {
+    .disk-page {
+        padding: 0.75rem 0;
+    }
+}

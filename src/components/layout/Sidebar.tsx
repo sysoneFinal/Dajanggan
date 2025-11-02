@@ -19,14 +19,19 @@ export default function Sidebar({ onChangeBreadcrumb }: SidebarProps) {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const [isExpanded, setIsExpanded] = useState(false);
-  const [openMenus, setOpenMenus] = useState<Record<string, boolean>>({});
+  const [isExpanded, setIsExpanded] = useState(true);
+  const [openMenus, setOpenMenus] = useState<Record<string, boolean>>({
+    Instance: true,
+    Database: true,
+  });
   const [activePath, setActivePath] = useState<string>("");
 
   useEffect(() => setActivePath(location.pathname), [location.pathname]);
 
-  const toggleMenu = (label: string) =>
+  const toggleMenu = (label: string) => {
+    if (label === "Instance" || label === "Database") return;
     setOpenMenus((prev) => ({ ...prev, [label]: !prev[label] }));
+  };
 
   const handleNavigate = (path?: string, labels?: string[]) => {
     if (path) {
@@ -35,7 +40,6 @@ export default function Sidebar({ onChangeBreadcrumb }: SidebarProps) {
     }
   };
 
-  // 하위에 현재 활성 경로가 포함되어 있는지 확인
   const hasActiveChild = (item: MenuItem): boolean => {
     if (!item.children) return false;
     return item.children.some(
@@ -45,49 +49,51 @@ export default function Sidebar({ onChangeBreadcrumb }: SidebarProps) {
     );
   };
 
-const renderMenu = (items: readonly MenuItem[], depth = 0): JSX.Element => (
-    <div className={`sidebar__menu-level sidebar__menu-level--${depth}`}>
+  const renderMenu = (items: readonly MenuItem[], depth = 0): JSX.Element => (
+    <div className={`sidebar_menu_level sidebar_menu_level_${depth}`}>
       {items.map((item) => {
         const descendantActive = hasActiveChild(item);
         const isActive = item.path === activePath;
-
-        // 최상위는 하위가 active일 때만 검정
-        const isTopActive =
-          depth === 0 && (isActive || descendantActive);
-        // 하위는 자기 자신 active일 때만 회색
+        const isTopActive = depth === 0 && (isActive || descendantActive);
         const isSubActive = depth > 0 && isActive;
-
         const activeClass =
-          isTopActive || isSubActive ? "sidebar__link--active" : "";
+          item.label === "Instance" || item.label === "Database"
+            ? ""
+            : isTopActive || isSubActive
+            ? "sidebar_link_active"
+            : "";
+
+        const isStatic = item.label === "Instance" || item.label === "Database";
+        const customClass = isStatic
+          ? `sidebar_link_static sidebar_link_${item.label.toLowerCase()}`
+          : "";
 
         return (
           <div key={item.label}>
             <div
-              className={`sidebar__link ${activeClass}`}
+              className={`sidebar_link ${activeClass} ${customClass}`}
               onClick={() => {
+                if (isStatic) return; // 클릭 비활성화
                 if (item.children) {
                   toggleMenu(item.label);
                 } else {
-                  // breadcrumb 경로 계산 (depth에 따라 다름)
                   const breadcrumbTrail =
                     depth === 0
                       ? [item.label]
                       : depth === 1
-                      ? [items.find(i => i.label)?.label || "", item.label]
-                      : ["Database", "Session", item.label]; // 필요시 기본값
-                  
+                      ? [items.find((i) => i.label)?.label || "", item.label]
+                      : ["Database", "Session", item.label];
                   handleNavigate(item.path, breadcrumbTrail);
                 }
               }}
-
-              // style={{ paddingLeft: `${depth * 1}rem` }}
+              style={{ cursor: isStatic ? "default" : "pointer" }}
             >
               <span>{item.label}</span>
-              {item.children && (
+              {item.children && !isStatic && (
                 <img
                   src={openMenus[item.label] ? minus : plus}
                   alt="toggle"
-                  className="sidebar__icon"
+                  className="sidebar_icon"
                 />
               )}
             </div>
@@ -102,29 +108,31 @@ const renderMenu = (items: readonly MenuItem[], depth = 0): JSX.Element => (
   );
 
   return (
-    <aside
-      className={`sidebar ${isExpanded ? "sidebar--expanded" : ""}`}
-      onMouseEnter={() => setIsExpanded(true)}
-      onMouseLeave={() => setIsExpanded(false)}
-    >
-      <div className="sidebar__header">
-        <div className="sidebar__logo-icon">D</div>
-        {isExpanded && <div className="sidebar__logo-text">Dajangan</div>}
+    <aside className={`sidebar ${isExpanded ? "sidebar_expanded" : ""}`}>
+      <div className="sidebar_header">
+        <div
+          className="sidebar_logo_icon"
+          onClick={() => setIsExpanded((prev) => !prev)}
+          style={{ cursor: "pointer" }}
+        >
+          D
+        </div>
+        {isExpanded && <div className="sidebar_logo_text">Dajangan</div>}
       </div>
 
       {isExpanded && (
         <>
-          <nav className="sidebar__nav">{renderMenu(SIDEBAR_MENU)}</nav>
+          <nav className="sidebar_nav">{renderMenu(SIDEBAR_MENU)}</nav>
 
-          <div className="sidebar__footer">
+          <div className="sidebar_footer">
             <div
-              className="sidebar__footer-link"
+              className="sidebar_footer_link"
               onClick={() => navigate("/instance-management")}
             >
               Instance Management
             </div>
             <div
-              className="sidebar__footer-link"
+              className="sidebar_footer_link"
               onClick={() => navigate("/alarm")}
             >
               Alarm Settings

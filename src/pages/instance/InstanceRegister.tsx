@@ -1,6 +1,8 @@
 import React, { useMemo, useState } from "react";
 import "/src/styles/instance.css";
-import apiClient from "../../api/apiClient"; // ✅ 공통 axios 인스턴스 사용
+import apiClient from "../../api/apiClient"; // 공통 axios 인스턴스 사용
+import { useNavigate } from "react-router-dom";
+
 
 export type NewInstance = {
   host: string;
@@ -31,7 +33,7 @@ const fieldLabel = {
 
 const requiredMsg = (k: keyof typeof fieldLabel) => `${fieldLabel[k]} 값이 필요합니다.`;
 
-// ✅ 백엔드 DTO로 매핑
+// 백엔드 DTO로 매핑
 const toInstanceDto = (f: NewInstance) => ({
   host: f.host,
   instanceName: f.instance,
@@ -44,8 +46,7 @@ const toInstanceDto = (f: NewInstance) => ({
   slackEnabled: false,
   slackChannel: undefined,
   slackMention: undefined,
-  slackWebhookUrl: undefined,
-  collectionInterval: 5,
+  slackWebhookUrl: undefined
 });
 
 export default function NewInstancePage({
@@ -67,6 +68,8 @@ export default function NewInstancePage({
   const [submitting, setSubmitting] = useState(false);
   const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState<null | { ok: boolean; message?: string }>(null);
+  const navigate = useNavigate();
+
 
   const validate = (): boolean => {
     const next: Partial<Record<keyof NewInstance, string>> = {};
@@ -85,7 +88,7 @@ export default function NewInstancePage({
     const user = encodeURIComponent(form.username);
     const host = form.host || "";
     const db = form.database || "";
-    return `postgresql://${user}:••••••••@${host}:${form.port}/${db}`;
+    return `postgresql://${user}:@${host}:${form.port}/${db}`;
   }, [form]);
 
   const handleChange = (key: keyof NewInstance, value: string) => {
@@ -96,7 +99,7 @@ export default function NewInstancePage({
     setErrors((prev) => ({ ...prev, [key]: undefined }));
   };
 
-  // ✅ 등록: 백엔드에 POST /api/instances
+  // 등록: 백엔드에 POST /api/instances
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setTestResult(null);
@@ -108,8 +111,9 @@ export default function NewInstancePage({
         await onSubmit(form);
       } else {
         const payload = toInstanceDto(form);
-        const res = await apiClient.post("/instances", payload); // { id }
+        const res = await apiClient.post("/api/instances", payload); // { id }
         alert(`등록 성공! ID: ${res.data?.id ?? "unknown"}`);
+        navigate("/instance-management"); // 목록으로 이동
       }
     } catch (err: any) {
       console.error(err);
@@ -119,7 +123,7 @@ export default function NewInstancePage({
     }
   };
 
-  // ✅ 테스트: 실제 엔드포인트 있으면 호출, 없으면 기존 mock
+  // 테스트: 실제 엔드포인트 있으면 호출, 없으면 기존 mock
   const handleTest = async () => {
     setTestResult(null);
     if (!validate()) return;

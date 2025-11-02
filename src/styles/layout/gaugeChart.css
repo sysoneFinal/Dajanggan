@@ -1,59 +1,101 @@
-/* 반원 게이지 스타일 */
 .gauge-container {
-  width: 200px;
-  text-align: center;
-  user-select: none;
-  margin: 0 auto;
-}
-
-.gauge-value {
-  margin-top: -10px;
-  font-size: 26px;
-  font-weight: 700;
-  color: #4f46e5;
-}
-
-.gauge-desc {
-  font-size: 12px;
-  color: #9ca3af;
-  margin-top: 2px;
-}
-
-/* 바(bar) 게이지 스타일 */
-.gauge-bar-container {
-  width: 100%;
-  padding: 8px 0;
-}
-
-.gauge-bar-label {
-  color: #6b7280;
-  font-size: 14px;
-  font-weight: 500;
-  margin-bottom: 8px;
-}
-
-.gauge-bar-wrapper {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 12px;
+  text-align: center;
 }
 
-.gauge-bar-track {
-  flex: 1;
-  height: 10px;
-  border-radius: 10px;
-  overflow: hidden;
+/* 반응형 SVG wrapper */
+.gauge-svg-wrapper {
+  position: relative;
+  width: 100%;
+  max-width: 240px; /* 카드 안에서 적당한 비율 */
 }
 
-.gauge-bar-progress {
-  height: 100%;
-  border-radius: 10px;
+/* SVG는 비율 유지 */
+.gauge-svg {
+  width: 100%;
+  height: auto;
+  overflow: visible;
 }
 
-.gauge-bar-value {
-  color: #111827;
-  font-size: 15px;
+/* 중앙 값 (위치 동일) */
+.gauge-value {
+  position: absolute;
+  top: 42%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 1.6rem;
   font-weight: 700;
-  min-width: 45px;
-  text-align: right;
+  color: #111827;
+  pointer-events: none;
+}
+
+/* 라벨 (위쪽) */
+.gauge-label {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #4b5563;
+  margin-bottom: 0.3rem;
+}
+
+/* 범례 (맨 위) */
+.gauge-legend {
+  display: flex;
+  justify-content: center;
+  gap: 0.8rem;
+  font-size: 0.75rem;
+  color: #6b7280;
+  list-style: none;
+  padding: 0;
+  margin-bottom: 0.6rem;
+}
+
+.gauge-legend .dot {
+  display: inline-block;
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: 50%;
+  margin-right: 0.3rem;
+}
+
+.gauge-legend .dot.normal { background-color: #7b61ff; }
+.gauge-legend .dot.warn { background-color: #facc15; }
+.gauge-legend .dot.danger { background-color: #ef4444; }
+
+/* 반응형 크기 조정 */
+@media (max-width: 1280px) {
+  .gauge-svg-wrapper {
+    max-width: 210px;
+  }
+  .gauge-value {
+    font-size: 1.4rem;
+  }
+}
+
+@media (max-width: 1024px) {
+  .gauge-svg-wrapper {
+    max-width: 190px;
+  }
+  .gauge-value {
+    font-size: 1.25rem;
+  }
+}
+
+@media (max-width: 768px) {
+  .gauge-svg-wrapper {
+    max-width: 170px;
+  }
+  .gauge-value {
+    font-size: 1.15rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .gauge-svg-wrapper {
+    max-width: 150px;
+  }
+  .gauge-value {
+    font-size: 1rem;
+  }
 }

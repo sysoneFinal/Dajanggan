@@ -1,72 +1,84 @@
 import "/src/styles/layout/gaugeChart.css";
 
 export type GaugeType = "semi-circle" | "bar";
+export type GaugeStatus = "info" | "warning" | "critical";
 
-type GaugeChartProps = {
+interface GaugeChartProps {
   value: number;
   type?: GaugeType;
+  status?: GaugeStatus;
   color?: string;
   trackColor?: string;
   radius?: number;
   label?: string;
+}
+
+const STATUS_COLOR: Record<GaugeStatus, string> = {
+  info: "#7B61FF",   // 보라
+  warning: "#FACC15",  // 노랑
+  critical: "#EF4444", // 빨강
 };
 
 export default function GaugeChart({
   value,
   type = "semi-circle",
-  color = "#8B5CF6",
+  status = "info",
+  color,
   trackColor = "#E5E7EB",
   radius = 70,
   label,
 }: GaugeChartProps) {
-  if (type === "bar") {
-    return (
-      <div className="gauge-bar-container">
-        {label && <div className="gauge-bar-label">{label}</div>}
-        <div className="gauge-bar-wrapper">
-          <div className="gauge-bar-track" style={{ background: trackColor }}>
-            <div
-              className="gauge-bar-progress"
-              style={{
-                width: `${value}%`,
-                background: color,
-                transition: "width 0.8s ease-out",
-              }}
-            />
-          </div>
-          <div className="gauge-bar-value">{value}%</div>
-        </div>
-      </div>
-    );
-  }
+  const gaugeColor = color ?? STATUS_COLOR[status];
 
-  // 기존 반원 게이지
   const circumference = Math.PI * radius;
   const progress = (value / 100) * circumference;
 
+  // 반원형 전용
+  if (type !== "semi-circle") return null;
+
   return (
     <div className="gauge-container">
-      <svg width="180" height="110" viewBox="0 0 180 110">
-        <path
-          d={`M20,90 A${radius},${radius} 0 0,1 160,90`}
-          stroke={trackColor}
-          strokeWidth="15"
-          fill="none"
-          strokeLinecap="round"
-        />
-        <path
-          d={`M20,90 A${radius},${radius} 0 0,1 160,90`}
-          stroke={color}
-          strokeWidth="15"
-          fill="none"
-          strokeDasharray={circumference}
-          strokeDashoffset={circumference - progress}
-          strokeLinecap="round"
-          style={{ transition: "stroke-dashoffset 0.8s ease-out" }}
-        />
-      </svg>
-      <h2 className="gauge-value">{value}%</h2>
-      <p className="gauge-desc">Increased this month</p>
+      {/* 상단 범례 (디자인 그대로) */}
+      <ul className="gauge-legend">
+        <li><span className="dot normal"></span>정상</li>
+        <li><span className="dot warn"></span>경고</li>
+        <li><span className="dot danger"></span>위험</li>
+      </ul>
+
+      {/* 라벨 (위쪽) */}
+      {label && <div className="gauge-label">{label}</div>}
+
+      {/* 반원형 게이지 */}
+      <div className="gauge-svg-wrapper">
+        <svg
+          className="gauge-svg"
+          viewBox={`0 0 ${radius * 2.6} ${radius * 1.4}`}
+          preserveAspectRatio="xMidYMid meet"
+        >
+          {/* 트랙 */}
+          <path
+            d={`M20,${radius + 10} A${radius},${radius} 0 0,1 ${radius * 2.3},${radius + 10}`}
+            stroke={trackColor}
+            strokeWidth="15"
+            fill="none"
+            strokeLinecap="round"
+          />
+          {/* 진행률 */}
+          <path
+            d={`M20,${radius + 10} A${radius},${radius} 0 0,1 ${radius * 2.3},${radius + 10}`}
+            stroke={gaugeColor}
+            strokeWidth="15"
+            fill="none"
+            strokeDasharray={circumference}
+            strokeDashoffset={circumference - progress}
+            strokeLinecap="round"
+            style={{ transition: "stroke-dashoffset 0.8s ease-out" }}
+          />
+        </svg>
+
+        {/* 중앙 값 */}
+        <h2 className="gauge-value">{value}%</h2>
+      </div>
     </div>
   );
 }
