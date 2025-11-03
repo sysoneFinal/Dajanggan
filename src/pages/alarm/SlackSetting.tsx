@@ -87,7 +87,6 @@ export default function SlackSettingsModal({
       <div className="sl-modal" onMouseDown={(e) => e.stopPropagation()}>
         <header className="sl-modal__header">
           <div id="slack-modal-title" className="sl-modal__title">Slack 연동 설정</div>
-          <button className="sl-btn" onClick={onClose} aria-label="닫기">✕</button>
         </header>
 
         <div className="sl-modal__body">
@@ -166,11 +165,3 @@ export default function SlackSettingsModal({
   );
 }
 
-/* 사용 예시
-<SlackSettingsModal
-  open={open}
-  onClose={()=>setOpen(false)}
-  onSave={(v)=>console.log(v)}
-  initialValue={{ instance:"postgres", enabled:true }}
-/>
-*/
