@@ -338,9 +338,9 @@ export default function MemoryListPage() {
     };
 
     return (
-        <main className="memory-page">
+        <main className="memory-list-page">
             {/* 필터 선택 영역 */}
-            <section className="memory-page__filters">
+            <section className="memory-list-page__filters">
                 <MultiSelectDropdown
                     label="타입"
                     options={[
@@ -362,7 +362,7 @@ export default function MemoryListPage() {
             </section>
 
             {/* Memory 테이블 */}
-            <section className="memory-page__table">
+            <section className="memory-list-page__table">
                 <div className="memory-table-header">
                     {table.getHeaderGroups().map((headerGroup) => (
                         <Fragment key={headerGroup.id}>

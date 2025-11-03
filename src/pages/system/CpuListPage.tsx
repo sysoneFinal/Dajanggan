@@ -296,9 +296,9 @@ export default function CPUListPage() {
     };
 
     return (
-        <main className="cpu-page">
+        <main className="cpu-list-page">
             {/* 필터 선택 영역 */}
-            <section className="cpu-page__filters">
+            <section className="cpu-list-page__filters">
                 <MultiSelectDropdown
                     label="시간 선택"
                     options={[
@@ -322,7 +322,7 @@ export default function CPUListPage() {
             </section>
 
             {/* CPU 테이블 */}
-            <section className="cpu-page__table">
+            <section className="cpu-list-page__table">
                 <div className="cpu-table-header">
                     {table.getHeaderGroups().map((headerGroup) => (
                         <Fragment key={headerGroup.id}>

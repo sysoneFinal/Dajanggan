@@ -358,9 +358,9 @@ export default function HotTableListPage() {
     };
 
     return (
-        <main className="hottable-page">
+        <main className="hottable-list-page">
             {/* 필터 선택 영역 */}
-            <section className="hottable-page__filters">
+            <section className="hottable-list-page__filters">
                 <MultiSelectDropdown
                     label="상태"
                     options={[
@@ -374,7 +374,7 @@ export default function HotTableListPage() {
             </section>
 
             {/* HotTable 테이블 */}
-            <section className="hottable-page__table">
+            <section className="hottable-list-page__table">
                 <div className="hottable-table-header">
                     {table.getHeaderGroups().map((headerGroup) => (
                         <Fragment key={headerGroup.id}>

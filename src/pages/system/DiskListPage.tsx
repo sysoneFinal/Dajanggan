@@ -232,14 +232,14 @@ export default function DiskListPage() {
     };
 
     return (
-        <main className="diskio-page">
+        <main className="diskio-list-page">
             {/* 필터 선택 영역 */}
-            <section className="diskio-page__filters">
+            <section className="diskio-list-page__filters">
                 <CsvButton onClick={handleExportCSV} tooltip="CSV 파일 저장"/>
             </section>
 
             {/* DiskIO 테이블 */}
-            <section className="diskio-page__table">
+            <section className="diskio-list-page__table">
                 <div className="diskio-table-header">
                     {table.getHeaderGroups().map((headerGroup) => (
                         <Fragment key={headerGroup.id}>

@@ -307,10 +307,10 @@ export default function HotIndexListPage() {
     };
 
     return (
-        <main className="hotindex-page">
+        <main className="hotindex-list-page">
             {/* 필터 선택 영역 */}
-            <section className="hotindex-page__filters">
-                <div className="filter-toggles">
+            <section className="hotindex-list-page__filters">
+                <div className="filter-list-toggles">
                     <label className="toggle-label">
                         <input
                             type="checkbox"
@@ -338,7 +338,7 @@ export default function HotIndexListPage() {
             </section>
 
             {/* HotIndex 테이블 */}
-            <section className="hotindex-page__table">
+            <section className="hotindex-list-page__table">
                 <div className="hotindex-table-header">
                     {table.getHeaderGroups().map((headerGroup) => (
                         <Fragment key={headerGroup.id}>
