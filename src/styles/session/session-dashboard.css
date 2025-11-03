@@ -102,13 +102,48 @@
   width: 100%;
 }
 
-.session-db-connection-info{
-  gap : 0.3rem;
-  display : flex;
-  flex-direction : column;
-  font-size: 1.1rem;
-  color: #6B7280;
+.session-db-connection-info {
+ display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-radius: 12px;
+  padding: 0.875rem 1.25rem;
+  margin-top: 0.75rem;
+  width: 40%;
+  backdrop-filter: blur(8px);
+  background: rgba(255, 255, 255, 0.04);
+  box-shadow:
+    inset 4px 4px 8px rgba(0, 0, 0, 0.05),   
+    inset -4px -4px 8px rgba(255, 255, 255, 0.8); 
 }
+
+/* 개별 카드 */
+.conn-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex: 1;
+  text-align: center;
+  gap: 0.4rem;
+}
+
+/* 라벨 */
+.conn-label {
+  color: #6b7280;
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  font-weight: 400;
+  margin-bottom: 0.25rem;
+}
+
+/* 값 */
+.conn-value {
+  color: #111827;
+  font-size: 1.25rem;
+  font-weight: 600;
+  text-align: center;
+}
+
 
 .dot {
   display:inline-block;
@@ -136,6 +171,7 @@
   flex-direction: column;
   border-radius: 1rem;
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.05);
+  width: 100%;
 }
 
 /* 제목 영역 */
@@ -150,14 +186,15 @@
 .deadlock-content {
   display: flex;
   align-items: stretch;
-  justify-content: space-between;
   gap: 1.2rem;
   height: 100%;
+  width: 100%;
 }
+
 
 /* 왼쪽 차트 */
 .deadlock-chart {
-  flex: 2.1;
+  flex: 2.3;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -165,7 +202,7 @@
 
 /* 오른쪽 리스트 */
 .recent-deadlocks-mini {
-  flex: 1.2;
+  flex: 1.4;
   display: flex;
   flex-direction: column;
   justify-content: flex-start;
@@ -248,9 +285,13 @@
 }
 
 .deadlock-body .msg {
+  display: block;
   color: #111827;
-  font-weight: 600;
-  font-size: 1.1rem;
+  font-size: 0.9rem;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  max-width: 100%;
 }
 
 .deadlock-body .dur {

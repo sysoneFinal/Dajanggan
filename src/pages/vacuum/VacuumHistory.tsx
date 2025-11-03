@@ -1,7 +1,19 @@
-import { useState } from "react";
+import { Fragment, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import "/src/styles/vacuum/VacuumPage.css";
+import {
+    useReactTable,
+    getCoreRowModel,
+    getSortedRowModel,
+    getFilteredRowModel,
+    getPaginationRowModel,
+    flexRender,
+    type ColumnDef,
+    type SortingState,
+} from "@tanstack/react-table";
 import Pagination from "../../components/util/Pagination";
+import CsvButton from "../../components/util/CsvButton";
+import MultiSelectDropdown from "../../components/util/MultiSelectDropdown";
+import "/src/styles/vacuum/VacuumHistory-list.css";
 
 type VacuumHistoryRow = {
   table: string;
@@ -43,75 +55,224 @@ const baseRows: VacuumHistoryRow[] = [
 // 총 48개 생성
 const historyDemo: VacuumHistoryRow[] = Array.from({ length: 48 }, (_, i) => ({
   ...baseRows[i % baseRows.length],
+  table: `${baseRows[i % baseRows.length].table}_${i}`,
 }));
 
 export default function VacuumHistoryTable({ rows = historyDemo }: { rows?: VacuumHistoryRow[] }) {
-  const [page, setPage] = useState(1);
-  const rowsPerPage = 14;
-  const totalPages = Math.ceil(rows.length / rowsPerPage);
+  const [data] = useState<VacuumHistoryRow[]>(rows);
+  const [sorting, setSorting] = useState<SortingState>([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 14;
   const navigate = useNavigate();
-  const paginatedRows = rows.slice((page - 1) * rowsPerPage, page * rowsPerPage);
+
+  // 컬럼 정의
+  const columns = useMemo<ColumnDef<VacuumHistoryRow>[]>(
+    () => [
+      {
+        accessorKey: "table",
+        header: "TABLE",
+        cell: (info) => (
+          <div>
+            <div className="vd-td-strong">{info.getValue() as string}</div>
+          </div>
+        ),
+      },
+      {
+        accessorKey: "status",
+        header: "STATUS",
+        cell: (info) => {
+          const value = info.getValue() as string;
+          return (
+            <span className={`vd-badge ${value === "주의" ? "vd-badge--warn" : "vd-badge--ok"}`}>
+              {value}
+            </span>
+          );
+        },
+      },
+      {
+        accessorKey: "lastVacuum",
+        header: "LAST VACUUM",
+        cell: (info) => info.getValue(),
+      },
+      {
+        accessorKey: "lastAutovacuum",
+        header: "LAST AUTOVACUUM",
+        cell: (info) => info.getValue(),
+      },
+      {
+        accessorKey: "deadTuples",
+        header: "DEAD TUPLES",
+        cell: (info) => info.getValue(),
+      },
+      {
+        accessorKey: "modSinceAnalyze",
+        header: "MOD SINCE ANALYZE",
+        cell: (info) => info.getValue(),
+      },
+      {
+        accessorKey: "bloatPct",
+        header: "BLOAT %",
+        cell: (info) => info.getValue(),
+      },
+      {
+        accessorKey: "tableSize",
+        header: "TABLE SIZE",
+        cell: (info) => info.getValue(),
+      },
+      {
+        accessorKey: "frequency",
+        header: "실행빈도",
+        cell: (info) => info.getValue(),
+      },
+    ],
+    []
+  );
+
+  // 테이블 인스턴스 생성
+  const table = useReactTable({
+    data,
+    columns,
+    state: {
+      sorting,
+      pagination: {
+        pageIndex: currentPage - 1,
+        pageSize,
+      },
+    },
+    onSortingChange: setSorting,
+    getCoreRowModel: getCoreRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+    getFilteredRowModel: getFilteredRowModel(),
+    getPaginationRowModel: getPaginationRowModel(),
+    manualPagination: false,
+  });
+
+  const totalPages = Math.ceil(data.length / pageSize);
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+  };
 
   const handleRowClick = (tableName: string) => {
-      navigate("/database/vacuum/sessionDetail", {
-        state: { table: tableName }, // 선택된 테이블 정보 같이 넘길 수도 있음
-      });
-    };
+    navigate("/database/vacuum/session-detail", {
+      state: { table: tableName },
+    });
+  };
+
+  // CSV 내보내기 함수
+  const handleExportCSV = () => {
+    const headers = ["TABLE", "LAST VACUUM", "LAST AUTOVACUUM", "DEAD TUPLES", "MOD SINCE ANALYZE", "BLOAT %", "TABLE SIZE", "실행빈도", "STATUS"];
+    const csvData = data.map((row) => [
+      row.table,
+      row.lastVacuum,
+      row.lastAutovacuum,
+      row.deadTuples,
+      row.modSinceAnalyze,
+      row.bloatPct,
+      row.tableSize,
+      row.frequency,
+      row.status,
+    ]);
+
+    const csvContent = [
+      headers.join(","),
+      ...csvData.map((row) => row.join(",")),
+    ].join("\n");
+
+    const BOM = "\uFEFF";
+    const blob = new Blob([BOM + csvContent], { type: "text/csv;charset=utf-8;" });
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+
+    const now = new Date();
+    const fileName = `vacuum_history_${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}${String(now.getDate()).padStart(2, "0")}_${String(now.getHours()).padStart(2, "0")}${String(now.getMinutes()).padStart(2, "0")}.csv`;
+
+    link.setAttribute("href", url);
+    link.setAttribute("download", fileName);
+    link.style.visibility = "hidden";
+
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
 
   return (
-    <div className="vd-root">
-      <section className="vd-card3">
-        <header className="vd-card3__header">
-          <h3>History</h3>
-        </header>
+    <main className="vacuum-page">
+      {/* 필터 선택 영역 */}
+      <section className="vacuum-page__filters">
+        <MultiSelectDropdown
+          label="시간 선택"
+          options={[
+            "최근 1시간",
+            "최근 6시간",
+            "최근 24시간",
+            "최근 7일",
+          ]}
+          onChange={(values) => console.log("선택된 시간:", values)}
+        />
+        <MultiSelectDropdown
+          label="상태"
+          options={["정상", "주의"]}
+          onChange={(values) => console.log("선택된 상태:", values)}
+        />
+        <CsvButton onClick={handleExportCSV} tooltip="CSV 파일 저장" />
+      </section>
 
-        <div className="vd-tablewrap">
-          <table className="vd-table">
-            <thead>
-              <tr>
-                <th>TABLE</th>
-                <th>LAST VACUUM</th>
-                <th>LAST AUTOVACUUM</th>
-                <th>DEAD TUPLES</th>
-                <th>MOD SINCE ANALYZE</th>
-                <th>BLOAT %</th>
-                <th>TABLE SIZE</th>
-                <th>실행빈도</th>
-                <th>STATUS</th>
-              </tr>
-            </thead>
-            <tbody>
-              {paginatedRows.map((r, i) => (
-                <tr key={`${r.table}-${i}`}
-                    onClick={() => handleRowClick(r.table)}
-                    className="vd-table-row"
+      {/* History 테이블 */}
+      <section className="vacuum-page__table">
+        <div className="vacuum-table-header">
+          {table.getHeaderGroups().map((headerGroup) => (
+            <Fragment key={headerGroup.id}>
+              {headerGroup.headers.map((header) => (
+                <div
+                  key={header.id}
+                  onClick={header.column.getToggleSortingHandler()}
+                  style={{ cursor: "pointer" }}
                 >
-                  <td className="vd-td-strong">{r.table}</td>
-                  <td>{r.lastVacuum}</td>
-                  <td>{r.lastAutovacuum}</td>
-                  <td>{r.deadTuples}</td>
-                  <td>{r.modSinceAnalyze}</td>
-                  <td>{r.bloatPct}</td>
-                  <td>{r.tableSize}</td>
-                  <td>{r.frequency}</td>
-                  <td>
-                    <span className={`vd-badge ${r.status === "주의" ? "vd-badge--warn" : "vd-badge--ok"}`}>
-                      {r.status}
+                  {flexRender(
+                    header.column.columnDef.header,
+                    header.getContext()
+                  )}
+                  {header.column.getIsSorted() && (
+                    <span className="sort-icon">
+                      {header.column.getIsSorted() === "asc" ? " ▲" : " ▼"}
                     </span>
-                  </td>
-                </tr>
+                  )}
+                </div>
               ))}
-            </tbody>
-          </table>
+            </Fragment>
+          ))}
         </div>
 
-        {/* 페이지네이션 */}
-         <Pagination
-        currentPage={page}
-        totalPages={totalPages}
-        onPageChange={(newPage) => setPage(newPage)}
-        />
+        {table.getRowModel().rows.length > 0 ? (
+          table.getRowModel().rows.map((row) => (
+            <div
+              key={row.id}
+              className="vacuum-table-row vacuum-table-row--hover"
+              onClick={() => handleRowClick(row.original.table)}
+              style={{ cursor: "pointer" }}
+            >
+              {row.getVisibleCells().map((cell) => (
+                <div key={cell.id}>
+                  {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                </div>
+              ))}
+            </div>
+          ))
+        ) : (
+          <div className="vacuum-table-empty">데이터가 없습니다.</div>
+        )}
       </section>
-    </div>
+
+      {/* 페이지네이션 */}
+      {totalPages > 1 && (
+        <Pagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          onPageChange={handlePageChange}
+        />
+      )}
+    </main>
   );
 }

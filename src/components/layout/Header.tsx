@@ -23,7 +23,7 @@ interface HeaderProps {
   onToggleEdit: () => void;
 }
 
-const Header = ({ isEditing, onToggleEdit }: HeaderProps) => {
+const Header = ({ isEditing, onToggleEdit,  }: HeaderProps) => {
   const location = useLocation();
   const [breadcrumb, setBreadcrumb] = useState<string[]>([]);
   const [instances, setInstances] = useState<Instance[]>([]);
@@ -65,6 +65,8 @@ useEffect(() => {
     setBreadcrumb(foundPath);
   }
 }, [location.pathname]);
+
+
 
   // 인스턴스 목록 불러오기
   // useEffect(() => {

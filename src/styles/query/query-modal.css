@@ -1,0 +1,437 @@
+/* query-modal.css */
+
+.query-modal__backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.45);
+  backdrop-filter: blur(6px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 999;
+  animation: fadeIn 0.2s ease-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.query-modal {
+  background: #ffffff;
+  border-radius: 16px;
+  border: 1px solid #e5e7eb;
+  box-shadow: 0 18px 60px rgba(15, 23, 42, 0.25);
+  width: 960px;
+  max-width: 95vw;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  animation: slideUp 0.3s ease-out;
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+/* 헤더 */
+.query-modal__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 18px 24px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.query-modal__title {
+  font-size: 13.2px;
+  font-weight: 700;
+  color: #1f2937;
+  margin: 0;
+}
+
+.query-modal__status-badge {
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.query-modal__status-badge--analyze {
+  background: #dcfce7;
+  color: #166534;
+  border: 1px solid #bbf7d0;
+}
+
+.query-modal__status-badge--explain {
+  background: #fef3c7;
+  color: #92400e;
+  border: 1px solid #fde68a;
+}
+
+/* 콘텐츠 영역 */
+.query-modal__content {
+  display: grid;
+  grid-template-columns: 1fr 360px;
+  gap: 20px;
+  padding: 20px 24px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+/* 왼쪽 섹션 */
+.query-modal__left-section {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.query-modal__section {
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.query-modal__section-title {
+  font-size: 14px;
+  font-weight: 800;
+  color: #000000;
+  margin: 0;
+  padding: 15px 14px;
+  background: #ffffff;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.query-modal__section-content {
+  padding: 14px;
+  background: #ffffff;
+}
+
+/* 메트릭 카드 */
+.query-modal__metrics {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.query-modal__metric-card {
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 13px;
+}
+
+.query-modal__metric-label {
+  font-size: 12px;
+  font-weight: 400;
+  color: #6b7280;
+  margin-bottom: 8px;
+}
+
+.query-modal__metric-value {
+  font-size: 17px;
+  font-weight: 700;
+  color: #000000;
+}
+
+/* CPU 사용량 */
+.query-modal__cpu-usage {
+  margin-bottom: 24px;
+}
+
+.query-modal__cpu-label {
+  font-size: 13.6px;
+  font-weight: 400;
+  color: #000000;
+  margin-bottom: 8px;
+}
+
+.query-modal__cpu-bar-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.query-modal__cpu-bar {
+  flex: 1;
+  height: 12px;
+  background: #eef2f7;
+  border: 1px solid #e5e7eb;
+  border-radius: 999px;
+  overflow: hidden;
+  position: relative;
+}
+
+.query-modal__cpu-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #3b82f6 0%, #6366f1 100%);
+  border-radius: 999px;
+  transition: width 0.3s ease;
+}
+
+.query-modal__cpu-percent {
+  font-size: 12.9px;
+  font-weight: 700;
+  color: #000000;
+  min-width: 45px;
+  text-align: right;
+}
+
+/* SQL 섹션 */
+.query-modal__sql-section {
+  margin-top: 16px;
+}
+
+.query-modal__sql-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: #000000;
+  margin: 0 0 12px 0;
+}
+
+.query-modal__sql-box {
+  background: #f8fafc;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 12px;
+  font-family: "Consolas", "Monaco", monospace;
+  font-size: 14px;
+  line-height: 20px;
+  color: #000000;
+  margin: 0;
+  overflow-x: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* 개선 제안 */
+.query-modal__suggestion-section {
+  margin-top: 16px;
+}
+
+.query-modal__suggestion-section .query-modal__section-title {
+  padding: 0;
+  border: none;
+  margin-bottom: 12px;
+}
+
+.query-modal__suggestion-box {
+  border-radius: 4px;
+  padding: 12px 16px;
+}
+
+.query-modal__suggestion-box--required {
+  background: #fef2f2;
+  border-left: 4px solid #ef4444;
+}
+
+.query-modal__suggestion-box--recommended {
+  background: #fef3c7;
+  border-left: 4px solid #f59e0b;
+}
+
+.query-modal__suggestion-badge {
+  font-size: 12px;
+  font-weight: 600;
+  margin-bottom: 8px;
+  display: inline-block;
+}
+
+.query-modal__suggestion-badge--required {
+  color: #b91c1c;
+}
+
+.query-modal__suggestion-badge--recommended {
+  color: #92400e;
+}
+
+.query-modal__suggestion-desc {
+  font-size: 14px;
+  font-weight: 400;
+  color: #374151;
+  margin-bottom: 12px;
+  line-height: 20px;
+}
+
+.query-modal__suggestion-code {
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 4px;
+  padding: 10px 12px;
+  font-family: "Consolas", "Monaco", monospace;
+  font-size: 12px;
+  line-height: 16px;
+  color: #000000;
+  overflow-x: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* 안전 모드 경고 */
+.query-modal__warning-box {
+  background: #fef3c7;
+  border: 1.3px solid #fbc63f;
+  border-radius: 13px;
+  padding: 16px;
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.query-modal__warning-icon {
+  width: 20px;
+  height: 20px;
+  color: #92400e;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.query-modal__warning-content {
+  flex: 1;
+}
+
+.query-modal__warning-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: #92400e;
+  margin-bottom: 6px;
+}
+
+.query-modal__warning-desc {
+  font-size: 14px;
+  font-weight: 400;
+  color: #92400e;
+  line-height: 20px;
+}
+
+/* 오른쪽 섹션 */
+.query-modal__right-section {
+  display: flex;
+  flex-direction: column;
+}
+
+.query-modal__explain-box {
+  background: #f8fafc;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 16px 13px;
+  font-family: "Consolas", "Monaco", monospace;
+  font-size: 12px;
+  line-height: 16px;
+  color: #1f2937;
+  margin: 0;
+  overflow-x: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+  min-height: 200px;
+  max-height: 368px;
+  margin-bottom: 24px;
+}
+
+/* 실행 시간 통계 */
+.query-modal__stats-section {
+  margin-top: 16px;
+}
+
+.query-modal__stats-title {
+  font-size: 14px;
+  font-weight: 800;
+  color: #000000;
+  margin: 0 0 16px 0;
+}
+
+.query-modal__stats-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.query-modal__stat-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px 0;
+}
+
+.query-modal__stat-label {
+  font-size: 14px;
+  font-weight: 400;
+  color: #4b5563;
+}
+
+.query-modal__stat-value {
+  font-size: 13.3px;
+  font-weight: 700;
+  color: #000000;
+  line-height: 20px;
+}
+
+.query-modal__stat-value--danger {
+  color: #dc2626;
+}
+
+/* 푸터 */
+.query-modal__footer {
+  padding: 16px 24px;
+  border-top: 1px solid #e5e7eb;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.query-modal__close-btn {
+  background: #000000;
+  color: #ffffff;
+  border: none;
+  border-radius: 10px;
+  padding: 10px 24px;
+  font-size: 13.3px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.query-modal__close-btn:hover {
+  background: #1f2937;
+}
+
+.query-modal__close-btn:focus {
+  outline: 2px solid #3b82f6;
+  outline-offset: 2px;
+}
+
+/* 반응형 */
+@media (max-width: 1024px) {
+  .query-modal__content {
+    grid-template-columns: 1fr;
+  }
+
+  .query-modal__metrics {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 640px) {
+  .query-modal {
+    width: 100%;
+    max-width: 100vw;
+    max-height: 100vh;
+    border-radius: 0;
+  }
+
+  .query-modal__metrics {
+    grid-template-columns: 1fr;
+  }
+}

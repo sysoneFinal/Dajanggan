@@ -1,5 +1,7 @@
 import { useMemo } from "react";
 import Chart from "../../components/chart/ChartComponent";
+import ChartGridLayout from "../../components/layout/ChartGridLayout"
+import WidgetCard from "../../components/util/WidgetCard"
 import "/src/styles/vacuum/VacuumPage.css";
 
 /* ---------- 타입/데모데이터 ---------- */
@@ -151,41 +153,20 @@ export default function VacuumPage({ data = demo }: { data?: DashboardData }) {
   return (
     <div className="vd-root">
 
-      <div className="vd-grid">
-        <section className="vd-card vd-chart">
-          <header className="vd-card__header">
-            <h3>Blockers per Hour <span className="vd-dim">(24h)</span></h3>
-          </header>
-          <Chart
+      <ChartGridLayout>
+      <WidgetCard title="Blockers per Hour (24h)" span={4}>
+      <Chart
             type="line"
             series={BlockersSeries}
             categories={data.wraparound.labels}
-            height={400} 
             width="100%"
-            showLegend={false}
-            showToolbar={false}
-            colors={["#6366F1"]}
-            customOptions={{
-                chart: { redrawOnParentResize: true, redrawOnWindowResize: true },
-                stroke: { width: 2, curve: "smooth" },
-                grid: { borderColor: "#E5E7EB", strokeDashArray: 4 },
-                markers: { size: 4 },
-                yaxis: { min: 0 },
-            }}
-            tooltipFormatter={(v) => `${Math.round(v).toLocaleString()}`}
             />
-        </section>
- 
-
-         <section className="vd-card vd-chart">
-          <header className="vd-card__header">
-            <h3>Transaction Age vs Block Duration </h3>
-          </header>
+          </WidgetCard>
+        
+          <WidgetCard title="Transaction Age vs Block Duration" span={4}>
           <Chart
             type="scatter"
             series={transactionScatterSeries}
-            colors={["#818CF8"]}
-            height={400} 
             customOptions={{
                 chart: { zoom: { enabled: true }, toolbar: { show: false } },
                 xaxis: {
@@ -212,23 +193,14 @@ export default function VacuumPage({ data = demo }: { data?: DashboardData }) {
                 },
             }}
             />
+          </WidgetCard>
 
-        </section>
-
-
-        <section className="vd-card vd-chart">
-          <header className="vd-card__header">
-            <h3>Wraparound Progress </h3>
-          </header>
+          <WidgetCard title="Wraparound Progress" span={4}>
           <Chart
             type="bar"
             series={wraparoundSeries}
             categories={data.wraparound.labels}
-            height={400}
             width="100%"
-            showLegend={false}
-            showToolbar={false}
-            colors={["#6366F1"]}
             customOptions={{
                 chart: { redrawOnParentResize: true, redrawOnWindowResize: true },
                 stroke: { width: 2, curve: "smooth" },
@@ -236,10 +208,10 @@ export default function VacuumPage({ data = demo }: { data?: DashboardData }) {
                 markers: { size: 4 },
                 yaxis: { min: 0 },
             }}
-            tooltipFormatter={(v) => `${Math.round(v).toLocaleString()}`}
             />
-        </section>
-      </div>
+          </WidgetCard>
+
+        </ChartGridLayout>
       {/* 하단 테이블*/}
     <div className="vd-grid3">
       <section className="vd-card">
@@ -247,7 +219,7 @@ export default function VacuumPage({ data = demo }: { data?: DashboardData }) {
           <h3>Top-3 Bloat Tables</h3>
         </header>
         <div className="vd-tablewrap">
-          <table className="vd-table">
+          <table className="vd-table2">
             <thead>
               <tr>
                 <th>TABLE</th>
@@ -274,7 +246,7 @@ export default function VacuumPage({ data = demo }: { data?: DashboardData }) {
           <h3>Vacuum Blockers / Inaccessible Tables</h3>
         </header>
         <div className="vd-tablewrap">
-          <table className="vd-table">
+          <table className="vd-table2">
             <thead>
               <tr>
                 <th>TABLE</th>

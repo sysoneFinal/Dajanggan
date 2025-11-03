@@ -1,6 +1,6 @@
 import trendUp from "../../assets/icon/trend-up.svg";
 import trendDown from "../../assets/icon/trend-down.svg";
-import "../../styles/layout/summary-card.css";
+import "../../styles/util/summary-card.css";
 
 type SummaryStatus = "info" | "warning" | "critical";
 

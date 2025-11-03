@@ -1,51 +1,61 @@
-import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import Chart from "../../components/chart/ChartComponent";
-import GaugeChart from "../../components/chart/GaugeChart.tsx";
+import GaugeChart from "../../components/chart/GaugeChart";
+import SummaryCard from "../../components/util/SummaryCard";
 import "../../styles/engine/bgwriter.css";
+import WidgetCard from "../../components/util/WidgetCard";
+import ChartGridLayout from "../../components/layout/ChartGridLayout";
 
-// API 응답 전체 구조
+/** BGWriter API 응답 타입 */
 interface BGWriterData {
     backendFlushRatio: {
-        value: number; // 35.7 (%)
-        buffersClean: number; // BGWriter가 플러시한 버퍼 수
-        buffersBackend: number; // Backend가 플러시한 버퍼 수
+        value: number;
+        buffersClean: number;
+        buffersBackend: number;
     };
     cleanRate: {
-        categories: string[]; // ["0:00", "2:00", ...]
-        data: number[]; // Buffers Clean/sec
+        categories: string[];
+        data: number[];
         average: number;
         max: number;
         min: number;
     };
     bufferFlushRatio: {
         categories: string[];
-        backend: number[]; // Backend 데이터
-        clean: number[]; // Clean 데이터
+        backend: number[];
+        clean: number[];
         backendTotal: number;
         cleanTotal: number;
     };
     maxwrittenClean: {
         categories: string[];
-        data: number[]; // Maxwritten Clean 도달 횟수
+        data: number[];
         average: number;
         total: number;
     };
     backendFsync: {
         categories: string[];
-        data: number[]; // fsync 횟수
+        data: number[];
         total: number;
     };
     bgwriterVsCheckpoint: {
         categories: string[];
-        bgwriter: number[]; // BGWriter 데이터
-        checkpoint: number[]; // Checkpoint 데이터
+        bgwriter: number[];
+        checkpoint: number[];
         bgwriterTotal: number;
         checkpointTotal: number;
     };
+    recentStats?: {
+        cleanBufferReuseRate: number;
+        avgCleanRate: number;
+        backendDirectWriteRate: number;   // 변경: bgwriterExecutions → backendDirectWriteRate (%)
+        bgwriterVsCheckpointRatio: number;
+        maxwrittenReachRate: number;      // 변경: maxwrittenCleanCount → maxwrittenReachRate (%)
+    };
 }
 
-// 더미데이터
-const dummyData: BGWriterData = {
+/** 더미 데이터 */
+const mockData: BGWriterData = {
     backendFlushRatio: {
         value: 35.7,
         buffersClean: 28420,
@@ -60,6 +70,14 @@ const dummyData: BGWriterData = {
         average: 126,
         max: 195,
         min: 95,
+    },
+    // 최근 5분 평균 통계
+    recentStats: {
+        cleanBufferReuseRate: 78,
+        avgCleanRate: 118,
+        backendDirectWriteRate: 2.8,    // 변경: Backend가 직접 쓴 비율 (%)
+        bgwriterVsCheckpointRatio: 38.5,
+        maxwrittenReachRate: 6.7,       // 변경: 제한 도달률 (%)
     },
     bufferFlushRatio: {
         categories: [
@@ -100,272 +118,174 @@ const dummyData: BGWriterData = {
     },
 };
 
-// Gauge 색상 결정
-const getGaugeColor = (value: number): string => {
-    if (value < 15) return "#10B981"; // 녹색 (정상)
-    if (value < 30) return "#F59E0B"; // 주황색 (주의)
-    return "#EF4444"; // 빨간색 (위험)
+/** API 요청 */
+async function fetchBGWriterData() {
+    const res = await fetch("/api/dashboard/bgwriter");
+    if (!res.ok) throw new Error("Failed to fetch BGWriter data");
+    return res.json();
+}
+
+/** 유틸리티 함수 */
+const getGaugeStatus = (value: number): "normal" | "warning" | "critical" => {
+    if (value < 15) return "normal";
+    if (value < 30) return "warning";
+    return "critical";
 };
 
-// Gauge 상태 텍스트
-const getStatusText = (value: number): string => {
-    if (value < 15) return "정상";
-    if (value < 30) return "주의";
-    return "위험";
-};
-
-// 차트 카드 컴포넌트
-interface ChartCardProps {
-    title: string;
-    statusBadge?: string;
-    children: React.ReactNode;
-    footer?: React.ReactNode;
-}
-
-function ChartCard({ title, statusBadge, children, footer }: ChartCardProps) {
-    return (
-        <div className="chart-card">
-            {/* 헤더 */}
-            <div className="chart-header">
-                <div className="chart-title-group">
-                    <h3 className="chart-title">{title}</h3>
-                </div>
-                {statusBadge && (
-                    <span
-                        className={`status-badge ${
-                            statusBadge === "정상"
-                                ? "status-normal"
-                                : statusBadge === "주의"
-                                    ? "status-warning"
-                                    : "status-danger"
-                        }`}
-                    >
-            {statusBadge}
-          </span>
-                )}
-            </div>
-
-            {/* 컨텐츠 */}
-            <div className="chart-content">{children}</div>
-
-            {/* 푸터 */}
-            {footer && <div className="chart-footer">{footer}</div>}
-        </div>
-    );
-}
-
-// Stat Item 컴포넌트
-interface StatItemProps {
-    label: string;
-    value: string;
-    color?: string;
-}
-
-function StatItem({ label, value, color }: StatItemProps) {
-    return (
-        <div className="stat-item">
-            <span className="stat-label" style={color ? { color } : undefined}>
-                {label}
-            </span>
-            <span className="stat-value">{value}</span>
-        </div>
-    );
-}
-
+/** 메인 컴포넌트 */
 export default function BGWriterPage() {
-    const [data] = useState<BGWriterData>(dummyData);
+    const { data } = useQuery({
+        queryKey: ["bgwriterDashboard"],
+        queryFn: fetchBGWriterData,
+        retry: 1,
+    });
 
-    const gaugeColor = getGaugeColor(data.backendFlushRatio.value);
-    const statusText = getStatusText(data.backendFlushRatio.value);
+    const dashboard = data || mockData;
+
+    const gaugeStatus = getGaugeStatus(dashboard.backendFlushRatio.value);
+
+    // 최근 5분 평균 통계 (API에서 받아오거나 더미 데이터 사용)
+    const recentStats = dashboard.recentStats || {
+        cleanBufferReuseRate: 78,
+        avgCleanRate: 118,
+        backendDirectWriteRate: 2.8,
+        bgwriterVsCheckpointRatio: 38.5,
+        maxwrittenReachRate: 6.7,
+    };
+
+    // 요약 카드 데이터 계산 (최근 5분 평균 기준)
+    const summaryCards = [
+        {
+            label: "Clean 버퍼 재활용률",
+            value: `${recentStats.cleanBufferReuseRate}%`,
+            diff: 2.5,
+            desc: "최근 5분 평균",
+            status: recentStats.cleanBufferReuseRate < 60 ? ("warning" as const) : ("info" as const),
+        },
+        {
+            label: "평균 Clean Rate",
+            value: `${recentStats.avgCleanRate}/s`,
+            diff: 3,
+            desc: "최근 5분 평균",
+            status: "info" as const,
+        },
+        {
+            label: "Backend 직접 쓰기 비율",  // 변경
+            value: `${recentStats.backendDirectWriteRate}%`,  // 변경
+            diff: -0.5,
+            desc: "최근 5분 평균",
+            status: recentStats.backendDirectWriteRate > 10 ? ("warning" as const) : ("info" as const),
+        },
+        {
+            label: "BGWriter/Checkpoint 비율",
+            value: `${recentStats.bgwriterVsCheckpointRatio}%`,
+            diff: 1.5,
+            desc: "최근 5분 평균",
+            status: recentStats.bgwriterVsCheckpointRatio < 30 ? ("warning" as const) : ("info" as const),
+        },
+        {
+            label: "BGWriter 제한 도달률",  // 변경
+            value: `${recentStats.maxwrittenReachRate}%`,  // 변경
+            diff: -1.2,
+            desc: "최근 5분 평균",
+            status: recentStats.maxwrittenReachRate > 10 ? ("warning" as const) : ("info" as const),
+        },
+    ];
 
     return (
         <div className="bgwriter-page">
-
-            <div className="bgwriter-grid">
-                <div className="bgwriter-row">
-                    <ChartCard
-                        title="Backend Flush 비율"
-                        statusBadge={statusText}
-                        footer={
-                            <>
-                                <StatItem label="buffersClean" value={`${data.backendFlushRatio.buffersClean}회`} />
-                                <StatItem label="buffersBackend" value={`${data.backendFlushRatio.buffersBackend}회`} />
-                            </>
-                        }
-                    >
-                        <GaugeChart
-                            value={data.backendFlushRatio.value}
-                            type="semi-circle"
-                            color={gaugeColor}
-                            label="Backend Flush"
-                        />
-                    </ChartCard>
-
-                    <ChartCard
-                        title="BGWriter 활동량 추세"
-                        footer={
-                            <>
-                                <StatItem label="평균" value={`${data.cleanRate.average} buffers/sec`} />
-                                <StatItem label="최대" value={`${data.cleanRate.max} buffers/sec`} />
-                                <StatItem label="최소" value={`${data.cleanRate.min} buffers/sec`} />
-                            </>
-                        }
-                    >
-                        <Chart
-                            type="line"
-                            series={[{ name: "Buffers Clean/sec", data: data.cleanRate.data }]}
-                            categories={data.cleanRate.categories}
-                            height={250}
-                            colors={["#8B5CF6"]}
-                            showGrid={true}
-                            showLegend={false}
-                            xaxisOptions={{
-                                title: { text: "시간", style: { fontSize: "12px", color: "#6B7280" } },
-                            }}
-                            yaxisOptions={{
-                                title: { text: "Buffers/sec", style: { fontSize: "12px", color: "#6B7280" } },
-                            }}
-                            tooltipFormatter={(value: number) => `${value} buffers/sec`}
-                        />
-                    </ChartCard>
-
-                    <ChartCard
-                        title="버퍼 플러시 주체별 비율"
-                        footer={
-                            <>
-                                <StatItem
-                                    label="● Backend"
-                                    value={`${data.bufferFlushRatio.backendTotal.toLocaleString()}개`}
-                                    color="#3B82F6"
-                                />
-                                <StatItem
-                                    label="● Clean"
-                                    value={`${data.bufferFlushRatio.cleanTotal.toLocaleString()}개`}
-                                    color="#10B981"
-                                />
-                            </>
-                        }
-                    >
-                        <Chart
-                            type="area"
-                            series={[
-                                { name: "Backend", data: data.bufferFlushRatio.backend },
-                                { name: "Clean", data: data.bufferFlushRatio.clean },
-                            ]}
-                            categories={data.bufferFlushRatio.categories}
-                            height={250}
-                            colors={["#3B82F6", "#10B981"]}
-                            showGrid={true}
-                            showLegend={true}
-                            // stacked={true}
-                            xaxisOptions={{
-                                title: { text: "시간", style: { fontSize: "12px", color: "#6B7280" } },
-                            }}
-                            yaxisOptions={{
-                                title: { text: "Buffers", style: { fontSize: "12px", color: "#6B7280" } },
-                            }}
-                        />
-                    </ChartCard>
-                </div>
-
-                <div className="bgwriter-row">
-                    <ChartCard
-                        title="Clean 스캔 상한 도달 추이"
-                        footer={
-                            <>
-                                <StatItem label="평균" value={`${data.maxwrittenClean.average}회`} />
-                                <StatItem label="총 횟수" value={`${data.maxwrittenClean.total}회`} />
-                            </>
-                        }
-                    >
-                        <Chart
-                            type="line"
-                            series={[{ name: "Maxwritten Clean", data: data.maxwrittenClean.data }]}
-                            categories={data.maxwrittenClean.categories}
-                            height={250}
-                            colors={["#F59E0B"]}
-                            showGrid={true}
-                            showLegend={false}
-                            xaxisOptions={{
-                                title: { text: "시간", style: { fontSize: "12px", color: "#6B7280" } },
-                            }}
-                            yaxisOptions={{
-                                title: { text: "횟수", style: { fontSize: "12px", color: "#6B7280" } },
-                            }}
-                            tooltipFormatter={(value: number) => `${value}회`}
-                        />
-                    </ChartCard>
-
-                    <ChartCard
-                        title="buffers_backend_fsync 추이"
-                        statusBadge={data.backendFsync.total === 0 ? "정상" : "위험"}
-                        footer={
-                            <>
-                                <StatItem
-                                    label="총 발생"
-                                    value={`${data.backendFsync.total}회`}
-                                    color={data.backendFsync.total === 0 ? "#10B981" : "#EF4444"}
-                                />
-                            </>
-                        }
-                    >
-                        <Chart
-                            type="line"
-                            series={[{ name: "Fsync Count", data: data.backendFsync.data }]}
-                            categories={data.backendFsync.categories}
-                            height={250}
-                            colors={["#EF4444"]}
-                            showGrid={true}
-                            showLegend={false}
-                            xaxisOptions={{
-                                title: { text: "시간", style: { fontSize: "12px", color: "#6B7280" } },
-                            }}
-                            yaxisOptions={{
-                                title: { text: "Fsync 횟수", style: { fontSize: "12px", color: "#6B7280" } },
-                                min: 0,
-                            }}
-                            tooltipFormatter={(value: number) => `${value}회`}
-                        />
-                    </ChartCard>
-
-                    <ChartCard
-                        title="BGWriter vs Checkpoint 쓰기 비중"
-                        footer={
-                            <>
-                                <StatItem
-                                    label="● BGWriter"
-                                    value={`${data.bgwriterVsCheckpoint.bgwriterTotal.toLocaleString()}개`}
-                                    color="#8B5CF6"
-                                />
-                                <StatItem
-                                    label="● Checkpoint"
-                                    value={`${data.bgwriterVsCheckpoint.checkpointTotal.toLocaleString()}개`}
-                                    color="#F59E0B"
-                                />
-                            </>
-                        }
-                    >
-                        <Chart
-                            type="line"
-                            series={[
-                                { name: "BGWriter", data: data.bgwriterVsCheckpoint.bgwriter },
-                                { name: "Checkpoint", data: data.bgwriterVsCheckpoint.checkpoint },
-                            ]}
-                            categories={data.bgwriterVsCheckpoint.categories}
-                            height={250}
-                            colors={["#8B5CF6", "#F59E0B"]}
-                            showGrid={true}
-                            showLegend={true}
-                            xaxisOptions={{
-                                title: { text: "시간", style: { fontSize: "12px", color: "#6B7280" } },
-                            }}
-                            yaxisOptions={{
-                                title: { text: "Buffers", style: { fontSize: "12px", color: "#6B7280" } },
-                            }}
-                        />
-                    </ChartCard>
-                </div>
+            {/* 상단 요약 카드 */}
+            <div className="bgwriter-summary-cards">
+                {summaryCards.map((card, idx) => (
+                    <SummaryCard
+                        key={idx}
+                        label={card.label}
+                        value={card.value}
+                        diff={card.diff}
+                        desc={card.desc}
+                        status={card.status}
+                    />
+                ))}
             </div>
+
+            {/* 첫 번째 행: 3개 카드 (4+4+4=12) */}
+            <ChartGridLayout>
+                {/* Backend Flush 비율 */}
+                <WidgetCard title="Backend Flush 비율" span={2}>
+                    <div className="bgwriter-gauge-container">
+                        <GaugeChart
+                            value={dashboard.backendFlushRatio.value}
+                            status={gaugeStatus}
+                            type="semi-circle"
+                        />
+                    </div>
+                </WidgetCard>
+
+                {/* 버퍼 플러시 주체별 비율 */}
+                <WidgetCard title="버퍼 플러시 주체별 비율 (Last 24 Hours)" span={5}>
+                    <Chart
+                        type="area"
+                        series={[
+                            { name: "Backend", data: dashboard.bufferFlushRatio.backend },
+                            { name: "Clean", data: dashboard.bufferFlushRatio.clean },
+                        ]}
+                        categories={dashboard.bufferFlushRatio.categories}
+                        colors={["#8E79FF", "#FEA29B"]}
+                        height={250}
+                    />
+                </WidgetCard>
+
+                {/* BGWriter vs Checkpoint 쓰기 비중 */}
+                <WidgetCard title="BGWriter vs Checkpoint 쓰기 비중 (Last 24 Hours)" span={5}>
+                    <Chart
+                        type="line"
+                        series={[
+                            { name: "BGWriter", data: dashboard.bgwriterVsCheckpoint.bgwriter },
+                            { name: "Checkpoint", data: dashboard.bgwriterVsCheckpoint.checkpoint },
+                        ]}
+                        categories={dashboard.bgwriterVsCheckpoint.categories}
+                        colors={["#8E79FF", "#FEA29B"]}
+                        height={250}
+                    />
+                </WidgetCard>
+
+            </ChartGridLayout>
+
+            {/* 두 번째 행: 3개 카드 (4+4+4=12) */}
+            <ChartGridLayout>
+                {/* BGWriter 활동량 추세 */}
+                <WidgetCard title="BGWriter 활동량 추세 (Last 24 Hours)" span={4}>
+                    <Chart
+                        type="line"
+                        series={[{ name: "Buffers Clean/sec", data: dashboard.cleanRate.data }]}
+                        categories={dashboard.cleanRate.categories}
+                        colors={["#8E79FF"]}
+                        height={250}
+                    />
+                </WidgetCard>
+                {/* Clean 스캔 상한 도달 추이 */}
+                <WidgetCard title="Clean 스캔 상한 도달 추이 (Last 24 Hours)" span={4}>
+                    <Chart
+                        type="line"
+                        series={[{ name: "Maxwritten Clean", data: dashboard.maxwrittenClean.data }]}
+                        categories={dashboard.maxwrittenClean.categories}
+                        colors={["#8E79FF"]}
+                        height={250}
+                    />
+                </WidgetCard>
+
+                {/* buffers_backend_fsync 추이 */}
+                <WidgetCard title="Buffers Backend Fsync 추이 (Last 24 Hours)" span={4}>
+                    <Chart
+                        type="line"
+                        series={[{ name: "Fsync Count", data: dashboard.backendFsync.data }]}
+                        categories={dashboard.backendFsync.categories}
+                        colors={["#8E79FF"]}
+                        height={250}
+                    />
+                </WidgetCard>
+
+            </ChartGridLayout>
         </div>
     );
 }

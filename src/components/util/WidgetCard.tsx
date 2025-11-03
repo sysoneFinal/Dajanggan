@@ -5,11 +5,15 @@ interface WidgetCardProps {
   span?: number;
   children: React.ReactNode;
   height?: number | string;
+  className?: string;
 }
 
-export default function WidgetCard({ title, children,  span, height = 300 }: WidgetCardProps) {
+export default function WidgetCard({ title, children,  span, height = 320 , className= "",}: WidgetCardProps) {
   return (
-    <div className="widget-card" style={{ minHeight: height , gridColumn: `span ${span}` }}>
+    <div
+      className={`widget-card ${className}`} 
+      style={{ height : height === "auto"? "auto": height, gridColumn: `span ${span}` }}
+    >
       {title && <h6 className="widget-title">{title}</h6>}
       <div className="widget-content">{children}</div>
     </div>
