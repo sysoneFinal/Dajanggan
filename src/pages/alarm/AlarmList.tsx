@@ -246,7 +246,7 @@ export default function AlarmRuleList({ rows = demoRows }: { rows?: AlarmRuleRow
           </button>
         </div>
         <div className="alarm-page__filters">
-          <MultiSelectDropdown
+          <MultiSelectDropdown 
             label="인스턴스"
             options={["orders", "sessions"]}
             onChange={(values) => console.log("선택된 인스턴스:", values)}
