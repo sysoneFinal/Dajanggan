@@ -127,13 +127,17 @@ export default function Sidebar({ onChangeBreadcrumb }: SidebarProps) {
           <div className="sidebar_footer">
             <div
               className="sidebar_footer_link"
-              onClick={() => navigate("/instance-management")}
+              onClick={() => {navigate("/instance-management");
+                onChangeBreadcrumb(["Instance Management"]);
+              }}
             >
               Instance Management
             </div>
             <div
               className="sidebar_footer_link"
-              onClick={() => navigate("/alarm")}
+              onClick={() =>{ navigate("/alarm");
+                onChangeBreadcrumb(["Alarm Settings"]);
+              }}
             >
               Alarm Settings
             </div>

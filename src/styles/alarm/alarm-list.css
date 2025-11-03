@@ -15,32 +15,33 @@
   cursor: pointer;
 }
 .al-table tbody tr:hover {
-  background-color: rgba(127, 129, 242, 0.08); /* 은은한 보라빛 하이라이트 */
+  background-color: rgba(127, 129, 242, 0.08);
 }
 .al-table tbody td{ padding:12px 8px; border-bottom:1px solid #f1f3f6; vertical-align:middle; }
 
 .al-td-strong{ font-weight:700; }
-/* 뱃지 */
 .al-badges { display: flex; gap: 8px; flex-wrap: wrap; margin-left: 8px; }
 .al-badge {
   font-size: 13px; color: #374151; background: #f3f4f6;
   border-radius: 9999px; padding: 6px 10px; line-height: 1;
 }
 .al-badge--ok { background: #eef4ff; color: #4f46e5; }
+.al-badge--warn { background: #fef3c7; color: #92400e; }
 
 .al-btn {
   width: 130px; height: 45px; 
   padding: 8px 14px; border-radius: 10px;
   background: #fff; border: 1px solid rgba(2,6,23,0.08);
   box-shadow: 0 6px 18px rgba(8, 15, 23, 0.06);
+  cursor: pointer;
 }
 .al-iconbtn {
   width: 36px; height: 36px; border-radius: 10px;
   display: inline-flex; align-items: center; justify-content: center;
   background: #fff; border: 1px solid rgba(2,6,23,0.08);
   box-shadow: 0 6px 18px rgba(8, 15, 23, 0.06);
+  cursor: pointer;
 }
-
 
 :root {
     font-size: 16px;
@@ -55,6 +56,29 @@
     min-height: 85vh;
 }
 
+/* 필터 영역 */
+.alarm-page__filters {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+}
+.alarm-page__filters .dropdown-select {
+  width: 200px !important; /* 원하는 너비로 조정 */
+}
+/* 왼쪽 버튼들 */
+.filter-left {
+  display: flex;
+  gap: 0.75rem;
+}
+
+/* 오른쪽 필터들 */
+.filter-right {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  flex-wrap: nowrap; /* 줄바꿈 방지 */
+}
 
 /* 테이블 */
 .alarm-page__table {
@@ -95,7 +119,7 @@
 }
 
 .alarm-table-row--hover:hover {
-  background-color: rgba(127, 129, 242, 0.08) !important; /* 은은한 보라빛 하이라이트 */
+  background-color: rgba(127, 129, 242, 0.08) !important;
 }
 
 .alarm-table-empty {
@@ -148,34 +172,21 @@
 }
 
 /* 반응형 */
-@media (max-width: 768px) {
-    .alarm-page__filters {
+@media (max-width: 1400px) {
+    .filter-right {
         flex-wrap: wrap;
+    }
+}
+
+@media (max-width: 700px) {
+    .alarm-page__filters {
+        flex-direction: column;
+        align-items: stretch;
     }
 
     .alarm-table-header,
     .alarm-table-row {
-        grid-template-columns: repeat(8, minmax(6rem, 1fr));
+        grid-template-columns: repeat(7, minmax(6rem, 1fr));
         font-size: 0.8rem;
     }
 }
-
-
-.alarm-page__filters {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 1rem;
-  flex-wrap: wrap;
-}
-
-.alarm-page__filters > div {
-    min-width: 200px;
-}
-
-/* 왼쪽 버튼들 */
-.filter-left {
-  display: flex;
-  gap: 0.75rem;
-}
-
