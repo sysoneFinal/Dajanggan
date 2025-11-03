@@ -54,41 +54,41 @@ const routeList = [
   { path: "/instance/event", element: <EventPage /> },
 
   // cpu
-  { path: "/instance/cpu/dashboard", element: <CpuPage /> },
+  { path: "/instance/cpu/details", element: <CpuPage /> },
   { path: "/instance/cpu/usage", element: <CPUListPage /> },
 
-  { path: "/instance/memory/dashboard", element: <MemoryPage /> },
+  { path: "/instance/memory/details", element: <MemoryPage /> },
   { path: "/instance/memory/buffer-usage", element: <MemoryListPage /> },
 
   // disk i/o
-  { path: "/instance/disk/dashboard", element: <DiskPage /> },
+  { path: "/instance/disk/details", element: <DiskPage /> },
   { path: "/instance/disk/breakdown", element: <DiskListPage /> },
 
   // CheckPoint
-  { path: "/instance/checkpoint/dashboard", element: <CheckpointPage /> },
+  { path: "/instance/checkpoint/details", element: <CheckpointPage /> },
   { path: "/instance/checkpoint/list", element: <CheckPointListPage /> },
 
   // BGWriter
-  { path: "/instance/bgwriter/dashboard", element: <BGWriterPage /> },
+  { path: "/instance/bgwriter/details", element: <BGWriterPage /> },
   { path: "/instance/bgwriter/efficiency", element: <BGWriterListPage /> },
 
   // Database 단위
   { path: "/database/summary", element: <DatabaseDashboard /> },
 
   // Hot Table
-    { path: "/database/hottable/dashboard", element: <HotTablePage /> },
+    { path: "/database/hottable/details", element: <HotTablePage /> },
     { path: "/database/hottable/detail", element: <HotTableListPage /> },
 
   // Hot Index
-  { path: "/database/hotindex/dashboard", element: <HotIndexPage /> },
+  { path: "/database/hotindex/details", element: <HotIndexPage /> },
   { path: "/database/hotindex/detail", element: <HotIndexListPage /> },
 
   // 세션
-  { path: "/database/session/dashboard", element: <SessionDashboard /> },
+  { path: "/database/session/details", element: <SessionDashboard /> },
   { path: "/database/session/active", element: <SessionListPage /> },
 
   // 쿼리
-  { path: "/database/query/dashboard", element: <QueryOverview /> },
+  { path: "/database/query/details", element: <QueryOverview /> },
   { path: "/database/query/execution-stats", element: <ExecutionStatus /> },
   { path: "/database/query/query-analysis", element: <QueryTuner /> },
 
@@ -100,18 +100,11 @@ const routeList = [
   { path: "/database/vacuum/risk", element: <VacuumRisk /> },
   { path: "/database/vacuum/bloat", element: <VacuumBloat /> },
   { path: "/database/vacuum/bloat-detail", element: <VacuumBloatDetail /> },
-  
-
 
 
   // 기타
   { path: "/instance-management", element: <InstancePage /> },
   { path: "/instance-register", element: <InstanceRegister /> },
-
-  { path: "/checkpoint", element: <CheckpointPage /> },
-  
-  // 알람
-
   // 알람
   { path: "/alarm", element: <AlarmList /> },
   { path: "/alarm-rule", element: <AlarmRuleRegister /> },
