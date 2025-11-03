@@ -5,6 +5,8 @@ import CsvButton from "../../components/util/CsvButton";
 import SummaryCard from "../../components/util/SummaryCard";
 import ChartGridLayout from "../../components/layout/ChartGridLayout";
 import WidgetCard from "../../components/util/WidgetCard";
+import QueryModal from "../query/QueryModal";
+import type { QueryDetail } from "../query/QueryModal";
 import "/src/styles/query/query-overview.css";
 
 /**
@@ -237,6 +239,10 @@ export default function QueryOverview() {
   const [currentFullSlowPage, setCurrentFullSlowPage] = useState(1);
   const fullSlowItemsPerPage = 5;
 
+  // 모달 상태 관리
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedQueryDetail, setSelectedQueryDetail] = useState<QueryDetail | null>(null);
+
   // TPS/QPS 차트 시리즈
   const trendChartSeries = useMemo(
     () => [
@@ -326,8 +332,84 @@ export default function QueryOverview() {
     console.log("Exporting slow queries...");
   };
 
-  const handleQueryClick = (query: TopQueryItem) => {
-    console.log("Query clicked:", query);
+  // Top Query 클릭 핸들러
+  const handleTopQueryClick = (query: TopQueryItem) => {
+    const isModifyingQuery = query.query.includes("UPDATE") || 
+                            query.query.includes("INSERT") || 
+                            query.query.includes("DELETE");
+
+    const detail: QueryDetail = {
+      queryId: `Query ${query.id}`,
+      status: isModifyingQuery ? "안전 모드" : "실제 실행",
+      avgExecutionTime: query.avgTime,
+      totalCalls: query.callCount,
+      memoryUsage: `${query.value}${query.unit}`,
+      ioUsage: "890 blocks",
+      cpuUsagePercent: 80,
+      sqlQuery: query.query.replace(/[()]/g, ""),
+      suggestion: {
+        priority: "필수",
+        description: "created_at 인덱스 생성 및 ORDER BY 컬럼 커버링 인덱스 고려",
+        code: "CREATE INDEX idx_orders_created_amount ON orders(created_at, total_amount DESC);"
+      },
+      explainResult: `Seq Scan on orders (cost=0..75000) (actual time=0.123..5100.321 rows=120k loops=1)
+Filter: (created_at > '2024-01-01')
+Rows Removed by Filter: 980k
+Sort (ORDER BY total_amount DESC) (actual time=100..5200)
+Sort Method: external merge Disk: 512MB
+Execution Time: 5200.789 ms`,
+      stats: {
+        min: "75ms",
+        avg: "125ms",
+        max: "312ms",
+        stdDev: "38ms",
+        totalTime: "29.2s"
+      },
+      isModifyingQuery
+    };
+
+    setSelectedQueryDetail(detail);
+    setIsModalOpen(true);
+  };
+
+  // Slow Query 클릭 핸들러
+  const handleSlowQueryClick = (slowQuery: SlowQueryItem) => {
+    const isModifyingQuery = slowQuery.fullQuery.includes("UPDATE") || 
+                            slowQuery.fullQuery.includes("INSERT") || 
+                            slowQuery.fullQuery.includes("DELETE");
+
+    const detail: QueryDetail = {
+      queryId: `Query ${slowQuery.id}`,
+      status: isModifyingQuery ? "안전 모드" : "실제 실행",
+      avgExecutionTime: slowQuery.executionTime,
+      totalCalls: 1,
+      memoryUsage: "450MB",
+      ioUsage: "890 blocks",
+      cpuUsagePercent: 80,
+      sqlQuery: slowQuery.fullQuery,
+      suggestion: {
+        priority: slowQuery.severity === "HIGH" ? "필수" : "권장",
+        description: slowQuery.suggestion,
+        code: "CREATE INDEX idx_orders_created_amount ON orders(created_at, total_amount DESC);"
+      },
+      explainResult: `Seq Scan on orders (cost=0..75000) (actual time=0.123..5100.321 rows=120k loops=1)
+Filter: (created_at > '2024-01-01')
+Rows Removed by Filter: 980k
+Sort (ORDER BY total_amount DESC) (actual time=100..5200)
+Sort Method: external merge Disk: 512MB
+Execution Time: 5200.789 ms`,
+      stats: {
+        min: "75ms",
+        avg: "125ms",
+        max: slowQuery.executionTime,
+        stdDev: "38ms",
+        totalTime: "29.2s"
+      },
+      isModifyingQuery
+    };
+
+    setSelectedQueryDetail(detail);
+    setIsModalOpen(true);
   };
 
   return (
@@ -477,7 +559,11 @@ export default function QueryOverview() {
               const barWidth = (query.value / maxValue) * 100;
 
               return (
-                <div key={`${resourceType}-${query.id}-${index}`} className="qo-query-item-wrapper">
+                <div 
+                  key={`${resourceType}-${query.id}-${index}`} 
+                  className="qo-query-item-wrapper"
+                  onClick={() => handleTopQueryClick(query)}
+                >
                   <div className="qo-query-bar-item">
                     <div className="qo-query-id-info">
                       <div className="qo-query-id">{query.id}</div>
@@ -496,10 +582,7 @@ export default function QueryOverview() {
                         </span>
                       </div>
                     </div>
-                    <div 
-                      className="qo-query-arrow"
-                      onClick={() => handleQueryClick(query)}
-                    >
+                    <div className="qo-query-arrow">
                       <ChevronRightIcon />
                     </div>
                   </div>
@@ -520,7 +603,11 @@ export default function QueryOverview() {
           <div className="qo-query-list-wrapper-top5">
             <div className="qo-query-list">
               {topFiveSlowQueries.map((query, index) => (
-                <div key={index} className="qo-query-item">
+                <div 
+                  key={index} 
+                  className="qo-query-item"
+                  onClick={() => handleSlowQueryClick(query)}
+                >
                   <div className="qo-query-item-header">
                     <div className="qo-query-content">
                       <div className="qo-query-text">{query.query}</div>
@@ -574,7 +661,11 @@ export default function QueryOverview() {
           <div className="qo-slow-list-wrapper-tall">
             <div className="qo-slow-list-content">
               {currentFullSlowQueries.map((slowQuery) => (
-                <div key={slowQuery.id} className="qo-slow-card-fixed">
+                <div 
+                  key={slowQuery.id} 
+                  className="qo-slow-card-fixed"
+                  onClick={() => handleSlowQueryClick(slowQuery)}
+                >
                   <div className="qo-slow-card-header">
                     <div className="qo-slow-card-left">
                       <div className="qo-slow-card-query">{slowQuery.query}</div>
@@ -611,6 +702,18 @@ export default function QueryOverview() {
           </div>
         </div>
       </div>
+
+      {/* Query 상세 모달 */}
+      {selectedQueryDetail && (
+        <QueryModal
+          open={isModalOpen}
+          onClose={() => {
+            setIsModalOpen(false);
+            setSelectedQueryDetail(null);
+          }}
+          detail={selectedQueryDetail}
+        />
+      )}
     </div>
   );
 }

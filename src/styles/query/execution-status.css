@@ -64,8 +64,8 @@
 }
 
 @media (max-width: 768px) {
-  .es-thead, .es-row { grid-template-columns: 0.8fr 2fr 1fr 1fr 1fr 1fr; font-size: 0.75rem; padding: 0.75rem 0.5rem; }
-  .es-card-title { font-size: 1.125rem; }
+  .es-thead, .es-row { grid-template-columns: 0.8fr 2fr 1fr 1fr 1fr 1fr; font-size: 0.75rem; }
+  .es-card-title { font-size: 1.125rem; };
   .es-chart-title { font-size: 0.875rem; }
   .es-left-card { height: auto; min-height: 31.25rem; }
   .es-chart-card:first-child { height: 20rem; }
