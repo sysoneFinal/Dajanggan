@@ -154,7 +154,7 @@ export default function VacuumHistoryTable({ rows = historyDemo }: { rows?: Vacu
   };
 
   const handleRowClick = (tableName: string) => {
-    navigate("/database/vacuum/sessionDetail", {
+    navigate("/database/vacuum/session-detail", {
       state: { table: tableName },
     });
   };

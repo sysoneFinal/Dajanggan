@@ -84,7 +84,7 @@ export default function AlertRuleCreate({
         </header>
 
         {/* Selectors */}
-        <div className="ar-grid ar-tight" >
+        <div className="ar-grid" >
           <div>
             <div className="ar-kicker">대상 인스턴스</div>
             <select className="ar-select" value={instance} onChange={(e)=>setInstance(e.target.value)}>

@@ -1,4 +1,3 @@
-
 html,
 body,
 #root {
@@ -36,33 +35,6 @@ body,
   width: 100%;
   overflow: hidden;
 }
-
-/*  사이드바  */
-.sidebar {
-  flex-shrink: 0; /* 자동 줄이기 방지 대신 clamp로 제어 */
-  width: clamp(3.5rem, 5vw, 15rem); /* 최소 56px, 최대 240px 정도 */
-  transition: width 0.3s ease;
-  position: sticky;
-  top: 0.5rem;
-  left : 0.79rem;
-  height: 98vh;
-  background: rgba(255, 255, 255, 0.3);
-  backdrop-filter: blur(12px);
-  border-right: 1px solid rgba(0, 0, 0, 0.05);
-  z-index: 100;
-}
-
-/* hover 시 확장 */
-.sidebar:hover,
-.sidebar--expanded {
-  width: clamp(15rem, 18vw, 18rem); /
-}
-
-/* 확장 시 */
-.sidebar--expanded {
-  width: 260px;
-}
-
 /*  본문  */
 .app-content {
   flex: 1;

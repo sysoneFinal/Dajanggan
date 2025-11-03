@@ -159,7 +159,6 @@ export default function VacuumPage({ data = demo }: { data?: DashboardData }) {
             type="line"
             series={BlockersSeries}
             categories={data.wraparound.labels}
-            height={400} 
             width="100%"
             />
           </WidgetCard>
@@ -168,7 +167,6 @@ export default function VacuumPage({ data = demo }: { data?: DashboardData }) {
           <Chart
             type="scatter"
             series={transactionScatterSeries}
-            height={400} 
             customOptions={{
                 chart: { zoom: { enabled: true }, toolbar: { show: false } },
                 xaxis: {
@@ -202,7 +200,6 @@ export default function VacuumPage({ data = demo }: { data?: DashboardData }) {
             type="bar"
             series={wraparoundSeries}
             categories={data.wraparound.labels}
-            height={400}
             width="100%"
             customOptions={{
                 chart: { redrawOnParentResize: true, redrawOnWindowResize: true },

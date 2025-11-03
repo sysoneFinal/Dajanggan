@@ -113,7 +113,6 @@ export default function BloatDetailPage({ data = demo, onToggle, expanded=true, 
             type="line"
             series={bloatTrendSeries}
             categories={data.bloatTrend.labels}
-            height={380}
             width="100%"
             showLegend={false}
             colors={["#6366F1"]}
@@ -129,7 +128,6 @@ export default function BloatDetailPage({ data = demo, onToggle, expanded=true, 
             type="line"
             series={deadTuplesSeries}
             categories={data.deadTuplesTrend.labels}
-            height={380}
             width="100%"
           />
         </WidgetCard>
@@ -139,7 +137,6 @@ export default function BloatDetailPage({ data = demo, onToggle, expanded=true, 
             type="line"
             series={indexBloatSeries}
             categories={data.indexBloatTrend.labels}
-            height={400}
             width="100%"
           />
         </WidgetCard>

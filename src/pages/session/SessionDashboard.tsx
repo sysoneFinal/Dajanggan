@@ -9,7 +9,6 @@ import ChartGridLayout from "../../components/layout/ChartGridLayout";
 import SummaryCard from "../../components/util/SummaryCard";
 import "../../styles/session/session-dashboard.css";
 
-
 /** 더미 데이터 */
 const mockData = {
   summary: [
@@ -117,6 +116,7 @@ async function fetchSessionDashboard() {
 export default function SessionDashboard() {
   const [open, setOpen] = useState(false);
   const [selected, setSelected] = useState<DeadlockDetail | null>(null);
+  const maxQueryLen = 40;
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ["sessionDashboard"],
@@ -200,7 +200,7 @@ export default function SessionDashboard() {
                       ? "critical"
                       : dashboard.connection.usage >= 70
                       ? "warning"
-                      : "normal"
+                      : "info"
                   }
                   type="semi-circle"
                 />
@@ -269,7 +269,7 @@ export default function SessionDashboard() {
             <div className="recent-deadlocks-mini">
               <h6>Recent DeadLocks</h6>
               <ul>
-                {dashboard.recentDeadlocks.map((d, idx) => (
+                {dashboard.recentDeadlocks.map((d :any, idx:any) => (
                   <li
                     key={idx}
                     onClick={() => {
@@ -290,7 +290,11 @@ export default function SessionDashboard() {
                     </div>
 
                     <div className="deadlock-body">
-                      <span className="msg">{d.blocked.query}</span>
+                      <span className="msg">
+                        {d.blocked.query.length > maxQueryLen
+                          ? d.blocked.query.slice(0, maxQueryLen) + "…"
+                          : d.blocked.query}
+                      </span>
                       <span className="dur">
                         {(d.durationMs / 1000).toFixed(1)}s
                       </span>

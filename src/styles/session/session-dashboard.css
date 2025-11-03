@@ -156,6 +156,7 @@
   width: 100%;
 }
 
+
 /* 왼쪽 차트 */
 .deadlock-chart {
   flex: 2.3;
@@ -249,9 +250,13 @@
 }
 
 .deadlock-body .msg {
+  display: block;
   color: #111827;
-  font-weight: 600;
-  font-size: 1.1rem;
+  font-size: 0.9rem;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  max-width: 100%;
 }
 
 .deadlock-body .dur {
