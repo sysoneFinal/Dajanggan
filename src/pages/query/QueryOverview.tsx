@@ -243,13 +243,36 @@ export default function QueryOverview() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedQueryDetail, setSelectedQueryDetail] = useState<QueryDetail | null>(null);
 
+  // 실시간 차트 데이터 상태
+  const [tpsQpsData, setTpsQpsData] = useState({
+    tps: [4200, 3838, 4150, 3988, 4175, 4250, 3963, 3838, 4200, 4263, 4175, 3650],
+    qps: [1250, 1213, 1338, 1275, 1250, 1288, 1325, 1263, 1300, 1325, 1288, 1238],
+  });
+
+  // 현재 시간 기준 카테고리 생성 (5분 단위, 12개 = 1시간)
+  const generateTimeCategories = () => {
+    const now = new Date();
+    const categories: string[] = [];
+    
+    for (let i = 11; i >= 0; i--) {
+      const time = new Date(now.getTime() - i * 5 * 60 * 1000);
+      const hours = time.getHours().toString().padStart(2, '0');
+      const minutes = time.getMinutes().toString().padStart(2, '0');
+      categories.push(`${hours}:${minutes}`);
+    }
+    
+    return categories;
+  };
+
+  const [timeCategories, setTimeCategories] = useState(generateTimeCategories());
+
   // TPS/QPS 차트 시리즈
   const trendChartSeries = useMemo(
     () => [
-      { name: "TPS", data: [4200, 3838, 4150, 3988, 4175, 4250, 3963, 3838, 4200, 4263, 4175, 3650] },
-      { name: "QPS", data: [1250, 1213, 1338, 1275, 1250, 1288, 1325, 1263, 1300, 1325, 1288, 1238] },
+      { name: "TPS", data: tpsQpsData.tps },
+      { name: "QPS", data: tpsQpsData.qps },
     ],
-    []
+    [tpsQpsData]
   );
 
   // 리소스별 Top Query 목록 (최대 5개)
@@ -324,6 +347,28 @@ export default function QueryOverview() {
         disk: Math.max(60, Math.min(75, prev.disk + (Math.random() - 0.5) * 2.5)),
       }));
     }, 2000);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  // TPS/QPS 데이터 실시간 업데이트 (5분마다)
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setTpsQpsData((prev) => {
+        // 새로운 데이터 생성
+        const newTps = Math.floor(3800 + Math.random() * 600); // 3800-4400 범위
+        const newQps = Math.floor(1200 + Math.random() * 200); // 1200-1400 범위
+        
+        // 기존 데이터에서 첫 번째 제거하고 새 데이터 추가 (왼쪽으로 밀림)
+        return {
+          tps: [...prev.tps.slice(1), newTps],
+          qps: [...prev.qps.slice(1), newQps],
+        };
+      });
+
+      // 시간 카테고리도 업데이트
+      setTimeCategories(generateTimeCategories());
+    }, 5 * 60 * 1000); // 5분마다 실행
 
     return () => clearInterval(interval);
   }, []);
@@ -431,7 +476,7 @@ Execution Time: 5200.789 ms`,
       {/* TPS/QPS 그래프 + 리소스 사용률 - ChartGridLayout 사용 */}
       <ChartGridLayout>
         <WidgetCard title="TPS/QPS 실시간 그래프" span={9} height={350}>
-          <div style={{ width: '100%', height: '100%' }}>
+          <div style={{ width: '100%', height: '100%', paddingBottom: '1rem' }}>
             <div className="qo-legend" style={{ marginBottom: '0.75rem', justifyContent: 'flex-end' }}>
               <div className="qo-legend-item">
                 <span className="qo-legend-dot" style={{ background: "#7B61FF" }}></span>
@@ -445,15 +490,25 @@ Execution Time: 5200.789 ms`,
             <Chart
               type="area"
               series={trendChartSeries}
-              categories={["0:00", "1:00", "2:00", "3:00", "4:00", "5:00", "6:00", "7:00", "8:00", "9:00", "10:00", "11:00"]}
+              categories={timeCategories}
               colors={["#7B61FF", "#FF928A"]}
-              height={280}
+              height={260}
               showLegend={false}
               showToolbar={false}
               customOptions={{
                 chart: { 
                   redrawOnParentResize: true, 
-                  redrawOnWindowResize: true 
+                  redrawOnWindowResize: true,
+                  offsetX: 0,
+                  offsetY: 0,
+                  animations: {
+                    enabled: true,
+                    easing: 'linear',
+                    dynamicAnimation: {
+                      enabled: true,
+                      speed: 1000
+                    }
+                  }
                 },
                 stroke: {
                   curve: "smooth",
@@ -469,6 +524,34 @@ Execution Time: 5200.789 ms`,
                   },
                 },
                 dataLabels: { enabled: false },
+                xaxis: {
+                  labels: {
+                    style: {
+                      fontSize: '11px',
+                    },
+                    offsetY: 0,
+                  },
+                  axisBorder: {
+                    show: true,
+                  },
+                  axisTicks: {
+                    show: true,
+                  },
+                },
+                yaxis: {
+                  labels: {
+                    style: {
+                      fontSize: '11px',
+                    },
+                  },
+                },
+                grid: {
+                  padding: {
+                    left: 10,
+                    right: 20,
+                    bottom: 10,
+                  },
+                },
               }}
             />
           </div>
