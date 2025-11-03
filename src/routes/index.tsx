@@ -30,9 +30,6 @@ import HotIndexPage from "../pages/engine/HotIndexPage.tsx";
 import MemoryPage from "../pages/system/MemoryPage.tsx";
 import DiskPage from "../pages/system/DiskPage.tsx";
 import AlarmList from "../pages/alarm/AlarmList";
-import AlarmRuleRegister from "../pages/alarm/AlarmRuleRegister.tsx";
-import AlarmRuleDetail from "../pages/alarm/AlarmRuleDetail.tsx";
-import AlarmRuleEdit from "../pages/alarm/AlarmRuleEdit.tsx";
 import CheckPointListPage from "../pages/engine/CheckPointListPage.tsx";
 import BGWriterListPage from "../pages/engine/BGWriterListPage.tsx";
 import DiskListPage from "../pages/system/DiskListPage.tsx";
@@ -114,9 +111,6 @@ const routeList = [
 
   // 알람
   { path: "/alarm", element: <AlarmList /> },
-  { path: "/alarm-rule", element: <AlarmRuleRegister /> },
-  { path: "/alarm-rule-detail", element: <AlarmRuleDetail /> },
-  { path: "/alarm-rule-edit", element: <AlarmRuleEdit /> },
 ];
 
 

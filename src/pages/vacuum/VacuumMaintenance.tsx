@@ -205,7 +205,7 @@ export default function VacuumPage({ data = demo }: { data?: DashboardData }) {
         <WidgetCard title="Vacuum autovacuum(rows/sec • 24h)" span={4}>
           <Chart
             type="line"
-            series={autovacuumSeries} // ★ yAxisIndex 붙이지 마세요 (ApexCharts는 지원 X)
+            series={autovacuumSeries}
             categories={data.autovacuum.labels}
             width="100%"
              customOptions={{
@@ -243,11 +243,11 @@ export default function VacuumPage({ data = demo }: { data?: DashboardData }) {
 
   
       {/* 하단 세션 테이블 (Progress에도 미니 차트) */}
-      <section className="vd-card">
+      <section className="vd-card"  style={{ minHeight: "440px" }} >
         <header className="vd-card__header">
           <h3>Current VACUUM Sessions</h3>
         </header>
-        <div className="vd-tablewrap">
+        <div className="vd-tablewrap" style={{ minHeight: "370px" }}>
           <table className="vd-table">
             <thead>
               <tr>

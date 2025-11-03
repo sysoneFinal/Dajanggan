@@ -34,7 +34,7 @@
 /* 그리드 (상단 셀렉트 영역) */
 .ar-grid {
   display: grid;
-  grid-template-columns: repeat(3,minmax(280px, 1fr)); /* 한 줄에 2칸 */
+  grid-template-columns: repeat(2,minmax(280px, 1fr)); /* 한 줄에 2칸 */
   gap: 20px 40px; /* 세로, 가로 간격 */
   align-items: start;
   margin: 0 auto;    /* 가운데 정렬 */
@@ -46,8 +46,6 @@
   max-width: 280px;           /* 집계 선택 폭 축소 */
   margin: 0 auto;             /* 가운데 */
 }
-
-.ar-kicker{ font-size:12px; color:#6b7280; margin-bottom:16px; }
 
 /* 토글 */
 .ar-toggle{ position:relative; width:48px; height:28px; border-radius:9999px; background:#e5e7eb; border:1px solid rgba(2,6,23,.08); }
@@ -88,10 +86,8 @@
 
 .ar-table thead th:last-child,
 .ar-table tbody td:last-child { width: 40px; }
-/* 행 hover (리스트 테이블 재사용 시에도 깔끔) */
 .ar-table tbody tr{ transition: background-color .2s ease; }
 .ar-table tbody tr { height: 60px; } /* 56 → 60 */
-.ar-table tbody tr:hover{ background-color:rgba(127,129,242,.08); }
 
 /* 첫/마지막 열 고정 폭 + 정렬 */
 
@@ -134,7 +130,7 @@
   display:flex; flex-wrap:wrap; gap:8px;
 }
 .ar-dim{ color:#9ca3af; font-weight:500; font-size:13px; }
-.ar-kicker{ font-size:12px; color:#6b7280; margin:0; }
+.ar-kicker{ font-size:12px; color:#6b7280; margin-bottom:10px; }
 .ar-sep{ color:#d1d5db; margin:0 4px; }
 
 /* 우측 상태 뱃지 */
