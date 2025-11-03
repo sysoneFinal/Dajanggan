@@ -243,28 +243,39 @@ export default function QueryOverview() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedQueryDetail, setSelectedQueryDetail] = useState<QueryDetail | null>(null);
 
+  // 현재 시간 기준 카테고리 생성 (5분 단위, 12개 = 1시간)
+  const generateTimeCategories = () => {
+  const now = new Date();
+  
+  // 현재 시간을 5분 단위로 내림
+  const currentMinutes = now.getMinutes();
+  const roundedMinutes = Math.floor(currentMinutes / 5) * 5;
+  
+  const baseTime = new Date(now);
+  baseTime.setMinutes(roundedMinutes);
+  baseTime.setSeconds(0);
+  baseTime.setMilliseconds(0);
+  
+  const categories: string[] = [];
+  
+  // 11개 과거 시간 + 1개 현재 시간 = 총 12개
+  for (let i = 11; i >= 0; i--) {
+    const time = new Date(baseTime.getTime() - i * 5 * 60 * 1000);
+    const hours = time.getHours().toString().padStart(2, '0');
+    const minutes = time.getMinutes().toString().padStart(2, '0');
+    categories.push(`${hours}:${minutes}`);
+  }
+  
+  return categories;
+};
+
+  const [timeCategories, setTimeCategories] = useState(generateTimeCategories());
+
   // 실시간 차트 데이터 상태
   const [tpsQpsData, setTpsQpsData] = useState({
     tps: [4200, 3838, 4150, 3988, 4175, 4250, 3963, 3838, 4200, 4263, 4175, 3650],
     qps: [1250, 1213, 1338, 1275, 1250, 1288, 1325, 1263, 1300, 1325, 1288, 1238],
   });
-
-  // 현재 시간 기준 카테고리 생성 (5분 단위, 12개 = 1시간)
-  const generateTimeCategories = () => {
-    const now = new Date();
-    const categories: string[] = [];
-    
-    for (let i = 11; i >= 0; i--) {
-      const time = new Date(now.getTime() - i * 5 * 60 * 1000);
-      const hours = time.getHours().toString().padStart(2, '0');
-      const minutes = time.getMinutes().toString().padStart(2, '0');
-      categories.push(`${hours}:${minutes}`);
-    }
-    
-    return categories;
-  };
-
-  const [timeCategories, setTimeCategories] = useState(generateTimeCategories());
 
   // TPS/QPS 차트 시리즈
   const trendChartSeries = useMemo(
@@ -525,7 +536,10 @@ Execution Time: 5200.789 ms`,
                 },
                 dataLabels: { enabled: false },
                 xaxis: {
+                  type: 'category',
+                  categories: timeCategories,
                   labels: {
+                    show: true,
                     style: {
                       fontSize: '11px',
                     },
