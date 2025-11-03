@@ -77,6 +77,14 @@ const demo: DashboardData = {
       elapsed: "22m",
       progressSeries: [70,68,66,65,64,66,71,79,85],
     },
+     {
+      table: "sessions",
+      phase: "scanning",
+      deadTuples: "22K",
+      trigger: "manual",
+      elapsed: "22m",
+      progressSeries: [70,68,66,65,64,66,71,79,85],
+    },
   ],
   Kpi: {
     avgDelay: 3.4,
@@ -243,11 +251,11 @@ export default function VacuumPage({ data = demo }: { data?: DashboardData }) {
 
   
       {/* 하단 세션 테이블 (Progress에도 미니 차트) */}
-      <section className="vd-card"  style={{ minHeight: "440px" }} >
+      <section className="vd-card"   >
         <header className="vd-card__header">
           <h3>Current VACUUM Sessions</h3>
         </header>
-        <div className="vd-tablewrap" style={{ minHeight: "370px" }}>
+        <div className="vd-tablewrap" style={{ height: "375px" }}>
           <table className="vd-table">
             <thead>
               <tr>
