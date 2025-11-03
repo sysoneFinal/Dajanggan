@@ -262,6 +262,7 @@ export default function SessionDashboard() {
                 series={[{ name: "Deadlock", data: dashboard.charts.deadlockTrend.data }]}
                 categories={dashboard.charts.sessionTrend.categories}
                 colors={["#FF6363"]}
+              
               />
             </div>
 

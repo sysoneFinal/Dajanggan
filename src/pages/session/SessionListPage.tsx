@@ -29,6 +29,26 @@ interface Session {
   runtime: string;
   query: string;
 }
+export const mockSessionDetailIdle = {
+  pid: 13288,
+  user: "taeyong",
+  db: "inventory_db",
+  client: "192.168.1.72",
+  state: "idle",
+  cpu: "50%",
+  memory: "4.3MB",
+  waitType: "-",
+  waitEvent: "-",
+  blockingPid: "-",
+  startTime: "2025-11-03 09:11:53",
+  duration: "1h 42m 10s",
+  query: "select user_id, username, address, phone_number, order_id, merchandise_name, quantity from orders where user_id = 10;",
+  guides: [
+    "유휴 상태",
+    "장시간 유지되는 Idle 세션은 커넥션 누수 여부를 확인하세요.",
+    "필요 시 연결 관리 정책(Connection Pool Timeout)을 조정하세요."
+  ]
+};
 
 const SessionActivityList = () => {
   /** ===== 더미 세션 데이터 ===== */
@@ -246,7 +266,7 @@ const SessionActivityList = () => {
       {/* 세션 상세 모달 */}
       {selectedSession && (
         <SessionDetailModal
-          session={selectedSession}
+          session={mockSessionDetailIdle}
           onClose={() => setSelectedSession(null)}
         />
       )}

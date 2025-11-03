@@ -7,7 +7,7 @@ interface WidgetCardProps {
   height?: number | string;
 }
 
-export default function WidgetCard({ title, children,  span, height = 300 }: WidgetCardProps) {
+export default function WidgetCard({ title, children,  span, height = 320 }: WidgetCardProps) {
   return (
     <div className="widget-card" style={{ minHeight: height , gridColumn: `span ${span}` }}>
       {title && <h6 className="widget-title">{title}</h6>}
