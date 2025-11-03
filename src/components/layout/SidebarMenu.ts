@@ -68,7 +68,6 @@ export const SIDEBAR_MENU = [
         children: [
           { label: "Details", path: "/database/query/details" },
           { label: "Execution Stats", path: "/database/query/execution-stats" },
-          { label: "Top-N Query", path: "/database/query/top-n-query" },
           { label: "Query Analysis", path: "/database/query/query-analysis" },
         ],
       },
