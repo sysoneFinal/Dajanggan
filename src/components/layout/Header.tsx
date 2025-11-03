@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef } from "react";
 import { useLocation } from "react-router-dom";
 import "../../styles/layout/header.css";
+import { createPortal } from "react-dom";
 import apiClient from "../../api/apiClient";
 import { findBreadcrumbPath } from "./FindBreadcrumb";
 import { SIDEBAR_MENU } from "../layout/SidebarMenu"; 
@@ -41,12 +42,29 @@ const Header = ({ isEditing, onToggleEdit }: HeaderProps) => {
 
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  // 현재 페이지 경로에 따라 breadcrumb 자동 갱신
-  useEffect(() => {
-    const path = location.pathname;
-    const foundPath = findBreadcrumbPath(SIDEBAR_MENU, path);
-    if (foundPath) setBreadcrumb(foundPath);
-  }, [location.pathname]);
+  const [dropdownPos, setDropdownPos] = useState<{ top: number; left: number; width: number }>({
+  top: 0,
+  left: 0,
+  width: 0,
+});
+
+
+useEffect(() => {
+  const path = location.pathname;
+  const foundPath = findBreadcrumbPath(SIDEBAR_MENU, path);
+  if (path === "/alarm") {
+    setBreadcrumb(["Alarm Settings"]);
+    return;
+  }
+  if (path === "/instance-management") {
+    setBreadcrumb(["Instance Management"]);
+    return;
+  }
+  // 일반 경로 자동 탐색
+  if (foundPath) {
+    setBreadcrumb(foundPath);
+  }
+}, [location.pathname]);
 
   // 인스턴스 목록 불러오기
   // useEffect(() => {
@@ -86,8 +104,18 @@ const Header = ({ isEditing, onToggleEdit }: HeaderProps) => {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const toggleDropdown = (target: string) =>
-    setOpenDropdown((prev) => (prev === target ? null : target));
+const toggleDropdown = (target: string, e: React.MouseEvent<HTMLButtonElement>) => {
+  const rect = e.currentTarget.getBoundingClientRect();
+
+  setDropdownPos({
+    top: rect.bottom + window.scrollY + 8, 
+    left: rect.left + window.scrollX,     
+    width: rect.width,
+  });
+
+  setOpenDropdown((prev) => (prev === target ? null : target));
+};
+
 
   const handleSelect = (target: string, value: string) => {
     if (target === "instance") {
@@ -99,40 +127,55 @@ const Header = ({ isEditing, onToggleEdit }: HeaderProps) => {
     setOpenDropdown(null);
   };
 
-  const renderDropdown = (
+ const renderDropdown = (
     list: string[] | Instance[] | Database[],
     selectedValue: string,
     target: string,
     disabled?: boolean
-  ) => (
-    <div className="dropdown-wrapper" ref={dropdownRef}>
-      <button
-        className={`header-btn ${disabled ? "disabled" : ""}`}
-        onClick={() => !disabled && toggleDropdown(target)}
-        disabled={disabled}
+  ) => {
+    const dropdown = (
+      <div
+        className="dropdown-menu"
+        onMouseDown={(e) => e.stopPropagation()}
+        style={{
+          position: "fixed",
+          top: dropdownPos.top,
+          left: dropdownPos.left,
+          minWidth: dropdownPos.width,
+          zIndex: 9999,
+        }}
       >
-        <span className="header-btn-text">{selectedValue}</span>
-        <span className="dropdown-arrow">▼</span>
-      </button>
-      {openDropdown === target && (
-        <div className="dropdown-menu">
-          {(list as any[]).map((item) => {
-            const name = typeof item === "string" ? item : item.name;
-            const id = typeof item === "string" ? name : item.id;
-            return (
-              <button
-                key={id}
-                className={`dropdown-item ${name === selectedValue ? "active" : ""}`}
-                onClick={() => handleSelect(target, name)}
-              >
-                {name}
-              </button>
-            );
-          })}
-        </div>
-      )}
-    </div>
-  );
+        {(list as any[]).map((item) => {
+          const name = typeof item === "string" ? item : item.name;
+          const id = typeof item === "string" ? name : item.id;
+          return (
+            <button
+              key={id}
+              className={`dropdown-item ${name === selectedValue ? "active" : ""}`}
+              onClick={() => handleSelect(target, name)}
+            >
+              {name}
+            </button>
+          );
+        })}
+      </div>
+    );
+
+    return (
+      <div className="dropdown-wrapper" ref={dropdownRef}>
+        <button
+          className={`header-btn ${disabled ? "disabled" : ""}`}
+          onClick={(e) => !disabled && toggleDropdown(target, e)}
+          disabled={disabled}
+        >
+          <span className="header-btn-text">{selectedValue}</span>
+          <span className="dropdown-arrow">▼</span>
+        </button>
+        {openDropdown === target && createPortal(dropdown, document.body)}
+      </div>
+    );
+  };
+
 
     /* ---------------- 데모 알림 데이터 ---------------- */
   const demoAlert: AlertDetailData = {
