@@ -9,23 +9,23 @@ export const SIDEBAR_MENU = [
     children: [
       { label: "CPU", 
         children: [
-            { label: "Dashboard", path: "/instance/cpu/dashboard" },
+            { label: "Details", path: "/instance/cpu/details" },
             { label: "CPU Usage", path: "/instance/cpu/usage" },
         ]},
       { label: "Memory", children: [
-            { label: "Dashboard", path: "/instance/memory/dashboard" },
+            { label: "Details", path: "/instance/memory/details" },
             { label: "Buffer Usage", path: "/instance/memory/buffer-usage" },
         ]}, 
       { label: "Disk I/O",  children: [
-            { label: "Dashboard", path: "/instance/disk/dashboard" },
+            { label: "Details", path: "/instance/disk/details" },
             { label: "I/O Breakdown", path: "/instance/disk/breakdown" },
         ]}, 
       { label: "Checkpoint",    children: [
-            { label: "Dashboard", path: "/instance/checkpoint/dashboard" },
+            { label: "Details", path: "/instance/checkpoint/details" },
             { label: "Checkpoint History", path: "/instance/checkpoint/list" },` `
       ]},
       { label: "BG Writer", children:[
-            { label: "Dashboard", path: "/instance/bgwriter/dashboard" },
+            { label: "Details", path: "/instance/bgwriter/details" },
             { label: "BGWriter Efficiency", path: "/instance/bgwriter/efficiency" }
       ]},
       { label: "Event", path: "/instance/event" }
@@ -37,20 +37,20 @@ export const SIDEBAR_MENU = [
       { label: "Summary", path: "/database/summary" },
 
       { label: "Session", children:[
-        { label: "Dashboard", path: "/database/session/dashboard" },
+        { label: "Details", path: "/database/session/details" },
         { label: "Active Sessions", path: "/database/session/active" },
       ]},
       {
         label: "Hot Table",
         children: [
-          { label: "Dashboard", path: "/database/hottable/dashboard" },
+          { label: "Details", path: "/database/hottable/details" },
           { label: "Table Detail", path: "/database/hottable/detail" },
         ],
       }, 
       {
         label: "Hot Index",
         children: [
-          { label: "Dashboard", path: "/database/hotindex/dashboard" },
+          { label: "Details", path: "/database/hotindex/details" },
           { label: "Index Detail", path: "/database/hotindex/detail" },
         ],
       },
@@ -66,7 +66,7 @@ export const SIDEBAR_MENU = [
       {
         label: "Query",
         children: [
-          { label: "Dashboard", path: "/database/query/dashboard" },
+          { label: "Details", path: "/database/query/details" },
           { label: "Execution Stats", path: "/database/query/execution-stats" },
           { label: "Top-N Query", path: "/database/query/top-n-query" },
           { label: "Query Analysis", path: "/database/query/query-analysis" },

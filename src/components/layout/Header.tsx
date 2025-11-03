@@ -22,7 +22,7 @@ interface HeaderProps {
   onToggleEdit: () => void;
 }
 
-const Header = ({ isEditing, onToggleEdit }: HeaderProps) => {
+const Header = ({ isEditing, onToggleEdit,  }: HeaderProps) => {
   const location = useLocation();
   const [breadcrumb, setBreadcrumb] = useState<string[]>([]);
   const [instances, setInstances] = useState<Instance[]>([]);
@@ -41,12 +41,24 @@ const Header = ({ isEditing, onToggleEdit }: HeaderProps) => {
 
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  // 현재 페이지 경로에 따라 breadcrumb 자동 갱신
   useEffect(() => {
     const path = location.pathname;
     const foundPath = findBreadcrumbPath(SIDEBAR_MENU, path);
-    if (foundPath) setBreadcrumb(foundPath);
+    if (path === "/alarm") {
+      setBreadcrumb(["Alarm Settings"]);
+      return;
+    }
+    if (path === "/instance-management") {
+      setBreadcrumb(["Instance Management"]);
+      return;
+    }
+    // 일반 경로 자동 탐색
+    if (foundPath) {
+      setBreadcrumb(foundPath);
+    }
   }, [location.pathname]);
+
+
 
   // 인스턴스 목록 불러오기
   // useEffect(() => {
