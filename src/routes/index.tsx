@@ -100,7 +100,6 @@ const routeList = [
 
   // 기타
   { path: "/instance-management", element: <InstancePage /> },
-  { path: "/instance-register", element: <InstanceRegister /> },
   // 알람
   { path: "/alarm", element: <AlarmList /> },
 ];
