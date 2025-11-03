@@ -255,7 +255,7 @@ export default function VacuumPage({ data = demo }: { data?: DashboardData }) {
         <header className="vd-card__header">
           <h3>Current VACUUM Sessions</h3>
         </header>
-        <div className="vd-tablewrap" style={{ height: "375px" }}>
+        <div className="vd-tablewrap" style={{ height: "370px" }}>
           <table className="vd-table">
             <thead>
               <tr>

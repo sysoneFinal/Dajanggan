@@ -225,7 +225,7 @@ export default function NewInstanceModal({
           <p style={{ marginBottom: "24px", color: "#6b7280", fontSize: "14px" }}>
             Instance {mode === 'edit' ? '수정' : '등록'}을 위한 정보를 입력해주세요.
             {mode === 'edit' && <span style={{ display: 'block', marginTop: '4px', fontSize: '13px', color: '#9ca3af' }}>
-              비밀번호를 변경하지 않으려면 비워두세요.
+          
             </span>}
           </p>
 

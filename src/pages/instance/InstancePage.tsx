@@ -4,6 +4,7 @@ import "/src/styles/instance/instance-register.css";
 import instanceDots from "/src/assets/icon/instance-dots.svg";
 import apiClient from "../../api/apiClient";
 import NewInstanceModal from "./InstanceRegister";
+import type { NewInstance } from "./InstanceRegister";
 
 export interface DatabaseSummary {
   databaseName: string;
@@ -24,6 +25,8 @@ export interface InstanceRow {
   createdAt: string;
   updatedAt: string;
   uptimeMs: number;    
+  dbname?: string;      // 추가
+  username?: string;    // 추가
   databases?: DatabaseSummary[];
 }
 
@@ -37,6 +40,8 @@ type InstanceDto = {
     version?: string;
     updatedAt?: string;
     createdAt: string;
+    dbname?: string;      // 추가
+    username?: string;    // 추가
     databases?: Array<{
         name: string;
         isEnabled: boolean;
@@ -48,7 +53,7 @@ type InstanceDto = {
   }>;
 };
 
-// Utils는 기존과 동일...
+// Utils
 const formatBytes = (bytes: number) => {
   if (bytes === 0) return "0 B";
   const k = 1024;
@@ -119,6 +124,8 @@ export const mapInstance = (i: InstanceDto): InstanceRow => {
     uptimeMs: Date.now() - Date.parse(i.createdAt),
     updatedAt: i.updatedAt ?? i.createdAt ?? new Date().toISOString(),
     createdAt: i.createdAt,
+    dbname: i.dbname,      
+    username: i.username,   
     databases: dbs,
   };
 };
@@ -132,6 +139,11 @@ const InstancePage: React.FC = () => {
   const [menuOpenId, setMenuOpenId] = useState<number | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<InstanceRow | null>(null);
   const [openNewInstance, setOpenNewInstance] = useState(false);
+  
+  // 편집 모달 상태 추가
+  const [editTarget, setEditTarget] = useState<InstanceRow | null>(null);
+  const [openEditInstance, setOpenEditInstance] = useState(false);
+  
   const menuRef = useRef<HTMLDivElement | null>(null);
 
   const extractInstanceList = (data: any): InstanceDto[] => {
@@ -143,7 +155,6 @@ const InstancePage: React.FC = () => {
     return [];
   };
 
-  // 목록 조회
   const fetchInstances = async () => {
     try {
       setLoading(true);
@@ -230,13 +241,48 @@ const InstancePage: React.FC = () => {
 
   const handleEdit = (row: InstanceRow) => {
     setMenuOpenId(null);
-    navigate(`/instances/${row.instanceId}/edit`); 
+    setEditTarget(row);
+    setOpenEditInstance(true);
   };
 
   const handleDelete = (row: InstanceRow) => {
     setDeleteTarget(row);
     setMenuOpenId(null);
   };
+
+  // 편집 제출 핸들러
+  const handleEditSubmit = async (form: NewInstance) => {
+    if (!editTarget) return;
+    
+    const payload: any = {
+      host: form.host,
+      instanceName: form.instance,
+      dbname: form.database,
+      port: Number(form.port),
+      username: form.username,
+      sslmode: "require",
+      isEnabled: true,
+    };
+    
+    // 비밀번호가 입력된 경우에만 포함
+    if (form.password?.trim()) {
+      payload.secretRef = form.password;
+    }
+
+    await apiClient.put(`/api/instances/${editTarget.instanceId}`, payload);
+    alert("수정 완료!");
+    await fetchInstances(); // 목록 새로고침
+  };
+
+  // 편집용 initialValue 생성
+  const editInitialValue: Partial<NewInstance> | undefined = editTarget ? {
+    host: editTarget.host,
+    instance: editTarget.instanceName,
+    database: editTarget.dbname, // database 정보가 row에 없으므로 빈 값
+    port: editTarget.port,
+    username: editTarget.username, // username 정보가 row에 없으므로 빈 값
+    password: "",
+  } : undefined;
 
   return (
     <div className="il-root">
@@ -362,8 +408,21 @@ const InstancePage: React.FC = () => {
         onClose={() => setOpenNewInstance(false)}
         onSubmit={async (payload) => {
           console.log("새 인스턴스 등록:", payload);
-          await fetchInstances(); // 목록 새로고침
+          await fetchInstances();
         }}
+      />
+
+      {/* 인스턴스 편집 모달 */}
+      <NewInstanceModal
+        open={openEditInstance}
+        onClose={() => {
+          setOpenEditInstance(false);
+          setEditTarget(null);
+        }}
+        initialValue={editInitialValue}
+        onSubmit={handleEditSubmit}
+        mode="edit"
+        instanceId={editTarget?.instanceId}
       />
     </div>
   );

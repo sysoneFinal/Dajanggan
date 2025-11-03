@@ -4,7 +4,6 @@ import { Routes, Route } from "react-router-dom";
 import Home from "../pages/Home";
 import Overview from "../pages/dashboard/Overview";
 import EventPage from "../pages/eventlog/EventLogPage";
-import InstanceRegister from "../pages/instance/InstanceRegister";
 import InstancePage from "../pages/instance/InstancePage";
 import VacuumOverview from "../pages/vacuum/VacuumOverview";
 import VacuumMaintenance from "../pages/vacuum/VacuumMaintenance";
@@ -101,7 +100,6 @@ const routeList = [
 
   // 기타
   { path: "/instance-management", element: <InstancePage /> },
-  { path: "/instance-register", element: <InstanceRegister /> },
   // 알람
   { path: "/alarm", element: <AlarmList /> },
 ];
