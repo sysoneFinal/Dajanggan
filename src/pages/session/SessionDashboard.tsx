@@ -203,15 +203,22 @@ export default function SessionDashboard() {
                       : "info"
                   }
                   type="semi-circle"
+                  radius={45}       
+                  strokeWidth={8}  
+                  height={145}      
+                  flattenRatio={0.78}
                 />
             <div className="session-db-connection-info">
-              <p>
-                <strong>Max:</strong> {dashboard.connection.max}
-              </p>
-              <p>
-                <strong>Current:</strong> {dashboard.connection.current}
-              </p>
+              <div className="conn-card">
+                <span className="conn-label">Max</span>
+                <span className="conn-value">{dashboard.connection.max}</span>
+              </div>
+              <div className="conn-card">
+                <span className="conn-label">Current</span>
+                <span className="conn-value">{dashboard.connection.current}</span>
+              </div>
             </div>
+
       
             </div>
 
@@ -262,6 +269,7 @@ export default function SessionDashboard() {
                 series={[{ name: "Deadlock", data: dashboard.charts.deadlockTrend.data }]}
                 categories={dashboard.charts.sessionTrend.categories}
                 colors={["#FF6363"]}
+              
               />
             </div>
 

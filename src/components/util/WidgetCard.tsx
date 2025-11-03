@@ -7,13 +7,8 @@ interface WidgetCardProps {
   height?: number | string;
   className?: string;
 }
-export default function WidgetCard({
-  title,
-  children,
-  span = 1,
-  height = "clamp(260px, 30vh, 320px)",
-  className = "",
-}: WidgetCardProps) {
+
+export default function WidgetCard({ title, children,  span, height = 320 , className= "",}: WidgetCardProps) {
   return (
     <div
       className={`widget-card ${className}`} 

@@ -121,17 +121,51 @@
 /* ========================================
    카드 레이아웃
 ======================================== */
-.qo-top-query-card { background: var(--card); border-radius: 1rem; padding: 1.25rem; border: 0.0625rem solid var(--border); box-shadow: var(--shadow); overflow: visible; }
+.qo-top-query-card { 
+  background: var(--card); 
+  border-radius: 1rem; 
+  padding: 1.25rem; 
+  border: 0.0625rem solid var(--border); 
+  box-shadow: var(--shadow); 
+  overflow: visible; 
+}
 .qo-top-query-card .qo-widget-header { z-index: 20; }
-.qo-slow-top5-card { background: var(--card); border-radius: 1rem; padding: 1.25rem; border: 0.0625rem solid var(--border); box-shadow: var(--shadow); overflow: visible; }
+
+.qo-slow-top5-card { 
+  background: var(--card); 
+  border-radius: 1rem; 
+  padding: 1.25rem; 
+  border: 0.0625rem solid var(--border); 
+  box-shadow: var(--shadow); 
+  overflow: visible; 
+  height: 45rem;
+  display: flex;
+  flex-direction: column;
+}
 .qo-slow-top5-card .qo-widget-header { z-index: 20; }
-.qo-slow-list-card { background: var(--card); border-radius: 1rem; padding: 1.25rem; border: 0.0625rem solid var(--border); box-shadow: var(--shadow); height: 45rem; display: flex; flex-direction: column; }
+
+.qo-slow-list-card { 
+  background: var(--card); 
+  border-radius: 1rem; 
+  padding: 1.25rem; 
+  border: 0.0625rem solid var(--border); 
+  box-shadow: var(--shadow); 
+  height: 45rem; 
+  display: flex; 
+  flex-direction: column; 
+}
 .qo-slow-list-card .qo-widget-header { z-index: 20; }
 
 /* ========================================
    하단 카드 그리드
 ======================================== */
-.qo-bottom-cards { display: grid; grid-template-columns: repeat(12, 1fr); gap: 1rem; margin-top: 1.5rem; align-items: start; }
+.qo-bottom-cards { 
+  display: grid; 
+  grid-template-columns: repeat(12, 1fr); 
+  gap: 1rem; 
+  margin-top: 1.5rem; 
+  align-items: start;
+}
 .qo-bottom-cards > *:nth-child(1) { grid-column: span 4; }
 .qo-bottom-cards > *:nth-child(2) { grid-column: span 4; }
 .qo-bottom-cards > *:nth-child(3) { grid-column: span 4; }
