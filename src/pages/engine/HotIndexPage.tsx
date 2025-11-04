@@ -233,6 +233,7 @@ export default function HotIndexPage() {
                         colors={["#8E79FF", "#FEA29B"]}
                     />
                 </WidgetCard>
+
                 {/* 인덱스 캐시 적중률 추세 */}
                 <WidgetCard title="인덱스 캐시 적중률 추세 (Last 24 Hours)" span={4}>
                     <Chart
@@ -250,14 +251,87 @@ export default function HotIndexPage() {
 
             {/* 두 번째 행: 4개 차트 */}
             <ChartGridLayout>
-                {/* 인덱스 스캔 속도 추이 */}
+                {/* 인덱스 스캔 속도 추이 - 실무 임계치 적용 */}
                 <WidgetCard title="인덱스 스캔 속도 추이 (Last 24 Hours)" span={3}>
                     <Chart
                         type="line"
-                        series={[{ name: "Index 스캔 속도 (ms)", data: dashboard.scanSpeed.data }]}
+                        series={[
+                            {
+                                name: "Index 스캔 속도 (ms)",
+                                data: dashboard.scanSpeed.data
+                            }
+                        ]}
                         categories={dashboard.scanSpeed.categories}
                         height={250}
                         colors={["#8E79FF"]}
+                        customOptions={{
+                            annotations: {
+                                yaxis: [
+                                    {
+                                        y: 5,
+                                        borderColor: "#60A5FA",
+                                        strokeDashArray: 4,
+                                        opacity: 0.6,
+                                        label: {
+                                            borderColor: "#60A5FA",
+                                            style: {
+                                                color: "#fff",
+                                                background: "#60A5FA",
+                                                fontSize: "11px",
+                                                fontWeight: 500,
+                                            },
+                                            text: "정상: 5ms",
+                                            position: "right",
+                                        },
+                                    },
+                                    {
+                                        y: 10,
+                                        borderColor: "#FBBF24",
+                                        strokeDashArray: 4,
+                                        opacity: 0.7,
+                                        label: {
+                                            borderColor: "#FBBF24",
+                                            style: {
+                                                color: "#fff",
+                                                background: "#FBBF24",
+                                                fontSize: "11px",
+                                                fontWeight: 500,
+                                            },
+                                            text: "주의: 10ms",
+                                            position: "right",
+                                        },
+                                    },
+                                    {
+                                        y: 20,
+                                        borderColor: "#FEA29B",
+                                        strokeDashArray: 4,
+                                        opacity: 0.8,
+                                        label: {
+                                            borderColor: "#FEA29B",
+                                            style: {
+                                                color: "#fff",
+                                                background: "#FEA29B",
+                                                fontSize: "11px",
+                                                fontWeight: 600,
+                                            },
+                                            text: "경고: 20ms",
+                                            position: "right",
+                                        },
+                                    },
+                                ],
+                            },
+                            yaxis: {
+                                labels: {
+                                    style: {
+                                        colors: "#6B7280",
+                                        fontFamily: 'var(--font-family, "Pretendard", sans-serif)'
+                                    },
+                                    formatter: (val: number) => `${val.toFixed(1)}ms`,
+                                },
+                                min: 0,
+                                max: 25,
+                            },
+                        }}
                     />
                 </WidgetCard>
 

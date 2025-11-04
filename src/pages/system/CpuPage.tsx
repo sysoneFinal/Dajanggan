@@ -192,14 +192,26 @@ export default function CPUPage() {
             {/* 첫 번째 행: 게이지 + 2개 차트 */}
             <ChartGridLayout>
                 <WidgetCard title="CPU 사용률" span={2}>
-                    <GaugeChart
-                        value={data.cpuUsage.value}
-                        type="semi-circle"
-                        color={gaugeColor}
-                    />
+                    <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        height: '100%',
+                        width: '100%'
+                    }}>
+                        <GaugeChart
+                            value={data.cpuUsage.value}
+                            type="semi-circle"
+                            color={gaugeColor}
+                            radius={100}
+                            strokeWidth={20}
+                            height={200}
+                            flattenRatio={0.89}
+                        />
+                    </div>
                 </WidgetCard>
 
-                <WidgetCard title="CPU 사용률 추이" span={5}>
+                <WidgetCard title="CPU 사용률 추이 (Last 24 Hours)" span={5}>
                     <Chart
                         type="line"
                         series={[{ name: "CPU 사용률 (%)", data: data.cpuUsageTrend.data }]}
@@ -208,7 +220,82 @@ export default function CPUPage() {
                         colors={["#8E79FF"]}
                         showGrid={true}
                         showLegend={false}
+                        xaxisOptions={{
+                            title: { text: "시간", style: { fontSize: "12px", color: "#6B7280" } },
+                        }}
+                        yaxisOptions={{
+                            title: { text: "CPU 사용률 (%)", style: { fontSize: "12px", color: "#6B7280" } },
+                            labels: { formatter: (val: number) => `${val}%` },
+                            min: 0,
+                            max: 100,
+                        }}
                         tooltipFormatter={(value: number) => `${value}%`}
+                        customOptions={{
+                            annotations: {
+                                yaxis: [
+                                    {
+                                        y: 70,
+                                        borderColor: "#60A5FA",
+                                        strokeDashArray: 4,
+                                        opacity: 0.6,
+                                        label: {
+                                            borderColor: "#60A5FA",
+                                            style: {
+                                                color: "#fff",
+                                                background: "#60A5FA",
+                                                fontSize: "11px",
+                                                fontWeight: 500,
+                                            },
+                                            text: "정상: 70%",
+                                            position: "right",
+                                        },
+                                    },
+                                    {
+                                        y: 80,
+                                        borderColor: "#FBBF24",
+                                        strokeDashArray: 4,
+                                        opacity: 0.7,
+                                        label: {
+                                            borderColor: "#FBBF24",
+                                            style: {
+                                                color: "#fff",
+                                                background: "#FBBF24",
+                                                fontSize: "11px",
+                                                fontWeight: 500,
+                                            },
+                                            text: "주의: 80%",
+                                            position: "right",
+                                        },
+                                    },
+                                    {
+                                        y: 90,
+                                        borderColor: "#FEA29B",
+                                        strokeDashArray: 4,
+                                        opacity: 0.8,
+                                        label: {
+                                            borderColor: "#FEA29B",
+                                            style: {
+                                                color: "#fff",
+                                                background: "#FEA29B",
+                                                fontSize: "11px",
+                                                fontWeight: 600,
+                                            },
+                                            text: "경고: 90%",
+                                            position: "right",
+                                        },
+                                    },
+                                ],
+                            },
+                            yaxis: {
+                                labels: {
+                                    style: {
+                                        colors: "#6B7280",
+                                        fontFamily: 'var(--font-family, "Pretendard", sans-serif)',
+                                    },
+                                    formatter: (val: number) => `${val}%`,
+                                },
+                            },
+                        }}
                     />
                 </WidgetCard>
 
@@ -276,7 +363,7 @@ export default function CPUPage() {
                     />
                 </WidgetCard>
 
-                <WidgetCard title="사용자별 CPU 사용량" span={4}>
+                <WidgetCard title="사용자별 CPU 사용량 Top 5" span={4}>
                     <Chart
                         type="bar"
                         series={[
