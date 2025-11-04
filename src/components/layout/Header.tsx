@@ -20,12 +20,12 @@ interface Database {
 
 interface HeaderProps {
   isEditing: boolean;
+  breadcrumb: string[];
   onToggleEdit: () => void;
 }
 
-const Header = ({ isEditing, onToggleEdit,  }: HeaderProps) => {
+const Header = ({ isEditing, onToggleEdit, breadcrumb }: HeaderProps) => {
   const location = useLocation();
-  const [breadcrumb, setBreadcrumb] = useState<string[]>([]);
   const [instances, setInstances] = useState<Instance[]>([]);
   const [databases, setDatabases] = useState<Database[]>([]);
   const [selectedInstance, setSelectedInstance] = useState("Select Instance");
@@ -49,22 +49,22 @@ const Header = ({ isEditing, onToggleEdit,  }: HeaderProps) => {
 });
 
 
-useEffect(() => {
-  const path = location.pathname;
-  const foundPath = findBreadcrumbPath(SIDEBAR_MENU, path);
-  if (path === "/alarm") {
-    setBreadcrumb(["Alarm Settings"]);
-    return;
-  }
-  if (path === "/instance-management") {
-    setBreadcrumb(["Instance Management"]);
-    return;
-  }
-  // 일반 경로 자동 탐색
-  if (foundPath) {
-    setBreadcrumb(foundPath);
-  }
-}, [location.pathname]);
+// useEffect(() => {
+//   const path = location.pathname;
+//   const foundPath = findBreadcrumbPath(SIDEBAR_MENU, path);
+//   if (path === "/alarm") {
+//     setBreadcrumb(["Alarm Settings"]);
+//     return;
+//   }
+//   if (path === "/instance-management") {
+//     setBreadcrumb(["Instance Management"]);
+//     return;
+//   }
+//   // 일반 경로 자동 탐색
+//   if (foundPath) {
+//     setBreadcrumb(foundPath);
+//   }
+// }, [location.pathname]);
 
 
 
@@ -239,19 +239,50 @@ const toggleDropdown = (target: string, e: React.MouseEvent<HTMLButtonElement>) 
         {renderDropdown(["1m", "5m", "10m", "30m"], refreshInterval, "interval")}
 
         {/* Edit Dashboard */}
-        <button
-          className={`header-btn header-btn-edit ${isEditing ? "active" : ""}`}
-          onClick={onToggleEdit}
-        >
-          <svg className="header-edit-icon" viewBox="0 0 24 24" fill="currentColor">
-            <g transform="translate(3, 3) scale(0.75)">
-              <path d="M3 3h8v8H3V3zm10 0h8v8h-8V3zM3 13h8v8H3v-8zm10 0h8v8h-8v-8z" />
-            </g>
-          </svg>
-          <span className="header-btn-text">
-            {isEditing ? "Save" : "Edit Dashboard"}
-          </span>
-        </button>
+        <div className="header-controls">
+  {/* === Edit / Save / Cancel === */}
+  {isEditing ? (
+    <>
+      <button
+        className="header-btn header-btn-save"
+        onClick={() => {
+          const saved = localStorage.getItem("tempDashboardLayout");
+          if (saved) {
+            // 저장 요청을 Overview의 save 함수로 넘길 수도 있음 (지금은 단순 안내)
+            alert("레이아웃이 저장되었습니다!");
+            localStorage.removeItem("tempDashboardLayout");
+          }
+          onToggleEdit(); // 저장 후 편집모드 종료
+        }}
+      >
+       <span className="header-btn-text">Save</span>
+      </button>
+
+      <button
+        className="header-btn header-btn-cancel"
+        onClick={() => {
+          localStorage.removeItem("tempDashboardLayout");
+          onToggleEdit(); // 취소 → 편집모드 종료
+        }}
+      >
+       <span className="header-btn-text">Cancel</span>
+      </button>
+    </>
+  ) : (
+    <button
+      className="header-btn header-btn-edit"
+      onClick={onToggleEdit}
+    >
+      <svg className="header-edit-icon" viewBox="0 0 24 24" fill="currentColor">
+        <g transform="translate(3, 3) scale(0.75)">
+          <path d="M3 3h8v8H3V3zm10 0h8v8h-8V3zM3 13h8v8H3v-8zm10 0h8v8h-8v-8z" />
+        </g>
+      </svg>
+      <span className="header-btn-text">Edit Dashboard</span>
+    </button>
+  )}
+</div>
+
 
          {/* 알림 */}
         <div className="notification-wrapper" ref={notifRef}>

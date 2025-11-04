@@ -19,7 +19,11 @@ export default function Sidebar({ onChangeBreadcrumb }: SidebarProps) {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const [isExpanded, setIsExpanded] = useState(true);
+  const [isExpanded, setIsExpanded] = useState<boolean>(() => {
+    const saved = localStorage.getItem("sidebar_expanded");
+    return saved ? JSON.parse(saved) : true; // 기본값: 펼쳐진 상태
+  });
+  
   const [openMenus, setOpenMenus] = useState<Record<string, boolean>>({
     Instance: true,
     Database: true,
@@ -27,6 +31,11 @@ export default function Sidebar({ onChangeBreadcrumb }: SidebarProps) {
   const [activePath, setActivePath] = useState<string>("");
 
   useEffect(() => setActivePath(location.pathname), [location.pathname]);
+
+  // 사이드바 접이식 상태 변경 시 로컬에 저장 
+  useEffect(() => {
+    localStorage.setItem("sidebar_expanded", JSON.stringify(isExpanded));
+  }, [isExpanded]);
 
   const toggleMenu = (label: string) => {
     if (label === "Instance" || label === "Database") return;

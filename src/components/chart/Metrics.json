@@ -1,0 +1,816 @@
+[
+{
+  "CPU": {
+    "avg_user_cpu": {
+      "title": "평균 사용자 CPU 사용률",
+      "unit": "%",
+      "source": "cpu_agg",
+      "column": "avg_user_cpu",
+      "category": "CPU",
+      "level": "instance",
+      "available_charts": ["line", "bar"],
+      "default_chart": "line",
+      "description": "사용자 모드에서 사용된 평균 CPU 비율을 나타냅니다."
+    },
+    "avg_system_cpu": {
+      "title": "평균 시스템 CPU 사용률",
+      "unit": "%",
+      "source": "cpu_agg",
+      "column": "avg_system_cpu",
+      "category": "CPU",
+      "level": "instance",
+      "available_charts": ["line"],
+      "default_chart": "line",
+      "description": "시스템 프로세스가 사용한 CPU 비율의 평균값을 나타냅니다."
+    },
+    "avg_io_wait": {
+      "title": "평균 I/O 대기율",
+      "unit": "%",
+      "source": "cpu_agg",
+      "column": "avg_io_wait",
+      "category": "CPU",
+      "level": "instance",
+      "available_charts": ["line"],
+      "default_chart": "line",
+      "description": "CPU가 I/O 작업 완료를 기다린 비율의 평균입니다."
+    },
+    "max_user_cpu": {
+      "title": "최대 사용자 CPU 사용률",
+      "unit": "%",
+      "source": "cpu_agg",
+      "column": "max_user_cpu",
+      "category": "CPU",
+      "level": "instance",
+      "available_charts": ["bar"],
+      "default_chart": "bar",
+      "description": "관측 구간 중 가장 높은 사용자 CPU 사용률을 나타냅니다."
+    },
+    "max_io_wait": {
+      "title": "최대 I/O 대기율",
+      "unit": "%",
+      "source": "cpu_agg",
+      "column": "max_io_wait",
+      "category": "CPU",
+      "level": "instance",
+      "available_charts": ["bar"],
+      "default_chart": "bar",
+      "description": "관측 구간 중 가장 높은 I/O 대기 비율을 나타냅니다."
+    },
+    "avg_active_connections": {
+      "title": "평균 활성 연결 수",
+      "unit": "count",
+      "source": "cpu_agg",
+      "column": "avg_active_connections",
+      "category": "CPU",
+      "level": "instance",
+      "available_charts": ["line"],
+      "default_chart": "line",
+      "description": "CPU 리소스를 사용하는 활성 세션의 평균 개수를 나타냅니다."
+    },
+    "avg_parallel_workers": {
+      "title": "평균 병렬 워커 수",
+      "unit": "count",
+      "source": "cpu_agg",
+      "column": "avg_parallel_workers",
+      "category": "CPU",
+      "level": "instance",
+      "available_charts": ["line"],
+      "default_chart": "line",
+      "description": "병렬 쿼리 수행 시 사용된 평균 워커 프로세스 개수를 나타냅니다."
+    },
+    "avg_waiting_sessions": {
+      "title": "평균 대기 세션 수",
+      "unit": "count",
+      "source": "cpu_agg",
+      "column": "avg_waiting_sessions",
+      "category": "CPU",
+      "level": "instance",
+      "available_charts": ["line"],
+      "default_chart": "line",
+      "description": "CPU 자원 확보를 위해 대기 중인 세션의 평균 개수를 나타냅니다."
+    },
+    "context_switches": {
+      "title": "Context Switch 횟수",
+      "unit": "count",
+      "source": "cpu_agg",
+      "column": "context_switches",
+      "category": "CPU",
+      "level": "instance",
+      "available_charts": ["bar"],
+      "default_chart": "bar",
+      "description": "프로세스 간 문맥 전환(Context Switching)의 총 횟수를 나타냅니다."
+    },
+    "cpu_queue_length": {
+      "title": "CPU 큐 길이",
+      "unit": "count",
+      "source": "cpu_agg",
+      "column": "cpu_queue_length",
+      "category": "CPU",
+      "level": "instance",
+      "available_charts": ["line"],
+      "default_chart": "line",
+      "description": "CPU 스케줄링 대기 중인 프로세스의 평균 개수를 나타냅니다."
+    }
+  },
+
+  "Memory": {
+    "avg_buffers": {
+      "title": "평균 버퍼 수",
+      "unit": "count",
+      "source": "memory_agg",
+      "column": "avg_buffers",
+      "category": "Memory",
+      "level": "instance",
+      "available_charts": ["bar"],
+      "default_chart": "bar",
+      "description": "인스턴스가 사용하는 평균 버퍼 개수를 나타냅니다."
+    },
+    "avg_buffer_usage_pct": {
+      "title": "평균 버퍼 사용률",
+      "unit": "%",
+      "source": "memory_agg",
+      "column": "avg_buffer_usage_pct",
+      "category": "Memory",
+      "level": "instance",
+      "available_charts": ["line"],
+      "default_chart": "line",
+      "description": "전체 버퍼 대비 사용 중인 버퍼의 평균 비율을 나타냅니다."
+    },
+    "avg_dirty_ratio": {
+      "title": "평균 Dirty Page 비율",
+      "unit": "%",
+      "source": "memory_agg",
+      "column": "avg_dirty_ratio",
+      "category": "Memory",
+      "level": "instance",
+      "available_charts": ["line"],
+      "default_chart": "line",
+      "description": "디스크에 기록되지 않은 Dirty Page의 비율 평균을 나타냅니다."
+    },
+    "avg_hit_ratio": {
+      "title": "평균 버퍼 Hit Ratio",
+      "unit": "%",
+      "source": "memory_agg",
+      "column": "avg_hit_ratio",
+      "category": "Memory",
+      "level": "instance",
+      "available_charts": ["line", "area"],
+      "default_chart": "line",
+      "description": "디스크 I/O 없이 캐시에서 데이터를 읽은 비율의 평균입니다."
+    },
+    "total_heap_blks_read": {
+      "title": "읽은 Heap Blocks 수",
+      "unit": "count",
+      "source": "memory_agg",
+      "column": "total_heap_blks_read",
+      "category": "Memory",
+      "level": "instance",
+      "available_charts": ["bar"],
+      "default_chart": "bar",
+      "description": "디스크에서 읽은 Heap Block의 총 개수를 나타냅니다."
+    },
+    "total_heap_blks_hit": {
+      "title": "Hit된 Heap Blocks 수",
+      "unit": "count",
+      "source": "memory_agg",
+      "column": "total_heap_blks_hit",
+      "category": "Memory",
+      "level": "instance",
+      "available_charts": ["bar"],
+      "default_chart": "bar",
+      "description": "메모리 캐시에서 Hit된 Heap Block의 총 개수를 나타냅니다."
+    }
+  },
+
+  "Disk I/O": {
+    "total_reads": {
+      "title": "총 Read 횟수",
+      "unit": "count",
+      "source": "disk_io_agg",
+      "column": "total_reads",
+      "category": "Disk I/O",
+      "level": "instance",
+      "available_charts": ["line", "bar"],
+      "default_chart": "line",
+      "description": "디스크 읽기 작업의 총 횟수를 나타냅니다."
+    },
+    "total_writes": {
+      "title": "총 Write 횟수",
+      "unit": "count",
+      "source": "disk_io_agg",
+      "column": "total_writes",
+      "category": "Disk I/O",
+      "level": "instance",
+      "available_charts": ["line", "bar"],
+      "default_chart": "line",
+      "description": "디스크 쓰기 작업의 총 횟수를 나타냅니다."
+    },
+    "avg_read_latency": {
+      "title": "평균 Read 지연시간",
+      "unit": "ms",
+      "source": "disk_io_agg",
+      "column": "avg_read_latency",
+      "category": "Disk I/O",
+      "level": "instance",
+      "available_charts": ["line"],
+      "default_chart": "line",
+      "description": "디스크 Read 작업의 평균 지연 시간을 나타냅니다."
+    },
+    "avg_write_latency": {
+      "title": "평균 Write 지연시간",
+      "unit": "ms",
+      "source": "disk_io_agg",
+      "column": "avg_write_latency",
+      "category": "Disk I/O",
+      "level": "instance",
+      "available_charts": ["line"],
+      "default_chart": "line",
+      "description": "디스크 Write 작업의 평균 지연 시간을 나타냅니다."
+    },
+    "read_write_ratio": {
+      "title": "Read/Write 비율",
+      "unit": "ratio",
+      "source": "disk_io_agg",
+      "column": "read_write_ratio",
+      "category": "Disk I/O",
+      "level": "instance",
+      "available_charts": ["line"],
+      "default_chart": "line",
+      "description": "읽기 대비 쓰기 비율을 나타냅니다."
+    }
+  }
+},
+{
+  "Database": {
+    "db_size_mb": {
+      "title": "Database Size (MB)",
+      "unit": "MB",
+      "source": "database_metrics_agg",
+      "column": "db_size_mb",
+      "category": "Database",
+      "level": "database",
+      "available_charts": ["line", "bar"],
+      "default_chart": "line",
+      "description": "데이터베이스의 전체 크기를 MB 단위로 나타냅니다."
+    },
+    "connection_usage_percent": {
+      "title": "Connection Usage (%)",
+      "unit": "%",
+      "source": "database_metrics_agg",
+      "column": "connection_usage_percent",
+      "category": "Database",
+      "level": "database",
+      "available_charts": ["line"],
+      "default_chart": "line",
+      "description": "사용 중인 커넥션의 비율을 전체 연결 한도 대비 백분율로 표시합니다."
+    },
+    "active_sessions": {
+      "title": "Active Sessions",
+      "unit": "count",
+      "source": "database_metrics_agg",
+      "column": "active_sessions",
+      "category": "Session",
+      "level": "database",
+      "available_charts": ["line", "area"],
+      "default_chart": "line",
+      "description": "활성 상태(Active)인 세션의 개수를 나타냅니다."
+    },
+    "tps_total": {
+      "title": "Transactions per Second (TPS)",
+      "unit": "tps",
+      "source": "database_metrics_agg",
+      "column": "tps_total",
+      "category": "Database",
+      "level": "database",
+      "available_charts": ["line"],
+      "default_chart": "line",
+      "description": "초당 트랜잭션 처리 수를 나타냅니다."
+    },
+    "deadlock_count": {
+      "title": "Deadlock Count",
+      "unit": "count",
+      "source": "database_metrics_agg",
+      "column": "deadlock_count",
+      "category": "Session",
+      "level": "database",
+      "available_charts": ["bar"],
+      "default_chart": "bar",
+      "description": "수집 주기 동안 감지된 교착 상태(Deadlock)의 발생 횟수를 나타냅니다."
+    },
+    "wait_total": {
+      "title": "Wait Event Count",
+      "unit": "count",
+      "source": "database_metrics_agg",
+      "column": "wait_total",
+      "category": "Session",
+      "level": "database",
+      "available_charts": ["stacked-bar"],
+      "default_chart": "stacked-bar",
+      "description": "Lock, I/O, LWLock 등 전체 대기 이벤트 발생 횟수를 나타냅니다."
+    },
+    "lock_wait_sessions": {
+      "title": "Lock Wait Sessions",
+      "unit": "count",
+      "source": "database_metrics_agg",
+      "column": "lock_wait_sessions",
+      "category": "Session",
+      "level": "database",
+      "available_charts": ["bar"],
+      "default_chart": "bar",
+      "description": "락을 기다리고 있는 세션의 개수를 나타냅니다."
+    },
+    "io_wait_sessions": {
+      "title": "I/O Wait Sessions",
+      "unit": "count",
+      "source": "database_metrics_agg",
+      "column": "io_wait_sessions",
+      "category": "Session",
+      "level": "database",
+      "available_charts": ["bar"],
+      "default_chart": "bar",
+      "description": "디스크 I/O 작업을 기다리고 있는 세션의 수입니다."
+    },
+    "cache_hit_ratio": {
+      "title": "Cache Hit Ratio (%)",
+      "unit": "%",
+      "source": "database_metrics_agg",
+      "column": "cache_hit_ratio",
+      "category": "Memory",
+      "level": "database",
+      "available_charts": ["line"],
+      "default_chart": "line",
+      "description": "쿼리 수행 시 디스크 접근 없이 캐시에서 읽은 비율을 나타냅니다."
+    },
+    "dead_tuples_percent": {
+      "title": "Dead Tuple Ratio (%)",
+      "unit": "%",
+      "source": "database_metrics_agg",
+      "column": "dead_tuples_percent",
+      "category": "Vacuum",
+      "level": "database",
+      "available_charts": ["bar"],
+      "default_chart": "bar",
+      "description": "전체 레코드 중 죽은 튜플(Dead Tuple)이 차지하는 비율을 나타냅니다."
+    },
+    "autovacuum_count": {
+      "title": "AutoVacuum Count",
+      "unit": "count",
+      "source": "database_metrics_agg",
+      "column": "autovacuum_count",
+      "category": "Vacuum",
+      "level": "database",
+      "available_charts": ["bar"],
+      "default_chart": "bar",
+      "description": "자동 Vacuum 프로세스가 수행된 횟수를 나타냅니다."
+    },
+    "io_throughput_mb": {
+      "title": "Disk I/O Throughput (MB/s)",
+      "unit": "MB/s",
+      "source": "database_metrics_agg",
+      "column": "io_throughput_mb",
+      "category": "Disk I/O",
+      "level": "database",
+      "available_charts": ["line"],
+      "default_chart": "line",
+      "description": "DB의 초당 평균 디스크 I/O 처리량을 나타냅니다."
+    },
+    "memory_usage": {
+      "title": "Memory Usage (%)",
+      "unit": "%",
+      "source": "database_metrics_agg",
+      "column": "memory_usage",
+      "category": "Memory",
+      "level": "database",
+      "available_charts": ["line"],
+      "default_chart": "line",
+      "description": "데이터베이스에서 사용 중인 메모리 비율을 나타냅니다."
+    },
+    "cpu_usage": {
+      "title": "CPU Usage (%)",
+      "unit": "%",
+      "source": "database_metrics_agg",
+      "column": "cpu_usage",
+      "category": "CPU",
+      "level": "database",
+      "available_charts": ["line"],
+      "default_chart": "line",
+      "description": "데이터베이스에서 사용 중인 CPU 비율을 나타냅니다."
+    },
+    "slow_query_count": {
+      "title": "Slow Query Count",
+      "unit": "count",
+      "source": "database_metrics_agg",
+      "column": "slow_query_count",
+      "category": "Query",
+      "level": "database",
+      "available_charts": ["bar"],
+      "default_chart": "bar",
+      "description": "슬로우 쿼리로 분류된 질의의 개수를 나타냅니다."
+    }
+  },
+
+  "Session": {
+    "total_sessions": {
+      "title": "Total Sessions",
+      "unit": "count",
+      "source": "session_metrics_agg",
+      "column": "total_sessions",
+      "category": "Session",
+      "level": "database",
+      "available_charts": ["line"],
+      "default_chart": "line",
+      "description": "현재 존재하는 전체 세션 수를 나타냅니다."
+    },
+    "waiting_sessions": {
+      "title": "Waiting Sessions",
+      "unit": "count",
+      "source": "session_metrics_agg",
+      "column": "waiting_sessions",
+      "category": "Session",
+      "level": "database",
+      "available_charts": ["bar"],
+      "default_chart": "bar",
+      "description": "자원을 대기 중인 세션의 개수를 나타냅니다."
+    },
+    "idle_sessions": {
+      "title": "Idle Sessions",
+      "unit": "count",
+      "source": "session_metrics_agg",
+      "column": "idle_sessions",
+      "category": "Session",
+      "level": "database",
+      "available_charts": ["bar"],
+      "default_chart": "bar",
+      "description": "현재 유휴(Idle) 상태의 세션 개수를 나타냅니다."
+    },
+    "avg_tx_duration_sec": {
+      "title": "Avg Transaction Duration (sec)",
+      "unit": "sec",
+      "source": "session_metrics_agg",
+      "column": "avg_tx_duration_sec",
+      "category": "Session",
+      "level": "database",
+      "available_charts": ["line"],
+      "default_chart": "line",
+      "description": "트랜잭션 평균 수행 시간을 초 단위로 나타냅니다."
+    },
+    "avg_lock_wait_sec": {
+      "title": "Avg Lock Wait (sec)",
+      "unit": "sec",
+      "source": "session_metrics_agg",
+      "column": "avg_lock_wait_sec",
+      "category": "Session",
+      "level": "database",
+      "available_charts": ["line"],
+      "default_chart": "line",
+      "description": "락 대기로 인한 평균 대기 시간을 초 단위로 표시합니다."
+    },
+    "max_connections": {
+      "title": "Max Connections",
+      "unit": "count",
+      "source": "session_metrics_agg",
+      "column": "max_connections",
+      "category": "Session",
+      "level": "database",
+      "available_charts": ["bar"],
+      "default_chart": "bar",
+      "description": "데이터베이스의 최대 연결 허용 개수를 나타냅니다."
+    },
+    "used_connections": {
+      "title": "Used Connections",
+      "unit": "count",
+      "source": "session_metrics_agg",
+      "column": "used_connections",
+      "category": "Session",
+      "level": "database",
+      "available_charts": ["bar"],
+      "default_chart": "bar",
+      "description": "현재 사용 중인 연결 수를 나타냅니다."
+    }
+  },
+
+  "Query": {
+    "avg_execution_time_ms": {
+      "title": "Avg Query Execution Time (ms)",
+      "unit": "ms",
+      "source": "query_metrics_agg",
+      "column": "avg_execution_time_ms",
+      "category": "Query",
+      "level": "database",
+      "available_charts": ["line"],
+      "default_chart": "line",
+      "description": "쿼리의 평균 실행 시간을 밀리초 단위로 나타냅니다."
+    },
+    "min_execution_time_ms": {
+      "title": "Min Query Execution Time (ms)",
+      "unit": "ms",
+      "source": "query_metrics_agg",
+      "column": "min_execution_time_ms",
+      "category": "Query",
+      "level": "database",
+      "available_charts": ["bar"],
+      "default_chart": "bar",
+      "description": "쿼리 실행 시간 중 최소값을 밀리초 단위로 표시합니다."
+    },
+    "max_execution_time_ms": {
+      "title": "Max Query Execution Time (ms)",
+      "unit": "ms",
+      "source": "query_metrics_agg",
+      "column": "max_execution_time_ms",
+      "category": "Query",
+      "level": "database",
+      "available_charts": ["bar"],
+      "default_chart": "bar",
+      "description": "쿼리 실행 시간 중 최대값을 밀리초 단위로 표시합니다."
+    },
+    "total_execution_count": {
+      "title": "Total Query Count",
+      "unit": "count",
+      "source": "query_metrics_agg",
+      "column": "total_execution_count",
+      "category": "Query",
+      "level": "database",
+      "available_charts": ["bar"],
+      "default_chart": "bar",
+      "description": "수집 구간 동안 실행된 전체 쿼리 횟수를 나타냅니다."
+    },
+    "slow_query_threshold_ms": {
+      "title": "Slow Query Threshold (ms)",
+      "unit": "ms",
+      "source": "query_metrics_agg",
+      "column": "slow_query_threshold_ms",
+      "category": "Query",
+      "level": "database",
+      "available_charts": ["line"],
+      "default_chart": "line",
+      "description": "슬로우 쿼리로 간주되는 기준 임계값(ms)을 나타냅니다."
+    }
+  },
+
+  "Vacuum": {
+    "avg_progress": {
+      "title": "Avg Vacuum Progress (%)",
+      "unit": "%",
+      "source": "vacuum_trend_metrics",
+      "column": "avg_progress",
+      "category": "Vacuum",
+      "level": "database",
+      "available_charts": ["line"],
+      "default_chart": "line",
+      "description": "Vacuum 프로세스의 평균 진행률을 백분율로 표시합니다."
+    },
+    "avg_vacuum_duration_seconds": {
+      "title": "Avg Vacuum Duration (sec)",
+      "unit": "sec",
+      "source": "vacuum_trend_metrics",
+      "column": "avg_vacuum_duration_seconds",
+      "category": "Vacuum",
+      "level": "database",
+      "available_charts": ["line"],
+      "default_chart": "line",
+      "description": "Vacuum 프로세스의 평균 수행 시간을 초 단위로 표시합니다."
+    },
+    "autovacuum_count_24h": {
+      "title": "AutoVacuum Count (24h)",
+      "unit": "count",
+      "source": "vacuum_trend_metrics",
+      "column": "autovacuum_count_24h",
+      "category": "Vacuum",
+      "level": "database",
+      "available_charts": ["bar"],
+      "default_chart": "bar",
+      "description": "최근 24시간 동안 수행된 AutoVacuum 횟수입니다."
+    },
+    "dead_tuple_total": {
+      "title": "Total Dead Tuples",
+      "unit": "count",
+      "source": "vacuum_trend_metrics",
+      "column": "dead_tuple_total",
+      "category": "Vacuum",
+      "level": "database",
+      "available_charts": ["line"],
+      "default_chart": "line",
+      "description": "현재 DB 내에 존재하는 죽은 튜플(Dead Tuple)의 총 개수를 나타냅니다."
+    },
+    "bloat_ratio": {
+      "title": "Table Bloat Ratio (%)",
+      "unit": "%",
+      "source": "vacuum_trend_metrics",
+      "column": "bloat_ratio",
+      "category": "Vacuum",
+      "level": "database",
+      "available_charts": ["line"],
+      "default_chart": "line",
+      "description": "테이블 또는 인덱스의 공간 팽창률(Bloat Ratio)을 나타냅니다."
+    },
+    "worker_utilization_pct": {
+      "title": "Worker Utilization (%)",
+      "unit": "%",
+      "source": "vacuum_trend_metrics",
+      "column": "worker_utilization_pct",
+      "category": "Vacuum",
+      "level": "database",
+      "available_charts": ["line"],
+      "default_chart": "line",
+      "description": "Vacuum 작업 워커들의 평균 활용률을 나타냅니다."
+    },
+    "wraparound_progress_pct": {
+      "title": "Wraparound Progress (%)",
+      "unit": "%",
+      "source": "vacuum_trend_metrics",
+      "column": "wraparound_progress_pct",
+      "category": "Vacuum",
+      "level": "database",
+      "available_charts": ["line"],
+      "default_chart": "line",
+      "description": "Transaction ID 랩어라운드 진행률을 백분율로 표시합니다."
+    }
+  }
+},
+{
+  "Hot Table": {
+    "avg_table_size": {
+      "title": "평균 테이블 크기",
+      "unit": "MB",
+      "source": "hot_table_agg",
+      "column": "avg_table_size",
+      "category": "Hot Table",
+      "level": "database",
+      "available_charts": ["bar", "line"],
+      "default_chart": "bar",
+      "description": "수집 구간 동안 테이블의 평균 크기를 MB 단위로 나타냅니다."
+    },
+    "total_seq_scan": {
+      "title": "Sequential Scan 횟수",
+      "unit": "count",
+      "source": "hot_table_agg",
+      "column": "total_seq_scan",
+      "category": "Hot Table",
+      "level": "database",
+      "available_charts": ["bar"],
+      "default_chart": "bar",
+      "description": "테이블에 수행된 전체 순차 스캔(Sequential Scan) 횟수를 나타냅니다."
+    },
+    "total_idx_scan": {
+      "title": "Index Scan 횟수",
+      "unit": "count",
+      "source": "hot_table_agg",
+      "column": "total_idx_scan",
+      "category": "Hot Table",
+      "level": "database",
+      "available_charts": ["bar"],
+      "default_chart": "bar",
+      "description": "테이블에 대해 수행된 전체 인덱스 스캔 횟수를 나타냅니다."
+    },
+    "avg_dead_ratio": {
+      "title": "평균 Dead Tuple 비율",
+      "unit": "%",
+      "source": "hot_table_agg",
+      "column": "avg_dead_ratio",
+      "category": "Hot Table",
+      "level": "database",
+      "available_charts": ["line"],
+      "default_chart": "line",
+      "description": "테이블에서 제거되지 않은 Dead Tuple의 평균 비율을 나타냅니다."
+    },
+    "avg_cache_hit_ratio": {
+      "title": "평균 Cache Hit Ratio",
+      "unit": "%",
+      "source": "hot_table_agg",
+      "column": "avg_cache_hit_ratio",
+      "category": "Hot Table",
+      "level": "database",
+      "available_charts": ["line"],
+      "default_chart": "line",
+      "description": "해당 테이블의 캐시 Hit 비율의 평균값을 나타냅니다."
+    },
+    "avg_seq_scan_ratio": {
+      "title": "평균 Seq Scan 비율",
+      "unit": "%",
+      "source": "hot_table_agg",
+      "column": "avg_seq_scan_ratio",
+      "category": "Hot Table",
+      "level": "database",
+      "available_charts": ["line"],
+      "default_chart": "line",
+      "description": "전체 스캔 중 순차 스캔이 차지하는 비율을 나타냅니다."
+    },
+    "vacuum_delay_seconds": {
+      "title": "Vacuum 지연 시간",
+      "unit": "sec",
+      "source": "hot_table_agg",
+      "column": "vacuum_delay_seconds",
+      "category": "Hot Table",
+      "level": "database",
+      "available_charts": ["line"],
+      "default_chart": "line",
+      "description": "Vacuum 작업이 해당 테이블에서 지연된 시간을 초 단위로 나타냅니다."
+    }
+  },
+
+  "Hot Index": {
+    "avg_index_size": {
+      "title": "평균 인덱스 크기",
+      "unit": "MB",
+      "source": "hot_index_agg",
+      "column": "avg_index_size",
+      "category": "Hot Index",
+      "level": "database",
+      "available_charts": ["bar", "line"],
+      "default_chart": "bar",
+      "description": "수집 구간 동안 인덱스의 평균 크기를 MB 단위로 나타냅니다."
+    },
+    "total_idx_scan": {
+      "title": "Index Scan 횟수",
+      "unit": "count",
+      "source": "hot_index_agg",
+      "column": "total_idx_scan",
+      "category": "Hot Index",
+      "level": "database",
+      "available_charts": ["bar"],
+      "default_chart": "bar",
+      "description": "해당 인덱스에 대해 수행된 전체 인덱스 스캔 횟수를 나타냅니다."
+    },
+    "total_idx_tup_fetch": {
+      "title": "Index Tuple Fetch 수",
+      "unit": "count",
+      "source": "hot_index_agg",
+      "column": "total_idx_tup_fetch",
+      "category": "Hot Index",
+      "level": "database",
+      "available_charts": ["bar"],
+      "default_chart": "bar",
+      "description": "인덱스 검색 결과로 반환된 튜플의 총 개수를 나타냅니다."
+    },
+    "avg_idx_efficiency": {
+      "title": "평균 인덱스 효율",
+      "unit": "%",
+      "source": "hot_index_agg",
+      "column": "avg_idx_efficiency",
+      "category": "Hot Index",
+      "level": "database",
+      "available_charts": ["line"],
+      "default_chart": "line",
+      "description": "인덱스 스캔 대비 실제 데이터 접근 효율을 나타냅니다."
+    },
+    "avg_idx_hit_ratio": {
+      "title": "평균 Index Hit Ratio",
+      "unit": "%",
+      "source": "hot_index_agg",
+      "column": "avg_idx_hit_ratio",
+      "category": "Hot Index",
+      "level": "database",
+      "available_charts": ["line"],
+      "default_chart": "line",
+      "description": "인덱스 접근 시 캐시에서 직접 읽힌 비율을 나타냅니다."
+    },
+    "idx_scan_per_day": {
+      "title": "일별 Index Scan 횟수",
+      "unit": "count",
+      "source": "hot_index_agg",
+      "column": "idx_scan_per_day",
+      "category": "Hot Index",
+      "level": "database",
+      "available_charts": ["bar"],
+      "default_chart": "bar",
+      "description": "하루 동안 인덱스가 스캔된 총 횟수를 나타냅니다."
+    }
+  },
+
+  "Event Log": {
+    "event_count": {
+      "title": "이벤트 발생 횟수",
+      "unit": "count",
+      "source": "event_log",
+      "column": "event_id",
+      "category": "Event Log",
+      "level": "database",
+      "available_charts": ["bar"],
+      "default_chart": "bar",
+      "description": "수집 구간 내 발생한 이벤트의 개수를 나타냅니다."
+    },
+    "duration": {
+      "title": "이벤트 지속 시간",
+      "unit": "sec",
+      "source": "event_log",
+      "column": "duration",
+      "category": "Event Log",
+      "level": "database",
+      "available_charts": ["line"],
+      "default_chart": "line",
+      "description": "특정 이벤트가 지속된 시간을 초 단위로 나타냅니다."
+    },
+    "critical_event_count": {
+      "title": "Critical 이벤트 수",
+      "unit": "count",
+      "source": "event_log",
+      "column": "level",
+      "category": "Event Log",
+      "level": "database",
+      "available_charts": ["bar"],
+      "default_chart": "bar",
+      "description": "심각(Critical) 등급의 이벤트 발생 횟수를 나타냅니다."
+    }
+  }
+}
+]

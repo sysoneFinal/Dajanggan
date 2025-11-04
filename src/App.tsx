@@ -1,9 +1,9 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { useState } from "react";
 import { useLocation } from "react-router-dom";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { AppRoutes } from "./routes";
 import Sidebar from "./components/layout/Sidebar";
 import Header from "./components/layout/Header";
-import { useState } from "react";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -21,8 +21,15 @@ function App() {
   const location = useLocation();
   const noLayoutRoutes = ["/"];
   const hideLayout = noLayoutRoutes.includes(location.pathname);
-  const [breadcrumb, setBreadcrumb] = useState(["Database", "Session", "Dashboard"]);
 
+  /** 헤더 · 브레드크럼 · 대시보드 편집 상태 */
+  const [breadcrumb, setBreadcrumb] = useState(["Database", "Session", "Dashboard"]);
+  const [isEditing, setIsEditing] = useState(false);
+
+  /** 편집 모드 토글 */
+  const handleToggleEdit = () => {
+    setIsEditing((prev) => !prev);
+  };
 
   return (
     <QueryClientProvider client={queryClient}>
@@ -32,9 +39,14 @@ function App() {
         ) : (
           <div className="app-main">
             <Sidebar onChangeBreadcrumb={setBreadcrumb} />
+
             <div className="app-content">
-              <Header breadcrumb={breadcrumb} />
-              <AppRoutes />
+              <Header
+                breadcrumb={breadcrumb}
+                isEditing={isEditing}
+                onToggleEdit={handleToggleEdit}
+              />
+              <AppRoutes isEditing={isEditing} />
             </div>
           </div>
         )}
