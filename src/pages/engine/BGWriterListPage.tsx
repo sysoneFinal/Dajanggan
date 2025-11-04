@@ -122,6 +122,18 @@ export default function BGWriterListPage() {
                 header: "Backend(개/s)",
                 cell: (info) => info.getValue(),
             },
+
+            {
+                accessorKey: "fsyncRate",
+                header: "Fsync(회/s)",
+                cell: (info) => info.getValue(),
+            },
+            {
+                accessorKey: "maxWrittenRate",
+                header: "상한 도달(회/분)",
+                cell: (info) => info.getValue(),
+            },
+
             {
                 accessorKey: "backendRatio",
                 header: "Backend 비율(%)",
@@ -146,16 +158,7 @@ export default function BGWriterListPage() {
                     );
                 },
             },
-            {
-                accessorKey: "fsyncRate",
-                header: "Fsync(회/s)",
-                cell: (info) => info.getValue(),
-            },
-            {
-                accessorKey: "maxWrittenRate",
-                header: "상한 도달(회/분)",
-                cell: (info) => info.getValue(),
-            },
+
             {
                 accessorKey: "status",
                 header: "상태",

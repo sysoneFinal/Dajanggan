@@ -132,30 +132,6 @@ export default function CPUListPage() {
                 cell: (info) => info.getValue(),
             },
             {
-                accessorKey: "totalCPU",
-                header: "전체 CPU(%)",
-                cell: (info) => {
-                    const value = info.getValue() as number;
-                    const color = getCPUColor(value);
-                    return (
-                        <div className="progress-cell">
-                            <div className="progress-bar-wrapper">
-                                <div className="progress-bar-track">
-                                    <div
-                                        className="progress-bar-fill"
-                                        style={{
-                                            width: `${value}%`,
-                                            backgroundColor: color,
-                                        }}
-                                    />
-                                </div>
-                            </div>
-                            <span className="progress-value">{value}%</span>
-                        </div>
-                    );
-                },
-            },
-            {
                 accessorKey: "userCPU",
                 header: "User CPU(%)",
                 cell: (info) => info.getValue(),
@@ -189,6 +165,30 @@ export default function CPUListPage() {
                 accessorKey: "workerTime",
                 header: "병렬 워커 시간(ms)",
                 cell: (info) => info.getValue(),
+            },
+            {
+                accessorKey: "totalCPU",
+                header: "전체 CPU(%)",
+                cell: (info) => {
+                    const value = info.getValue() as number;
+                    const color = getCPUColor(value);
+                    return (
+                        <div className="progress-cell">
+                            <div className="progress-bar-wrapper">
+                                <div className="progress-bar-track">
+                                    <div
+                                        className="progress-bar-fill"
+                                        style={{
+                                            width: `${value}%`,
+                                            backgroundColor: color,
+                                        }}
+                                    />
+                                </div>
+                            </div>
+                            <span className="progress-value">{value}%</span>
+                        </div>
+                    );
+                },
             },
             {
                 accessorKey: "status",

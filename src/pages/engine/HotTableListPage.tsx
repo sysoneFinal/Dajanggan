@@ -122,13 +122,182 @@ const mockData: HotTableData[] = [
         seqScan: 22.5,
         status: "주의",
     },
+    {
+        id: "8",
+        tableName: "points",
+        size: "4.4GB",
+        selectRate: 1740,
+        updateRate: 850,
+        deadTuple: 16150,
+        deadPercent: 18.9,
+        cacheHit: 88.9,
+        vacuumDelay: "6시간",
+        seqScan: 22.5,
+        status: "주의",
+    },
+    {
+        id: "9",
+        tableName: "points",
+        size: "4.4GB",
+        selectRate: 1740,
+        updateRate: 850,
+        deadTuple: 16150,
+        deadPercent: 18.9,
+        cacheHit: 88.9,
+        vacuumDelay: "6시간",
+        seqScan: 22.5,
+        status: "주의",
+    },
+    {
+        id: "10",
+        tableName: "points",
+        size: "4.4GB",
+        selectRate: 1740,
+        updateRate: 850,
+        deadTuple: 16150,
+        deadPercent: 18.9,
+        cacheHit: 88.9,
+        vacuumDelay: "6시간",
+        seqScan: 22.5,
+        status: "주의",
+    },
+    {
+        id: "11",
+        tableName: "points",
+        size: "4.4GB",
+        selectRate: 1740,
+        updateRate: 850,
+        deadTuple: 16150,
+        deadPercent: 18.9,
+        cacheHit: 88.9,
+        vacuumDelay: "6시간",
+        seqScan: 22.5,
+        status: "주의",
+    },
+    {
+        id: "12",
+        tableName: "points",
+        size: "4.4GB",
+        selectRate: 1740,
+        updateRate: 850,
+        deadTuple: 16150,
+        deadPercent: 18.9,
+        cacheHit: 88.9,
+        vacuumDelay: "6시간",
+        seqScan: 22.5,
+        status: "주의",
+    },
+    {
+        id: "13",
+        tableName: "points",
+        size: "4.4GB",
+        selectRate: 1740,
+        updateRate: 850,
+        deadTuple: 16150,
+        deadPercent: 18.9,
+        cacheHit: 88.9,
+        vacuumDelay: "6시간",
+        seqScan: 22.5,
+        status: "주의",
+    },
+    {
+        id: "14",
+        tableName: "points",
+        size: "4.4GB",
+        selectRate: 1740,
+        updateRate: 850,
+        deadTuple: 16150,
+        deadPercent: 18.9,
+        cacheHit: 88.9,
+        vacuumDelay: "6시간",
+        seqScan: 22.5,
+        status: "주의",
+    },
+    {
+        id: "15",
+        tableName: "points",
+        size: "4.4GB",
+        selectRate: 1740,
+        updateRate: 850,
+        deadTuple: 16150,
+        deadPercent: 18.9,
+        cacheHit: 88.9,
+        vacuumDelay: "6시간",
+        seqScan: 22.5,
+        status: "주의",
+    },
+    {
+        id: "16",
+        tableName: "points",
+        size: "4.4GB",
+        selectRate: 1740,
+        updateRate: 850,
+        deadTuple: 16150,
+        deadPercent: 18.9,
+        cacheHit: 88.9,
+        vacuumDelay: "6시간",
+        seqScan: 22.5,
+        status: "주의",
+    },
+    {
+        id: "17",
+        tableName: "points",
+        size: "4.4GB",
+        selectRate: 1740,
+        updateRate: 850,
+        deadTuple: 16150,
+        deadPercent: 18.9,
+        cacheHit: 88.9,
+        vacuumDelay: "6시간",
+        seqScan: 22.5,
+        status: "주의",
+    },
+    {
+        id: "18",
+        tableName: "points",
+        size: "4.4GB",
+        selectRate: 1740,
+        updateRate: 850,
+        deadTuple: 16150,
+        deadPercent: 18.9,
+        cacheHit: 88.9,
+        vacuumDelay: "6시간",
+        seqScan: 22.5,
+        status: "주의",
+    },
+    {
+        id: "19",
+        tableName: "points",
+        size: "4.4GB",
+        selectRate: 1740,
+        updateRate: 850,
+        deadTuple: 16150,
+        deadPercent: 18.9,
+        cacheHit: 88.9,
+        vacuumDelay: "6시간",
+        seqScan: 22.5,
+        status: "주의",
+    },
+    {
+        id: "20",
+        tableName: "points",
+        size: "4.4GB",
+        selectRate: 1740,
+        updateRate: 850,
+        deadTuple: 16150,
+        deadPercent: 18.9,
+        cacheHit: 88.9,
+        vacuumDelay: "6시간",
+        seqScan: 22.5,
+        status: "주의",
+    },
 ];
 
 export default function HotTableListPage() {
     const [data] = useState<HotTableData[]>(mockData);
     const [sorting, setSorting] = useState<SortingState>([]);
     const [currentPage, setCurrentPage] = useState(1);
-    const pageSize = 10;
+    const pageSize = 15;
 
     // 프로그레스 바 색상 결정 함수
     const getDeadPercentColor = (percent: number) => {
@@ -179,50 +348,46 @@ export default function HotTableListPage() {
             {
                 accessorKey: "deadPercent",
                 header: "Dead 비율(%)",
-                cell: (info) => {
-                    const value = info.getValue() as number;
-                    const color = getDeadPercentColor(value);
-                    return (
-                        <div className="progress-cell">
-                            <div className="progress-bar-wrapper">
-                                <div className="progress-bar-track">
-                                    <div
-                                        className="progress-bar-fill"
-                                        style={{
-                                            width: `${value}%`,
-                                            backgroundColor: color,
-                                        }}
-                                    />
-                                </div>
-                            </div>
-                            <span className="progress-value">{value}%</span>
-                        </div>
-                    );
-                },
+                cell: (info) => (info.getValue() as number).toLocaleString(),
+                //     const value = info.getValue() as number;
+                //     const color = getDeadPercentColor(value);
+                //     return (
+                //         <div className="progress-cell">
+                //             <div className="progress-bar-wrapper">
+                //                 <div className="progress-bar-track">
+                //                     <div
+                //                         className="progress-bar-fill"
+                //                         style={{
+                //                             width: `${value}%`,
+                //                             backgroundColor: color,
+                //                         }}
+                //                     />
+                //                 </div>
+                //             </div>
+                //             <span className="progress-value">{value}%</span>
+                //         </div>
+                //     );
+                // },
             },
             {
                 accessorKey: "cacheHit",
                 header: "캐시 Hit(%)",
-                cell: (info) => {
-                    const value = info.getValue() as number;
-                    const color = getCacheHitColor(value);
-                    return (
-                        <div className="progress-cell">
-                            <div className="progress-bar-wrapper">
-                                <div className="progress-bar-track">
-                                    <div
-                                        className="progress-bar-fill"
-                                        style={{
-                                            width: `${value}%`,
-                                            backgroundColor: color,
-                                        }}
-                                    />
-                                </div>
-                            </div>
-                            <span className="progress-value">{value}%</span>
-                        </div>
-                    );
-                },
+                cell: (info) => (info.getValue() as number).toLocaleString(),
+                //     const value = info.getValue() as number;
+                //     const color = getCacheHitColor(value);
+                //     return (
+                //         <div className="progress-cell">
+                //             <div className="progress-bar-wrapper">
+                //                     <div
+                //                         style={{
+                //                             width: `${value}%`,
+                //                         }}
+                //                     />
+                //             </div>
+                //             <span className="progress-value">{value}%</span>
+                //         </div>
+                //     );
+                // },
             },
             {
                 accessorKey: "vacuumDelay",

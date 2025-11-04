@@ -155,50 +155,12 @@ export default function HotIndexListPage() {
             {
                 accessorKey: "efficiency",
                 header: "효율성(%)",
-                cell: (info) => {
-                    const value = info.getValue() as number;
-                    const color = getEfficiencyColor(value);
-                    return (
-                        <div className="progress-cell">
-                            <div className="progress-bar-wrapper">
-                                <div className="progress-bar-track">
-                                    <div
-                                        className="progress-bar-fill"
-                                        style={{
-                                            width: `${value}%`,
-                                            backgroundColor: color,
-                                        }}
-                                    />
-                                </div>
-                            </div>
-                            <span className="progress-value">{value}%</span>
-                        </div>
-                    );
-                },
+                cell: (info) => (info.getValue() as number).toLocaleString(),
             },
             {
                 accessorKey: "cacheHit",
                 header: "캐시 Hit(%)",
-                cell: (info) => {
-                    const value = info.getValue() as number;
-                    const color = getCacheHitColor(value);
-                    return (
-                        <div className="progress-cell">
-                            <div className="progress-bar-wrapper">
-                                <div className="progress-bar-track">
-                                    <div
-                                        className="progress-bar-fill"
-                                        style={{
-                                            width: `${value}%`,
-                                            backgroundColor: color,
-                                        }}
-                                    />
-                                </div>
-                            </div>
-                            <span className="progress-value">{value}%</span>
-                        </div>
-                    );
-                },
+                cell: (info) => (info.getValue() as number).toLocaleString(),
             },
             {
                 accessorKey: "lastUsed",
