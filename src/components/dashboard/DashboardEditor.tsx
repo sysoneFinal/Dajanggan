@@ -1,4 +1,8 @@
 import { useState, useEffect } from "react";
+import metrics from "../chart/Metrics.json"; 
+import { flattenMetrics } from "../../util/falttenMetrics";
+
+// === 아이콘 임포트 ===
 import columnIcon from "@/assets/icon/column.svg";
 import columnActiveIcon from "@/assets/icon/column-active.svg";
 import pieIcon from "@/assets/icon/pie.svg";
@@ -25,6 +29,7 @@ import card7Icon from "@/assets/icon/7card.svg";
 import card7ActiveIcon from "@/assets/icon/7card-active.svg";
 import card9Icon from "@/assets/icon/9card.svg";
 import card9ActiveIcon from "@/assets/icon/9card-active.svg";
+
 import "@/styles/dashboard/dashboardEditor.css";
 
 interface DashboardEditorPanelProps {
@@ -34,55 +39,66 @@ interface DashboardEditorPanelProps {
 
 /**
  * DashboardEditorPanel
- * 테마 및 차트 선택 전용 편집 패널
- * (저장은 Header에서 처리)
+ * - 테마 / 지표 / 차트 선택
+ * - 드래그 앤 드롭 미리보기
  */
 export default function DashboardEditorPanel({
   currentTheme,
   onThemeChange,
 }: DashboardEditorPanelProps) {
-  const [selectedChart, setSelectedChart] = useState<string>("Column");
+  const [selectedChart, setSelectedChart] = useState<string>("");
+  const [selectedMetric, setSelectedMetric] = useState<string>("");
+  const [availableCharts, setAvailableCharts] = useState<string[]>([]);
 
-  /** 테마 정의 (아이콘 기반) */
+  /** 테마 목록 */
   const themes = [
     { id: "custom", label: "All Custom", icon: allCustomIcon, activeIcon: allCustomActiveIcon },
     { id: "card_7_layout", label: "카드 7개", icon: card7Icon, activeIcon: card7ActiveIcon },
     { id: "card_9_layout", label: "카드 9개", icon: card9Icon, activeIcon: card9ActiveIcon },
   ];
 
-  /** 차트 정의 */
-  const chartCategories = [
-    {
-      category: "기본형",
-      charts: [
-        { id: "Column", label: "Column", icon: columnIcon, activeIcon: columnActiveIcon },
-        { id: "Bar", label: "Bar", icon: barIcon, activeIcon: barActiveIcon },
-        { id: "Line", label: "Line", icon: lineIcon, activeIcon: lineActiveIcon },
-        { id: "Area", label: "Area", icon: areaIcon, activeIcon: areaActiveIcon },
-      ],
-    },
-    {
-      category: "분석형",
-      charts: [
-        { id: "Pie", label: "Pie", icon: pieIcon, activeIcon: pieActiveIcon },
-        { id: "Donut", label: "Donut", icon: donutIcon, activeIcon: donutActiveIcon },
-        { id: "Gauge", label: "Gauge", icon: gaugeIcon, activeIcon: gaugeActiveIcon },
-      ],
-    },
-    {
-      category: "기타",
-      charts: [
-        { id: "Scatter", label: "Scatter", icon: scatterIcon, activeIcon: scatterActiveIcon },
-        { id: "List", label: "List", icon: listIcon, activeIcon: listActiveIcon },
-        { id: "Number", label: "Number", icon: numberIcon, activeIcon: numberActiveIcon },
-      ],
-    },
+  /** 전체 차트 타입 정의 */
+  const chartTypes = [
+    { id: "column", label: "Column", icon: columnIcon, activeIcon: columnActiveIcon },
+    { id: "bar", label: "Bar", icon: barIcon, activeIcon: barActiveIcon },
+    { id: "line", label: "Line", icon: lineIcon, activeIcon: lineActiveIcon },
+    { id: "area", label: "Area", icon: areaIcon, activeIcon: areaActiveIcon },
+    { id: "pie", label: "Pie", icon: pieIcon, activeIcon: pieActiveIcon },
+    { id: "donut", label: "Donut", icon: donutIcon, activeIcon: donutActiveIcon },
+    { id: "gauge", label: "Gauge", icon: gaugeIcon, activeIcon: gaugeActiveIcon },
+    { id: "scatter", label: "Scatter", icon: scatterIcon, activeIcon: scatterActiveIcon },
+    { id: "list", label: "List", icon: listIcon, activeIcon: listActiveIcon },
+    { id: "number", label: "Number", icon: numberIcon, activeIcon: numberActiveIcon },
   ];
 
-  /** 선택된 차트 미리보기 */
-  const selectedChartData = chartCategories
-    .flatMap(({ charts }) => charts)
-    .find((chart) => chart.id === selectedChart);
+  /** Metrics 파싱 */
+  const parsedMetrics = flattenMetrics(metrics);
+
+  /** Metric 변경 시 available_charts 반영 */
+  const handleMetricChange = (metricKey: string) => {
+    setSelectedMetric(metricKey);
+    const metricInfo = parsedMetrics[metricKey];
+    if (metricInfo?.available_charts) {
+      setAvailableCharts(metricInfo.available_charts.map((c: string) => c.toLowerCase()));
+      setSelectedChart(metricInfo.default_chart || metricInfo.available_charts[0]);
+    } else {
+      setAvailableCharts([]);
+      setSelectedChart("");
+    }
+  };
+
+  /** 보여줄 차트 필터링 */
+  const visibleCharts =
+    availableCharts.length > 0
+      ? chartTypes.filter((chart) => availableCharts.includes(chart.id))
+      : [];
+
+  /** 선택된 차트 데이터 */
+  const selectedChartData = chartTypes.find((chart) => chart.id === selectedChart);
+
+  /** 안내문 상태 계산 */
+  const isCustom = currentTheme === "custom";
+  const isTemplate = currentTheme.startsWith("card_");
 
   useEffect(() => {
     if (currentTheme && !themes.some((t) => t.id === currentTheme)) return;
@@ -90,7 +106,32 @@ export default function DashboardEditorPanel({
 
   return (
     <aside className="editor-panel">
-      {/* ================= Theme Section ================= */}
+      {/* === 안내문 === */}
+      <div className="editor-guide">
+        {isCustom ? (
+          <>
+            🎨 <strong>Custom 모드</strong>입니다.
+            <br />
+            ↳ 원하는 지표를 선택하고 드래그하여 <strong>새 위젯</strong>을 추가하세요.
+          </>
+        ) : isTemplate ? (
+          <>
+            🧩 <strong>Theme 모드</strong>입니다.
+            <br />
+            ↳ 지표를 선택한 후, <strong>기존 카드 위로 드롭</strong>하면 교체됩니다.
+            <br />
+            (새 위젯 추가는 불가능)
+          </>
+        ) : (
+          <>
+            📊 대시보드 편집 모드입니다.
+            <br />
+            테마를 선택하여 대시보드를 구성할 수 있습니다.
+          </>
+        )}
+      </div>
+
+      {/* === 테마 선택 === */}
       <section className="editor-section">
         <h2 className="section-title">Theme</h2>
         <div className="theme-grid">
@@ -107,13 +148,14 @@ export default function DashboardEditorPanel({
                   alt={`${label} theme`}
                   className="theme-thumb"
                 />
+                <span className="theme-label">{label}</span>
               </button>
             );
           })}
         </div>
       </section>
 
-      {/* ================= Metric Section ================= */}
+      {/* === Metric 선택 === */}
       <section className="editor-section">
         <h2 className="section-title">Metric</h2>
         <div className="metric-selectors">
@@ -122,20 +164,26 @@ export default function DashboardEditorPanel({
             <option>DB-01</option>
             <option>DB-02</option>
           </select>
-          <select className="select-input">
-            <option>Select Metric</option>
-            <option>CPU Usage</option>
-            <option>Session Count</option>
+          <select
+            className="select-input"
+            value={selectedMetric}
+            onChange={(e) => handleMetricChange(e.target.value)}
+          >
+            <option value="">Select Metric</option>
+            {Object.entries(parsedMetrics).map(([key, value]: any) => (
+              <option key={key} value={key}>
+                {value.title}
+              </option>
+            ))}
           </select>
         </div>
       </section>
 
-      {/* ================= Chart Selector ================= */}
+      {/* === Chart 선택 === */}
       <section className="editor-section chart-section">
-        <div className="chart-grid">
-          {chartCategories
-            .flatMap(({ charts }) => charts)
-            .map(({ id, label, icon, activeIcon }) => {
+        {visibleCharts.length > 0 ? (
+          <div className="chart-grid">
+            {visibleCharts.map(({ id, label, icon, activeIcon }) => {
               const isActive = selectedChart === id;
               return (
                 <button
@@ -152,22 +200,70 @@ export default function DashboardEditorPanel({
                 </button>
               );
             })}
-        </div>
+          </div>
+        ) : (
+          <div className="empty-chart-container">
+            <p className="empty-chart-text">지표를 선택하면 차트 유형이 표시됩니다.</p>
+          </div>
+        )}
       </section>
+      {/* 프리뷰 드래그 앤 드롭으로 차트 등록 */}
+<section className="editor-section">
+  <h2 className="section-title">Preview</h2>
 
-      {/* ================= Preview Section ================= */}
-      <section className="editor-section">
-        <h2 className="section-title">Preview</h2>
-        <div className="card-preview-single">
-          {selectedChartData && (
-            <img
-              src={selectedChartData.activeIcon}
-              alt={`${selectedChartData.label} preview`}
-              className="preview-chart-img"
-            />
-          )}
+  <div
+    className={`card-preview-single ${!isCustom && !isTemplate ? "disabled" : ""}`}
+    draggable={!!selectedMetric && !!selectedChart}
+    onDragStart={(e) => {
+      if (!selectedMetric || !selectedChart) {
+        e.preventDefault();
+        return;
+      }
+      e.dataTransfer.effectAllowed = "copy";
+      e.dataTransfer.setData(
+        "application/json",
+        JSON.stringify({
+          metricKey: selectedMetric,
+          chartType: selectedChart,
+        })
+      );
+    }}
+    onMouseDown={(e) => {
+      // 이미지 자체 드래그 방지
+      const img = e.currentTarget.querySelector("img");
+      if (img) img.ondragstart = () => false;
+    }}
+  >
+    {selectedChartData ? (
+      <div className="preview-content">
+        <div className="preview-header">
+          <h4 className="preview-title">
+            {parsedMetrics[selectedMetric]?.title ?? "선택된 지표"}
+          </h4>
         </div>
-      </section>
+        <div className="preview-chart-box">
+          <img
+            src={selectedChartData.activeIcon}
+            alt={`${selectedChartData.label} preview`}
+            className="preview-chart-img"
+            draggable={false} //이미지 단독 드래그 방지
+          />
+        </div>
+      </div>
+    ) : (
+      <p className="empty-preview-text">차트를 선택하면 미리보기가 표시됩니다.</p>
+    )}
+  </div>
+
+  {(isTemplate || isCustom) && (
+    <p className="drag-hint">
+      {isCustom
+        ? "📦 프리뷰 카드를 드래그하여 새 위젯을 추가할 수 있습니다."
+        : "🪄 프리뷰 카드를 기존 카드 위로 드롭하면 해당 지표로 교체됩니다."}
+    </p>
+  )}
+</section>
+
     </aside>
   );
 }
