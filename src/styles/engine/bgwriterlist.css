@@ -40,7 +40,7 @@
 }
 
 /* 테이블 */
-.bgwriter-page__table {
+.bgwriter-list-page__table {
     background: rgba(255, 255, 255, 0.6);
     border-radius: 0.7rem;
     border: 1px solid rgba(255, 255, 255, 0.7);

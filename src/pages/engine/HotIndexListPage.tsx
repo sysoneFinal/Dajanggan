@@ -116,19 +116,6 @@ export default function HotIndexListPage() {
         return result;
     }, [data, showUnusedOnly, showInefficientOnly]);
 
-    // 프로그레스 바 색상 결정 함수
-    const getEfficiencyColor = (percent: number) => {
-        if (percent >= 80) return "#7B61FF"; // 녹색
-        if (percent >= 60) return "#FFD66B"; // 주황
-        return "#FF928A"; // 빨강
-    };
-
-    const getCacheHitColor = (percent: number) => {
-        if (percent >= 95) return "#7B61FF"; // 녹색
-        if (percent >= 85) return "#FFD66B"; // 주황
-        return "#FF928A"; // 빨강
-    };
-
     // 컬럼 정의
     const columns = useMemo<ColumnDef<HotIndexData>[]>(
         () => [
