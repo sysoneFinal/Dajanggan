@@ -7,13 +7,14 @@ import "react-grid-layout/css/styles.css";
 import "../../styles/dashboard/Layout.css";
 
 
-/** * * @param basic-6card 
- * *{ w: 8, h: 12, x: 0, y: 0, i: "a" }, 
- * { w: 8, h: 6, x: 8, y: 0, i: "b" },
- * { w: 8, h: 6, x: 16, y: 0, i: "c" }, 
- * { w: 16, h: 6, x: 8, y: 6, i: "d" }, 
- * { w: 8, h: 6, x: 0, y: 12, i: "e" }, 
- * { w: 16, h: 6, x: 8, y: 12, i: "f" }, */ 
+/** * * @param basic-7card 
+ *    { w: 8, h: 6, x: 0, y: 0, i: "a" },
+    { w: 8, h: 6, x: 8, y: 0, i: "b" },
+    { w: 8, h: 6, x: 16, y: 0, i: "c" },
+    { w: 16, h: 6, x: 0, y: 6, i: "d" },
+    { w: 8, h: 6, x: 0, y: 12, i: "e" },
+    { w: 16, h: 6, x: 8, y: 12, i: "f" },
+    { w: 8, h: 6, x: 16, y: 6, i: "g" }, */ 
 /** * * @param 빽빽-9card
  * { "w": 8,"h": 6,"x": 0,"y": 0,"i": "a"}, 
  * { "w": 8,"h": 6,"x": 8,"y": 0,"i": "b"}, 
@@ -35,15 +36,13 @@ export default function Dashboard({ isEditing }: DashboardProps) {
   /** 기본 레이아웃  */
   const defaultLayouts: Layouts = {
     lg: [
-      { w: 8, h: 6, x: 0, y: 0, i: "a" },
-      { w: 8, h: 6, x: 8, y: 0, i: "b" },
-      { w: 8, h: 6, x: 16, y: 0, i: "c" },
-      { w: 8, h: 6, x: 0, y: 6, i: "d" },
-      { w: 8, h: 6, x: 8, y: 6, i: "e" },
-      { w: 8, h: 6, x: 16, y: 6, i: "f" },
-      { w: 8, h: 6, x: 0, y: 12, i: "g" },
-      { w: 8, h: 6, x: 8, y: 12, i: "h" },
-      { w: 8, h: 6, x: 16, y: 12, i: "i" },
+      // @param basic-6card 
+  { w: 8, h: 12, x: 0, y: 0, i: "a" }, 
+  { w: 8, h: 6, x: 8, y: 0, i: "b" },
+  { w: 8, h: 6, x: 16, y: 0, i: "c" }, 
+  { w: 16, h: 6, x: 8, y: 6, i: "d" }, 
+  { w: 8, h: 6, x: 0, y: 12, i: "e" }, 
+  { w: 16, h: 6, x: 8, y: 12, i: "f" }, 
     ],
     md: [],
     sm: [],

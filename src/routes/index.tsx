@@ -37,12 +37,19 @@ import MemoryListPage from "../pages/system/MemoryListPage.tsx";
 import HotIndexListPage from "../pages/engine/HotIndexListPage.tsx";
 import HotTableListPage from "../pages/engine/HotTableListPage.tsx";
 
+
+interface AppRoutesProps {
+  isEditing?: boolean;
+}
+
+export const AppRoutes = ({ isEditing = false }: AppRoutesProps) => {
+
 const routeList = [
   // 헤더 없는 초기 페이지
   { path: "/", element: <Home /> },
 
   // 대시보드 메인
-  { path: "/overview", element: <Overview /> },
+  { path: "/overview", element: <Overview isEditing={isEditing}/> },
   { path : "/layout", element : <LayoutBuilder />},
   { path : "/editor", element : <DashboardEditor />},
 
@@ -105,10 +112,11 @@ const routeList = [
 ];
 
 
-export const AppRoutes = () => (
-  <Routes>
-    {routeList.map(({ path, element }) => (
-      <Route key={path} path={path} element={element} />
-    ))}
-  </Routes>
-);
+  return (
+    <Routes>
+      {routeList.map(({ path, element }) => (
+        <Route key={path} path={path} element={element} />
+      ))}
+    </Routes>
+  );
+}
