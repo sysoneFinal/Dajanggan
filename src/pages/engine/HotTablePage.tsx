@@ -216,12 +216,11 @@ export default function HotTablePage() {
 
     const summaryCards = [
         {
-            label: "HOT Update 비율",
-            value: `${recentStats.hotUpdateRatio}%`,
-            diff: 3.2,
+            label: "평균 Vacuum 지연",
+            value: `${recentStats.avgVacuumDelay}시간`,
+            diff: 1.2,
             desc: "최근 5분 평균",
-            status: recentStats.hotUpdateRatio < 50 ? ("warning" as const) : ("info" as const),
-            link: "/dashboard/hot-table/list",
+            status: recentStats.avgVacuumDelay > 12 ? "warning" : "info"
         },
         {
             label: "Live/Dead Tuple 비율",
@@ -248,12 +247,11 @@ export default function HotTablePage() {
             link: "/dashboard/hot-table/list",
         },
         {
-            label: "Update/Delete 비율",
-            value: `${recentStats.updateDeleteRatio}`,
-            diff: 0.4,
-            desc: "최근 5분 평균",
-            status: "info" as const,
-            link: "/dashboard/hot-table/list",
+            label: "전체 Bloat 크기",
+            value: `${recentStats.totalBloat}GB`,
+            diff: 0.5,
+            desc: "최근 5분 누적",
+            status: recentStats.totalBloat > 10 ? "warning" : "info"
         },
     ];
 
@@ -382,7 +380,7 @@ export default function HotTablePage() {
                                     formatter: (val: number) => `${(val / 1000).toFixed(1)}K`,
                                 },
                                 min: 0,
-                                max: 2000,
+                                max: 10000,
                             },
                         }}
                     />
