@@ -48,9 +48,9 @@ interface BGWriterData {
     recentStats?: {
         cleanBufferReuseRate: number;
         avgCleanRate: number;
-        backendDirectWriteRate: number;   // 변경: bgwriterExecutions → backendDirectWriteRate (%)
+        backendDirectWriteRate: number;
         bgwriterVsCheckpointRatio: number;
-        maxwrittenReachRate: number;      // 변경: maxwrittenCleanCount → maxwrittenReachRate (%)
+        maxwrittenReachRate: number;
     };
 }
 
@@ -71,13 +71,12 @@ const mockData: BGWriterData = {
         max: 195,
         min: 95,
     },
-    // 최근 5분 평균 통계
     recentStats: {
         cleanBufferReuseRate: 78,
         avgCleanRate: 118,
-        backendDirectWriteRate: 2.8,    // 변경: Backend가 직접 쓴 비율 (%)
+        backendDirectWriteRate: 2.8,
         bgwriterVsCheckpointRatio: 38.5,
-        maxwrittenReachRate: 6.7,       // 변경: 제한 도달률 (%)
+        maxwrittenReachRate: 6.7,
     },
     bufferFlushRatio: {
         categories: [
@@ -125,10 +124,12 @@ async function fetchBGWriterData() {
     return res.json();
 }
 
-/** 유틸리티 함수 */
-const getGaugeStatus = (value: number): "normal" | "warning" | "critical" => {
-    if (value < 15) return "normal";
-    if (value < 30) return "warning";
+const getBackendFlushGaugeStatus = (
+    value: number
+): "normal" | "warning" | "critical" => {
+    // 0~50%: 정상, 50~70%: 주의, 70% 이상: 경고
+    if (value < 30) return "normal";
+    if (value < 50) return "warning";
     return "critical";
 };
 
@@ -142,9 +143,8 @@ export default function BGWriterPage() {
 
     const dashboard = data || mockData;
 
-    const gaugeStatus = getGaugeStatus(dashboard.backendFlushRatio.value);
+    const gaugeStatus = getBackendFlushGaugeStatus(dashboard.backendFlushRatio.value);
 
-    // 최근 5분 평균 통계 (API에서 받아오거나 더미 데이터 사용)
     const recentStats = dashboard.recentStats || {
         cleanBufferReuseRate: 78,
         avgCleanRate: 118,
@@ -153,14 +153,13 @@ export default function BGWriterPage() {
         maxwrittenReachRate: 6.7,
     };
 
-    // 요약 카드 데이터 계산 (최근 5분 평균 기준)
     const summaryCards = [
         {
-            label: "Clean 버퍼 재활용률",
-            value: `${recentStats.cleanBufferReuseRate}%`,
+            label: "BGWriter 활동률",
+            value: `${recentStats.bgwriterActivityRate}%`,
             diff: 2.5,
             desc: "최근 5분 평균",
-            status: recentStats.cleanBufferReuseRate < 60 ? ("warning" as const) : ("info" as const),
+            status: recentStats.bgwriterActivityRate < 50 ? "warning" : "info"
         },
         {
             label: "평균 Clean Rate",
@@ -170,8 +169,8 @@ export default function BGWriterPage() {
             status: "info" as const,
         },
         {
-            label: "Backend 직접 쓰기 비율",  // 변경
-            value: `${recentStats.backendDirectWriteRate}%`,  // 변경
+            label: "Backend 직접 쓰기 비율",
+            value: `${recentStats.backendDirectWriteRate}%`,
             diff: -0.5,
             desc: "최근 5분 평균",
             status: recentStats.backendDirectWriteRate > 10 ? ("warning" as const) : ("info" as const),
@@ -184,11 +183,11 @@ export default function BGWriterPage() {
             status: recentStats.bgwriterVsCheckpointRatio < 30 ? ("warning" as const) : ("info" as const),
         },
         {
-            label: "BGWriter 제한 도달률",  // 변경
-            value: `${recentStats.maxwrittenReachRate}%`,  // 변경
-            diff: -1.2,
-            desc: "최근 5분 평균",
-            status: recentStats.maxwrittenReachRate > 10 ? ("warning" as const) : ("info" as const),
+            label: "Backend Fsync 발생",
+            value: recentStats.backendFsyncCount,
+            diff: 0,
+            desc: "최근 5분 누적",
+            status: recentStats.backendFsyncCount > 0 ? "critical" : "info"
         },
     ];
 
@@ -208,16 +207,39 @@ export default function BGWriterPage() {
                 ))}
             </div>
 
-            {/* 첫 번째 행: 3개 카드 (4+4+4=12) */}
+            {/* 첫 번째 행: 3개 카드 */}
             <ChartGridLayout>
                 {/* Backend Flush 비율 */}
                 <WidgetCard title="Backend Flush 비율" span={2}>
-                    <div className="bgwriter-gauge-container">
+                    <div style={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        height: '100%',
+                        width: '100%',
+                        marginTop: '18px',
+                    }}>
                         <GaugeChart
                             value={dashboard.backendFlushRatio.value}
                             status={gaugeStatus}
                             type="semi-circle"
+                            radius={100}
+                            strokeWidth={20}
+                            height={200}
+                            flattenRatio={0.89}
                         />
+                        <div className="cpu-gauge-details">
+                            <div className="cpu-detail-item">
+                                <span className="cpu-detail-label">Clean</span>
+                                <span className="cpu-detail-value">{(dashboard.backendFlushRatio.buffersClean / 1000).toFixed(1)}K</span>
+                            </div>
+                            <div className="cpu-detail-divider"></div>
+                            <div className="cpu-detail-item">
+                                <span className="cpu-detail-label">Backend</span>
+                                <span className="cpu-detail-value">{(dashboard.backendFlushRatio.buffersBackend / 1000).toFixed(1)}K</span>
+                            </div>
+                        </div>
                     </div>
                 </WidgetCard>
 
@@ -251,9 +273,9 @@ export default function BGWriterPage() {
 
             </ChartGridLayout>
 
-            {/* 두 번째 행: 3개 카드 (4+4+4=12) */}
+            {/* 두 번째 행: 3개 카드 */}
             <ChartGridLayout>
-                {/* BGWriter 활동량 추세 */}
+                {/* BGWriter 활동량 추세 - 임계치 적용 */}
                 <WidgetCard title="BGWriter 활동량 추세 (Last 24 Hours)" span={4}>
                     <Chart
                         type="line"
@@ -261,8 +283,60 @@ export default function BGWriterPage() {
                         categories={dashboard.cleanRate.categories}
                         colors={["#8E79FF"]}
                         height={250}
+                        customOptions={{
+                            annotations: {
+                                yaxis: [
+                                    {
+                                        y: 100,
+                                        borderColor: "#60A5FA",
+                                        strokeDashArray: 4,
+                                        opacity: 0.6,
+                                        label: {
+                                            borderColor: "#60A5FA",
+                                            style: {
+                                                color: "#fff",
+                                                background: "#60A5FA",
+                                                fontSize: "11px",
+                                                fontWeight: 500,
+                                            },
+                                            text: "정상: 100/s",
+                                            position: "right",
+                                        },
+                                    },
+                                    {
+                                        y: 50,
+                                        borderColor: "#FBBF24",
+                                        strokeDashArray: 4,
+                                        opacity: 0.7,
+                                        label: {
+                                            borderColor: "#FBBF24",
+                                            style: {
+                                                color: "#fff",
+                                                background: "#FBBF24",
+                                                fontSize: "11px",
+                                                fontWeight: 500,
+                                            },
+                                            text: "주의: 50/s",
+                                            position: "right",
+                                        },
+                                    },
+                                ],
+                            },
+                            yaxis: {
+                                labels: {
+                                    style: {
+                                        colors: "#6B7280",
+                                        fontFamily: 'var(--font-family, "Pretendard", sans-serif)'
+                                    },
+                                    formatter: (val: number) => `${val}/s`,
+                                },
+                                min: 0,
+                                max: 220,
+                            },
+                        }}
                     />
                 </WidgetCard>
+
                 {/* Clean 스캔 상한 도달 추이 */}
                 <WidgetCard title="Clean 스캔 상한 도달 추이 (Last 24 Hours)" span={4}>
                     <Chart

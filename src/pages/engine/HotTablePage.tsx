@@ -11,11 +11,15 @@ interface HotTableData {
     cacheHitRatio: {
         tableName: string;
         value: number;
+        bufferHits: number;
+        diskReads: number;
     };
-    vacuumDelay: {
-        tableName: string;
-        delayHours: number;
-        delaySec: number;
+    vacuumDelayTrend: {
+        categories: string[];
+        tables: Array<{
+            name: string;
+            data: number[];
+        }>;
     };
     deadTupleTrend: {
         categories: string[];
@@ -45,8 +49,8 @@ interface HotTableData {
         hotUpdateRatio: number;
         liveDeadTupleRatio: string;
         deadTupleCount: number;
-        seqScanRatio: number;           // 변경: totalScans → seqScanRatio (%)
-        updateDeleteRatio: number;      // 변경: totalDml → updateDeleteRatio (배율)
+        seqScanRatio: number;
+        updateDeleteRatio: number;
     };
 }
 
@@ -55,11 +59,20 @@ const mockData: HotTableData = {
     cacheHitRatio: {
         tableName: "orders",
         value: 94.3,
+        bufferHits: 156000,
+        diskReads: 9400,
+        // 계산식: 94.3 = (156000 / (156000 + 9400)) * 100
     },
-    vacuumDelay: {
-        tableName: "orders",
-        delayHours: 3.6,
-        delaySec: 12960,
+    vacuumDelayTrend: {
+        categories: [
+            "0:00", "2:00", "4:00", "6:00", "8:00", "10:00",
+            "12:00", "14:00", "16:00", "18:00", "20:00", "23:00"
+        ],
+        tables: [
+            { name: "orders", data: [2.5, 4.2, 5.8, 1.2, 3.5, 6.1, 8.3, 2.8, 4.5, 7.2, 9.5, 3.6] },
+            { name: "users", data: [1.8, 3.5, 4.2, 0.8, 2.1, 4.8, 6.5, 1.5, 3.2, 5.8, 7.2, 2.3] },
+            { name: "products", data: [1.2, 2.8, 3.5, 0.5, 1.8, 3.2, 5.1, 1.2, 2.5, 4.5, 5.8, 1.8] },
+        ],
     },
     deadTupleTrend: {
         categories: [
@@ -67,7 +80,7 @@ const mockData: HotTableData = {
             "12:00", "14:00", "16:00", "18:00", "20:00", "23:00"
         ],
         tables: [
-            { name: "orders", data: [1000, 1500, 2000, 2500, 3000, 3500, 4000, 4500, 5000, 5500, 6000, 6200] },
+            { name: "orders", data: [600, 700, 800, 900, 1000, 1100, 1200, 1300, 1400, 1500, 1600, 1700] },
             { name: "users", data: [500, 600, 700, 800, 900, 1000, 1100, 1200, 1300, 1400, 1500, 1600] },
             { name: "products", data: [300, 400, 500, 600, 700, 800, 900, 1000, 1100, 1200, 1300, 1400] },
         ],
@@ -92,13 +105,12 @@ const mockData: HotTableData = {
         updateCounts: [80000, 60000, 50000, 70000, 40000],
         deleteCounts: [20000, 15000, 10000, 18000, 8000],
     },
-    // 최근 5분 평균 통계
     recentStats: {
         hotUpdateRatio: 76,
         liveDeadTupleRatio: "648:1",
         deadTupleCount: 1850,
-        seqScanRatio: 18,           // 변경: Sequential Scan 비율 (%)
-        updateDeleteRatio: 2.3,     // 변경: (Update+Delete) / Insert 배율
+        seqScanRatio: 18,
+        updateDeleteRatio: 2.3,
     },
 };
 
@@ -115,16 +127,72 @@ const getCacheGaugeStatus = (value: number): "normal" | "warning" | "critical" =
     return "critical";
 };
 
-const getVacuumGaugeStatus = (hours: number): "normal" | "warning" | "critical" => {
-    if (hours < 6) return "normal";
-    if (hours < 24) return "warning";
-    return "critical";
-};
+interface SummaryCardWithLinkProps {
+    label: string;
+    value: string | number;
+    diff?: number;
+    desc?: string;
+    status?: "info" | "warning" | "critical";
+    link?: string;
+}
 
-const vacuumDelayToPercent = (hours: number): number => {
-    const maxHours = 48;
-    return Math.min((hours / maxHours) * 100, 100);
-};
+function SummaryCardWithLink({ link, status = "info", ...props }: SummaryCardWithLinkProps) {
+    const statusColors: Record<string, string> = {
+        info: "#555555",
+        warning: "#F59E0B",
+        critical: "#EF4444",
+    };
+
+    return (
+        <div style={{ position: "relative", flex: 1 }}>
+            <SummaryCard {...props} status={status} />
+
+            {link && (
+                <a
+                    href={link}
+                    style={{
+                        position: "absolute",
+                        top: "1rem",
+                        right: "1rem",
+                        width: "20px",
+                        height: "20px",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        cursor: "pointer",
+                        transition: "all 0.2s ease",
+                        opacity: 0.6,
+                        zIndex: 10,
+                    }}
+                    onMouseEnter={(e) => {
+                        e.currentTarget.style.opacity = "1";
+                        e.currentTarget.style.transform = "scale(1.15)";
+                    }}
+                    onMouseLeave={(e) => {
+                        e.currentTarget.style.opacity = "0.6";
+                        e.currentTarget.style.transform = "scale(1)";
+                    }}
+                >
+                    {/* 외부 링크 아이콘 SVG */}
+                    <svg
+                        width="16"
+                        height="16"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke={statusColors[status]}
+                        strokeWidth="2.5"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                    >
+                        <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+                        <polyline points="15 3 21 3 21 9" />
+                        <line x1="10" y1="14" x2="21" y2="3" />
+                    </svg>
+                </a>
+            )}
+        </div>
+    );
+}
 
 /** 메인 컴포넌트 */
 export default function HotTablePage() {
@@ -138,10 +206,6 @@ export default function HotTablePage() {
 
     const cacheGaugeStatus = getCacheGaugeStatus(dashboard.cacheHitRatio.value);
 
-    const vacuumGaugeStatus = getVacuumGaugeStatus(dashboard.vacuumDelay.delayHours);
-    const vacuumPercent = vacuumDelayToPercent(dashboard.vacuumDelay.delayHours);
-
-    // 최근 5분 평균 통계 (API에서 받아오거나 더미 데이터 사용)
     const recentStats = dashboard.recentStats || {
         hotUpdateRatio: 76,
         liveDeadTupleRatio: "648:1",
@@ -150,14 +214,13 @@ export default function HotTablePage() {
         updateDeleteRatio: 2.3,
     };
 
-    // 요약 카드 데이터 계산 (최근 5분 평균 기준)
     const summaryCards = [
         {
-            label: "HOT 업데이트 비율",
-            value: `${recentStats.hotUpdateRatio}%`,
-            diff: 2.1,
+            label: "평균 Vacuum 지연",
+            value: `${recentStats.avgVacuumDelay}시간`,
+            diff: 1.2,
             desc: "최근 5분 평균",
-            status: recentStats.hotUpdateRatio < 60 ? ("warning" as const) : ("info" as const),
+            status: recentStats.avgVacuumDelay > 12 ? "warning" : "info"
         },
         {
             label: "Live/Dead Tuple 비율",
@@ -165,27 +228,30 @@ export default function HotTablePage() {
             diff: 15,
             desc: "최근 5분 평균",
             status: "info" as const,
+            link: "/dashboard/hot-table/list",
         },
         {
             label: "Dead Tuple 수",
             value: recentStats.deadTupleCount.toLocaleString(),
-            diff: 120,
-            desc: "최근 5분 평균",
-            status: recentStats.deadTupleCount > 3000 ? ("warning" as const) : ("info" as const),
+            diff: 180,
+            desc: "최근 5분 누적",
+            status: recentStats.deadTupleCount > 10000 ? ("warning" as const) : ("info" as const),
+            link: "/dashboard/hot-table/list",
         },
         {
-            label: "Seq Scan 비율",  // 변경
-            value: `${recentStats.seqScanRatio}%`,  // 변경
-            diff: -2,
+            label: "Seq Scan 비율",
+            value: `${recentStats.seqScanRatio}%`,
+            diff: -2.3,
             desc: "최근 5분 평균",
             status: recentStats.seqScanRatio > 30 ? ("warning" as const) : ("info" as const),
+            link: "/dashboard/hot-table/list",
         },
         {
-            label: "Update/Delete 비율",  // 변경
-            value: `${recentStats.updateDeleteRatio}:1`,  // 변경
-            diff: 0.1,
-            desc: "최근 5분 평균",
-            status: recentStats.updateDeleteRatio > 3 ? ("warning" as const) : ("info" as const),
+            label: "전체 Bloat 크기",
+            value: `${recentStats.totalBloat}GB`,
+            diff: 0.5,
+            desc: "최근 5분 누적",
+            status: recentStats.totalBloat > 10 ? "warning" : "info"
         },
     ];
 
@@ -194,43 +260,69 @@ export default function HotTablePage() {
             {/* 상단 요약 카드 */}
             <div className="hottable-summary-cards">
                 {summaryCards.map((card, idx) => (
-                    <SummaryCard
+                    <SummaryCardWithLink
                         key={idx}
                         label={card.label}
                         value={card.value}
                         diff={card.diff}
                         desc={card.desc}
                         status={card.status}
+                        link={card.link}
                     />
                 ))}
             </div>
 
-            {/* 첫 번째 행: 2개의 게이지 + 1개 차트 */}
+            {/* 첫 번째 행: 3개 차트 */}
             <ChartGridLayout>
-                {/* 테이블 캐시 적중률 */}
-                <WidgetCard title="테이블 캐시 적중률" span={2}>
-                    <div className="hottable-gauge-container">
+                <WidgetCard title={`${dashboard.cacheHitRatio.tableName} Cache Hit Ratio`} span={2}>
+                    <div style={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        height: '100%',
+                        width: '100%',
+                        marginTop: '18px',
+                    }}>
                         <GaugeChart
                             value={dashboard.cacheHitRatio.value}
                             status={cacheGaugeStatus}
                             type="semi-circle"
+                            radius={100}
+                            strokeWidth={20}
+                            height={200}
+                            flattenRatio={0.89}
                         />
+                        <div className="cpu-gauge-details">
+                            <div className="cpu-detail-item">
+                                <span className="cpu-detail-label">Buffer Hits</span>
+                                <span className="cpu-detail-value">{(dashboard.cacheHitRatio.bufferHits / 1000).toFixed(1)}K</span>
+                            </div>
+                            <div className="cpu-detail-divider"></div>
+                            <div className="cpu-detail-item">
+                                <span className="cpu-detail-label">Disk Reads</span>
+                                <span className="cpu-detail-value">{(dashboard.cacheHitRatio.diskReads / 1000).toFixed(1)}K</span>
+                            </div>
+                        </div>
                     </div>
                 </WidgetCard>
 
-                {/* Vacuum 지연 시간 */}
-                <WidgetCard title="Vacuum 지연 시간" span={2}>
-                    <div className="hottable-gauge-container">
-                        <GaugeChart
-                            value={vacuumPercent}
-                            status={vacuumGaugeStatus}
-                            type="semi-circle"
-                        />
-                    </div>
+                {/* Vacuum 지연 시간 추이 */}
+                <WidgetCard title="Top-3 Vacuum 지연 테이블 (Last 24 Hours)" span={4}>
+                    <Chart
+                        type="line"
+                        series={dashboard.vacuumDelayTrend.tables.map((table) => ({
+                            name: table.name,
+                            data: table.data,
+                        }))}
+                        categories={dashboard.vacuumDelayTrend.categories}
+                        colors={["#8E79FF", "#FEA29B", "#77B2FB"]}
+                        height={250}
+                    />
                 </WidgetCard>
 
-                {/* 테이블별 Dead Tuple 추이 */}
-                <WidgetCard title="테이블별 Dead Tuple 추이 (Last 24 Hours)" span={4}>
+                {/* 테이블별 Dead Tuple 추이 - 임계치 적용 */}
+                <WidgetCard title="Top-3 Dead Tuple 테이블 (Last 24 Hours)" span={3}>
                     <Chart
                         type="line"
                         series={dashboard.deadTupleTrend.tables.map((table) => ({
@@ -240,16 +332,119 @@ export default function HotTablePage() {
                         categories={dashboard.deadTupleTrend.categories}
                         colors={["#8E79FF", "#77B2FB", "#FEA29B"]}
                         height={250}
+                        customOptions={{
+                            annotations: {
+                                yaxis: [
+                                    {
+                                        y: 1000,
+                                        borderColor: "#60A5FA",
+                                        strokeDashArray: 4,
+                                        opacity: 0.6,
+                                        label: {
+                                            borderColor: "#60A5FA",
+                                            style: {
+                                                color: "#fff",
+                                                background: "#60A5FA",
+                                                fontSize: "11px",
+                                                fontWeight: 500,
+                                            },
+                                            text: "정상: 1K",
+                                            position: "right",
+                                        },
+                                    },
+                                    {
+                                        y: 5000,
+                                        borderColor: "#FBBF24",
+                                        strokeDashArray: 4,
+                                        opacity: 0.7,
+                                        label: {
+                                            borderColor: "#FBBF24",
+                                            style: {
+                                                color: "#fff",
+                                                background: "#FBBF24",
+                                                fontSize: "11px",
+                                                fontWeight: 500,
+                                            },
+                                            text: "주의: 5K",
+                                            position: "right",
+                                        },
+                                    },
+                                ],
+                            },
+                            yaxis: {
+                                labels: {
+                                    style: {
+                                        colors: "#6B7280",
+                                        fontFamily: 'var(--font-family, "Pretendard", sans-serif)'
+                                    },
+                                    formatter: (val: number) => `${(val / 1000).toFixed(1)}K`,
+                                },
+                                min: 0,
+                                max: 10000,
+                            },
+                        }}
                     />
                 </WidgetCard>
-                {/* DB 전체 Dead Tuple 추이 */}
-                <WidgetCard title="DB 전체 Dead Tuple 추이 (Last 24 Hours)" span={4}>
+
+                {/* DB 전체 Dead Tuple 추이 - 임계치 적용 */}
+                <WidgetCard title="DB 전체 Dead Tuple 추이 (Last 24 Hours)" span={3}>
                     <Chart
                         type="area"
                         series={[{ name: "Total Dead Tuples", data: dashboard.totalDeadTuple.data }]}
                         categories={dashboard.totalDeadTuple.categories}
                         colors={["#8E79FF"]}
                         height={250}
+                        customOptions={{
+                            annotations: {
+                                yaxis: [
+                                    {
+                                        y: 10000,
+                                        borderColor: "#60A5FA",
+                                        strokeDashArray: 4,
+                                        opacity: 0.6,
+                                        label: {
+                                            borderColor: "#60A5FA",
+                                            style: {
+                                                color: "#fff",
+                                                background: "#60A5FA",
+                                                fontSize: "11px",
+                                                fontWeight: 500,
+                                            },
+                                            text: "정상: 10K",
+                                            position: "right",
+                                        },
+                                    },
+                                    {
+                                        y: 50000,
+                                        borderColor: "#FBBF24",
+                                        strokeDashArray: 4,
+                                        opacity: 0.7,
+                                        label: {
+                                            borderColor: "#FBBF24",
+                                            style: {
+                                                color: "#fff",
+                                                background: "#FBBF24",
+                                                fontSize: "11px",
+                                                fontWeight: 500,
+                                            },
+                                            text: "주의: 50K",
+                                            position: "right",
+                                        },
+                                    },
+                                ],
+                            },
+                            yaxis: {
+                                labels: {
+                                    style: {
+                                        colors: "#6B7280",
+                                        fontFamily: 'var(--font-family, "Pretendard", sans-serif)'
+                                    },
+                                    formatter: (val: number) => `${(val / 1000).toFixed(0)}K`,
+                                },
+                                min: 0,
+                                max: 60000,
+                            },
+                        }}
                     />
                 </WidgetCard>
             </ChartGridLayout>
@@ -257,7 +452,7 @@ export default function HotTablePage() {
             {/* 두 번째 행: 3개 차트 */}
             <ChartGridLayout>
                 {/* Top-N 테이블 조회량 */}
-                <WidgetCard title="Top-N 테이블 조회량 (Last 24 Hours)" span={6}>
+                <WidgetCard title="Top-5 테이블 조회량 (Last 24 Hours)" span={6}>
                     <Chart
                         type="bar"
                         series={[{ name: "Scan Count", data: dashboard.topQueryTables.scanCounts }]}
@@ -267,8 +462,8 @@ export default function HotTablePage() {
                     />
                 </WidgetCard>
 
-                {/* Top-N 테이블 DML량 */}
-                <WidgetCard title="Top-N 테이블 DML량 (Last 24 Hours)" span={6}>
+                {/* Top-5 테이블 DML량 */}
+                <WidgetCard title="Top-5 테이블 DML량 (Last 24 Hours)" span={6}>
                     <Chart
                         type="bar"
                         series={[

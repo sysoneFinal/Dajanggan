@@ -54,7 +54,7 @@ interface CheckpointData {
         buffersWritten: number;
         avgTotalProcessTime: number;
         checkpointDistance: number;
-        checkpointInterval: number;  // 변경: requestTimedRatio → checkpointInterval (분 단위)
+        checkpointInterval: number;
         avgWalGenerationSpeed: number;
     };
 }
@@ -62,7 +62,7 @@ interface CheckpointData {
 /** 더미 데이터 */
 const mockData: CheckpointData = {
     requestRatio: {
-        value: 28.5,
+        value: 60.5,
         requestedCount: 50,
         timedCount: 125,
     },
@@ -122,12 +122,11 @@ const mockData: CheckpointData = {
         max: 5500,
         min: 2400,
     },
-    // 최근 5분 평균 통계
     recentStats: {
         buffersWritten: 4280,
         avgTotalProcessTime: 1.78,
         checkpointDistance: 85,
-        checkpointInterval: 4.8,  // 변경: 평균 Checkpoint 간격 (분)
+        checkpointInterval: 4.8,
         avgWalGenerationSpeed: 9.2,
     },
 };
@@ -139,10 +138,13 @@ async function fetchCheckpointData() {
     return res.json();
 }
 
-/** 유틸리티 함수 */
-const getGaugeStatus = (value: number): "normal" | "warning" | "critical" => {
-    if (value < 20) return "normal";
-    if (value < 30) return "warning";
+const getCheckpointRequestGaugeStatus = (
+    value: number
+): "normal" | "warning" | "critical" => {
+    // 요청형 체크포인트 비율이 높을수록 위험
+    // 0~50%: 정상, 50~70%: 주의, 70% 이상: 경고
+    if (value < 50) return "normal";
+    if (value < 70) return "warning";
     return "critical";
 };
 
@@ -156,9 +158,8 @@ export default function CheckPointPage() {
 
     const dashboard = data || mockData;
 
-    const gaugeStatus = getGaugeStatus(dashboard.requestRatio.value);
+    const gaugeStatus = getCheckpointRequestGaugeStatus(dashboard.requestRatio.value);
 
-    // 최근 5분 평균 통계 (API에서 받아오거나 더미 데이터 사용)
     const recentStats = dashboard.recentStats || {
         buffersWritten: 4280,
         avgTotalProcessTime: 1.78,
@@ -167,7 +168,6 @@ export default function CheckPointPage() {
         avgWalGenerationSpeed: 9.2,
     };
 
-    // 요약 카드 데이터 계산 (최근 5분 평균 기준)
     const summaryCards = [
         {
             label: "기록된 버퍼",
@@ -191,8 +191,8 @@ export default function CheckPointPage() {
             status: "info" as const,
         },
         {
-            label: "Checkpoint 간격",  // 변경
-            value: `${recentStats.checkpointInterval}분`,  // 변경
+            label: "Checkpoint 간격",
+            value: `${recentStats.checkpointInterval}분`,
             diff: 0.3,
             desc: "최근 5분 평균 간격",
             status: "info" as const,
@@ -222,16 +222,39 @@ export default function CheckPointPage() {
                 ))}
             </div>
 
-            {/* 첫 번째 행: 3개 카드 (4+4+4=12) */}
+            {/* 첫 번째 행: 3개 카드 */}
             <ChartGridLayout>
                 {/* Checkpoint 요청 비율 */}
                 <WidgetCard title="Checkpoint 요청 비율" span={2}>
-                    <div className="checkpoint-gauge-container">
+                    <div style={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        height: '100%',
+                        width: '100%',
+                        marginTop: '18px',
+                    }}>
                         <GaugeChart
                             value={dashboard.requestRatio.value}
                             status={gaugeStatus}
                             type="semi-circle"
+                            radius={100}
+                            strokeWidth={20}
+                            height={200}
+                            flattenRatio={0.89}
                         />
+                        <div className="cpu-gauge-details">
+                            <div className="cpu-detail-item">
+                                <span className="cpu-detail-label">Requested</span>
+                                <span className="cpu-detail-value">{dashboard.requestRatio.requestedCount}</span>
+                            </div>
+                            <div className="cpu-detail-divider"></div>
+                            <div className="cpu-detail-item">
+                                <span className="cpu-detail-label">Timed</span>
+                                <span className="cpu-detail-value">{dashboard.requestRatio.timedCount}</span>
+                            </div>
+                        </div>
                     </div>
                 </WidgetCard>
 
@@ -249,7 +272,7 @@ export default function CheckPointPage() {
                     />
                 </WidgetCard>
 
-                {/* Checkpoint 처리 시간 추세 */}
+                {/* Checkpoint 처리 시간 추세 - 임계치 적용 */}
                 <WidgetCard title="Checkpoint 처리 시간 추세 (Last 24 Hours)" span={5}>
                     <Chart
                         type="line"
@@ -260,11 +283,62 @@ export default function CheckPointPage() {
                         categories={dashboard.processTime.categories}
                         colors={["#8E79FF", "#FEA29B"]}
                         height={250}
+                        customOptions={{
+                            annotations: {
+                                yaxis: [
+                                    {
+                                        y: 1000,
+                                        borderColor: "#60A5FA",
+                                        strokeDashArray: 4,
+                                        opacity: 0.6,
+                                        label: {
+                                            borderColor: "#60A5FA",
+                                            style: {
+                                                color: "#fff",
+                                                background: "#60A5FA",
+                                                fontSize: "11px",
+                                                fontWeight: 500,
+                                            },
+                                            text: "정상: 1s",
+                                            position: "right",
+                                        },
+                                    },
+                                    {
+                                        y: 2000,
+                                        borderColor: "#FBBF24",
+                                        strokeDashArray: 4,
+                                        opacity: 0.7,
+                                        label: {
+                                            borderColor: "#FBBF24",
+                                            style: {
+                                                color: "#fff",
+                                                background: "#FBBF24",
+                                                fontSize: "11px",
+                                                fontWeight: 500,
+                                            },
+                                            text: "주의: 2s",
+                                            position: "right",
+                                        },
+                                    },
+                                ],
+                            },
+                            yaxis: {
+                                labels: {
+                                    style: {
+                                        colors: "#6B7280",
+                                        fontFamily: 'var(--font-family, "Pretendard", sans-serif)'
+                                    },
+                                    formatter: (val: number) => `${(val / 1000).toFixed(1)}s`,
+                                },
+                                min: 0,
+                                max: 2500,
+                            },
+                        }}
                     />
                 </WidgetCard>
             </ChartGridLayout>
 
-            {/* 두 번째 행: 3개 카드 (4+4+4=12) */}
+            {/* 두 번째 행: 3개 카드 */}
             <ChartGridLayout>
                 {/* WAL 생성량 추이 */}
                 <WidgetCard title="WAL 생성량 추이 (Last 24 Hours)" span={4}>
