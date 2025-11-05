@@ -29,9 +29,12 @@ interface HotIndexData {
         max: number;
     };
     efficiency: {
-        categories: string[];
-        indexes: number[];
-    };
+        data: Array<{
+            x: number;  // 사용 횟수
+            y: number;  // 효율성 (%)
+            name: string;  // 인덱스 이름
+        }>;
+    }
     accessTrend: {
         categories: string[];
         reads: number[];
