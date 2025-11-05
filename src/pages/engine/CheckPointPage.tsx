@@ -228,21 +228,32 @@ export default function CheckPointPage() {
                 <WidgetCard title="Checkpoint 요청 비율" span={2}>
                     <div style={{
                         display: 'flex',
+                        flexDirection: 'column',
                         alignItems: 'center',
-                        justifyContent: 'center',
+                        justifyContent: 'space-between',
                         height: '100%',
-                        width: '100%'
+                        width: '100%',
+                        marginTop: '18px',
                     }}>
-                        <div className="checkpoint-gauge-container">
-                            <GaugeChart
-                                value={dashboard.requestRatio.value}
-                                status={gaugeStatus}
-                                type="semi-circle"
-                                radius={100}
-                                strokeWidth={20}
-                                height={200}
-                                flattenRatio={0.89}
-                            />
+                        <GaugeChart
+                            value={dashboard.requestRatio.value}
+                            status={gaugeStatus}
+                            type="semi-circle"
+                            radius={100}
+                            strokeWidth={20}
+                            height={200}
+                            flattenRatio={0.89}
+                        />
+                        <div className="cpu-gauge-details">
+                            <div className="cpu-detail-item">
+                                <span className="cpu-detail-label">Requested</span>
+                                <span className="cpu-detail-value">{dashboard.requestRatio.requestedCount}</span>
+                            </div>
+                            <div className="cpu-detail-divider"></div>
+                            <div className="cpu-detail-item">
+                                <span className="cpu-detail-label">Timed</span>
+                                <span className="cpu-detail-value">{dashboard.requestRatio.timedCount}</span>
+                            </div>
                         </div>
                     </div>
                 </WidgetCard>

@@ -213,21 +213,32 @@ export default function BGWriterPage() {
                 <WidgetCard title="Backend Flush 비율" span={2}>
                     <div style={{
                         display: 'flex',
+                        flexDirection: 'column',
                         alignItems: 'center',
-                        justifyContent: 'center',
+                        justifyContent: 'space-between',
                         height: '100%',
-                        width: '100%'
+                        width: '100%',
+                        marginTop: '18px',
                     }}>
-                        <div className="bgwriter-gauge-container">
-                            <GaugeChart
-                                value={dashboard.backendFlushRatio.value}
-                                status={gaugeStatus}
-                                type="semi-circle"
-                                radius={100}
-                                strokeWidth={20}
-                                height={200}
-                                flattenRatio={0.89}
-                            />
+                        <GaugeChart
+                            value={dashboard.backendFlushRatio.value}
+                            status={gaugeStatus}
+                            type="semi-circle"
+                            radius={100}
+                            strokeWidth={20}
+                            height={200}
+                            flattenRatio={0.89}
+                        />
+                        <div className="cpu-gauge-details">
+                            <div className="cpu-detail-item">
+                                <span className="cpu-detail-label">Clean</span>
+                                <span className="cpu-detail-value">{(dashboard.backendFlushRatio.buffersClean / 1000).toFixed(1)}K</span>
+                            </div>
+                            <div className="cpu-detail-divider"></div>
+                            <div className="cpu-detail-item">
+                                <span className="cpu-detail-label">Backend</span>
+                                <span className="cpu-detail-value">{(dashboard.backendFlushRatio.buffersBackend / 1000).toFixed(1)}K</span>
+                            </div>
                         </div>
                     </div>
                 </WidgetCard>

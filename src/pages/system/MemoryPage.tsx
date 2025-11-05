@@ -212,63 +212,104 @@ export default function MemoryPage() {
 
             {/* 첫 번째 행: 3개의 게이지 */}
             <ChartGridLayout>
-                <WidgetCard title="Memory 사용률" span={2}>
+                <WidgetCard title="Memory Utilization" span={2}>
                     <div style={{
                         display: 'flex',
+                        flexDirection: 'column',
                         alignItems: 'center',
-                        justifyContent: 'center',
+                        justifyContent: 'space-between',
                         height: '100%',
-                        width: '100%'
+                        width: '100%',
+                        marginTop: '18px',
                     }}>
                         <GaugeChart
                             value={data.memoryUtilization.value}
-                            type="semi-circle"
                             color={memoryUtilizationColor}
+                            type="semi-circle"
                             radius={100}
                             strokeWidth={20}
                             height={200}
                             flattenRatio={0.89}
                         />
+                        <div className="memory-gauge-details">
+                            <div className="memory-detail-item">
+                                <span className="memory-detail-label">사용중</span>
+                                <span className="memory-detail-value">{(data.memoryUtilization.usedBuffers / 1000).toFixed(1)}K</span>
+                            </div>
+                            <div className="memory-detail-divider"></div>
+                            <div className="memory-detail-item">
+                                <span className="memory-detail-label">전체</span>
+                                <span className="memory-detail-value">{(data.memoryUtilization.totalBuffers / 1000).toFixed(1)}K</span>
+                            </div>
+                        </div>
                     </div>
                 </WidgetCard>
 
+                {/* Buffer Hit Ratio */}
                 <WidgetCard title="Buffer Hit Ratio" span={2}>
                     <div style={{
                         display: 'flex',
+                        flexDirection: 'column',
                         alignItems: 'center',
-                        justifyContent: 'center',
+                        justifyContent: 'space-between',
                         height: '100%',
-                        width: '100%'
+                        width: '100%',
+                        marginTop: '18px',
                     }}>
                         <GaugeChart
                             value={data.bufferHitRatio.value}
-                            type="semi-circle"
                             color={hitRatioColor}
+                            type="semi-circle"
                             radius={100}
                             strokeWidth={20}
                             height={200}
                             flattenRatio={0.89}
                         />
+                        <div className="memory-gauge-details">
+                            <div className="memory-detail-item">
+                                <span className="memory-detail-label">Hit</span>
+                                <span className="memory-detail-value">{(data.bufferHitRatio.hitCount / 1000000).toFixed(1)}M</span>
+                            </div>
+                            <div className="memory-detail-divider"></div>
+                            <div className="memory-detail-item">
+                                <span className="memory-detail-label">Total</span>
+                                <span className="memory-detail-value">{(data.bufferHitRatio.totalCount / 1000000).toFixed(1)}M</span>
+                            </div>
+                        </div>
                     </div>
                 </WidgetCard>
 
-                <WidgetCard title="Shared Buffer 사용 현황" span={2}>
+                {/* Shared Buffer Usage */}
+                <WidgetCard title="Shared Buffer Usage" span={2}>
                     <div style={{
                         display: 'flex',
+                        flexDirection: 'column',
                         alignItems: 'center',
-                        justifyContent: 'center',
+                        justifyContent: 'space-between',
                         height: '100%',
-                        width: '100%'
+                        width: '100%',
+                        marginTop: '18px',
                     }}>
                         <GaugeChart
                             value={data.sharedBufferUsage.value}
-                            type="semi-circle"
                             color={sharedBufferColor}
+                            type="semi-circle"
                             radius={100}
                             strokeWidth={20}
                             height={200}
                             flattenRatio={0.89}
                         />
+                        <div className="memory-gauge-details">
+                            <div className="memory-detail-item">
+                                <span className="memory-detail-label">Active</span>
+                                <span className="memory-detail-value">{(data.sharedBufferUsage.activeBuffers / 1000).toFixed(1)}K</span>
+                            </div>
+                            <div className="memory-detail-divider"></div>
+                            <div className="memory-detail-item">
+                                <span className="memory-detail-label">Total</span>
+                                <span className="memory-detail-value">{(data.sharedBufferUsage.totalBuffers / 1000).toFixed(1)}K</span>
+                            </div>
+                        </div>
                     </div>
                 </WidgetCard>
 

@@ -8,7 +8,11 @@ import "../../styles/system/disk.css";
 
 // API 응답 전체 구조
 interface DiskIOData {
-    diskUsage: number;
+    diskUsage: {
+        value: number;
+        iopsRead: number;
+        iopsWrite: number;
+    };
     processIO: {
         categories: string[];
         series: Array<{
@@ -60,7 +64,11 @@ interface DiskIOData {
 
 // 더미 데이터
 const dummyData: DiskIOData = {
-    diskUsage: 35.7,
+    diskUsage: {
+        value: 35.7,
+        iopsRead: 4250,
+        iopsWrite: 2780,
+    },
     processIO: {
         categories: ["0:00", "2:00", "4:00", "6:00", "8:00", "10:00", "12:00", "14:00", "16:00", "18:00", "20:00", "22:00"],
         series: [
@@ -192,20 +200,33 @@ export default function DiskPage() {
                 <WidgetCard title="DISK 사용률" span={2}>
                     <div style={{
                         display: 'flex',
+                        flexDirection: 'column',
                         alignItems: 'center',
-                        justifyContent: 'center',
+                        justifyContent: 'space-between',
                         height: '100%',
-                        width: '100%'
+                        width: '100%',
+                        marginTop: '18px',
                     }}>
                         <GaugeChart
-                            value={data.diskUsage}
-                            type="semi-circle"
+                            value={data.diskUsage.value}
                             color={DiskUtilizationColor}
+                            type="semi-circle"
                             radius={100}
                             strokeWidth={20}
                             height={200}
                             flattenRatio={0.89}
                         />
+                        <div className="cpu-gauge-details">
+                            <div className="cpu-detail-item">
+                                <span className="cpu-detail-label">Read</span>
+                                <span className="cpu-detail-value">{(data.diskUsage.iopsRead / 1000).toFixed(1)}K</span>
+                            </div>
+                            <div className="cpu-detail-divider"></div>
+                            <div className="cpu-detail-item">
+                                <span className="cpu-detail-label">Write</span>
+                                <span className="cpu-detail-value">{(data.diskUsage.iopsWrite / 1000).toFixed(1)}K</span>
+                            </div>
+                        </div>
                     </div>
                 </WidgetCard>
 

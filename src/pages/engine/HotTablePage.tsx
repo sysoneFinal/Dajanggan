@@ -11,6 +11,8 @@ interface HotTableData {
     cacheHitRatio: {
         tableName: string;
         value: number;
+        bufferHits: number;
+        diskReads: number;
     };
     vacuumDelayTrend: {
         categories: string[];
@@ -57,6 +59,9 @@ const mockData: HotTableData = {
     cacheHitRatio: {
         tableName: "orders",
         value: 94.3,
+        bufferHits: 156000,
+        diskReads: 9400,
+        // 계산식: 94.3 = (156000 / (156000 + 9400)) * 100
     },
     vacuumDelayTrend: {
         categories: [
@@ -122,6 +127,73 @@ const getCacheGaugeStatus = (value: number): "normal" | "warning" | "critical" =
     return "critical";
 };
 
+interface SummaryCardWithLinkProps {
+    label: string;
+    value: string | number;
+    diff?: number;
+    desc?: string;
+    status?: "info" | "warning" | "critical";
+    link?: string;
+}
+
+function SummaryCardWithLink({ link, status = "info", ...props }: SummaryCardWithLinkProps) {
+    const statusColors: Record<string, string> = {
+        info: "#555555",
+        warning: "#F59E0B",
+        critical: "#EF4444",
+    };
+
+    return (
+        <div style={{ position: "relative", flex: 1 }}>
+            <SummaryCard {...props} status={status} />
+
+            {link && (
+                <a
+                    href={link}
+                    style={{
+                        position: "absolute",
+                        top: "1rem",
+                        right: "1rem",
+                        width: "20px",
+                        height: "20px",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        cursor: "pointer",
+                        transition: "all 0.2s ease",
+                        opacity: 0.6,
+                        zIndex: 10,
+                    }}
+                    onMouseEnter={(e) => {
+                        e.currentTarget.style.opacity = "1";
+                        e.currentTarget.style.transform = "scale(1.15)";
+                    }}
+                    onMouseLeave={(e) => {
+                        e.currentTarget.style.opacity = "0.6";
+                        e.currentTarget.style.transform = "scale(1)";
+                    }}
+                >
+                    {/* 외부 링크 아이콘 SVG */}
+                    <svg
+                        width="16"
+                        height="16"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke={statusColors[status]}
+                        strokeWidth="2.5"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                    >
+                        <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+                        <polyline points="15 3 21 3 21 9" />
+                        <line x1="10" y1="14" x2="21" y2="3" />
+                    </svg>
+                </a>
+            )}
+        </div>
+    );
+}
+
 /** 메인 컴포넌트 */
 export default function HotTablePage() {
     const { data } = useQuery({
@@ -144,11 +216,12 @@ export default function HotTablePage() {
 
     const summaryCards = [
         {
-            label: "HOT 업데이트 비율",
+            label: "HOT Update 비율",
             value: `${recentStats.hotUpdateRatio}%`,
-            diff: 2.1,
+            diff: 3.2,
             desc: "최근 5분 평균",
-            status: recentStats.hotUpdateRatio < 60 ? ("warning" as const) : ("info" as const),
+            status: recentStats.hotUpdateRatio < 50 ? ("warning" as const) : ("info" as const),
+            link: "/dashboard/hot-table/list",
         },
         {
             label: "Live/Dead Tuple 비율",
@@ -156,27 +229,31 @@ export default function HotTablePage() {
             diff: 15,
             desc: "최근 5분 평균",
             status: "info" as const,
+            link: "/dashboard/hot-table/list",
         },
         {
             label: "Dead Tuple 수",
             value: recentStats.deadTupleCount.toLocaleString(),
-            diff: 120,
-            desc: "최근 5분 평균",
-            status: recentStats.deadTupleCount > 3000 ? ("warning" as const) : ("info" as const),
+            diff: 180,
+            desc: "최근 5분 누적",
+            status: recentStats.deadTupleCount > 10000 ? ("warning" as const) : ("info" as const),
+            link: "/dashboard/hot-table/list",
         },
         {
             label: "Seq Scan 비율",
             value: `${recentStats.seqScanRatio}%`,
-            diff: -2,
+            diff: -2.3,
             desc: "최근 5분 평균",
             status: recentStats.seqScanRatio > 30 ? ("warning" as const) : ("info" as const),
+            link: "/dashboard/hot-table/list",
         },
         {
             label: "Update/Delete 비율",
-            value: `${recentStats.updateDeleteRatio}:1`,
-            diff: 0.1,
+            value: `${recentStats.updateDeleteRatio}`,
+            diff: 0.4,
             desc: "최근 5분 평균",
-            status: recentStats.updateDeleteRatio > 3 ? ("warning" as const) : ("info" as const),
+            status: "info" as const,
+            link: "/dashboard/hot-table/list",
         },
     ];
 
@@ -185,38 +262,49 @@ export default function HotTablePage() {
             {/* 상단 요약 카드 */}
             <div className="hottable-summary-cards">
                 {summaryCards.map((card, idx) => (
-                    <SummaryCard
+                    <SummaryCardWithLink
                         key={idx}
                         label={card.label}
                         value={card.value}
                         diff={card.diff}
                         desc={card.desc}
                         status={card.status}
+                        link={card.link}
                     />
                 ))}
             </div>
 
-            {/* 첫 번째 행: 캐시 게이지 + Vacuum 지연 시간 차트 */}
+            {/* 첫 번째 행: 3개 차트 */}
             <ChartGridLayout>
-                {/* 테이블 캐시 적중률 */}
-                <WidgetCard title="테이블 캐시 적중률" span={2}>
+                <WidgetCard title={`${dashboard.cacheHitRatio.tableName} Cache Hit Ratio`} span={2}>
                     <div style={{
                         display: 'flex',
+                        flexDirection: 'column',
                         alignItems: 'center',
-                        justifyContent: 'center',
+                        justifyContent: 'space-between',
                         height: '100%',
-                        width: '100%'
+                        width: '100%',
+                        marginTop: '18px',
                     }}>
-                        <div className="hottable-gauge-container">
-                            <GaugeChart
-                                value={dashboard.cacheHitRatio.value}
-                                status={cacheGaugeStatus}
-                                type="semi-circle"
-                                radius={100}
-                                strokeWidth={20}
-                                height={200}
-                                flattenRatio={0.89}
-                            />
+                        <GaugeChart
+                            value={dashboard.cacheHitRatio.value}
+                            status={cacheGaugeStatus}
+                            type="semi-circle"
+                            radius={100}
+                            strokeWidth={20}
+                            height={200}
+                            flattenRatio={0.89}
+                        />
+                        <div className="cpu-gauge-details">
+                            <div className="cpu-detail-item">
+                                <span className="cpu-detail-label">Buffer Hits</span>
+                                <span className="cpu-detail-value">{(dashboard.cacheHitRatio.bufferHits / 1000).toFixed(1)}K</span>
+                            </div>
+                            <div className="cpu-detail-divider"></div>
+                            <div className="cpu-detail-item">
+                                <span className="cpu-detail-label">Disk Reads</span>
+                                <span className="cpu-detail-value">{(dashboard.cacheHitRatio.diskReads / 1000).toFixed(1)}K</span>
+                            </div>
                         </div>
                     </div>
                 </WidgetCard>
