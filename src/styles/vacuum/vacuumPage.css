@@ -102,7 +102,8 @@
   font-size: 13px; color: #374151; background: #f3f4f6;
   border-radius: 9999px; padding: 6px 10px; line-height: 1;
 }
-.vd-badge--ok { background: #eef4ff; color: #4f46e5; }
+.vd-badge--ok { background: #ececf7; color: #4f46e5; }
+.vd-badge--error { background: #f4e7e7; color: #ef4444; }
 
 /* Back 버튼 */
 .vd-backbtn {
