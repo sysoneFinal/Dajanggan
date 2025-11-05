@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { AppRoutes } from "./routes";
 import Sidebar from "./components/layout/Sidebar";
 import Header from "./components/layout/Header";
+import { DashboardProvider } from "./context/DashboardContext";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -22,35 +23,27 @@ function App() {
   const noLayoutRoutes = ["/"];
   const hideLayout = noLayoutRoutes.includes(location.pathname);
 
-  /** 헤더 · 브레드크럼 · 대시보드 편집 상태 */
   const [breadcrumb, setBreadcrumb] = useState(["Database", "Session", "Dashboard"]);
-  const [isEditing, setIsEditing] = useState(false);
-
-  /** 편집 모드 토글 */
-  const handleToggleEdit = () => {
-    setIsEditing((prev) => !prev);
-  };
 
   return (
     <QueryClientProvider client={queryClient}>
-      <div className="app-background">
-        {hideLayout ? (
-          <AppRoutes />
-        ) : (
-          <div className="app-main">
-            <Sidebar onChangeBreadcrumb={setBreadcrumb} />
+      <DashboardProvider>
+        <div className="app-background">
+          {hideLayout ? (
+            <AppRoutes />
+          ) : (
+            <div className="app-main">
+              <Sidebar onChangeBreadcrumb={setBreadcrumb} />
 
-            <div className="app-content">
-              <Header
-                breadcrumb={breadcrumb}
-                isEditing={isEditing}
-                onToggleEdit={handleToggleEdit}
-              />
-              <AppRoutes isEditing={isEditing} />
+              <div className="app-content">
+                {/* Header와 OverviewPage 둘 다 같은 context를 공유함 */}
+                <Header breadcrumb={breadcrumb} />
+                <AppRoutes />
+              </div>
             </div>
-          </div>
-        )}
-      </div>
+          )}
+        </div>
+      </DashboardProvider>
     </QueryClientProvider>
   );
 }

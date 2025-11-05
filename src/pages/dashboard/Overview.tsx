@@ -3,26 +3,23 @@ import { Responsive, WidthProvider, type Layout } from "react-grid-layout";
 import "react-grid-layout/css/styles.css";
 import "react-resizable/css/styles.css";
 import "../../styles/dashboard/Layout.css";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import apiClient from "../../api/apiClient";
 import WidgetRenderer from "../../components/dashboard/WidgetRenderer";
+import DashboardEditorPanel from "../../components/dashboard/DashboardEditor";
 import defaultThemes from "../../theme/Theme.json";
 import type { DashboardLayout } from "../../types/dashboard";
-import DashboardEditorPanel from "../../components/dashboard/DashboardEditor";
-
-interface OverviewPageProps {
-  isEditing: boolean;
-}
+import { useDashboard } from "../../context/DashboardContext";
 
 const ResponsiveGridLayout = WidthProvider(Responsive);
 
-export default function OverviewPage({ isEditing }: OverviewPageProps) {
-  /** 현재 테마와 레이아웃 상태 */
-  const [themeId, setThemeId] = useState<string>("default");
-  const [layout, setLayout] = useState<DashboardLayout[]>([]);
+export default function OverviewPage() {
+  /**  전역 DashboardContext 상태 */
+  const { isEditing, layout, setLayout, themeId, setThemeId } = useDashboard();
+
   const [isDragOver, setIsDragOver] = useState(false);
 
-  /**  인스턴스 ID 조회 (로컬 테스트용) */
+  /** 인스턴스 정보 (테스트용) */
   const { data: instance } = useQuery({
     queryKey: ["activeInstance"],
     queryFn: async () => ({ id: 1, name: "local_test" }),
@@ -41,17 +38,7 @@ export default function OverviewPage({ isEditing }: OverviewPageProps) {
     retry: false,
   });
 
-  /** 저장 mutation */
-  const { mutate: saveLayout } = useMutation({
-    mutationFn: (newLayout: DashboardLayout[]) =>
-      apiClient.put(`/overview/${instance?.id}`, { layout: newLayout }),
-    onSuccess: () => {
-      alert("대시보드 레이아웃이 저장되었습니다!");
-      localStorage.removeItem("tempDashboardLayout");
-    },
-  });
-
-  /** 대시보드 초기 로드 / fallback / 복원 */
+  /** 초기 로드 및 복원 */
   useEffect(() => {
     const saved = localStorage.getItem("tempDashboardLayout");
     if (saved) {
@@ -68,10 +55,9 @@ export default function OverviewPage({ isEditing }: OverviewPageProps) {
     }
   }, [dashboard, isSuccess, isError]);
 
-  /** 테마 선택 */
+  /** 테마 변경 */
   const handleThemeChange = (id: string) => {
     let selectedLayout: DashboardLayout[] = [];
-
     const theme = defaultThemes.themes.find((t) => t.id === id);
 
     if (id === "custom") {
@@ -91,7 +77,7 @@ export default function OverviewPage({ isEditing }: OverviewPageProps) {
     );
   };
 
-  /** 편집 중일 때만 임시 저장 */
+  /** 편집 중 레이아웃 변경 시 임시 저장 */
   const handleLayoutChange = (currentLayout: Layout[]) => {
     if (isEditing) {
       localStorage.setItem(
@@ -102,7 +88,19 @@ export default function OverviewPage({ isEditing }: OverviewPageProps) {
     }
   };
 
-  /** 드롭 이벤트 처리 */
+  /** 위젯 삭제 */
+  const handleDeleteWidget = (id: string) => {
+    setLayout((prev: DashboardLayout[]) => {
+      const updated = prev.filter((item) => item.i !== id);
+      localStorage.setItem(
+        "tempDashboardLayout",
+        JSON.stringify({ themeId, layout: updated })
+      );
+      return [...updated];
+    });
+  };
+
+  /** 드롭 이벤트 (새 위젯 추가 / 교체) */
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
     setIsDragOver(false);
@@ -117,7 +115,6 @@ export default function OverviewPage({ isEditing }: OverviewPageProps) {
       const dropTarget = document.elementFromPoint(e.clientX, e.clientY);
       const targetItem = dropTarget?.closest(".grid-item") as HTMLElement | null;
 
-      /** custom 모드: 새 카드 추가 */
       if (themeId === "custom") {
         const newItem: DashboardLayout = {
           i: `${metricKey}_${Date.now()}`,
@@ -129,15 +126,13 @@ export default function OverviewPage({ isEditing }: OverviewPageProps) {
           type: chartType,
           metricType: metricKey,
         };
-        setLayout((prev) => [...prev, newItem]);
-      }
 
-      /** 테마 모드: 기존 카드 교체 */
-      else if (themeId.startsWith("card_") && targetItem) {
+        setLayout((prev: DashboardLayout[]) => [...prev, newItem]);
+      } else if (themeId.startsWith("card_") && targetItem) {
         const targetId = targetItem.getAttribute("data-grid-id");
         if (!targetId) return;
 
-        setLayout((prev) =>
+        setLayout((prev: DashboardLayout[]) =>
           prev.map((item) =>
             item.i === targetId
               ? { ...item, metricType: metricKey, type: chartType }
@@ -150,42 +145,10 @@ export default function OverviewPage({ isEditing }: OverviewPageProps) {
     }
   };
 
-  /** 위젯 삭제 핸들러 */
-const handleDeleteWidget = (id: string) => {
-  setLayout((prev) => {
-    const updated = prev.filter((item) => item.i !== id);
-
-    // 완전히 비워졌다면 저장된 레이아웃도 제거
-    if (updated.length === 0) {
-      localStorage.removeItem("tempDashboardLayout");
-    } else {
-      localStorage.setItem(
-        "tempDashboardLayout",
-        JSON.stringify({ themeId, layout: updated })
-      );
-    }
-
-    // 새로운 배열로 반환 (불변성 유지)
-    return [...updated];
-  });
-};
-
-
-  /** 저장 */
-  const handleSave = () => {
-    if (!instance?.id) {
-      alert("인스턴스가 선택되지 않았습니다.");
-      return;
-    }
-    saveLayout(layout);
-  };
-
-  /** 렌더 */
+  /** 렌더링 */
   return (
     <div className="dashboard-container">
-      <div
-        className={`dashboard-grid-area ${isEditing ? "with-editor" : "full-width"}`}
-      >
+      <div className={`dashboard-grid-area ${isEditing ? "with-editor" : "full-width"}`}>
         <div
           className={`dashboard-wrapper ${isEditing ? "editing" : ""} ${
             isDragOver ? "drag-over" : ""
@@ -209,26 +172,21 @@ const handleDeleteWidget = (id: string) => {
             </div>
           ) : (
             <ResponsiveGridLayout
-                key={layout.length} 
-                className="layout-inner"
-                layouts={{ lg: layout }}
-                breakpoints={{ lg: 1200, md: 996, sm: 768, xs: 480, xxs: 0 }}
-                cols={{ lg: 24, md: 16, sm: 12, xs: 8, xxs: 4 }}
-                rowHeight={40}
-                margin={[16, 16]}
-                compactType={null}
-                isDraggable={isEditing}
-                isResizable={isEditing}
-                preventCollision={!isEditing}
-                onLayoutChange={handleLayoutChange}
-              >
-
+              key={layout.length}
+              className="layout-inner"
+              layouts={{ lg: layout }}
+              breakpoints={{ lg: 1200, md: 996, sm: 768, xs: 480, xxs: 0 }}
+              cols={{ lg: 24, md: 16, sm: 12, xs: 8, xxs: 4 }}
+              rowHeight={40}
+              margin={[16, 16]}
+              compactType={null}
+              isDraggable={isEditing}
+              isResizable={isEditing}
+              preventCollision={!isEditing}
+              onLayoutChange={handleLayoutChange}
+            >
               {layout.map((item: DashboardLayout) => (
-                <div
-                  key={item.i}
-                  className="grid-item"
-                  data-grid-id={item.i}
-                >
+                <div key={item.i} className="grid-item" data-grid-id={item.i}>
                   <WidgetRenderer
                     metric={item.metricType}
                     isEditable={themeId === "custom"}
@@ -241,6 +199,7 @@ const handleDeleteWidget = (id: string) => {
         </div>
       </div>
 
+      {/* 오른쪽 패널 */}
       {isEditing && (
         <div className="dashboard-editor-panel">
           <DashboardEditorPanel
