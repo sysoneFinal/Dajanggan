@@ -137,12 +137,9 @@ export default function VacuumHistoryTable({ rows = historyDemo }: { rows?: Vacu
         header: "작업 유형",
         cell: (info) => {
           const value = info.getValue() as string;
-          const typeClass = 
-            value === "Vacuum" ? "vd-badge--primary" :
-            value === "Autovacuum" ? "vd-badge--info" :
-            "vd-badge--secondary";
+          
           return (
-            <span className={`vd-badge ${typeClass}`}>
+            <span >
               {value}
             </span>
           );
