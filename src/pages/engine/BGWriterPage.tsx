@@ -128,8 +128,8 @@ const getBackendFlushGaugeStatus = (
     value: number
 ): "normal" | "warning" | "critical" => {
     // 0~50%: 정상, 50~70%: 주의, 70% 이상: 경고
-    if (value < 50) return "normal";
-    if (value < 70) return "warning";
+    if (value < 30) return "normal";
+    if (value < 50) return "warning";
     return "critical";
 };
 
@@ -155,11 +155,11 @@ export default function BGWriterPage() {
 
     const summaryCards = [
         {
-            label: "Clean 버퍼 재활용률",
-            value: `${recentStats.cleanBufferReuseRate}%`,
+            label: "BGWriter 활동률",
+            value: `${recentStats.bgwriterActivityRate}%`,
             diff: 2.5,
             desc: "최근 5분 평균",
-            status: recentStats.cleanBufferReuseRate < 60 ? ("warning" as const) : ("info" as const),
+            status: recentStats.bgwriterActivityRate < 50 ? "warning" : "info"
         },
         {
             label: "평균 Clean Rate",
@@ -183,11 +183,11 @@ export default function BGWriterPage() {
             status: recentStats.bgwriterVsCheckpointRatio < 30 ? ("warning" as const) : ("info" as const),
         },
         {
-            label: "BGWriter 제한 도달률",
-            value: `${recentStats.maxwrittenReachRate}%`,
-            diff: -1.2,
-            desc: "최근 5분 평균",
-            status: recentStats.maxwrittenReachRate > 10 ? ("warning" as const) : ("info" as const),
+            label: "Backend Fsync 발생",
+            value: recentStats.backendFsyncCount,
+            diff: 0,
+            desc: "최근 5분 누적",
+            status: recentStats.backendFsyncCount > 0 ? "critical" : "info"
         },
     ];
 
