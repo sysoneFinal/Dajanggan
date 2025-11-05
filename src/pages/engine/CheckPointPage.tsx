@@ -50,6 +50,13 @@ interface CheckpointData {
         max: number;
         min: number;
     };
+    checkpointInterval: {
+        categories: string[];
+        data: number[];
+        average: number;
+        max: number;
+        min: number;
+    };
     recentStats?: {
         buffersWritten: number;
         avgTotalProcessTime: number;
@@ -122,6 +129,16 @@ const mockData: CheckpointData = {
         max: 5500,
         min: 2400,
     },
+    checkpointInterval: {
+        categories: [
+            "0:00", "2:00", "4:00", "6:00", "8:00", "10:00",
+            "12:00", "14:00", "16:00", "18:00", "20:00", "23:00"
+        ],
+        data: [8.5, 10.2, 6.5, 4.2, 3.8, 3.5, 2.8, 3.2, 4.5, 5.8, 7.2, 6.8],
+        average: 5.6,
+        max: 10.2,
+        min: 2.8,
+    },
     recentStats: {
         buffersWritten: 4280,
         avgTotalProcessTime: 1.78,
@@ -170,39 +187,47 @@ export default function CheckPointPage() {
 
     const summaryCards = [
         {
-            label: "기록된 버퍼",
-            value: recentStats.buffersWritten.toLocaleString(),
-            diff: 180,
-            desc: "최근 5분 누적",
+            label: "총 Checkpoint 발생",
+            value: `${dashboard.occurrence.requestedTotal + dashboard.occurrence.timedTotal}회`,
+            diff: 15,
+            desc: "최근 24시간 누적",
             status: "info" as const,
         },
         {
-            label: "평균 처리 시간",
-            value: `${recentStats.avgTotalProcessTime}s`,
-            diff: -0.12,
-            desc: "최근 5분 평균 (Sync+Write)",
-            status: "info" as const,
+            label: "WAL 총 생성량",
+            value: `${(dashboard.walGeneration.total / 1000000000).toFixed(1)}GB`,
+            diff: 1.2,
+            desc: "최근 24시간 누적",
+            status: dashboard.walGeneration.total > 120000000000
+                ? ("warning" as const)
+                : ("info" as const),
         },
         {
-            label: "체크포인트 거리",
+            label: "평균 Checkpoint 간격",
+            value: `${recentStats.checkpointInterval}분`,
+            diff: 0.3,
+            desc: "최근 5분 평균",
+            status: recentStats.checkpointInterval < 3
+                ? ("warning" as const)
+                : ("info" as const),
+        },
+        {
+            label: "평균 Buffer 처리량",
+            value: `${dashboard.buffer.average.toLocaleString()}/s`,
+            diff: 120,
+            desc: "최근 24시간 평균",
+            status: dashboard.buffer.average > 5000
+                ? ("warning" as const)
+                : ("info" as const),
+        },
+        {
+            label: "Checkpoint 거리",
             value: `${recentStats.checkpointDistance}%`,
             diff: 5,
             desc: "최근 5분 평균",
-            status: "info" as const,
-        },
-        {
-            label: "Checkpoint 간격",
-            value: `${recentStats.checkpointInterval}분`,
-            diff: 0.3,
-            desc: "최근 5분 평균 간격",
-            status: "info" as const,
-        },
-        {
-            label: "평균 WAL 생성 속도",
-            value: `${recentStats.avgWalGenerationSpeed}GB/h`,
-            diff: 0.8,
-            desc: "최근 5분 평균",
-            status: "info" as const,
+            status: recentStats.checkpointDistance > 90
+                ? ("warning" as const)
+                : ("info" as const),
         },
     ];
 
@@ -273,7 +298,7 @@ export default function CheckPointPage() {
                 </WidgetCard>
 
                 {/* Checkpoint 처리 시간 추세 - 임계치 적용 */}
-                <WidgetCard title="Checkpoint 처리 시간 추세 (Last 24 Hours)" span={5}>
+                <WidgetCard title="Checkpoint 처리 시간 추세 (Last 1 Hour)" span={5}>
                     <Chart
                         type="line"
                         series={[
@@ -348,28 +373,180 @@ export default function CheckPointPage() {
                         categories={dashboard.walGeneration.categories}
                         colors={["#8E79FF"]}
                         height={250}
+                        customOptions={{
+                            annotations: {
+                                yaxis: [
+                                    {
+                                        y: 10000000000,
+                                        borderColor: "#60A5FA",
+                                        strokeDashArray: 4,
+                                        opacity: 0.6,
+                                        label: {
+                                            borderColor: "#60A5FA",
+                                            style: {
+                                                color: "#fff",
+                                                background: "#60A5FA",
+                                                fontSize: "11px",
+                                                fontWeight: 500,
+                                            },
+                                            text: "정상: 10GB",
+                                            position: "right",
+                                        },
+                                    },
+                                    {
+                                        y: 12000000000,
+                                        borderColor: "#FBBF24",
+                                        strokeDashArray: 4,
+                                        opacity: 0.7,
+                                        label: {
+                                            borderColor: "#FBBF24",
+                                            style: {
+                                                color: "#fff",
+                                                background: "#FBBF24",
+                                                fontSize: "11px",
+                                                fontWeight: 500,
+                                            },
+                                            text: "주의: 12GB",
+                                            position: "right",
+                                        },
+                                    },
+                                ],
+                            },
+                            yaxis: {
+                                labels: {
+                                    style: {
+                                        colors: "#6B7280",
+                                        fontFamily: 'var(--font-family, "Pretendard", sans-serif)'
+                                    },
+                                    formatter: (val: number) => `${(val / 1000000000).toFixed(1)}GB`,
+                                },
+                                min: 0,
+                                max: 14000000000,
+                            },
+                        }}
                     />
                 </WidgetCard>
 
                 {/* Checkpoint buffer 처리량 */}
-                <WidgetCard title="Checkpoint Buffer 처리량 (Last 24 Hours)" span={4}>
+                <WidgetCard title="Checkpoint Buffer 처리량 (Last 1 Hour)" span={4}>
                     <Chart
                         type="line"
                         series={[{ name: "Buffers/sec", data: dashboard.buffer.data }]}
                         categories={dashboard.buffer.categories}
                         colors={["#8E79FF"]}
                         height={250}
+                        customOptions={{
+                            annotations: {
+                                yaxis: [
+                                    {
+                                        y: 5000,
+                                        borderColor: "#60A5FA",
+                                        strokeDashArray: 4,
+                                        opacity: 0.6,
+                                        label: {
+                                            borderColor: "#60A5FA",
+                                            style: {
+                                                color: "#fff",
+                                                background: "#60A5FA",
+                                                fontSize: "11px",
+                                                fontWeight: 500,
+                                            },
+                                            text: "정상: 5000",
+                                            position: "right",
+                                        },
+                                    },
+                                    {
+                                        y: 5500,
+                                        borderColor: "#FBBF24",
+                                        strokeDashArray: 4,
+                                        opacity: 0.7,
+                                        label: {
+                                            borderColor: "#FBBF24",
+                                            style: {
+                                                color: "#fff",
+                                                background: "#FBBF24",
+                                                fontSize: "11px",
+                                                fontWeight: 500,
+                                            },
+                                            text: "주의: 5500",
+                                            position: "right",
+                                        },
+                                    },
+                                ],
+                            },
+                            yaxis: {
+                                labels: {
+                                    style: {
+                                        colors: "#6B7280",
+                                        fontFamily: 'var(--font-family, "Pretendard", sans-serif)'
+                                    },
+                                },
+                                min: 0,
+                                max: 6000,
+                            },
+                        }}
                     />
                 </WidgetCard>
 
-                {/* 평균 블록 쓰기 시간 */}
-                <WidgetCard title="평균 블록 쓰기 시간 (Last 24 Hours)" span={4}>
+                {/* Checkpoint 간격 추이 */}
+                <WidgetCard title="Checkpoint 간격 추이 (Last 24 Hours)" span={4}>
                     <Chart
                         type="line"
-                        series={[{ name: "Avg Write Time", data: dashboard.avgWriteTime.data }]}
-                        categories={dashboard.avgWriteTime.categories}
+                        series={[{ name: "Interval (min)", data: dashboard.checkpointInterval.data }]}
+                        categories={dashboard.checkpointInterval.categories}
                         colors={["#8E79FF"]}
                         height={250}
+                        customOptions={{
+                            annotations: {
+                                yaxis: [
+                                    {
+                                        y: 3,
+                                        borderColor: "#FBBF24",
+                                        strokeDashArray: 4,
+                                        opacity: 0.7,
+                                        label: {
+                                            borderColor: "#FBBF24",
+                                            style: {
+                                                color: "#fff",
+                                                background: "#FBBF24",
+                                                fontSize: "11px",
+                                                fontWeight: 500,
+                                            },
+                                            text: "주의: 3분",
+                                            position: "right",
+                                        },
+                                    },
+                                    {
+                                        y: 5,
+                                        borderColor: "#60A5FA",
+                                        strokeDashArray: 4,
+                                        opacity: 0.6,
+                                        label: {
+                                            borderColor: "#60A5FA",
+                                            style: {
+                                                color: "#fff",
+                                                background: "#60A5FA",
+                                                fontSize: "11px",
+                                                fontWeight: 500,
+                                            },
+                                            text: "정상: 5분",
+                                            position: "right",
+                                        },
+                                    },
+                                ],
+                            },
+                            yaxis: {
+                                labels: {
+                                    style: {
+                                        colors: "#6B7280",
+                                        fontFamily: 'var(--font-family, "Pretendard", sans-serif)'
+                                    },
+                                    formatter: (val: number) => `${val.toFixed(1)}분`,
+                                },
+                                min: 0,
+                                max: 12,
+                            },
+                        }}
                     />
                 </WidgetCard>
             </ChartGridLayout>
