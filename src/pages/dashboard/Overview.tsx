@@ -1,139 +1,213 @@
-import React, { useState, useEffect } from "react";
-import { Responsive, WidthProvider } from "react-grid-layout";
-import type { Layout, Layouts } from "react-grid-layout";
-
-import "react-resizable/css/styles.css";
+import React, { useEffect, useState } from "react";
+import { Responsive, WidthProvider, type Layout } from "react-grid-layout";
 import "react-grid-layout/css/styles.css";
+import "react-resizable/css/styles.css";
 import "../../styles/dashboard/Layout.css";
-
-
-/** * * @param basic-6card 
- * *{ w: 8, h: 12, x: 0, y: 0, i: "a" }, 
- * { w: 8, h: 6, x: 8, y: 0, i: "b" },
- * { w: 8, h: 6, x: 16, y: 0, i: "c" }, 
- * { w: 16, h: 6, x: 8, y: 6, i: "d" }, 
- * { w: 8, h: 6, x: 0, y: 12, i: "e" }, 
- * { w: 16, h: 6, x: 8, y: 12, i: "f" }, */ 
-/** * * @param 빽빽-9card
- * { "w": 8,"h": 6,"x": 0,"y": 0,"i": "a"}, 
- * { "w": 8,"h": 6,"x": 8,"y": 0,"i": "b"}, 
- * { "w": 8,"h": 6,"x": 16, "y": 0,"i": "c",}, 
- * { "w": 8,"h": 6,"x": 0,"y": 12,"i": "d",}, 
- * { "w": 8,"h": 6,"x": 0,"y": 6,"i": "e",}, 
- * { "w": 8,"h": 6,"x": 8,"y": 6,"i": "f",}, 
- * { "w": 8,"h": 6,"x": 16,"y": 6,"i": "g",}, 
- * { "w": 8,"h": 6, "x": 8,"y": 12,"i": "h",}, 
-{ "w": 8,"h": 6,"x": 16,"y": 12,"i": "i",} */
-
-interface DashboardProps {
-  isEditing: boolean;
-}
+import { useQuery } from "@tanstack/react-query";
+import apiClient from "../../api/apiClient";
+import WidgetRenderer from "../../components/dashboard/WidgetRenderer";
+import DashboardEditorPanel from "../../components/dashboard/DashboardEditor";
+import defaultThemes from "../../theme/Theme.json";
+import type { DashboardLayout } from "../../types/dashboard";
+import { useDashboard } from "../../context/DashboardContext";
 
 const ResponsiveGridLayout = WidthProvider(Responsive);
 
-export default function Dashboard({ isEditing }: DashboardProps) {
-  /** 기본 레이아웃  */
-  const defaultLayouts: Layouts = {
-    lg: [
-      { w: 8, h: 6, x: 0, y: 0, i: "a" },
-      { w: 8, h: 6, x: 8, y: 0, i: "b" },
-      { w: 8, h: 6, x: 16, y: 0, i: "c" },
-      { w: 8, h: 6, x: 0, y: 6, i: "d" },
-      { w: 8, h: 6, x: 8, y: 6, i: "e" },
-      { w: 8, h: 6, x: 16, y: 6, i: "f" },
-      { w: 8, h: 6, x: 0, y: 12, i: "g" },
-      { w: 8, h: 6, x: 8, y: 12, i: "h" },
-      { w: 8, h: 6, x: 16, y: 12, i: "i" },
-    ],
-    md: [],
-    sm: [],
-  };
+export default function OverviewPage() {
+  /**  전역 DashboardContext 상태 */
+  const { isEditing, layout, setLayout, themeId, setThemeId } = useDashboard();
 
-  /** 로컬 스토리지에서 불러오기 */
-  const [layouts, setLayouts] = useState<Layouts>(() => {
-    try {
-      const saved = localStorage.getItem("userDashboardLayout");
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (parsed && parsed.lg) return parsed;
-      }
-    } catch (e) {
-      console.warn("레이아웃 불러오기 실패, 기본값 사용", e);
-    }
-    return defaultLayouts;
+  const [isDragOver, setIsDragOver] = useState(false);
+
+  /** 인스턴스 정보 (테스트용) */
+  const { data: instance } = useQuery({
+    queryKey: ["activeInstance"],
+    queryFn: async () => ({ id: 1, name: "local_test" }),
+    enabled: false,
   });
 
-  /** 변경 시 저장 */
-  const handleLayoutChange = (currentLayout: Layout[], allLayouts: Layouts) => {
-    setLayouts(allLayouts);
-    localStorage.setItem("userDashboardLayout", JSON.stringify(allLayouts, null, 2));
-    console.log("저장된 레이아웃:", allLayouts);
+  /** 대시보드 조회 */
+  const { data: dashboard, isError, isSuccess } = useQuery({
+    queryKey: ["dashboard", instance?.id],
+    queryFn: async () => {
+      if (!instance?.id) return null;
+      const res = await apiClient.get(`/overview/${instance.id}`);
+      return res.data;
+    },
+    enabled: !!instance?.id,
+    retry: false,
+  });
+
+  /** 초기 로드 및 복원 */
+  useEffect(() => {
+    const saved = localStorage.getItem("tempDashboardLayout");
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      setLayout(parsed.layout ?? defaultThemes.default.layout);
+      setThemeId(parsed.themeId ?? "default");
+      return;
+    }
+
+    if (isSuccess && dashboard?.layout?.length > 0) {
+      setLayout(dashboard.layout);
+    } else {
+      setLayout(defaultThemes.default.layout);
+    }
+  }, [dashboard, isSuccess, isError]);
+
+  /** 테마 변경 */
+  const handleThemeChange = (id: string) => {
+    let selectedLayout: DashboardLayout[] = [];
+    const theme = defaultThemes.themes.find((t) => t.id === id);
+
+    if (id === "custom") {
+      selectedLayout = [];
+    } else if (id === "card_7_layout" || id === "card_9_layout") {
+      selectedLayout = (theme?.layout as DashboardLayout[]) ?? [];
+    } else {
+      selectedLayout = defaultThemes.default.layout ?? [];
+    }
+
+    setThemeId(id);
+    setLayout(selectedLayout);
+
+    localStorage.setItem(
+      "tempDashboardLayout",
+      JSON.stringify({ themeId: id, layout: selectedLayout })
+    );
   };
 
-  /** 카드 추가 */
-  const handleAddCard = () => {
-    const newCard: Layout = {
-      i: `new-${Date.now()}`,
-      x: 0,
-      y: Infinity,
-      w: 8,
-      h: 6,
-    };
-    setLayouts((prev) => ({
-      ...prev,
-      lg: [...(prev.lg || []), newCard],
-    }));
+  /** 편집 중 레이아웃 변경 시 임시 저장 */
+  const handleLayoutChange = (currentLayout: Layout[]) => {
+    if (isEditing) {
+      localStorage.setItem(
+        "tempDashboardLayout",
+        JSON.stringify({ themeId, layout: currentLayout })
+      );
+      setLayout(currentLayout as DashboardLayout[]);
+    }
   };
 
-  /** 카드 삭제 */
-  const handleRemoveCard = (id: string) => {
-    setLayouts((prev) => ({
-      ...prev,
-      lg: prev.lg?.filter((item) => item.i !== id) || [],
-    }));
+  /** 위젯 삭제 */
+  const handleDeleteWidget = (id: string) => {
+    setLayout((prev: DashboardLayout[]) => {
+      const updated = prev.filter((item) => item.i !== id);
+      localStorage.setItem(
+        "tempDashboardLayout",
+        JSON.stringify({ themeId, layout: updated })
+      );
+      return [...updated];
+    });
   };
 
-  /** 전체 리셋 */
-  const handleResetLayout = () => {
-    localStorage.removeItem("userDashboardLayout");
-    setLayouts(defaultLayouts);
+  /** 드롭 이벤트 (새 위젯 추가 / 교체) */
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(false);
+
+    const data = e.dataTransfer.getData("application/json");
+    if (!data) return;
+
+    try {
+      const { metricKey, chartType } = JSON.parse(data);
+      if (!metricKey || !chartType) return;
+
+      const dropTarget = document.elementFromPoint(e.clientX, e.clientY);
+      const targetItem = dropTarget?.closest(".grid-item") as HTMLElement | null;
+
+      if (themeId === "custom") {
+        const newItem: DashboardLayout = {
+          i: `${metricKey}_${Date.now()}`,
+          x: 0,
+          y: Infinity,
+          w: 8,
+          h: 6,
+          title: metricKey,
+          type: chartType,
+          metricType: metricKey,
+        };
+
+        setLayout((prev: DashboardLayout[]) => [...prev, newItem]);
+      } else if (themeId.startsWith("card_") && targetItem) {
+        const targetId = targetItem.getAttribute("data-grid-id");
+        if (!targetId) return;
+
+        setLayout((prev: DashboardLayout[]) =>
+          prev.map((item) =>
+            item.i === targetId
+              ? { ...item, metricType: metricKey, type: chartType }
+              : item
+          )
+        );
+      }
+    } catch (err) {
+      console.error("Drop parse error:", err);
+    }
   };
 
+  /** 렌더링 */
   return (
-    <div className={`dashboard-wrapper ${isEditing ? "editing" : ""}`}>
+    <div className="dashboard-container">
+      <div className={`dashboard-grid-area ${isEditing ? "with-editor" : "full-width"}`}>
+        <div
+          className={`dashboard-wrapper ${isEditing ? "editing" : ""} ${
+            isDragOver ? "drag-over" : ""
+          }`}
+          onDragOver={(e) => {
+            if (!isEditing) return;
+            e.preventDefault();
+            e.stopPropagation();
+            setIsDragOver(true);
+          }}
+          onDragLeave={() => setIsDragOver(false)}
+          onDrop={isEditing ? handleDrop : undefined}
+        >
+          {themeId === "custom" && layout.length === 0 ? (
+            <div className="empty-dashboard">
+              <p className="empty-message">
+                ✨ 지표를 추가해주세요.
+                <br />
+                <span>왼쪽 위젯 패널에서 위젯을 선택해 추가할 수 있습니다.</span>
+              </p>
+            </div>
+          ) : (
+            <ResponsiveGridLayout
+              key={layout.length}
+              className="layout-inner"
+              layouts={{ lg: layout }}
+              breakpoints={{ lg: 1200, md: 996, sm: 768, xs: 480, xxs: 0 }}
+              cols={{ lg: 24, md: 16, sm: 12, xs: 8, xxs: 4 }}
+              rowHeight={40}
+              margin={[16, 16]}
+              compactType={null}
+              isDraggable={isEditing}
+              isResizable={isEditing}
+              preventCollision={!isEditing}
+              onLayoutChange={handleLayoutChange}
+            >
+              {layout.map((item: DashboardLayout) => (
+                <div key={item.i} className="grid-item" data-grid-id={item.i}>
+                  <WidgetRenderer
+                    metric={item.metricType}
+                    isEditable={themeId === "custom"}
+                    onDelete={() => handleDeleteWidget(item.i)}
+                  />
+                </div>
+              ))}
+            </ResponsiveGridLayout>
+          )}
+        </div>
+      </div>
+
+      {/* 오른쪽 패널 */}
       {isEditing && (
-        <div className="dashboard-toolbar">
-          <button onClick={handleAddCard}>＋ Add Widget</button>
-          <button onClick={handleResetLayout}>↺ Reset Layout</button>
+        <div className="dashboard-editor-panel">
+          <DashboardEditorPanel
+            currentTheme={themeId}
+            onThemeChange={handleThemeChange}
+          />
         </div>
       )}
-
-      <ResponsiveGridLayout
-        className="layout"
-        layouts={layouts}
-        breakpoints={{ lg: 1200, md: 996, sm: 768 }}
-        cols={{ lg: 24, md: 20, sm: 12 }}
-        rowHeight={40}
-        isDraggable={isEditing}
-        isResizable={isEditing}
-        preventCollision={false}
-        compactType="vertical"
-        onLayoutChange={handleLayoutChange}
-      >
-        {layouts.lg?.map((item : any) => (
-          <div key={item.i} className="grid-item">
-            <div className="grid-header">
-              <span>{item.i.toUpperCase()}</span>
-              {isEditing && (
-                <button className="remove-btn" onClick={() => handleRemoveCard(item.i)}>
-                  ✕
-                </button>
-              )}
-            </div>
-            <div className="grid-body">Card {item.i.toUpperCase()}</div>
-          </div>
-        ))}
-      </ResponsiveGridLayout>
     </div>
   );
 }
