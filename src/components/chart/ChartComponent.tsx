@@ -296,7 +296,7 @@ export default function Chart({
         };
         break;
 
-      /** 📦 BoxPlot */
+      /** BoxPlot */
       case "boxPlot":
         options.chart = {
           ...options.chart,

@@ -56,8 +56,7 @@
 }
 
 .header-btn.active {
-  background: #3b82f6;
-  border-color: #2563eb;
+  background: #000000;
 }
 
 .header-btn.active .header-btn-text {
@@ -95,6 +94,22 @@
   height: 1.25rem;
   flex-shrink: 0;
 }
+.header-btn-save {
+  background: #b2a6ff; 
+}
+
+.header-btn-save:hover {
+  background: #6951ff;
+}
+
+.header-btn-cancel {
+  background: #b2a6ff; 
+}
+
+.header-btn-cancel:hover {
+  background: #6951ff;
+}
+
 
 /* 알림 버튼 */
 .header-notification-btn {
