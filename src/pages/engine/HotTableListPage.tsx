@@ -300,18 +300,6 @@ export default function HotTableListPage() {
     const pageSize = 15;
 
     // 프로그레스 바 색상 결정 함수
-    const getDeadPercentColor = (percent: number) => {
-        if (percent >= 20) return "#FF928A"; // 빨강
-        if (percent >= 10) return "#FFD66B"; // 주황
-        return "#7B61FF"; // 녹색
-    };
-
-    const getCacheHitColor = (percent: number) => {
-        if (percent >= 95) return "#7B61FF"; // 녹색
-        if (percent >= 90) return "#FFD66B"; // 주황
-        return "#FF928A"; // 빨강
-    };
-
     const getSeqScanColor = (percent: number) => {
         if (percent >= 40) return "#FF928A"; // 빨강
         if (percent >= 20) return "#FFD66B"; // 주황
@@ -349,45 +337,11 @@ export default function HotTableListPage() {
                 accessorKey: "deadPercent",
                 header: "Dead 비율(%)",
                 cell: (info) => (info.getValue() as number).toLocaleString(),
-                //     const value = info.getValue() as number;
-                //     const color = getDeadPercentColor(value);
-                //     return (
-                //         <div className="progress-cell">
-                //             <div className="progress-bar-wrapper">
-                //                 <div className="progress-bar-track">
-                //                     <div
-                //                         className="progress-bar-fill"
-                //                         style={{
-                //                             width: `${value}%`,
-                //                             backgroundColor: color,
-                //                         }}
-                //                     />
-                //                 </div>
-                //             </div>
-                //             <span className="progress-value">{value}%</span>
-                //         </div>
-                //     );
-                // },
             },
             {
                 accessorKey: "cacheHit",
                 header: "캐시 Hit(%)",
                 cell: (info) => (info.getValue() as number).toLocaleString(),
-                //     const value = info.getValue() as number;
-                //     const color = getCacheHitColor(value);
-                //     return (
-                //         <div className="progress-cell">
-                //             <div className="progress-bar-wrapper">
-                //                     <div
-                //                         style={{
-                //                             width: `${value}%`,
-                //                         }}
-                //                     />
-                //             </div>
-                //             <span className="progress-value">{value}%</span>
-                //         </div>
-                //     );
-                // },
             },
             {
                 accessorKey: "vacuumDelay",
