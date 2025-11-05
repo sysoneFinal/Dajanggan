@@ -16,51 +16,103 @@ import MultiSelectDropdown from "../../components/util/MultiSelectDropdown";
 import "/src/styles/vacuum/VacuumHistory-list.css";
 
 type VacuumHistoryRow = {
+  executedAt: string;
   table: string;
-  lastVacuum: string;
-  lastAutovacuum: string;
-  deadTuples: string;
-  modSinceAnalyze: string;
-  bloatPct: string;
-  tableSize: string;
-  frequency: string;
-  status: "주의" | "정상";
+  type: "Vacuum" | "Autovacuum" | "Analyze";
+  trigger: "Manual" | "Autovacuum" | "Schedule";
+  status: "완료" | "실패" | "취소";
+  tuples: string;
+  duration: string;
+  bloatBefore: string;
+  bloatAfter: string;
 };
 
 const baseRows: VacuumHistoryRow[] = [
   {
+    executedAt: "2024-04-23 15:26",
     table: "orders",
-    lastVacuum: "2024-04-23 08:30",
-    lastAutovacuum: "2024-04-23 15:26",
-    deadTuples: "81K",
-    modSinceAnalyze: "127K",
-    bloatPct: "9.4%",
-    tableSize: "16 GB",
-    frequency: "4회/일",
-    status: "주의",
+    type: "Vacuum",
+    trigger: "Autovacuum",
+    status: "완료",
+    tuples: "127K",
+    duration: "5m 30s",
+    bloatBefore: "9.4%",
+    bloatAfter: "6.1%",
   },
   {
+    executedAt: "2024-04-23 08:30",
+    table: "orders",
+    type: "Analyze",
+    trigger: "Schedule",
+    status: "완료",
+    tuples: "81K",
+    duration: "2m 15s",
+    bloatBefore: "12.7%",
+    bloatAfter: "9.4%",
+  },
+  {
+    executedAt: "2024-04-22 13:15",
     table: "sessions",
-    lastVacuum: "2024-04-21 19:40",
-    lastAutovacuum: "2024-04-22 13:15",
-    deadTuples: "22K",
-    modSinceAnalyze: "55K",
-    bloatPct: "1.2%",
-    tableSize: "7 GB",
-    frequency: "3회/일",
-    status: "정상",
+    type: "Autovacuum",
+    trigger: "Autovacuum",
+    status: "완료",
+    tuples: "55K",
+    duration: "3m 45s",
+    bloatBefore: "4.5%",
+    bloatAfter: "1.2%",
+  },
+  {
+    executedAt: "2024-04-21 19:40",
+    table: "sessions",
+    type: "Vacuum",
+    trigger: "Manual",
+    status: "완료",
+    tuples: "22K",
+    duration: "1m 50s",
+    bloatBefore: "7.8%",
+    bloatAfter: "4.5%",
+  },
+  {
+    executedAt: "2024-04-21 14:22",
+    table: "products",
+    type: "Vacuum",
+    trigger: "Schedule",
+    status: "실패",
+    tuples: "0",
+    duration: "0m 45s",
+    bloatBefore: "15.2%",
+    bloatAfter: "15.2%",
+  },
+  {
+    executedAt: "2024-04-20 22:10",
+    table: "users",
+    type: "Autovacuum",
+    trigger: "Autovacuum",
+    status: "완료",
+    tuples: "89K",
+    duration: "4m 20s",
+    bloatBefore: "11.3%",
+    bloatAfter: "7.8%",
   },
 ];
 
-// 총 48개 생성
-const historyDemo: VacuumHistoryRow[] = Array.from({ length: 48 }, (_, i) => ({
-  ...baseRows[i % baseRows.length],
-  table: `${baseRows[i % baseRows.length].table}_${i}`,
-}));
+// 총 48개 생성 (다양한 시간대로)
+const historyDemo: VacuumHistoryRow[] = Array.from({ length: 48 }, (_, i) => {
+  const baseRow = baseRows[i % baseRows.length];
+  const hoursAgo = i * 2;
+  const date = new Date();
+  date.setHours(date.getHours() - hoursAgo);
+  
+  return {
+    ...baseRow,
+    executedAt: `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")} ${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`,
+    table: i % 3 === 0 ? baseRow.table : `${baseRow.table}_${Math.floor(i / 6)}`,
+  };
+});
 
 export default function VacuumHistoryTable({ rows = historyDemo }: { rows?: VacuumHistoryRow[] }) {
   const [data] = useState<VacuumHistoryRow[]>(rows);
-  const [sorting, setSorting] = useState<SortingState>([]);
+  const [sorting, setSorting] = useState<SortingState>([{ id: "executedAt", desc: true }]);
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 14;
   const navigate = useNavigate();
@@ -69,59 +121,69 @@ export default function VacuumHistoryTable({ rows = historyDemo }: { rows?: Vacu
   const columns = useMemo<ColumnDef<VacuumHistoryRow>[]>(
     () => [
       {
-        accessorKey: "table",
-        header: "TABLE",
+        accessorKey: "executedAt",
+        header: "실행 시각",
         cell: (info) => (
-          <div>
-            <div className="vd-td-strong">{info.getValue() as string}</div>
-          </div>
+          <div className="vd-td-strong">{info.getValue() as string}</div>
         ),
       },
       {
-        accessorKey: "status",
-        header: "STATUS",
+        accessorKey: "table",
+        header: "테이블",
+        cell: (info) => info.getValue(),
+      },
+      {
+        accessorKey: "type",
+        header: "작업 유형",
         cell: (info) => {
           const value = info.getValue() as string;
+          
           return (
-            <span className={`vd-badge ${value === "주의" ? "vd-badge--warn" : "vd-badge--ok"}`}>
+            <span >
               {value}
             </span>
           );
         },
       },
       {
-        accessorKey: "lastVacuum",
-        header: "LAST VACUUM",
+        accessorKey: "trigger",
+        header: "트리거",
         cell: (info) => info.getValue(),
       },
       {
-        accessorKey: "lastAutovacuum",
-        header: "LAST AUTOVACUUM",
+        accessorKey: "status",
+        header: "상태",
+        cell: (info) => {
+          const value = info.getValue() as string;
+          const statusClass = 
+            value === "완료" ? "vd-badge--ok" :
+            value === "실패" ? "vd-badge--error" :
+            "vd-badge--warn";
+          return (
+            <span className={`vd-badge ${statusClass}`}>
+              {value}
+            </span>
+          );
+        },
+      },
+      {
+        accessorKey: "tuples",
+        header: "처리량",
         cell: (info) => info.getValue(),
       },
       {
-        accessorKey: "deadTuples",
-        header: "DEAD TUPLES",
+        accessorKey: "duration",
+        header: "소요 시간",
         cell: (info) => info.getValue(),
       },
       {
-        accessorKey: "modSinceAnalyze",
-        header: "MOD SINCE ANALYZE",
+        accessorKey: "bloatBefore",
+        header: "시작 Bloat",
         cell: (info) => info.getValue(),
       },
       {
-        accessorKey: "bloatPct",
-        header: "BLOAT %",
-        cell: (info) => info.getValue(),
-      },
-      {
-        accessorKey: "tableSize",
-        header: "TABLE SIZE",
-        cell: (info) => info.getValue(),
-      },
-      {
-        accessorKey: "frequency",
-        header: "실행빈도",
+        accessorKey: "bloatAfter",
+        header: "종료 Bloat",
         cell: (info) => info.getValue(),
       },
     ],
@@ -153,25 +215,35 @@ export default function VacuumHistoryTable({ rows = historyDemo }: { rows?: Vacu
     setCurrentPage(page);
   };
 
-  const handleRowClick = (tableName: string) => {
-    navigate("/database/vacuum/session-detail", {
-      state: { table: tableName },
+  const handleRowClick = (row: VacuumHistoryRow) => {
+    navigate("/database/vacuum/history-detail", {
+      state: { historyData: row },
     });
   };
 
   // CSV 내보내기 함수
   const handleExportCSV = () => {
-    const headers = ["TABLE", "LAST VACUUM", "LAST AUTOVACUUM", "DEAD TUPLES", "MOD SINCE ANALYZE", "BLOAT %", "TABLE SIZE", "실행빈도", "STATUS"];
+    const headers = [
+      "실행 시각",
+      "테이블",
+      "작업 유형",
+      "트리거",
+      "상태",
+      "처리량",
+      "소요 시간",
+      "시작 Bloat",
+      "종료 Bloat"
+    ];
     const csvData = data.map((row) => [
+      row.executedAt,
       row.table,
-      row.lastVacuum,
-      row.lastAutovacuum,
-      row.deadTuples,
-      row.modSinceAnalyze,
-      row.bloatPct,
-      row.tableSize,
-      row.frequency,
+      row.type,
+      row.trigger,
       row.status,
+      row.tuples,
+      row.duration,
+      row.bloatBefore,
+      row.bloatAfter
     ]);
 
     const csvContent = [
@@ -202,18 +274,23 @@ export default function VacuumHistoryTable({ rows = historyDemo }: { rows?: Vacu
       {/* 필터 선택 영역 */}
       <section className="vacuum-page__filters">
         <MultiSelectDropdown
-          label="시간 선택"
+          label="기간"
           options={[
-            "최근 1시간",
-            "최근 6시간",
-            "최근 24시간",
+            "오늘",
             "최근 7일",
+            "최근 30일",
+            "사용자 지정",
           ]}
-          onChange={(values) => console.log("선택된 시간:", values)}
+          onChange={(values) => console.log("선택된 기간:", values)}
+        />
+        <MultiSelectDropdown
+          label="작업 유형"
+          options={["Vacuum", "Autovacuum", "Analyze"]}
+          onChange={(values) => console.log("선택된 작업:", values)}
         />
         <MultiSelectDropdown
           label="상태"
-          options={["정상", "주의"]}
+          options={["완료", "실패", "취소"]}
           onChange={(values) => console.log("선택된 상태:", values)}
         />
         <CsvButton onClick={handleExportCSV} tooltip="CSV 파일 저장" />
@@ -250,7 +327,7 @@ export default function VacuumHistoryTable({ rows = historyDemo }: { rows?: Vacu
             <div
               key={row.id}
               className="vacuum-table-row vacuum-table-row--hover"
-              onClick={() => handleRowClick(row.original.table)}
+              onClick={() => handleRowClick(row.original)}
               style={{ cursor: "pointer" }}
             >
               {row.getVisibleCells().map((cell) => (

@@ -8,6 +8,7 @@ import InstancePage from "../pages/instance/InstancePage";
 import VacuumOverview from "../pages/vacuum/VacuumOverview";
 import VacuumMaintenance from "../pages/vacuum/VacuumMaintenance";
 import VacuumSessionDetail from "../pages/vacuum/VacuumSessionDetail";
+import VacuumHistoryDetail from "../pages/vacuum/VacuumHistoryDetail";
 import VacuumHistory from "../pages/vacuum/VacuumHistory";
 import VacuumRisk from "../pages/vacuum/VacuumRisk";
 import VacuumBloat from "../pages/vacuum/VacuumBloat";
@@ -99,6 +100,7 @@ const routeList = [
   { path: "/database/vacuum/overview", element: <VacuumOverview /> },
   { path: "/database/vacuum/maintenance", element: <VacuumMaintenance /> },
   { path: "/database/vacuum/session-detail", element: <VacuumSessionDetail /> },
+  { path: "/database/vacuum/history-detail", element: <VacuumHistoryDetail /> },
   { path: "/database/vacuum/history", element: <VacuumHistory /> },
   { path: "/database/vacuum/risk", element: <VacuumRisk /> },
   { path: "/database/vacuum/bloat", element: <VacuumBloat /> },

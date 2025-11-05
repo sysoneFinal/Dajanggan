@@ -8,7 +8,11 @@ import "../../styles/system/disk.css";
 
 // API 응답 전체 구조
 interface DiskIOData {
-    diskUsage: number;
+    diskUsage: {
+        value: number;
+        iopsRead: number;
+        iopsWrite: number;
+    };
     processIO: {
         categories: string[];
         series: Array<{
@@ -51,16 +55,20 @@ interface DiskIOData {
     };
     recentStats?: {
         diskQueueLength: number;
-        iopsSaturation: number;        // 변경: avgIops → iopsSaturation (%)
+        iopsSaturation: number;
         avgLatency: number;
-        walBottleneck: number;         // 변경: avgWalWriteSpeed → walBottleneck (%)
+        walBottleneck: number;
         readWriteRatio: string;
     };
 }
 
 // 더미 데이터
 const dummyData: DiskIOData = {
-    diskUsage: 35.7,
+    diskUsage: {
+        value: 35.7,
+        iopsRead: 4250,
+        iopsWrite: 2780,
+    },
     processIO: {
         categories: ["0:00", "2:00", "4:00", "6:00", "8:00", "10:00", "12:00", "14:00", "16:00", "18:00", "20:00", "22:00"],
         series: [
@@ -103,20 +111,20 @@ const dummyData: DiskIOData = {
         walBytes: [2500000, 4500000, 5200000, 4800000, 3200000, 3800000, 4200000, 3500000, 3000000, 5800000, 5200000, 2800000],
         average: 4125000,
     },
-    // 최근 5분 평균 통계
     recentStats: {
         diskQueueLength: 3.2,
-        iopsSaturation: 82,        // 변경: 현재 IOPS / 최대 IOPS (%)
+        iopsSaturation: 82,
         avgLatency: 4.8,
-        walBottleneck: 8,          // 변경: WAL 병목 비율 (%)
+        walBottleneck: 8,
         readWriteRatio: "62/38",
     },
 };
 
 const getDiskUtilizationColor = (value: number): string => {
-    if (value >= 80 && value <= 95) return "#7B61FF"; // 녹색 (적정)
-    if (value < 80) return "#FFD66B"; // 파란색 (여유)
-    return "#FF928A"; // 빨간색 (위험)
+    // 0~70%: 정상, 70~85%: 주의, 85% 이상: 경고
+    if (value < 70) return "#8E79FF";   // normal
+    if (value < 85) return "#FFD66B";   // warning
+    return "#FEA29B";                   // critical
 };
 
 // 메인 컴포넌트
@@ -125,7 +133,6 @@ export default function DiskPage() {
 
     const DiskUtilizationColor = getDiskUtilizationColor(data.diskUsage);
 
-    // 최근 5분 평균 통계
     const recentStats = data.recentStats || {
         diskQueueLength: 3.2,
         iopsSaturation: 82,
@@ -134,7 +141,6 @@ export default function DiskPage() {
         readWriteRatio: "62/38",
     };
 
-    // 요약 카드 데이터 계산 (최근 5분 평균 기준)
     const summaryCards = [
         {
             label: "디스크 대기열 길이",
@@ -144,8 +150,8 @@ export default function DiskPage() {
             status: recentStats.diskQueueLength > 2 ? ("warning" as const) : ("info" as const),
         },
         {
-            label: "IOPS 포화도",  // 변경
-            value: `${recentStats.iopsSaturation}%`,  // 변경
+            label: "IOPS 포화도",
+            value: `${recentStats.iopsSaturation}%`,
             diff: 5,
             desc: "최근 5분 평균",
             status: recentStats.iopsSaturation > 90 ? ("warning" as const) : ("info" as const),
@@ -158,8 +164,8 @@ export default function DiskPage() {
             status: recentStats.avgLatency > 10 ? ("warning" as const) : ("info" as const),
         },
         {
-            label: "WAL 병목 여부",  // 변경
-            value: `${recentStats.walBottleneck}%`,  // 변경
+            label: "WAL 병목 여부",
+            value: `${recentStats.walBottleneck}%`,
             diff: -2,
             desc: "최근 5분 평균",
             status: recentStats.walBottleneck > 15 ? ("warning" as const) : ("info" as const),
@@ -192,11 +198,36 @@ export default function DiskPage() {
             {/* 첫 번째 행: 게이지 + 2개 차트 */}
             <ChartGridLayout>
                 <WidgetCard title="DISK 사용률" span={2}>
-                    <GaugeChart
-                        value={data.diskUsage}
-                        type="semi-circle"
-                        color={DiskUtilizationColor}
-                    />
+                    <div style={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        height: '100%',
+                        width: '100%',
+                        marginTop: '18px',
+                    }}>
+                        <GaugeChart
+                            value={data.diskUsage.value}
+                            color={DiskUtilizationColor}
+                            type="semi-circle"
+                            radius={100}
+                            strokeWidth={20}
+                            height={200}
+                            flattenRatio={0.89}
+                        />
+                        <div className="cpu-gauge-details">
+                            <div className="cpu-detail-item">
+                                <span className="cpu-detail-label">Read</span>
+                                <span className="cpu-detail-value">{(data.diskUsage.iopsRead / 1000).toFixed(1)}K</span>
+                            </div>
+                            <div className="cpu-detail-divider"></div>
+                            <div className="cpu-detail-item">
+                                <span className="cpu-detail-label">Write</span>
+                                <span className="cpu-detail-value">{(data.diskUsage.iopsWrite / 1000).toFixed(1)}K</span>
+                            </div>
+                        </div>
+                    </div>
                 </WidgetCard>
 
                 <WidgetCard title="프로세스별 디스크 I/O 쓰기량" span={5}>
@@ -220,7 +251,8 @@ export default function DiskPage() {
                         }}
                     />
                 </WidgetCard>
-                <WidgetCard title="평균 블록 I/O 시간 추이" span={5}>
+
+                <WidgetCard title="평균 블록 I/O 시간 추이 (Last 24 Hours)" span={5}>
                     <Chart
                         type="line"
                         series={[
@@ -240,6 +272,57 @@ export default function DiskPage() {
                             labels: { formatter: (val: number) => `${val}ms` },
                         }}
                         tooltipFormatter={(value: number) => `${value}ms`}
+                        customOptions={{
+                            annotations: {
+                                yaxis: [
+                                    {
+                                        y: 5,
+                                        borderColor: "#60A5FA",
+                                        strokeDashArray: 4,
+                                        opacity: 0.6,
+                                        label: {
+                                            borderColor: "#60A5FA",
+                                            style: {
+                                                color: "#fff",
+                                                background: "#60A5FA",
+                                                fontSize: "11px",
+                                                fontWeight: 500,
+                                            },
+                                            text: "정상: 5ms",
+                                            position: "right",
+                                        },
+                                    },
+                                    {
+                                        y: 10,
+                                        borderColor: "#FBBF24",
+                                        strokeDashArray: 4,
+                                        opacity: 0.7,
+                                        label: {
+                                            borderColor: "#FBBF24",
+                                            style: {
+                                                color: "#fff",
+                                                background: "#FBBF24",
+                                                fontSize: "11px",
+                                                fontWeight: 500,
+                                            },
+                                            text: "주의: 10ms",
+                                            position: "right",
+                                        },
+                                    },
+                                ],
+                            },
+                            yaxis: {
+                                labels: {
+                                    style: {
+                                        colors: "#6B7280",
+                                        fontFamily: 'var(--font-family, "Pretendard", sans-serif)'
+                                    },
+                                    formatter: (val: number) => `${val}ms`,
+                                },
+                                min: 0,
+                                max: 12,
+                            },
+                        }}
                     />
                 </WidgetCard>
 
@@ -247,7 +330,7 @@ export default function DiskPage() {
 
             {/* 두 번째 행: 3개 차트 */}
             <ChartGridLayout>
-                <WidgetCard title="Disk I/O 지연시간 (ms)" span={4}>
+                <WidgetCard title="Disk I/O 지연시간 (Last 24 Hours)" span={4}>
                     <Chart
                         type="line"
                         series={[
@@ -266,6 +349,57 @@ export default function DiskPage() {
                             labels: { formatter: (val: number) => `${val}ms` },
                         }}
                         tooltipFormatter={(value: number) => `${value}ms`}
+                        customOptions={{
+                            annotations: {
+                                yaxis: [
+                                    {
+                                        y: 5,
+                                        borderColor: "#60A5FA",
+                                        strokeDashArray: 4,
+                                        opacity: 0.6,
+                                        label: {
+                                            borderColor: "#60A5FA",
+                                            style: {
+                                                color: "#fff",
+                                                background: "#60A5FA",
+                                                fontSize: "11px",
+                                                fontWeight: 500,
+                                            },
+                                            text: "정상: 5ms",
+                                            position: "right",
+                                        },
+                                    },
+                                    {
+                                        y: 10,
+                                        borderColor: "#FBBF24",
+                                        strokeDashArray: 4,
+                                        opacity: 0.7,
+                                        label: {
+                                            borderColor: "#FBBF24",
+                                            style: {
+                                                color: "#fff",
+                                                background: "#FBBF24",
+                                                fontSize: "11px",
+                                                fontWeight: 500,
+                                            },
+                                            text: "주의: 10ms",
+                                            position: "right",
+                                        },
+                                    },
+                                ],
+                            },
+                            yaxis: {
+                                labels: {
+                                    style: {
+                                        colors: "#6B7280",
+                                        fontFamily: 'var(--font-family, "Pretendard", sans-serif)'
+                                    },
+                                    formatter: (val: number) => `${val}ms`,
+                                },
+                                min: 0,
+                                max: 25,
+                            },
+                        }}
                     />
                 </WidgetCard>
 
@@ -301,6 +435,7 @@ export default function DiskPage() {
                         ]}
                     />
                 </WidgetCard>
+
                 <WidgetCard title="WAL 쓰기량 변화" span={4}>
                     <Chart
                         type="area"

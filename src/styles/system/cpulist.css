@@ -2,7 +2,7 @@
     font-size: 16px;
 }
 
-.cpu-page {
+.cpu-list-page {
     padding: 2rem;
     display: flex;
     flex-direction: column;
@@ -12,19 +12,19 @@
 }
 
 /* 필터 */
-.cpu-page__filters {
+.cpu-list-page__filters {
     display: flex;
     justify-content: flex-end;
     gap: 0.75rem;
     align-items: center;
 }
 
-.cpu-page__filters > div {
+.cpu-list-page__filters > div {
     min-width: 200px;
 }
 
 /* 테이블 */
-.cpu-page__table {
+.cpu-list-page__table {
     background: rgba(255, 255, 255, 0.6);
     border-radius: 0.7rem;
     border: 1px solid rgba(255, 255, 255, 0.7);
@@ -125,7 +125,7 @@
 
 /* 반응형 */
 @media (max-width: 768px) {
-    .cpu-page__filters {
+    .cpu-list-page__filters {
         flex-wrap: wrap;
     }
 

@@ -116,19 +116,6 @@ export default function HotIndexListPage() {
         return result;
     }, [data, showUnusedOnly, showInefficientOnly]);
 
-    // 프로그레스 바 색상 결정 함수
-    const getEfficiencyColor = (percent: number) => {
-        if (percent >= 80) return "#7B61FF"; // 녹색
-        if (percent >= 60) return "#FFD66B"; // 주황
-        return "#FF928A"; // 빨강
-    };
-
-    const getCacheHitColor = (percent: number) => {
-        if (percent >= 95) return "#7B61FF"; // 녹색
-        if (percent >= 85) return "#FFD66B"; // 주황
-        return "#FF928A"; // 빨강
-    };
-
     // 컬럼 정의
     const columns = useMemo<ColumnDef<HotIndexData>[]>(
         () => [
@@ -155,50 +142,12 @@ export default function HotIndexListPage() {
             {
                 accessorKey: "efficiency",
                 header: "효율성(%)",
-                cell: (info) => {
-                    const value = info.getValue() as number;
-                    const color = getEfficiencyColor(value);
-                    return (
-                        <div className="progress-cell">
-                            <div className="progress-bar-wrapper">
-                                <div className="progress-bar-track">
-                                    <div
-                                        className="progress-bar-fill"
-                                        style={{
-                                            width: `${value}%`,
-                                            backgroundColor: color,
-                                        }}
-                                    />
-                                </div>
-                            </div>
-                            <span className="progress-value">{value}%</span>
-                        </div>
-                    );
-                },
+                cell: (info) => (info.getValue() as number).toLocaleString(),
             },
             {
                 accessorKey: "cacheHit",
                 header: "캐시 Hit(%)",
-                cell: (info) => {
-                    const value = info.getValue() as number;
-                    const color = getCacheHitColor(value);
-                    return (
-                        <div className="progress-cell">
-                            <div className="progress-bar-wrapper">
-                                <div className="progress-bar-track">
-                                    <div
-                                        className="progress-bar-fill"
-                                        style={{
-                                            width: `${value}%`,
-                                            backgroundColor: color,
-                                        }}
-                                    />
-                                </div>
-                            </div>
-                            <span className="progress-value">{value}%</span>
-                        </div>
-                    );
-                },
+                cell: (info) => (info.getValue() as number).toLocaleString(),
             },
             {
                 accessorKey: "lastUsed",
@@ -307,10 +256,10 @@ export default function HotIndexListPage() {
     };
 
     return (
-        <main className="hotindex-page">
+        <main className="hotindex-list-page">
             {/* 필터 선택 영역 */}
-            <section className="hotindex-page__filters">
-                <div className="filter-toggles">
+            <section className="hotindex-list-page__filters">
+                <div className="filter-list-toggles">
                     <label className="toggle-label">
                         <input
                             type="checkbox"
@@ -338,7 +287,7 @@ export default function HotIndexListPage() {
             </section>
 
             {/* HotIndex 테이블 */}
-            <section className="hotindex-page__table">
+            <section className="hotindex-list-page__table">
                 <div className="hotindex-table-header">
                     {table.getHeaderGroups().map((headerGroup) => (
                         <Fragment key={headerGroup.id}>

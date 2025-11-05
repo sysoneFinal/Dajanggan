@@ -16,4 +16,4 @@
         .im-btn{padding:10px 16px; border-radius:12px; background:#fff; border:1px solid rgba(2,6,23,.08); box-shadow:0 6px 18px rgba(8,15,23,.06);} 
         .im-btn--primary{background:#6366f1; color:#fff; border:none;}
 
-        .im-modal__body--detail{height: 100vh;}
+        .im-modal__body--detail{height: 50vh;}

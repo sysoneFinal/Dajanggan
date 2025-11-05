@@ -122,27 +122,184 @@ const mockData: HotTableData[] = [
         seqScan: 22.5,
         status: "주의",
     },
+    {
+        id: "8",
+        tableName: "points",
+        size: "4.4GB",
+        selectRate: 1740,
+        updateRate: 850,
+        deadTuple: 16150,
+        deadPercent: 18.9,
+        cacheHit: 88.9,
+        vacuumDelay: "6시간",
+        seqScan: 22.5,
+        status: "주의",
+    },
+    {
+        id: "9",
+        tableName: "points",
+        size: "4.4GB",
+        selectRate: 1740,
+        updateRate: 850,
+        deadTuple: 16150,
+        deadPercent: 18.9,
+        cacheHit: 88.9,
+        vacuumDelay: "6시간",
+        seqScan: 22.5,
+        status: "주의",
+    },
+    {
+        id: "10",
+        tableName: "points",
+        size: "4.4GB",
+        selectRate: 1740,
+        updateRate: 850,
+        deadTuple: 16150,
+        deadPercent: 18.9,
+        cacheHit: 88.9,
+        vacuumDelay: "6시간",
+        seqScan: 22.5,
+        status: "주의",
+    },
+    {
+        id: "11",
+        tableName: "points",
+        size: "4.4GB",
+        selectRate: 1740,
+        updateRate: 850,
+        deadTuple: 16150,
+        deadPercent: 18.9,
+        cacheHit: 88.9,
+        vacuumDelay: "6시간",
+        seqScan: 22.5,
+        status: "주의",
+    },
+    {
+        id: "12",
+        tableName: "points",
+        size: "4.4GB",
+        selectRate: 1740,
+        updateRate: 850,
+        deadTuple: 16150,
+        deadPercent: 18.9,
+        cacheHit: 88.9,
+        vacuumDelay: "6시간",
+        seqScan: 22.5,
+        status: "주의",
+    },
+    {
+        id: "13",
+        tableName: "points",
+        size: "4.4GB",
+        selectRate: 1740,
+        updateRate: 850,
+        deadTuple: 16150,
+        deadPercent: 18.9,
+        cacheHit: 88.9,
+        vacuumDelay: "6시간",
+        seqScan: 22.5,
+        status: "주의",
+    },
+    {
+        id: "14",
+        tableName: "points",
+        size: "4.4GB",
+        selectRate: 1740,
+        updateRate: 850,
+        deadTuple: 16150,
+        deadPercent: 18.9,
+        cacheHit: 88.9,
+        vacuumDelay: "6시간",
+        seqScan: 22.5,
+        status: "주의",
+    },
+    {
+        id: "15",
+        tableName: "points",
+        size: "4.4GB",
+        selectRate: 1740,
+        updateRate: 850,
+        deadTuple: 16150,
+        deadPercent: 18.9,
+        cacheHit: 88.9,
+        vacuumDelay: "6시간",
+        seqScan: 22.5,
+        status: "주의",
+    },
+    {
+        id: "16",
+        tableName: "points",
+        size: "4.4GB",
+        selectRate: 1740,
+        updateRate: 850,
+        deadTuple: 16150,
+        deadPercent: 18.9,
+        cacheHit: 88.9,
+        vacuumDelay: "6시간",
+        seqScan: 22.5,
+        status: "주의",
+    },
+    {
+        id: "17",
+        tableName: "points",
+        size: "4.4GB",
+        selectRate: 1740,
+        updateRate: 850,
+        deadTuple: 16150,
+        deadPercent: 18.9,
+        cacheHit: 88.9,
+        vacuumDelay: "6시간",
+        seqScan: 22.5,
+        status: "주의",
+    },
+    {
+        id: "18",
+        tableName: "points",
+        size: "4.4GB",
+        selectRate: 1740,
+        updateRate: 850,
+        deadTuple: 16150,
+        deadPercent: 18.9,
+        cacheHit: 88.9,
+        vacuumDelay: "6시간",
+        seqScan: 22.5,
+        status: "주의",
+    },
+    {
+        id: "19",
+        tableName: "points",
+        size: "4.4GB",
+        selectRate: 1740,
+        updateRate: 850,
+        deadTuple: 16150,
+        deadPercent: 18.9,
+        cacheHit: 88.9,
+        vacuumDelay: "6시간",
+        seqScan: 22.5,
+        status: "주의",
+    },
+    {
+        id: "20",
+        tableName: "points",
+        size: "4.4GB",
+        selectRate: 1740,
+        updateRate: 850,
+        deadTuple: 16150,
+        deadPercent: 18.9,
+        cacheHit: 88.9,
+        vacuumDelay: "6시간",
+        seqScan: 22.5,
+        status: "주의",
+    },
 ];
 
 export default function HotTableListPage() {
     const [data] = useState<HotTableData[]>(mockData);
     const [sorting, setSorting] = useState<SortingState>([]);
     const [currentPage, setCurrentPage] = useState(1);
-    const pageSize = 10;
+    const pageSize = 15;
 
     // 프로그레스 바 색상 결정 함수
-    const getDeadPercentColor = (percent: number) => {
-        if (percent >= 20) return "#FF928A"; // 빨강
-        if (percent >= 10) return "#FFD66B"; // 주황
-        return "#7B61FF"; // 녹색
-    };
-
-    const getCacheHitColor = (percent: number) => {
-        if (percent >= 95) return "#7B61FF"; // 녹색
-        if (percent >= 90) return "#FFD66B"; // 주황
-        return "#FF928A"; // 빨강
-    };
-
     const getSeqScanColor = (percent: number) => {
         if (percent >= 40) return "#FF928A"; // 빨강
         if (percent >= 20) return "#FFD66B"; // 주황
@@ -179,50 +336,12 @@ export default function HotTableListPage() {
             {
                 accessorKey: "deadPercent",
                 header: "Dead 비율(%)",
-                cell: (info) => {
-                    const value = info.getValue() as number;
-                    const color = getDeadPercentColor(value);
-                    return (
-                        <div className="progress-cell">
-                            <div className="progress-bar-wrapper">
-                                <div className="progress-bar-track">
-                                    <div
-                                        className="progress-bar-fill"
-                                        style={{
-                                            width: `${value}%`,
-                                            backgroundColor: color,
-                                        }}
-                                    />
-                                </div>
-                            </div>
-                            <span className="progress-value">{value}%</span>
-                        </div>
-                    );
-                },
+                cell: (info) => (info.getValue() as number).toLocaleString(),
             },
             {
                 accessorKey: "cacheHit",
                 header: "캐시 Hit(%)",
-                cell: (info) => {
-                    const value = info.getValue() as number;
-                    const color = getCacheHitColor(value);
-                    return (
-                        <div className="progress-cell">
-                            <div className="progress-bar-wrapper">
-                                <div className="progress-bar-track">
-                                    <div
-                                        className="progress-bar-fill"
-                                        style={{
-                                            width: `${value}%`,
-                                            backgroundColor: color,
-                                        }}
-                                    />
-                                </div>
-                            </div>
-                            <span className="progress-value">{value}%</span>
-                        </div>
-                    );
-                },
+                cell: (info) => (info.getValue() as number).toLocaleString(),
             },
             {
                 accessorKey: "vacuumDelay",
@@ -358,9 +477,9 @@ export default function HotTableListPage() {
     };
 
     return (
-        <main className="hottable-page">
+        <main className="hottable-list-page">
             {/* 필터 선택 영역 */}
-            <section className="hottable-page__filters">
+            <section className="hottable-list-page__filters">
                 <MultiSelectDropdown
                     label="상태"
                     options={[
@@ -374,7 +493,7 @@ export default function HotTableListPage() {
             </section>
 
             {/* HotTable 테이블 */}
-            <section className="hottable-page__table">
+            <section className="hottable-list-page__table">
                 <div className="hottable-table-header">
                     {table.getHeaderGroups().map((headerGroup) => (
                         <Fragment key={headerGroup.id}>

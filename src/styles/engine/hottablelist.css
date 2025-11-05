@@ -2,7 +2,7 @@
     font-size: 16px;
 }
 
-.hottable-page {
+.hottable-list-page {
     padding: 2rem;
     display: flex;
     flex-direction: column;
@@ -12,19 +12,19 @@
 }
 
 /* 필터 */
-.hottable-page__filters {
+.hottable-list-page__filters {
     display: flex;
     justify-content: flex-end;
     gap: 0.75rem;
     align-items: center;
 }
 
-.hottable-page__filters > div {
+.hottable-list-page__filters > div {
     min-width: 200px;
 }
 
 /* 테이블 */
-.hottable-page__table {
+.hottable-list-page__table {
     background: rgba(255, 255, 255, 0.6);
     border-radius: 0.7rem;
     border: 1px solid rgba(255, 255, 255, 0.7);
@@ -125,7 +125,7 @@
 
 /* 반응형 */
 @media (max-width: 768px) {
-    .hottable-page__filters {
+    .hottable-list-page__filters {
         flex-wrap: wrap;
     }
 

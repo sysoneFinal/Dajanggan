@@ -33,11 +33,47 @@
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    /*padding: 1rem 0;*/
-    /*gap: 1rem;*/
 }
 
-/* 상태 뱃지 */
+.cpu-gauge-details {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 1.5rem;
+    width: 100%;
+    padding: 0.5rem 1rem;
+    margin-top: -8rem;
+    border-top: 1px solid #E5E7EB;
+}
+
+.cpu-detail-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.cpu-detail-label {
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: #6B7280;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.cpu-detail-value {
+    font-size: 1rem;
+    font-weight: 700;
+    color: #1F2937;
+}
+
+.cpu-detail-divider {
+    width: 1px;
+    height: 2rem;
+    background-color: #E5E7EB;
+}
+
+/* 상태 배지 */
 .bgwriter-status-badge {
     width: 100%;
     display: flex;
@@ -237,6 +273,14 @@
     .bgwriter-stat-value {
         font-size: 0.9rem;
     }
+
+    .cpu-gauge-details {
+        gap: 1rem;
+    }
+
+    .cpu-detail-value {
+        font-size: 1rem;
+    }
 }
 
 /* 반응형 - 모바일 (768px 이하) */
@@ -282,6 +326,23 @@
     .bgwriter-gauge-container {
         padding: 0.5rem 0;
     }
+
+    .cpu-gauge-details {
+        gap: 0.75rem;
+        padding: 0.5rem 0.75rem;
+    }
+
+    .cpu-detail-label {
+        font-size: 0.7rem;
+    }
+
+    .cpu-detail-value {
+        font-size: 0.95rem;
+    }
+
+    .cpu-detail-divider {
+        height: 1.5rem;
+    }
 }
 
 /* 작은 모바일 (480px 이하) */
@@ -305,5 +366,17 @@
     .bgwriter-status-badge .status-text {
         font-size: 0.75rem;
         padding: 5px 12px;
+    }
+
+    .cpu-gauge-details {
+        gap: 0.5rem;
+    }
+
+    .cpu-detail-label {
+        font-size: 0.65rem;
+    }
+
+    .cpu-detail-value {
+        font-size: 0.875rem;
     }
 }
