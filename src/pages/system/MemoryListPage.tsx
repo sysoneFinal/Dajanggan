@@ -163,27 +163,29 @@ export default function MemoryListPage() {
             {
                 accessorKey: "usagePercent",
                 header: "점유율(%)",
-                cell: (info) => {
-                    const value = info.getValue() as number;
-                    const color = getUsageColor(value);
-                    return (
-                        <div className="progress-cell">
-                            <div className="progress-bar-wrapper">
-                                <div className="progress-bar-track">
-                                    <div
-                                        className="progress-bar-fill"
-                                        style={{
-                                            width: `${value}%`,
-                                            backgroundColor: color,
-                                        }}
-                                    />
-                                </div>
-                            </div>
-                            <span className="progress-value">{value}%</span>
-                        </div>
-                    );
-                },
+                cell: (info) => (info.getValue() as number).toLocaleString(),
             },
+            // {
+            //         const value = info.getValue() as number;
+            //         const color = getUsageColor(value);
+            //         return (
+            //             <div className="progress-cell">
+            //                 <div className="progress-bar-wrapper">
+            //                     <div className="progress-bar-track">
+            //                         <div
+            //                             className="progress-bar-fill"
+            //                             style={{
+            //                                 width: `${value}%`,
+            //                                 backgroundColor: color,
+            //                             }}
+            //                         />
+            //                     </div>
+            //                 </div>
+            //                 <span className="progress-value">{value}%</span>
+            //             </div>
+            //         );
+            //     },
+            // },
             {
                 accessorKey: "dirtyCount",
                 header: "Dirty(개)",
@@ -192,50 +194,50 @@ export default function MemoryListPage() {
             {
                 accessorKey: "dirtyPercent",
                 header: "Dirty 비율(%)",
-                cell: (info) => {
-                    const value = info.getValue() as number;
-                    const color = getDirtyColor(value);
-                    return (
-                        <div className="progress-cell">
-                            <div className="progress-bar-wrapper">
-                                <div className="progress-bar-track">
-                                    <div
-                                        className="progress-bar-fill"
-                                        style={{
-                                            width: `${value}%`,
-                                            backgroundColor: color,
-                                        }}
-                                    />
-                                </div>
-                            </div>
-                            <span className="progress-value">{value}%</span>
-                        </div>
-                    );
-                },
+                cell: (info) => (info.getValue() as number).toLocaleString(),
+                //     const value = info.getValue() as number;
+                //     const color = getDirtyColor(value);
+                //     return (
+                //         <div className="progress-cell">
+                //             <div className="progress-bar-wrapper">
+                //                 <div className="progress-bar-track">
+                //                     <div
+                //                         className="progress-bar-fill"
+                //                         style={{
+                //                             width: `${value}%`,
+                //                             backgroundColor: color,
+                //                         }}
+                //                     />
+                //                 </div>
+                //             </div>
+                //             <span className="progress-value">{value}%</span>
+                //         </div>
+                //     );
+                // },
             },
             {
                 accessorKey: "hitPercent",
                 header: "Hit 비율(%)",
-                cell: (info) => {
-                    const value = info.getValue() as number;
-                    const color = getHitColor(value);
-                    return (
-                        <div className="progress-cell">
-                            <div className="progress-bar-wrapper">
-                                <div className="progress-bar-track">
-                                    <div
-                                        className="progress-bar-fill"
-                                        style={{
-                                            width: `${value}%`,
-                                            backgroundColor: color,
-                                        }}
-                                    />
-                                </div>
-                            </div>
-                            <span className="progress-value">{value}%</span>
-                        </div>
-                    );
-                },
+                cell: (info) => (info.getValue() as number).toLocaleString(),
+                //     const value = info.getValue() as number;
+                //     const color = getHitColor(value);
+                //     return (
+                //         <div className="progress-cell">
+                //             <div className="progress-bar-wrapper">
+                //                 <div className="progress-bar-track">
+                //                     <div
+                //                         className="progress-bar-fill"
+                //                         style={{
+                //                             width: `${value}%`,
+                //                             backgroundColor: color,
+                //                         }}
+                //                     />
+                //                 </div>
+                //             </div>
+                //             <span className="progress-value">{value}%</span>
+                //         </div>
+                //     );
+                // },
             },
             {
                 accessorKey: "status",
@@ -338,9 +340,9 @@ export default function MemoryListPage() {
     };
 
     return (
-        <main className="memory-page">
+        <main className="memory-list-page">
             {/* 필터 선택 영역 */}
-            <section className="memory-page__filters">
+            <section className="memory-list-page__filters">
                 <MultiSelectDropdown
                     label="타입"
                     options={[
@@ -362,7 +364,7 @@ export default function MemoryListPage() {
             </section>
 
             {/* Memory 테이블 */}
-            <section className="memory-page__table">
+            <section className="memory-list-page__table">
                 <div className="memory-table-header">
                     {table.getHeaderGroups().map((headerGroup) => (
                         <Fragment key={headerGroup.id}>

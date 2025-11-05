@@ -132,30 +132,6 @@ export default function CPUListPage() {
                 cell: (info) => info.getValue(),
             },
             {
-                accessorKey: "totalCPU",
-                header: "전체 CPU(%)",
-                cell: (info) => {
-                    const value = info.getValue() as number;
-                    const color = getCPUColor(value);
-                    return (
-                        <div className="progress-cell">
-                            <div className="progress-bar-wrapper">
-                                <div className="progress-bar-track">
-                                    <div
-                                        className="progress-bar-fill"
-                                        style={{
-                                            width: `${value}%`,
-                                            backgroundColor: color,
-                                        }}
-                                    />
-                                </div>
-                            </div>
-                            <span className="progress-value">{value}%</span>
-                        </div>
-                    );
-                },
-            },
-            {
                 accessorKey: "userCPU",
                 header: "User CPU(%)",
                 cell: (info) => info.getValue(),
@@ -189,6 +165,30 @@ export default function CPUListPage() {
                 accessorKey: "workerTime",
                 header: "병렬 워커 시간(ms)",
                 cell: (info) => info.getValue(),
+            },
+            {
+                accessorKey: "totalCPU",
+                header: "전체 CPU(%)",
+                cell: (info) => {
+                    const value = info.getValue() as number;
+                    const color = getCPUColor(value);
+                    return (
+                        <div className="progress-cell">
+                            <div className="progress-bar-wrapper">
+                                <div className="progress-bar-track">
+                                    <div
+                                        className="progress-bar-fill"
+                                        style={{
+                                            width: `${value}%`,
+                                            backgroundColor: color,
+                                        }}
+                                    />
+                                </div>
+                            </div>
+                            <span className="progress-value">{value}%</span>
+                        </div>
+                    );
+                },
             },
             {
                 accessorKey: "status",
@@ -296,9 +296,9 @@ export default function CPUListPage() {
     };
 
     return (
-        <main className="cpu-page">
+        <main className="cpu-list-page">
             {/* 필터 선택 영역 */}
-            <section className="cpu-page__filters">
+            <section className="cpu-list-page__filters">
                 <MultiSelectDropdown
                     label="시간 선택"
                     options={[
@@ -322,7 +322,7 @@ export default function CPUListPage() {
             </section>
 
             {/* CPU 테이블 */}
-            <section className="cpu-page__table">
+            <section className="cpu-list-page__table">
                 <div className="cpu-table-header">
                     {table.getHeaderGroups().map((headerGroup) => (
                         <Fragment key={headerGroup.id}>

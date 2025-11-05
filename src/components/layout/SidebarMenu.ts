@@ -22,7 +22,7 @@ export const SIDEBAR_MENU = [
         ]}, 
       { label: "Checkpoint",    children: [
             { label: "Details", path: "/instance/checkpoint/details" },
-            { label: "Checkpoint History", path: "/instance/checkpoint/list" },` `
+            { label: "Checkpoint History", path: "/instance/checkpoint/list" },
       ]},
       { label: "BG Writer", children:[
             { label: "Details", path: "/instance/bgwriter/details" },

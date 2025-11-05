@@ -122,6 +122,18 @@ export default function BGWriterListPage() {
                 header: "Backend(개/s)",
                 cell: (info) => info.getValue(),
             },
+
+            {
+                accessorKey: "fsyncRate",
+                header: "Fsync(회/s)",
+                cell: (info) => info.getValue(),
+            },
+            {
+                accessorKey: "maxWrittenRate",
+                header: "상한 도달(회/분)",
+                cell: (info) => info.getValue(),
+            },
+
             {
                 accessorKey: "backendRatio",
                 header: "Backend 비율(%)",
@@ -146,16 +158,7 @@ export default function BGWriterListPage() {
                     );
                 },
             },
-            {
-                accessorKey: "fsyncRate",
-                header: "Fsync(회/s)",
-                cell: (info) => info.getValue(),
-            },
-            {
-                accessorKey: "maxWrittenRate",
-                header: "상한 도달(회/분)",
-                cell: (info) => info.getValue(),
-            },
+
             {
                 accessorKey: "status",
                 header: "상태",
@@ -242,9 +245,9 @@ export default function BGWriterListPage() {
     };
 
     return (
-        <main className="bgwriter-page">
+        <main className="bgwriter-list-page">
             {/* 필터 선택 영역 */}
-            <section className="bgwriter-page__filters">
+            <section className="bgwriter-list-page__filters">
                 <MultiSelectDropdown
                     label="시간 선택"
                     options={[
@@ -278,7 +281,7 @@ export default function BGWriterListPage() {
             </section>
 
             {/* BGWriter 테이블 */}
-            <section className="bgwriter-page__table">
+            <section className="bgwriter-list-page__table">
                 <div className="bg-table-header">
                     {table.getHeaderGroups().map((headerGroup) => (
                         <Fragment key={headerGroup.id}>

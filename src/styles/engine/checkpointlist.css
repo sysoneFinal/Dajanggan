@@ -2,7 +2,7 @@
     font-size: 16px;
 }
 
-.checkpoint-page {
+.checkpoint-list-page {
     padding: 2rem;
     display: flex;
     flex-direction: column;
@@ -12,19 +12,19 @@
 }
 
 /* 필터 */
-.checkpoint-page__filters {
+.checkpoint-list-page__filters {
     display: flex;
     justify-content: flex-end;
     gap: 0.75rem;
     align-items: center;
 }
 
-.checkpoint-page__filters > div {
+.checkpoint-list-page__filters > div {
     min-width: 200px;
 }
 
 /* 테이블 */
-.checkpoint-page__table {
+.checkpoint-list-page__table {
     background: rgba(255, 255, 255, 0.6);
     border-radius: 0.7rem;
     border: 1px solid rgba(255, 255, 255, 0.7);
@@ -108,7 +108,7 @@
 
 /* 반응형 */
 @media (max-width: 768px) {
-    .checkpoint-page__filters {
+    .checkpoint-list-page__filters {
         flex-wrap: wrap;
     }
 

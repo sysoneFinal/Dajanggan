@@ -279,9 +279,9 @@ export default function CheckPointListPage() {
     };
 
     return (
-        <main className="checkpoint-page">
+        <main className="checkpoint-list-page">
             {/* 필터 선택 영역 */}
-            <section className="checkpoint-page__filters">
+            <section className="checkpoint-list-page__filters">
                 <MultiSelectDropdown
                     label="시간 선택"
                     options={[
@@ -313,7 +313,7 @@ export default function CheckPointListPage() {
             </section>
 
             {/* Checkpoint 테이블 */}
-            <section className="checkpoint-page__table">
+            <section className="checkpoint-list-page__table">
                 <div className="checkpoint-table-header">
                     {table.getHeaderGroups().map((headerGroup) => (
                         <Fragment key={headerGroup.id}>

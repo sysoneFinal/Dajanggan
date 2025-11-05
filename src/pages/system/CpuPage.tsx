@@ -11,6 +11,8 @@ interface CPUData {
     cpuUsage: {
         value: number;
         description: string;
+        runningQueries: number;
+        waitingQueries: number;
     };
     cpuUsageTrend: {
         categories: string[];
@@ -54,6 +56,8 @@ const dummyData: CPUData = {
     cpuUsage: {
         value: 35.7,
         description: "CPU utilization rate",
+        runningQueries: 45,
+        waitingQueries: 12,
     },
     cpuUsageTrend: {
         categories: [
@@ -114,10 +118,77 @@ const dummyData: CPUData = {
 
 // Gauge 색상 결정
 const getGaugeColor = (value: number): string => {
-    if (value < 70) return "#8E79FF"; // 녹색 (정상)
+    if (value < 70) return "#8E79FF"; // 보라색 (정상)
     if (value < 90) return "#FFD66B"; // 주황색 (주의)
     return "#FEA29B"; // 빨간색 (위험)
 };
+
+interface SummaryCardWithLinkProps {
+    label: string;
+    value: string | number;
+    diff?: number;
+    desc?: string;
+    status?: "info" | "warning" | "critical";
+    link?: string;
+}
+
+function SummaryCardWithLink({ link, status = "info", ...props }: SummaryCardWithLinkProps) {
+    const statusColors: Record<string, string> = {
+        info: "#555555",
+        warning: "#F59E0B",
+        critical: "#EF4444",
+    };
+
+    return (
+        <div style={{ position: "relative", flex: 1 }}>
+            <SummaryCard {...props} status={status} />
+
+            {link && (
+                <a
+                    href={link}
+                    style={{
+                        position: "absolute",
+                        top: "1rem",
+                        right: "1rem",
+                        width: "20px",
+                        height: "20px",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        cursor: "pointer",
+                        transition: "all 0.2s ease",
+                        opacity: 0.6,
+                        zIndex: 10,
+                    }}
+                    onMouseEnter={(e) => {
+                        e.currentTarget.style.opacity = "1";
+                        e.currentTarget.style.transform = "scale(1.15)";
+                    }}
+                    onMouseLeave={(e) => {
+                        e.currentTarget.style.opacity = "0.6";
+                        e.currentTarget.style.transform = "scale(1)";
+                    }}
+                >
+                    {/* 외부 링크 아이콘 SVG */}
+                    <svg
+                        width="16"
+                        height="16"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke={statusColors[status]}
+                        strokeWidth="2.5"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                    >
+                        <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+                        <polyline points="15 3 21 3 21 9" />
+                        <line x1="10" y1="14" x2="21" y2="3" />
+                    </svg>
+                </a>
+            )}
+        </div>
+    );
+}
 
 // 메인 페이지
 export default function CPUPage() {
@@ -142,6 +213,7 @@ export default function CPUPage() {
             diff: 1.2,
             desc: "최근 5분 평균",
             status: "info" as const,
+            link: "http://localhost:5173/instance/cpu/usage",
         },
         {
             label: "I/O Wait",
@@ -149,6 +221,7 @@ export default function CPUPage() {
             diff: 2.3,
             desc: "최근 5분 평균",
             status: "info" as const,
+            link: "http://localhost:5173/instance/cpu/usage",
         },
         {
             label: "CPU 대기열 길이",
@@ -178,13 +251,14 @@ export default function CPUPage() {
             {/* 상단 요약 카드 */}
             <div className="cpu-summary-cards">
                 {summaryCards.map((card, idx) => (
-                    <SummaryCard
+                    <SummaryCardWithLink
                         key={idx}
                         label={card.label}
                         value={card.value}
                         diff={card.diff}
                         desc={card.desc}
                         status={card.status}
+                        link={card.link}
                     />
                 ))}
             </div>
@@ -192,23 +266,124 @@ export default function CPUPage() {
             {/* 첫 번째 행: 게이지 + 2개 차트 */}
             <ChartGridLayout>
                 <WidgetCard title="CPU 사용률" span={2}>
-                    <GaugeChart
-                        value={data.cpuUsage.value}
-                        type="semi-circle"
-                        color={gaugeColor}
-                    />
+                    <div style={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        height: '100%',
+                        width: '100%',
+                        marginTop: '18px',
+                    }}>
+                        <GaugeChart
+                            value={data.cpuUsage.value}
+                            type="semi-circle"
+                            color={gaugeColor}
+                            radius={100}
+                            strokeWidth={20}
+                            height={200}
+                            flattenRatio={0.89}
+                        />
+                        <div className="cpu-gauge-details">
+                            <div className="cpu-detail-item">
+                                <span className="cpu-detail-label">Running</span>
+                                <span className="cpu-detail-value">{data.cpuUsage.runningQueries}개</span>
+                            </div>
+                            <div className="cpu-detail-divider"></div>
+                            <div className="cpu-detail-item">
+                                <span className="cpu-detail-label">Waiting</span>
+                                <span className="cpu-detail-value">{data.cpuUsage.waitingQueries}개</span>
+                            </div>
+                        </div>
+                    </div>
                 </WidgetCard>
 
-                <WidgetCard title="CPU 사용률 추이" span={5}>
+                <WidgetCard title="CPU 사용률 추이 (Last 24 Hours)" span={5}>
                     <Chart
-                        type="line"
-                        series={[{ name: "CPU 사용률 (%)", data: data.cpuUsageTrend.data }]}
+                        type="area"
+                        series={[
+                            { name: "CPU 사용률", data: data.cpuUsageTrend.data }
+                        ]}
                         categories={data.cpuUsageTrend.categories}
                         height={250}
                         colors={["#8E79FF"]}
                         showGrid={true}
                         showLegend={false}
+                        yaxisOptions={{
+                            min: 0,
+                            max: 100,
+                            labels: {
+                                style: { colors: "#6B7280" },
+                                formatter: (val: number) => `${val}%`,
+                            },
+                        }}
                         tooltipFormatter={(value: number) => `${value}%`}
+                        customOptions={{
+                            annotations: {
+                                yaxis: [
+                                    {
+                                        y: 70,
+                                        borderColor: "#60A5FA",
+                                        strokeDashArray: 4,
+                                        opacity: 0.6,
+                                        label: {
+                                            borderColor: "#60A5FA",
+                                            style: {
+                                                color: "#fff",
+                                                background: "#60A5FA",
+                                                fontSize: "11px",
+                                                fontWeight: 500,
+                                            },
+                                            text: "정상: 70%",
+                                            position: "right",
+                                        },
+                                    },
+                                    {
+                                        y: 80,
+                                        borderColor: "#FBBF24",
+                                        strokeDashArray: 4,
+                                        opacity: 0.7,
+                                        label: {
+                                            borderColor: "#FBBF24",
+                                            style: {
+                                                color: "#fff",
+                                                background: "#FBBF24",
+                                                fontSize: "11px",
+                                                fontWeight: 500,
+                                            },
+                                            text: "주의: 80%",
+                                            position: "right",
+                                        },
+                                    },
+                                    {
+                                        y: 90,
+                                        borderColor: "#FEA29B",
+                                        strokeDashArray: 4,
+                                        opacity: 0.8,
+                                        label: {
+                                            borderColor: "#FEA29B",
+                                            style: {
+                                                color: "#fff",
+                                                background: "#FEA29B",
+                                                fontSize: "11px",
+                                                fontWeight: 600,
+                                            },
+                                            text: "경고: 90%",
+                                            position: "right",
+                                        },
+                                    },
+                                ],
+                            },
+                            yaxis: {
+                                labels: {
+                                    style: {
+                                        colors: "#6B7280",
+                                        fontFamily: 'var(--font-family, "Pretendard", sans-serif)',
+                                    },
+                                    formatter: (val: number) => `${val}%`,
+                                },
+                            },
+                        }}
                     />
                 </WidgetCard>
 
@@ -276,7 +451,7 @@ export default function CPUPage() {
                     />
                 </WidgetCard>
 
-                <WidgetCard title="사용자별 CPU 사용량" span={4}>
+                <WidgetCard title="사용자별 CPU 사용량 Top 5" span={4}>
                     <Chart
                         type="bar"
                         series={[

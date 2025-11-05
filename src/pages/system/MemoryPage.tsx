@@ -55,8 +55,8 @@ interface MemoryData {
         pageFaultRate: number;
         backendWaitTime: number;
         workMemUsage: number;
-        evictionCacheMissRate: number;    // 변경: avgEviction → evictionCacheMissRate (%)
-        backendFsyncCount: number;        // 변경: avgFsync → backendFsyncCount (횟수)
+        evictionCacheMissRate: number;
+        backendFsyncCount: number;
     };
 }
 
@@ -117,28 +117,27 @@ const dummyData: MemoryData = {
         labels: ["orders", "users", "products", "payments", "inventory", "audit_log"],
         data: [18.5, 15.2, 12.8, 10.3, 8.7, 6.2],
     },
-    // 최근 5분 평균 통계
     recentStats: {
         pageFaultRate: 12,
         backendWaitTime: 0.8,
         workMemUsage: 340,
-        evictionCacheMissRate: 3.2,    // 변경: Eviction으로 인한 캐시 미스율 (%)
-        backendFsyncCount: 0,          // 변경: Backend가 직접 fsync한 횟수
+        evictionCacheMissRate: 3.2,
+        backendFsyncCount: 0,
     },
 };
 
 // Gauge 색상 결정 (Memory Utilization)
 const getMemoryUtilizationColor = (value: number): string => {
-    if (value >= 80 && value <= 95) return "#7B61FF"; // 녹색 (적정)
-    if (value < 80) return "#FFD66B"; // 파란색 (여유)
-    return "#FF928A"; // 빨간색 (위험)
+    if (value >= 80 && value <= 95) return "#7B61FF";
+    if (value < 80) return "#FFD66B";
+    return "#FF928A";
 };
 
 // Gauge 색상 결정 (Buffer Hit Ratio)
 const getHitRatioColor = (value: number): string => {
-    if (value >= 95) return "#7B61FF"; // 녹색 (우수)
-    if (value >= 90) return "#FFD66B"; // 주황색 (개선 가능)
-    return "#FF928A"; // 빨간색 (낮음)
+    if (value >= 95) return "#7B61FF";
+    if (value >= 90) return "#FFD66B";
+    return "#FF928A";
 };
 
 // 메인 Memory 페이지
@@ -149,7 +148,6 @@ export default function MemoryPage() {
     const hitRatioColor = getHitRatioColor(data.bufferHitRatio.value);
     const sharedBufferColor = getMemoryUtilizationColor(data.sharedBufferUsage.value);
 
-    // 최근 5분 평균 통계 (API에서 받아오거나 더미 데이터 사용)
     const recentStats = data.recentStats || {
         pageFaultRate: 12,
         backendWaitTime: 0.8,
@@ -158,7 +156,6 @@ export default function MemoryPage() {
         backendFsyncCount: 0,
     };
 
-    // 요약 카드 데이터 계산 (최근 5분 평균 기준)
     const summaryCards = [
         {
             label: "페이지 폴트 발생률",
@@ -182,15 +179,15 @@ export default function MemoryPage() {
             status: "info" as const,
         },
         {
-            label: "Eviction 캐시 미스율",  // 변경
-            value: `${recentStats.evictionCacheMissRate}%`,  // 변경
+            label: "Eviction 캐시 미스율",
+            value: `${recentStats.evictionCacheMissRate}%`,
             diff: -0.3,
             desc: "최근 5분 평균",
             status: recentStats.evictionCacheMissRate > 10 ? ("warning" as const) : ("info" as const),
         },
         {
-            label: "Backend Fsync 발생",  // 변경
-            value: `${recentStats.backendFsyncCount}회`,  // 변경
+            label: "Backend Fsync 발생",
+            value: `${recentStats.backendFsyncCount}회`,
             diff: 0,
             desc: "최근 5분 누적",
             status: recentStats.backendFsyncCount > 0 ? ("warning" as const) : ("info" as const),
@@ -215,28 +212,105 @@ export default function MemoryPage() {
 
             {/* 첫 번째 행: 3개의 게이지 */}
             <ChartGridLayout>
-                <WidgetCard title="Memory 사용률" span={2}>
-                    <GaugeChart
-                        value={data.memoryUtilization.value}
-                        type="semi-circle"
-                        color={memoryUtilizationColor}
-                    />
+                <WidgetCard title="Memory Utilization" span={2}>
+                    <div style={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        height: '100%',
+                        width: '100%',
+                        marginTop: '18px',
+                    }}>
+                        <GaugeChart
+                            value={data.memoryUtilization.value}
+                            color={memoryUtilizationColor}
+                            type="semi-circle"
+                            radius={100}
+                            strokeWidth={20}
+                            height={200}
+                            flattenRatio={0.89}
+                        />
+                        <div className="memory-gauge-details">
+                            <div className="memory-detail-item">
+                                <span className="memory-detail-label">사용중</span>
+                                <span className="memory-detail-value">{(data.memoryUtilization.usedBuffers / 1000).toFixed(1)}K</span>
+                            </div>
+                            <div className="memory-detail-divider"></div>
+                            <div className="memory-detail-item">
+                                <span className="memory-detail-label">전체</span>
+                                <span className="memory-detail-value">{(data.memoryUtilization.totalBuffers / 1000).toFixed(1)}K</span>
+                            </div>
+                        </div>
+                    </div>
                 </WidgetCard>
 
+                {/* Buffer Hit Ratio */}
                 <WidgetCard title="Buffer Hit Ratio" span={2}>
-                    <GaugeChart
-                        value={data.bufferHitRatio.value}
-                        type="semi-circle"
-                        color={hitRatioColor}
-                    />
+                    <div style={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        height: '100%',
+                        width: '100%',
+                        marginTop: '18px',
+                    }}>
+                        <GaugeChart
+                            value={data.bufferHitRatio.value}
+                            color={hitRatioColor}
+                            type="semi-circle"
+                            radius={100}
+                            strokeWidth={20}
+                            height={200}
+                            flattenRatio={0.89}
+                        />
+                        <div className="memory-gauge-details">
+                            <div className="memory-detail-item">
+                                <span className="memory-detail-label">Hit</span>
+                                <span className="memory-detail-value">{(data.bufferHitRatio.hitCount / 1000000).toFixed(1)}M</span>
+                            </div>
+                            <div className="memory-detail-divider"></div>
+                            <div className="memory-detail-item">
+                                <span className="memory-detail-label">Total</span>
+                                <span className="memory-detail-value">{(data.bufferHitRatio.totalCount / 1000000).toFixed(1)}M</span>
+                            </div>
+                        </div>
+                    </div>
                 </WidgetCard>
 
-                <WidgetCard title="Shared Buffer 사용 현황" span={2}>
-                    <GaugeChart
-                        value={data.sharedBufferUsage.value}
-                        type="semi-circle"
-                        color={sharedBufferColor}
-                    />
+                {/* Shared Buffer Usage */}
+                <WidgetCard title="Shared Buffer Usage" span={2}>
+                    <div style={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        height: '100%',
+                        width: '100%',
+                        marginTop: '18px',
+                    }}>
+                        <GaugeChart
+                            value={data.sharedBufferUsage.value}
+                            color={sharedBufferColor}
+                            type="semi-circle"
+                            radius={100}
+                            strokeWidth={20}
+                            height={200}
+                            flattenRatio={0.89}
+                        />
+                        <div className="memory-gauge-details">
+                            <div className="memory-detail-item">
+                                <span className="memory-detail-label">Active</span>
+                                <span className="memory-detail-value">{(data.sharedBufferUsage.activeBuffers / 1000).toFixed(1)}K</span>
+                            </div>
+                            <div className="memory-detail-divider"></div>
+                            <div className="memory-detail-item">
+                                <span className="memory-detail-label">Total</span>
+                                <span className="memory-detail-value">{(data.sharedBufferUsage.totalBuffers / 1000).toFixed(1)}K</span>
+                            </div>
+                        </div>
+                    </div>
                 </WidgetCard>
 
                 <WidgetCard title="Eviction 대비 Flush 비율" span={6}>
@@ -266,7 +340,7 @@ export default function MemoryPage() {
 
             {/* 두 번째 행: 3개 차트 */}
             <ChartGridLayout>
-                <WidgetCard title="버퍼 교체율" span={6}>
+                <WidgetCard title="버퍼 교체율 (Last 24 Hours)" span={6}>
                     <Chart
                         type="line"
                         series={[{ name: "Evictions/sec", data: data.evictionRate.data }]}
@@ -283,10 +357,78 @@ export default function MemoryPage() {
                             labels: { formatter: (val: number) => `${val}/s` },
                         }}
                         tooltipFormatter={(value: number) => `${value}/s`}
+                        customOptions={{
+                            annotations: {
+                                yaxis: [
+                                    {
+                                        y: 100,
+                                        borderColor: "#60A5FA",
+                                        strokeDashArray: 4,
+                                        opacity: 0.6,
+                                        label: {
+                                            borderColor: "#60A5FA",
+                                            style: {
+                                                color: "#fff",
+                                                background: "#60A5FA",
+                                                fontSize: "11px",
+                                                fontWeight: 500,
+                                            },
+                                            text: "정상: 100/s",
+                                            position: "right",
+                                        },
+                                    },
+                                    {
+                                        y: 200,
+                                        borderColor: "#FBBF24",
+                                        strokeDashArray: 4,
+                                        opacity: 0.7,
+                                        label: {
+                                            borderColor: "#FBBF24",
+                                            style: {
+                                                color: "#fff",
+                                                background: "#FBBF24",
+                                                fontSize: "11px",
+                                                fontWeight: 500,
+                                            },
+                                            text: "주의: 200/s",
+                                            position: "right",
+                                        },
+                                    },
+                                    {
+                                        y: 300,
+                                        borderColor: "#FEA29B",
+                                        strokeDashArray: 4,
+                                        opacity: 0.8,
+                                        label: {
+                                            borderColor: "#FEA29B",
+                                            style: {
+                                                color: "#fff",
+                                                background: "#FEA29B",
+                                                fontSize: "11px",
+                                                fontWeight: 600,
+                                            },
+                                            text: "경고: 300/s",
+                                            position: "right",
+                                        },
+                                    },
+                                ],
+                            },
+                            yaxis: {
+                                labels: {
+                                    style: {
+                                        colors: "#6B7280",
+                                        fontFamily: 'var(--font-family, "Pretendard", sans-serif)'
+                                    },
+                                    formatter: (val: number) => `${val}/s`,
+                                },
+                                min: 0,
+                                max: 350,
+                            },
+                        }}
                     />
                 </WidgetCard>
 
-                <WidgetCard title="버퍼 플러시 발생 추세" span={6}>
+                <WidgetCard title="버퍼 플러시 발생 추세 (Last 24 Hours)" span={6}>
                     <Chart
                         type="line"
                         series={[{ name: "Fsyncs/sec", data: data.fsyncRate.data }]}
@@ -311,7 +453,7 @@ export default function MemoryPage() {
 
             {/* 세 번째 행: 2개 차트 */}
             <ChartGridLayout>
-                <WidgetCard title="Shared Buffers 히트율" span={6}>
+                <WidgetCard title="Shared Buffers 히트율 (Last 24 Hours)" span={6}>
                     <Chart
                         type="line"
                         series={[{ name: "Hit Ratio (%)", data: data.sharedBuffersHitRatio.data }]}
@@ -330,6 +472,46 @@ export default function MemoryPage() {
                             max: 100,
                         }}
                         tooltipFormatter={(value: number) => `${value}%`}
+                        customOptions={{
+                            annotations: {
+                                yaxis: [
+                                    {
+                                        y: 95,
+                                        borderColor: "#60A5FA",
+                                        strokeDashArray: 4,
+                                        opacity: 0.6,
+                                        label: {
+                                            borderColor: "#60A5FA",
+                                            style: {
+                                                color: "#fff",
+                                                background: "#60A5FA",
+                                                fontSize: "11px",
+                                                fontWeight: 500,
+                                            },
+                                            text: "정상: 95%",
+                                            position: "right",
+                                        },
+                                    },
+                                    {
+                                        y: 90,
+                                        borderColor: "#FBBF24",
+                                        strokeDashArray: 4,
+                                        opacity: 0.7,
+                                        label: {
+                                            borderColor: "#FBBF24",
+                                            style: {
+                                                color: "#fff",
+                                                background: "#FBBF24",
+                                                fontSize: "11px",
+                                                fontWeight: 500,
+                                            },
+                                            text: "주의: 90%",
+                                            position: "right",
+                                        },
+                                    },
+                                ],
+                            },
+                        }}
                     />
                 </WidgetCard>
 
