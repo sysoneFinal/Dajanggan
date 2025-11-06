@@ -5,6 +5,7 @@ import { AppRoutes } from "./routes";
 import Sidebar from "./components/layout/Sidebar";
 import Header from "./components/layout/Header";
 import { DashboardProvider } from "./context/DashboardContext";
+import { InstanceProvider } from "./context/InstanceContext";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -27,23 +28,25 @@ function App() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <DashboardProvider>
-        <div className="app-background">
-          {hideLayout ? (
-            <AppRoutes />
-          ) : (
-            <div className="app-main">
-              <Sidebar onChangeBreadcrumb={setBreadcrumb} />
+      <InstanceProvider>    
+        <DashboardProvider>
+          <div className="app-background">
+            {hideLayout ? (
+              <AppRoutes />
+            ) : (
+              <div className="app-main">
+                <Sidebar onChangeBreadcrumb={setBreadcrumb} />
 
-              <div className="app-content">
-                {/* Header와 OverviewPage 둘 다 같은 context를 공유함 */}
-                <Header breadcrumb={breadcrumb} />
-                <AppRoutes />
+                <div className="app-content">
+                  {/* Header와 OverviewPage 둘 다 같은 context를 공유함 */}
+                  <Header breadcrumb={breadcrumb} />
+                  <AppRoutes />
+                </div>
               </div>
-            </div>
-          )}
-        </div>
-      </DashboardProvider>
+            )}
+          </div>
+        </DashboardProvider>
+      </InstanceProvider>
     </QueryClientProvider>
   );
 }

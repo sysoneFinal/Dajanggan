@@ -789,17 +789,6 @@
       "default_chart": "bar",
       "description": "수집 구간 내 발생한 이벤트의 개수를 나타냅니다."
     },
-    "duration": {
-      "title": "이벤트 지속 시간",
-      "unit": "sec",
-      "source": "event_log",
-      "column": "duration",
-      "category": "Event Log",
-      "level": "database",
-      "available_charts": ["line"],
-      "default_chart": "line",
-      "description": "특정 이벤트가 지속된 시간을 초 단위로 나타냅니다."
-    },
     "critical_event_count": {
       "title": "Critical 이벤트 수",
       "unit": "count",

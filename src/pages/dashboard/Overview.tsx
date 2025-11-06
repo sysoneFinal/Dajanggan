@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import { Responsive, WidthProvider, type Layout } from "react-grid-layout";
 import "react-grid-layout/css/styles.css";
 import "react-resizable/css/styles.css";
@@ -10,111 +10,71 @@ import DashboardEditorPanel from "../../components/dashboard/DashboardEditor";
 import defaultThemes from "../../theme/Theme.json";
 import type { DashboardLayout } from "../../types/dashboard";
 import { useDashboard } from "../../context/DashboardContext";
+import { useInstanceContext } from "../../context/InstanceContext";
 
 const ResponsiveGridLayout = WidthProvider(Responsive);
 
 export default function OverviewPage() {
-  /**  전역 DashboardContext 상태 */
+  /** === 전역 상태 === */
   const { isEditing, layout, setLayout, themeId, setThemeId } = useDashboard();
-
+  const { selectedInstance } = useInstanceContext();
   const [isDragOver, setIsDragOver] = useState(false);
 
-  /** 인스턴스 정보 (테스트용) */
-  const { data: instance } = useQuery({
-    queryKey: ["activeInstance"],
-    queryFn: async () => ({ id: 1, name: "local_test" }),
-    enabled: false,
-  });
+  /** === 대시보드 데이터 조회 === */
+  // const { data: dashboard } = useQuery({
+  //   queryKey: ["dashboard", selectedInstance?.instanceId],
+  //   queryFn: async () => {
+  //     if (!selectedInstance?.instanceId) return null;
+  //     const res = await apiClient.get(`/overview/${selectedInstance.instanceId}`);
+  //     return res.data;
+  //   },
+  //   enabled: !!selectedInstance?.instanceId,
+  //   retry: false,
+  // });
 
-  /** 대시보드 조회 */
-  const { data: dashboard, isError, isSuccess } = useQuery({
-    queryKey: ["dashboard", instance?.id],
-    queryFn: async () => {
-      if (!instance?.id) return null;
-      const res = await apiClient.get(`/overview/${instance.id}`);
-      return res.data;
-    },
-    enabled: !!instance?.id,
-    retry: false,
-  });
-
-  /** 초기 로드 및 복원 */
-  useEffect(() => {
-    const saved = localStorage.getItem("tempDashboardLayout");
-    if (saved) {
-      const parsed = JSON.parse(saved);
-      setLayout(parsed.layout ?? defaultThemes.default.layout);
-      setThemeId(parsed.themeId ?? "default");
-      return;
-    }
-
-    if (isSuccess && dashboard?.layout?.length > 0) {
-      setLayout(dashboard.layout);
-    } else {
-      setLayout(defaultThemes.default.layout);
-    }
-  }, [dashboard, isSuccess, isError]);
-
-  /** 테마 변경 */
+  /** === 테마 변경 === */
   const handleThemeChange = (id: string) => {
-    let selectedLayout: DashboardLayout[] = [];
     const theme = defaultThemes.themes.find((t) => t.id === id);
+    let selectedLayout: DashboardLayout[] = [];
 
-    if (id === "custom") {
-      selectedLayout = [];
-    } else if (id === "card_7_layout" || id === "card_9_layout") {
+    if (id === "custom") selectedLayout = [];
+    else if (id === "card_7_layout" || id === "card_9_layout")
       selectedLayout = (theme?.layout as DashboardLayout[]) ?? [];
-    } else {
-      selectedLayout = defaultThemes.default.layout ?? [];
-    }
+    else selectedLayout = defaultThemes.default.layout ?? [];
 
     setThemeId(id);
     setLayout(selectedLayout);
-
-    localStorage.setItem(
-      "tempDashboardLayout",
-      JSON.stringify({ themeId: id, layout: selectedLayout })
-    );
   };
 
-  /** 편집 중 레이아웃 변경 시 임시 저장 */
+  /** === 편집 중 레이아웃 변경 === */
   const handleLayoutChange = (currentLayout: Layout[]) => {
-    if (isEditing) {
-      localStorage.setItem(
-        "tempDashboardLayout",
-        JSON.stringify({ themeId, layout: currentLayout })
-      );
-      setLayout(currentLayout as DashboardLayout[]);
-    }
+    if (!isEditing) return;
+    setLayout(currentLayout as DashboardLayout[]);
   };
 
-  /** 위젯 삭제 */
+  /** === 위젯 삭제 === */
   const handleDeleteWidget = (id: string) => {
-    setLayout((prev: DashboardLayout[]) => {
-      const updated = prev.filter((item) => item.i !== id);
-      localStorage.setItem(
-        "tempDashboardLayout",
-        JSON.stringify({ themeId, layout: updated })
-      );
-      return [...updated];
-    });
+    setLayout((prev: DashboardLayout[]) => prev.filter((item) => item.i !== id));
   };
 
-  /** 드롭 이벤트 (새 위젯 추가 / 교체) */
+
+  /** === 드래그 앤 드롭 === */
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
     setIsDragOver(false);
 
     const data = e.dataTransfer.getData("application/json");
+    console.log('전달받은 데이터 ', data);
     if (!data) return;
 
     try {
-      const { metricKey, chartType } = JSON.parse(data);
-      if (!metricKey || !chartType) return;
+      const { metricKey, chartType, databases } = JSON.parse(data);
+      if (!metricKey || !chartType) {
+        console.warn("잘못된 드롭 데이터:", data);
+        return;
+      }
 
-      const dropTarget = document.elementFromPoint(e.clientX, e.clientY);
-      const targetItem = dropTarget?.closest(".grid-item") as HTMLElement | null;
-
+      /** === 커스텀 테마: 새 위젯 추가 === */
       if (themeId === "custom") {
         const newItem: DashboardLayout = {
           i: `${metricKey}_${Date.now()}`,
@@ -125,30 +85,48 @@ export default function OverviewPage() {
           title: metricKey,
           type: chartType,
           metricType: metricKey,
+          databases: databases?.map((db: any) => ({
+            id: db.id,
+            name: db.name,
+          })) ?? [],
+          instanceId: selectedInstance?.instanceId ?? null,
         };
 
-        setLayout((prev: DashboardLayout[]) => [...prev, newItem]);
-      } else if (themeId.startsWith("card_") && targetItem) {
-        const targetId = targetItem.getAttribute("data-grid-id");
+
+        console.log("커스텀 드롭 위젯:", newItem);
+        setLayout((prev) => [...prev, newItem]);
+      }
+      /** === 테마 기반 카드 교체 === */
+      else if (themeId.startsWith("card_")) {
+        const dropTarget = document.elementFromPoint(e.clientX, e.clientY);
+        const targetItem = dropTarget?.closest(".grid-item") as HTMLElement | null;
+        const targetId = targetItem?.getAttribute("data-grid-id");
         if (!targetId) return;
 
-        setLayout((prev: DashboardLayout[]) =>
+        setLayout((prev) =>
           prev.map((item) =>
             item.i === targetId
-              ? { ...item, metricType: metricKey, type: chartType }
+              ? {
+                  ...item,
+                  metricType: metricKey,
+                  type: chartType,
+                  databases: databases ?? [],
+                }
               : item
           )
         );
       }
     } catch (err) {
-      console.error("Drop parse error:", err);
+      console.error("위젯 드롭 실패:", err);
     }
   };
 
-  /** 렌더링 */
+  /** === 렌더링 === */
   return (
     <div className="dashboard-container">
-      <div className={`dashboard-grid-area ${isEditing ? "with-editor" : "full-width"}`}>
+      <div
+        className={`dashboard-grid-area ${isEditing ? "with-editor" : "full-width"}`}
+      >
         <div
           className={`dashboard-wrapper ${isEditing ? "editing" : ""} ${
             isDragOver ? "drag-over" : ""
@@ -156,7 +134,6 @@ export default function OverviewPage() {
           onDragOver={(e) => {
             if (!isEditing) return;
             e.preventDefault();
-            e.stopPropagation();
             setIsDragOver(true);
           }}
           onDragLeave={() => setIsDragOver(false)}
@@ -185,7 +162,7 @@ export default function OverviewPage() {
               preventCollision={!isEditing}
               onLayoutChange={handleLayoutChange}
             >
-              {layout.map((item: DashboardLayout) => (
+              {layout.map((item) => (
                 <div key={item.i} className="grid-item" data-grid-id={item.i}>
                   <WidgetRenderer
                     metric={item.metricType}
@@ -199,7 +176,7 @@ export default function OverviewPage() {
         </div>
       </div>
 
-      {/* 오른쪽 패널 */}
+      {/* === 오른쪽 편집 패널 === */}
       {isEditing && (
         <div className="dashboard-editor-panel">
           <DashboardEditorPanel

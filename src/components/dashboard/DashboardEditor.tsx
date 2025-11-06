@@ -1,6 +1,8 @@
-import { useState, useEffect } from "react";
-import metrics from "../chart/Metrics.json"; 
-import { flattenMetrics } from "../../util/falttenMetrics";
+import { useState } from "react";
+import metrics from "../chart/Metrics.json";
+import { flattenMetrics } from "../../utils/flattenMetrics";
+import { useInstanceContext } from "../../context/InstanceContext";
+import MultiSelectDropdown from "../../components/util/MultiSelectDropdown";
 
 // === 아이콘 임포트 ===
 import columnIcon from "@/assets/icon/column.svg";
@@ -37,11 +39,6 @@ interface DashboardEditorPanelProps {
   onThemeChange: (id: string) => void;
 }
 
-/**
- * DashboardEditorPanel
- * - 테마 / 지표 / 차트 선택
- * - 드래그 앤 드롭 미리보기
- */
 export default function DashboardEditorPanel({
   currentTheme,
   onThemeChange,
@@ -49,15 +46,17 @@ export default function DashboardEditorPanel({
   const [selectedChart, setSelectedChart] = useState<string>("");
   const [selectedMetric, setSelectedMetric] = useState<string>("");
   const [availableCharts, setAvailableCharts] = useState<string[]>([]);
+  const [selectedDbNames, setSelectedDbNames] = useState<string[]>([]);
+  const { databases, selectedInstance } = useInstanceContext();
 
-  /** 테마 목록 */
+  /** === 테마 목록 === */
   const themes = [
     { id: "custom", label: "All Custom", icon: allCustomIcon, activeIcon: allCustomActiveIcon },
     { id: "card_7_layout", label: "카드 7개", icon: card7Icon, activeIcon: card7ActiveIcon },
     { id: "card_9_layout", label: "카드 9개", icon: card9Icon, activeIcon: card9ActiveIcon },
   ];
 
-  /** 전체 차트 타입 정의 */
+  /** === 전체 차트 타입 === */
   const chartTypes = [
     { id: "column", label: "Column", icon: columnIcon, activeIcon: columnActiveIcon },
     { id: "bar", label: "Bar", icon: barIcon, activeIcon: barActiveIcon },
@@ -71,56 +70,85 @@ export default function DashboardEditorPanel({
     { id: "number", label: "Number", icon: numberIcon, activeIcon: numberActiveIcon },
   ];
 
-  /** Metrics 파싱 */
+  /** === Metrics 파싱 === */
   const parsedMetrics = flattenMetrics(metrics);
 
-  /** Metric 변경 시 available_charts 반영 */
+  /** === Metric 변경 시 chart 옵션 반영 === */
   const handleMetricChange = (metricKey: string) => {
     setSelectedMetric(metricKey);
     const metricInfo = parsedMetrics[metricKey];
+
     if (metricInfo?.available_charts) {
-      setAvailableCharts(metricInfo.available_charts.map((c: string) => c.toLowerCase()));
-      setSelectedChart(metricInfo.default_chart || metricInfo.available_charts[0]);
+      const charts = metricInfo.available_charts.map((c: string) => c.toLowerCase());
+      setAvailableCharts(charts);
+
+      const defaultChart =
+        metricInfo.default_chart?.toLowerCase() ?? charts[0] ?? "";
+      setSelectedChart(defaultChart);
     } else {
       setAvailableCharts([]);
       setSelectedChart("");
     }
   };
 
-  /** 보여줄 차트 필터링 */
+  /** === Chart 표시 목록 === */
   const visibleCharts =
     availableCharts.length > 0
       ? chartTypes.filter((chart) => availableCharts.includes(chart.id))
       : [];
 
-  /** 선택된 차트 데이터 */
   const selectedChartData = chartTypes.find((chart) => chart.id === selectedChart);
-
-  /** 안내문 상태 계산 */
   const isCustom = currentTheme === "custom";
   const isTemplate = currentTheme.startsWith("card_");
 
-  useEffect(() => {
-    if (currentTheme && !themes.some((t) => t.id === currentTheme)) return;
-  }, [currentTheme]);
+  /** === 프리뷰 드래그 === */
+  const handleDragStart = (e: React.DragEvent) => {
+    console.log('드래그 직전 상태', {
+      selectedMetric,
+      selectedChart,
+      selectedDbNames,
+    });
+
+    if (!selectedMetric || !selectedChart || selectedDbNames.length === 0) {
+      e.preventDefault();
+      alert('DB, Metric, Chart를 모두 선택해주세요!');
+      return;
+    }
+
+    const selectedDbObjects = databases
+      .filter((db) => selectedDbNames.includes(db.databaseName))
+      .map((db) => ({
+        id: db.databaseId,
+        name: db.databaseName,
+      }));
+
+    const payload = {
+      metricKey: selectedMetric,
+      chartType: selectedChart,
+      databases: selectedDbObjects,
+      instanceId: selectedInstance?.instanceId ?? null,
+    };
+
+    console.log('드래그 전송 데이터:', payload);
+
+    e.dataTransfer.effectAllowed = "copy";
+    e.dataTransfer.setData("application/json", JSON.stringify(payload));
+  };
 
   return (
     <aside className="editor-panel">
-      {/* === 안내문 === */}
       <div className="editor-guide">
         {isCustom ? (
           <>
             🎨 <strong>Custom 모드</strong>입니다.
             <br />
-            ↳ 원하는 지표를 선택하고 드래그하여 <strong>새 위젯</strong>을 추가하세요.
+            ↳ 여러 DB와 지표를 선택하여 <strong>비교형 위젯</strong>을 만들 수 있습니다.
           </>
         ) : isTemplate ? (
           <>
             🧩 <strong>Theme 모드</strong>입니다.
             <br />
             ↳ 지표를 선택한 후, <strong>기존 카드 위로 드롭</strong>하면 교체됩니다.
-            <br />
-            (새 위젯 추가는 불가능)
           </>
         ) : (
           <>
@@ -131,7 +159,7 @@ export default function DashboardEditorPanel({
         )}
       </div>
 
-      {/* === 테마 선택 === */}
+      {/* === Theme 선택 === */}
       <section className="editor-section">
         <h2 className="section-title">Theme</h2>
         <div className="theme-grid">
@@ -155,27 +183,29 @@ export default function DashboardEditorPanel({
         </div>
       </section>
 
-      {/* === Metric 선택 === */}
+      {/* === Metric & DB 선택 === */}
       <section className="editor-section">
         <h2 className="section-title">Metric</h2>
         <div className="metric-selectors">
-          <select className="select-input">
-            <option>Select Database</option>
-            <option>DB-01</option>
-            <option>DB-02</option>
-          </select>
-          <select
-            className="select-input"
-            value={selectedMetric}
-            onChange={(e) => handleMetricChange(e.target.value)}
-          >
-            <option value="">Select Metric</option>
-            {Object.entries(parsedMetrics).map(([key, value]: any) => (
-              <option key={key} value={key}>
-                {value.title}
-              </option>
-            ))}
-          </select>
+          <MultiSelectDropdown
+            label="Select Databases"
+            options={databases.map((db) => db.databaseName)}
+            onChange={(values) => setSelectedDbNames(values as string[])}
+            multi
+            width="48%"
+          />
+
+          <MultiSelectDropdown
+            label="Select Metric"
+            options={Object.values(parsedMetrics).map((m: any) => m.title)}
+            onChange={(value) => {
+              const key = Object.entries(parsedMetrics).find(([_, v]) => v.title === value)?.[0];
+              if (key) handleMetricChange(key);
+            }}
+            multi={false}
+            width="80%"
+            noShadow
+          />
         </div>
       </section>
 
@@ -191,11 +221,7 @@ export default function DashboardEditorPanel({
                   className={`chart-item ${isActive ? "active" : ""}`}
                   onClick={() => setSelectedChart(id)}
                 >
-                  <img
-                    src={isActive ? activeIcon : icon}
-                    alt={label}
-                    className="chart-icon"
-                  />
+                  <img src={isActive ? activeIcon : icon} alt={label} className="chart-icon" />
                   <span>{label}</span>
                 </button>
               );
@@ -207,63 +233,54 @@ export default function DashboardEditorPanel({
           </div>
         )}
       </section>
-      {/* 프리뷰 드래그 앤 드롭으로 차트 등록 */}
-<section className="editor-section">
-  <h2 className="section-title">Preview</h2>
 
-  <div
-    className={`card-preview-single ${!isCustom && !isTemplate ? "disabled" : ""}`}
-    draggable={!!selectedMetric && !!selectedChart}
-    onDragStart={(e) => {
-      if (!selectedMetric || !selectedChart) {
-        e.preventDefault();
-        return;
-      }
-      e.dataTransfer.effectAllowed = "copy";
-      e.dataTransfer.setData(
-        "application/json",
-        JSON.stringify({
-          metricKey: selectedMetric,
-          chartType: selectedChart,
-        })
-      );
-    }}
-    onMouseDown={(e) => {
-      // 이미지 자체 드래그 방지
-      const img = e.currentTarget.querySelector("img");
-      if (img) img.ondragstart = () => false;
-    }}
-  >
-    {selectedChartData ? (
-      <div className="preview-content">
-        <div className="preview-header">
-          <h4 className="preview-title">
-            {parsedMetrics[selectedMetric]?.title ?? "선택된 지표"}
-          </h4>
+      {/* === Preview === */}
+      <section className="editor-section">
+        <h2 className="section-title">Preview</h2>
+        <div
+          className={`card-preview-single ${!isCustom && !isTemplate ? "disabled" : ""}`}
+          draggable={!!selectedMetric && !!selectedChart && selectedDbNames.length > 0}
+          onMouseDown={() =>
+            console.log('드래그 가능 상태', {
+              selectedMetric,
+              selectedChart,
+              selectedDbNames,
+            })
+          }
+          onDragStart={handleDragStart}
+        >
+          {selectedChartData ? (
+            <div className="preview-content">
+              <div className="preview-header">
+                <h4 className="preview-title">
+                  {parsedMetrics[selectedMetric]?.title ?? "선택된 지표"}
+                </h4>
+                {selectedDbNames.length > 0 && (
+                  <span className="preview-db">DBs: {selectedDbNames.join(", ")}</span>
+                )}
+              </div>
+              <div className="preview-chart-box">
+                <img
+                  src={selectedChartData.activeIcon}
+                  alt={`${selectedChartData.label} preview`}
+                  className="preview-chart-img"
+                  draggable={false}
+                />
+              </div>
+            </div>
+          ) : (
+            <p className="empty-preview-text">차트를 선택하면 미리보기가 표시됩니다.</p>
+          )}
         </div>
-        <div className="preview-chart-box">
-          <img
-            src={selectedChartData.activeIcon}
-            alt={`${selectedChartData.label} preview`}
-            className="preview-chart-img"
-            draggable={false} //이미지 단독 드래그 방지
-          />
-        </div>
-      </div>
-    ) : (
-      <p className="empty-preview-text">차트를 선택하면 미리보기가 표시됩니다.</p>
-    )}
-  </div>
 
-  {(isTemplate || isCustom) && (
-    <p className="drag-hint">
-      {isCustom
-        ? "📦 프리뷰 카드를 드래그하여 새 위젯을 추가할 수 있습니다."
-        : "🪄 프리뷰 카드를 기존 카드 위로 드롭하면 해당 지표로 교체됩니다."}
-    </p>
-  )}
-</section>
-
+        {(isTemplate || isCustom) && (
+          <p className="drag-hint">
+            {isCustom
+              ? "📦 프리뷰 카드를 드래그하여 새 위젯을 추가할 수 있습니다."
+              : "🪄 프리뷰 카드를 기존 카드 위로 드롭하면 해당 지표로 교체됩니다."}
+          </p>
+        )}
+      </section>
     </aside>
   );
 }
