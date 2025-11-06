@@ -7,25 +7,81 @@
 .es-layout { display: grid; grid-template-columns: 2.5fr 1fr; gap: 1rem; align-items: start; }
 
 /* ======================================== 좌측: 리스트 카드 ======================================== */
-.es-left-card { background: var(--card); border: 0.0625rem solid var(--border); border-radius: 1rem; box-shadow: var(--shadow); padding: 1.5rem; display: flex; flex-direction: column; height: calc(100vh - 10rem); min-height: 43.75rem; overflow: visible; }
+.es-left-card { 
+  background: var(--card); 
+  border: 0.0625rem solid var(--border); 
+  border-radius: 1rem; 
+  box-shadow: var(--shadow); 
+  padding: 1.5rem; 
+  display: flex; 
+  flex-direction: column; 
+  height: fit-content;
+  overflow: visible; 
+}
+
 .es-card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem; flex-shrink: 0; }
 .es-card-title { margin: 0; font-size: 1.25rem; font-weight: 800; color: var(--text); letter-spacing: 0.01rem; }
 
 /* 테이블 */
-.es-table { background: rgba(255, 255, 255, 0.8); border: 0.0625rem solid var(--border); border-radius: 0.75rem; overflow: hidden; display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; }
+.es-table { 
+  background: rgba(255, 255, 255, 0.8); 
+  border: 0.0625rem solid var(--border); 
+  border-radius: 0.75rem; 
+  overflow: hidden; 
+  display: flex; 
+  flex-direction: column;
+}
 
 /* 헤더 */
-.es-thead { display: grid; grid-template-columns: 1fr 3fr 1.2fr 1fr 1fr 1fr; align-items: center; text-align: center; padding: 1rem; font-size: 0.875rem; font-weight: 700; background: rgba(241, 239, 243, 0.8); color: #2e2f33; border-bottom: 0.0625rem solid var(--border); flex: 0 0 auto; }
-.es-thead .sortable { cursor: pointer; user-select: none; transition: all 0.2s ease; display: inline-flex; align-items: center; justify-content: center; gap: 0.25rem; }
+.es-thead { 
+  display: grid; 
+  grid-template-columns: 1fr 3fr 1.2fr 1fr 1fr 1fr; 
+  align-items: center; 
+  text-align: center; 
+  padding: 1rem; 
+  font-size: 0.875rem; 
+  font-weight: 700; 
+  background: rgba(241, 239, 243, 0.8); 
+  color: #2e2f33; 
+  border-bottom: 0.0625rem solid var(--border); 
+}
+
+.es-thead .sortable { 
+  cursor: pointer; 
+  user-select: none; 
+  transition: all 0.2s ease; 
+  display: inline-flex; 
+  align-items: center; 
+  justify-content: center; 
+  gap: 0.25rem; 
+}
+
 .es-thead .sortable:hover { color: var(--color-normal); }
 .es-thead .sort-icon { font-size: 0.75rem; opacity: 0.6; transition: opacity 0.2s ease; }
 .es-thead .sortable:hover .sort-icon { opacity: 1; }
 
 /* 바디 */
-.es-tbody { flex: 1 1 auto; min-height: 0; overflow-y: auto; overflow-x: hidden; }
+.es-tbody { 
+  max-height: 52rem;
+  overflow-y: auto; 
+  overflow-x: hidden; 
+}
 
 /* 행 */
-.es-row { display: grid; grid-template-columns: 1fr 3fr 1.2fr 1fr 1fr 1fr; align-items: center; text-align: center; padding: 1rem; font-size: 0.875rem; color: #2e2f33; border-top: 0.0625rem solid rgba(0, 0, 0, 0.04); cursor: pointer; transition: all 0.2s ease; }
+.es-row { 
+  display: grid; 
+  grid-template-columns: 1fr 3fr 1.2fr 1fr 1fr 1fr; 
+  align-items: center; 
+  text-align: center; 
+  padding: 1rem; 
+  font-size: 0.875rem; 
+  color: #2e2f33; 
+  border-top: 0.0625rem solid rgba(0, 0, 0, 0.04); 
+  cursor: pointer; 
+  transition: all 0.2s ease;
+  min-height: 3.5rem;
+}
+
 .es-row:nth-child(even) { background: rgba(255, 255, 255, 0.5); }
 .es-row:hover { background: rgba(127, 129, 242, 0.08); transform: translateX(0.125rem); }
 .es-row .cell-id { font-weight: 700; color: var(--color-normal); }
@@ -58,16 +114,17 @@
 /* ======================================== 반응형 ======================================== */
 @media (max-width: 1200px) {
   .es-layout { grid-template-columns: 1fr; }
-  .es-left-card { height: auto; min-height: 37.5rem; }
+  .es-tbody { max-height: 45rem; }
   .es-chart-card:first-child { height: 25rem; }
   .es-chart-card:last-child { height: 21.875rem; }
 }
 
 @media (max-width: 768px) {
   .es-thead, .es-row { grid-template-columns: 0.8fr 2fr 1fr 1fr 1fr 1fr; font-size: 0.75rem; }
-  .es-card-title { font-size: 1.125rem; };
+  .es-card-title { font-size: 1.125rem; }
   .es-chart-title { font-size: 0.875rem; }
-  .es-left-card { height: auto; min-height: 31.25rem; }
+  .es-tbody { max-height: 38rem; }
+  .es-row { min-height: 3rem; padding: 0.75rem; }
   .es-chart-card:first-child { height: 20rem; }
   .es-chart-card:last-child { height: 18.75rem; }
 }
