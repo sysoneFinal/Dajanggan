@@ -5,9 +5,9 @@ interface MultiSelectDropdownProps {
   label: string;
   options: string[];
   onChange?: (values: string[] | string) => void;
-  multi?: boolean; // 다중 선택 여부
-  width?: string | number; // 개별 width 조절용
-  noShadow?: boolean; // 그림자 제거 옵션
+  multi?: boolean;
+  width?: string | number;
+  noShadow?: boolean;
 }
 
 const MultiSelectDropdown = ({
@@ -25,19 +25,21 @@ const MultiSelectDropdown = ({
   /** === 항목 선택 === */
   const handleSelect = (value: string) => {
     if (multi) {
-      setSelected((prev) => {
-        const newSelected = prev.includes(value)
-          ? prev.filter((v) => v !== value)
-          : [...prev, value];
-        onChange?.(newSelected);
-        return newSelected;
-      });
+      setSelected((prev) =>
+        prev.includes(value) ? prev.filter((v) => v !== value) : [...prev, value]
+      );
     } else {
       setSelected([value]);
-      onChange?.(value); // 단일 모드일 때 string 전달
       setIsOpen(false);
     }
   };
+
+  /** ✅ 선택값 변경 시 부모에 알림 (렌더 이후 실행됨) */
+  useEffect(() => {
+    if (!onChange) return;
+    if (multi) onChange(selected);
+    else if (selected.length > 0) onChange(selected[0]);
+  }, [selected]);
 
   /** === 외부 클릭 시 닫기 === */
   useEffect(() => {
@@ -81,7 +83,6 @@ const MultiSelectDropdown = ({
                 className={`dropdown-option ${isChecked ? "checked" : ""}`}
                 onClick={() => handleSelect(opt)}
               >
-                {/* multi 모드일 때만 체크박스 표시 */}
                 {multi && (
                   <span className="checkbox">
                     {isChecked && <span className="checkmark">✓</span>}
