@@ -46,7 +46,7 @@ interface CPUData {
         systemUserCpuRatio: string;
         ioWait: number;
         cpuQueueLength: number;
-        contextSwitches: number;
+        cpuStealTime: number;
         postgresqlBackendCpu: number;
     };
 }
@@ -111,7 +111,7 @@ const dummyData: CPUData = {
         systemUserCpuRatio: "18.5/23.8",
         ioWait: 18.5,
         cpuQueueLength: 2.3,
-        contextSwitches: 12450,
+        cpuStealTime: 2.4,
         postgresqlBackendCpu: 41.2,
     },
 };
@@ -201,7 +201,7 @@ export default function CPUPage() {
         systemUserCpuRatio: "18.5/23.8",
         ioWait: 18.5,
         cpuQueueLength: 2.3,
-        contextSwitches: 12450,
+        cpuStealTime: 2.4,
         postgresqlBackendCpu: 41.2,
     };
 
@@ -231,11 +231,13 @@ export default function CPUPage() {
             status: "info" as const,
         },
         {
-            label: "컨텍스트 전환",
-            value: `${recentStats.contextSwitches.toLocaleString()}/s`,
-            diff: 850,
+            label: "CPU Steal Time",
+            value: `${recentStats.cpuStealTime}%`,
+            diff: 0.3,
             desc: "최근 5분 평균",
-            status: "info" as const,
+            status: recentStats.cpuStealTime > 10
+                ? ("warning" as const)
+                : ("info" as const),
         },
         {
             label: "PostgreSQL Backend CPU",
