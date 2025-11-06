@@ -7,19 +7,28 @@ import ChartGridLayout from "../../components/layout/ChartGridLayout";
 import WidgetCard from "../../components/util/WidgetCard";
 import QueryModal from "../query/QueryModal";
 import type { QueryDetail } from "../query/QueryModal";
-import { useInstanceContext } from "../../context/InstanceContext";
-import apiClient from "../../api/apiClient";
+//import { useInstanceContext } from "../../context/InstanceContext";
+import {  
+  getQueryMetricsByDatabaseId,
+  getTopByCpuUsage,
+  getTopByMemoryUsage,
+  getSlowQueries,
+  msToSeconds,
+  formatDate,
+  calculateSeverity,
+  type QueryMetricsRawDto
+} from "../../api/query";
 import "/src/styles/query/query-overview.css";
 
 /**
- * 쿼리 오버뷰 통합 대시보드 (API 연동 버전)
+ * 쿼리 오버뷰 통합 대시보드 (API 연동 완성 버전)
  * - 실시간 쿼리 모니터링 및 시스템 리소스 현황
  * - Top-N 쿼리 및 슬로우 쿼리 모니터링
- * - InstanceContext를 통한 선택된 DB 정보 활용
+ * - query.ts API 클라이언트 활용
  * 
  * @author 이해든
  */
-
+const HARDCODED_DATABASE_ID = 1;
 /* ---------- 타입 ---------- */
 type MetricData = {
   label: string;
@@ -135,7 +144,7 @@ function SortButton({
 /* ---------- 메인 페이지 ---------- */
 export default function QueryOverview() {
   // InstanceContext에서 선택된 데이터베이스 정보 가져오기
-  const { selectedDatabase } = useInstanceContext();
+  //const { selectedDatabase } = useInstanceContext();
 
   const [isResourceMounted, setIsResourceMounted] = useState(false);
   const [resourceUsage, setResourceUsage] = useState({
@@ -194,113 +203,134 @@ export default function QueryOverview() {
     [tpsQpsData]
   );
 
-  // API에서 데이터 가져오기
+  /**
+   * QueryMetricsRawDto를 TopQueryItem으로 변환하는 헬퍼 함수
+   */
+  const convertToTopQueryItem = (item: QueryMetricsRawDto, index: number, resourceType: ResourceType): TopQueryItem => {
+    let value = 0;
+    let unit = "";
+
+    switch (resourceType) {
+      case "메모리":
+        value = item.memoryUsageMb || 0;
+        unit = "MB";
+        break;
+      case "CPU":
+        value = item.cpuUsagePercent || 0;
+        unit = "%";
+        break;
+      case "I/O":
+        value = (item.ioBlocks || 0) / 1000; // MB로 변환
+        unit = "MB/s";
+        break;
+      case "실행시간":
+        value = item.executionTimeMs / 1000; // 초로 변환
+        unit = "초";
+        break;
+    }
+
+    return {
+      rank: index + 1,
+      id: `#${item.queryMetricId}`,
+      value,
+      unit,
+      query: item.shortQuery || item.queryText?.substring(0, 50) || "Unknown Query",
+      callCount: item.executionCount || 0,
+      avgTime: `${item.executionTimeMs || 0}ms`,
+    };
+  };
+
+  /**
+   * QueryMetricsRawDto를 SlowQueryItem으로 변환하는 헬퍼 함수
+   */
+  const convertToSlowQueryItem = (item: QueryMetricsRawDto): SlowQueryItem => {
+    return {
+      id: `#${item.queryMetricId}`,
+      query: item.shortQuery || item.queryText?.substring(0, 50) || "Unknown Query",
+      fullQuery: item.queryText || "",
+      severity: calculateSeverity(item.executionTimeMs),
+      suggestion: "인덱스 최적화가 필요합니다",
+      executionTime: `${msToSeconds(item.executionTimeMs)}초`,
+      occurredAt: formatDate(item.collectedAt),
+    };
+  };
+
+  /**
+   * API에서 데이터 가져오기
+   */
   useEffect(() => {
     const fetchData = async () => {
       // 선택된 데이터베이스가 없으면 데이터를 가져오지 않음
-      if (!selectedDatabase?.databaseId) {
+     /**  if (!selectedDatabase?.databaseId) {
         console.log("선택된 데이터베이스가 없습니다.");
         return;
-      }
-
+      }**/
+ const databaseId = HARDCODED_DATABASE_ID;
       try {
         setLoading(true);
         setError(null);
 
-        console.log("데이터 조회 중...");
-        console.log("Database ID:", selectedDatabase.databaseId);
-        console.log("Database Name:", selectedDatabase.databaseName);
+        console.log("📊 데이터 조회 시작");
+       // console.log("Database ID:", selectedDatabase.databaseId);
+        console.log("Database ID:", databaseId);
+        console.log("Resource Type:", resourceType);
 
-        // 선택된 데이터베이스의 쿼리 메트릭스 가져오기
-        let topQueriesData;
+        // 1. Top Query 데이터 가져오기
+        let topQueriesResponse;
         
         if (resourceType === "CPU") {
-          // CPU 사용량 상위 쿼리
-          const response = await apiClient.get('/api/query-metrics/top/cpu', {
-            params: { limit: 5 }
-          });
-          topQueriesData = response.data;
+          topQueriesResponse = await getTopByCpuUsage(5);
         } else if (resourceType === "메모리") {
-          // 메모리 사용량 상위 쿼리
-          const response = await apiClient.get('/api/query-metrics/top/memory', {
-            params: { limit: 5 }
-          });
-          topQueriesData = response.data;
+          topQueriesResponse = await getTopByMemoryUsage(5);
         } else {
-          // 전체 데이터에서 필터링 (I/O, 실행시간)
-          const response = await apiClient.get(`/api/query-metrics/database/${selectedDatabase.databaseId}`);
-          topQueriesData = response.data;
+          // I/O, 실행시간은 전체 데이터에서 필터링
+          //topQueriesResponse = await getQueryMetricsByDatabaseId(selectedDatabase.databaseId);
+          topQueriesResponse = await getQueryMetricsByDatabaseId(databaseId);
         }
 
         // Top Query 데이터 변환
-        if (topQueriesData.success && topQueriesData.data) {
-          const transformedTopQueries: TopQueryItem[] = topQueriesData.data
+        if (topQueriesResponse.data.success && topQueriesResponse.data.data) {
+          let sortedData = [...topQueriesResponse.data.data];
+
+          // I/O, 실행시간의 경우 정렬 필요
+          if (resourceType === "I/O") {
+            sortedData.sort((a, b) => (b.ioBlocks || 0) - (a.ioBlocks || 0));
+          } else if (resourceType === "실행시간") {
+            sortedData.sort((a, b) => b.executionTimeMs - a.executionTimeMs);
+          }
+
+          const transformedTopQueries = sortedData
             .slice(0, 5)
-            .map((item: any, index: number) => ({
-              rank: index + 1,
-              id: `#${item.queryMetricId}`,
-              value: resourceType === "메모리" 
-                ? parseFloat(item.memoryUsageMb || 0)
-                : resourceType === "CPU"
-                ? parseFloat(item.cpuUsagePercent || 0)
-                : resourceType === "I/O"
-                ? parseFloat(item.ioBlocks || 0) / 1000 // MB로 변환
-                : parseFloat(item.executionTimeMs || 0) / 1000, // 초로 변환
-              unit: resourceType === "메모리" 
-                ? "MB" 
-                : resourceType === "CPU" 
-                ? "%" 
-                : resourceType === "I/O"
-                ? "MB/s"
-                : "초",
-              query: item.shortQuery || item.queryText?.substring(0, 50) || "Unknown Query",
-              callCount: item.executionCount || 0,
-              avgTime: `${item.executionTimeMs || 0}ms`,
-            }));
+            .map((item, index) => convertToTopQueryItem(item, index, resourceType));
+
           setTopQueries(transformedTopQueries);
+          console.log("✅ Top Queries 로딩 완료:", transformedTopQueries.length, "개");
         }
 
-        // 슬로우 쿼리 가져오기 (1초 이상)
-        const slowResponse = await apiClient.get('/api/query-metrics/slow', {
-          params: { thresholdMs: 1000 }
-        });
+        // 2. 슬로우 쿼리 가져오기 (1초 이상)
+        const slowResponse = await getSlowQueries(1000);
 
         if (slowResponse.data.success && slowResponse.data.data) {
-          const transformedSlowQueries: SlowQueryItem[] = slowResponse.data.data.map((item: any) => {
-            const executionTimeMs = parseFloat(item.executionTimeMs || 0);
-            const executionTimeSec = (executionTimeMs / 1000).toFixed(1);
-            
-            return {
-              id: `#${item.queryMetricId}`,
-              query: item.shortQuery || item.queryText?.substring(0, 50) || "Unknown Query",
-              fullQuery: item.queryText || "",
-              severity: executionTimeMs > 3000 ? "HIGH" : executionTimeMs > 1500 ? "MEDIUM" : "LOW",
-              suggestion: "인덱스 최적화가 필요합니다",
-              executionTime: `${executionTimeSec}초`,
-              occurredAt: new Date(item.collectedAt).toLocaleString('ko-KR', {
-                month: 'numeric',
-                day: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit'
-              }).replace(/\. /g, '/').replace('.', ''),
-            };
-          });
+          const transformedSlowQueries = slowResponse.data.data
+            .map(convertToSlowQueryItem);
+
           setSlowQueries(transformedSlowQueries);
+          console.log("✅ Slow Queries 로딩 완료:", transformedSlowQueries.length, "개");
         }
 
-        console.log("데이터 로딩 완료");
+        console.log("🎉 모든 데이터 로딩 완료");
 
       } catch (err: any) {
-        console.error("API 호출 실패:", err);
-        setError(err.message || "데이터를 불러오는데 실패했습니다.");
+        console.error("❌ API 호출 실패:", err);
+        setError(err.response?.data?.message || err.message || "데이터를 불러오는데 실패했습니다.");
       } finally {
         setLoading(false);
       }
     };
 
     fetchData();
-  }, [resourceType, selectedDatabase]);
-
+//  }, [resourceType, selectedDatabase]);
+}, [resourceType]); 
   // 슬로우 쿼리 TOP 5 (정렬 없이 항상 상위 5개)
   const topFiveSlowQueries = useMemo(() => slowQueries.slice(0, 5), [slowQueries]);
 
@@ -408,7 +438,7 @@ export default function QueryOverview() {
       status: isModifyingQuery ? "안전 모드" : "실제 실행",
       avgExecutionTime: query.avgTime,
       totalCalls: query.callCount,
-      memoryUsage: `${query.value}${query.unit}`,
+      memoryUsage: `${query.value.toFixed(1)}${query.unit}`,
       ioUsage: "890 blocks",
       cpuUsagePercent: 80,
       sqlQuery: query.query,
@@ -482,7 +512,7 @@ Execution Time: 5200.789 ms`,
     return (
       <div className="qo-root">
         <div style={{ textAlign: 'center', padding: '2rem', fontSize: '1.1rem', color: '#6b7280' }}>
-          데이터 로딩 중...
+          ⏳ 데이터 로딩 중...
         </div>
       </div>
     );
@@ -500,7 +530,7 @@ Execution Time: 5200.789 ms`,
   }
 
   // 선택된 데이터베이스가 없을 때
-  if (!selectedDatabase?.databaseId) {
+  /**if (!selectedDatabase?.databaseId) {
     return (
       <div className="qo-root">
         <div style={{ textAlign: 'center', padding: '2rem', fontSize: '1.1rem', color: '#6b7280' }}>
@@ -509,7 +539,7 @@ Execution Time: 5200.789 ms`,
       </div>
     );
   }
-
+**/
   return (
     <div className="qo-root">
       {/* 메트릭 카드 */}
@@ -696,7 +726,7 @@ Execution Time: 5200.789 ms`,
             {topQueries.length > 0 ? (
               topQueries.map((query, index) => {
                 const maxValue = Math.max(...topQueries.map((q) => q.value));
-                const barWidth = (query.value / maxValue) * 100;
+                const barWidth = maxValue > 0 ? (query.value / maxValue) * 100 : 0;
 
                 return (
                   <div 
