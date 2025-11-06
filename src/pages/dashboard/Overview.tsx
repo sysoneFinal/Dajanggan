@@ -21,16 +21,18 @@ export default function OverviewPage() {
   const [isDragOver, setIsDragOver] = useState(false);
 
   /** === 대시보드 데이터 조회 === */
-  // const { data: dashboard } = useQuery({
-  //   queryKey: ["dashboard", selectedInstance?.instanceId],
-  //   queryFn: async () => {
-  //     if (!selectedInstance?.instanceId) return null;
-  //     const res = await apiClient.get(`/overview/${selectedInstance.instanceId}`);
-  //     return res.data;
-  //   },
-  //   enabled: !!selectedInstance?.instanceId,
-  //   retry: false,
-  // });
+  const { data: dashboard } = useQuery({
+    queryKey: ["dashboard", selectedInstance?.instanceId],
+    queryFn: async () => {
+      if (!selectedInstance?.instanceId) return null;
+      const res = await apiClient.get(`/overview`,{
+        params: {instanceId : selectedInstance.instanceId}
+      });
+      return res.data;
+    },
+    enabled: !!selectedInstance?.instanceId,
+    retry: false,
+  });
 
   /** === 테마 변경 === */
   const handleThemeChange = (id: string) => {
@@ -47,10 +49,20 @@ export default function OverviewPage() {
   };
 
   /** === 편집 중 레이아웃 변경 === */
-  const handleLayoutChange = (currentLayout: Layout[]) => {
-    if (!isEditing) return;
-    setLayout(currentLayout as DashboardLayout[]);
-  };
+ const handleLayoutChange = (currentLayout: Layout[]) => {
+  if (!isEditing) return;
+
+  setLayout(prev =>
+    prev.map(item => {
+      const updated = currentLayout.find(cl => cl.i === item.i);
+      // 기존 데이터 유지 + 좌표만 갱신
+      return updated
+        ? { ...item, x: updated.x, y: updated.y, w: updated.w, h: updated.h }
+        : item;
+    })
+  );
+};
+
 
   /** === 위젯 삭제 === */
   const handleDeleteWidget = (id: string) => {
@@ -60,66 +72,101 @@ export default function OverviewPage() {
 
   /** === 드래그 앤 드롭 === */
   const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragOver(false);
+  e.preventDefault();
+  setIsDragOver(false);
 
-    const data = e.dataTransfer.getData("application/json");
-    console.log('전달받은 데이터 ', data);
-    if (!data) return;
+  const data = e.dataTransfer.getData("application/json");
+  console.log('전달받은 데이터:', data);
+  if (!data) return;
 
-    try {
-      const { metricKey, chartType, databases } = JSON.parse(data);
-      if (!metricKey || !chartType) {
-        console.warn("잘못된 드롭 데이터:", data);
+  try {
+    const dropData = JSON.parse(data);
+    const { metricKey, chartType, databases } = dropData;
+    
+    console.log('파싱된 데이터:', { metricKey, chartType, databases });
+    
+    if (!metricKey || !chartType) {
+      console.warn("잘못된 드롭 데이터:", dropData);
+      return;
+    }
+
+    /** === 커스텀 테마: 새 위젯 추가 === */
+    if (themeId === "custom") {
+      // databases 명확하게 처리
+      const dbList = Array.isArray(databases) && databases.length > 0
+        ? databases.map((db: any) => ({
+            id: db.id || db.databaseId,
+            name: db.name || db.databaseName,
+          }))
+        : selectedInstance
+        ? [{
+            id: selectedInstance.instanceId,
+            name: selectedInstance.instanceName || 'Default',
+          }]
+        : [];
+
+      const newItem: DashboardLayout = {
+        i: `${metricKey}_${Date.now()}`,
+        x: 0,
+        y: Infinity,
+        w: 8,
+        h: 6,
+        title: metricKey,
+        type: chartType, // 차트 타입 명시
+        metricType: metricKey,
+        databases: dbList,
+        instanceId: selectedInstance?.instanceId ?? null,
+      };
+
+      console.log("✨ 새 위젯 생성:", newItem);
+      
+      setLayout((prev) => {
+        const updated = [...prev, newItem];
+        console.log("📊 업데이트된 layout:", updated);
+        return updated;
+      });
+    }
+    /** === 테마 기반 카드 교체 === */
+    else if (themeId.startsWith("card_")) {
+      const dropTarget = document.elementFromPoint(e.clientX, e.clientY);
+      const targetItem = dropTarget?.closest(".grid-item") as HTMLElement | null;
+      const targetId = targetItem?.getAttribute("data-grid-id");
+      
+      if (!targetId) {
+        console.warn("드롭 타겟을 찾을 수 없습니다");
         return;
       }
 
-      /** === 커스텀 테마: 새 위젯 추가 === */
-      if (themeId === "custom") {
-        const newItem: DashboardLayout = {
-          i: `${metricKey}_${Date.now()}`,
-          x: 0,
-          y: Infinity,
-          w: 8,
-          h: 6,
-          title: metricKey,
-          type: chartType,
-          metricType: metricKey,
-          databases: databases?.map((db: any) => ({
-            id: db.id,
-            name: db.name,
-          })) ?? [],
-          instanceId: selectedInstance?.instanceId ?? null,
-        };
+      // databases 명확하게 처리
+      const dbList = Array.isArray(databases) && databases.length > 0
+        ? databases.map((db: any) => ({
+            id: db.id || db.databaseId,
+            name: db.name || db.databaseName,
+          }))
+        : [];
 
-
-        console.log("커스텀 드롭 위젯:", newItem);
-        setLayout((prev) => [...prev, newItem]);
-      }
-      /** === 테마 기반 카드 교체 === */
-      else if (themeId.startsWith("card_")) {
-        const dropTarget = document.elementFromPoint(e.clientX, e.clientY);
-        const targetItem = dropTarget?.closest(".grid-item") as HTMLElement | null;
-        const targetId = targetItem?.getAttribute("data-grid-id");
-        if (!targetId) return;
-
-        setLayout((prev) =>
-          prev.map((item) =>
-            item.i === targetId
-              ? {
-                  ...item,
-                  metricType: metricKey,
-                  type: chartType,
-                  databases: databases ?? [],
-                }
-              : item
-          )
+      console.log("🔄 카드 교체:", { targetId, metricKey, chartType, databases: dbList });
+      
+      setLayout((prev) => {
+        const updated = prev.map((item) =>
+          item.i === targetId
+            ? {
+                ...item,
+                metricType: metricKey,
+                type: chartType, // 차트 타입 명시
+                title: metricKey, // 타이틀도 업데이트
+                databases: dbList.length > 0 ? dbList : item.databases || [],
+              }
+            : item
         );
-      }
-    } catch (err) {
-      console.error("위젯 드롭 실패:", err);
+        console.log("카드 교체 후 layout:", updated);
+        return updated;
+      });
     }
-  };
+  } catch (err) {
+    console.error("위젯 드롭 실패:", err);
+  }
+};
 
   /** === 렌더링 === */
   return (

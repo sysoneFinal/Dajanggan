@@ -26,7 +26,6 @@ const Header = ({ breadcrumb }: HeaderProps) => {
     setSelectedDatabase,
   } = useInstanceContext();
 
-
   /** === Local state === */
   const [refreshInterval, setRefreshInterval] = useState("5m");
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
@@ -62,11 +61,13 @@ const Header = ({ breadcrumb }: HeaderProps) => {
 
   /** === 공통 드롭다운 렌더링 === */
   const renderDropdown = (
-    list: string[] | Instance[] | Database[],
+    list: string[] | Instance[] | Database[] | null | undefined,
     selectedValue: string | null,
     target: string,
     disabled?: boolean
   ) => {
+    const safeList = Array.isArray(list) ? list.filter((item) => item != null) : [];
+
     const dropdown = (
       <div
         className="dropdown-menu"
@@ -79,7 +80,7 @@ const Header = ({ breadcrumb }: HeaderProps) => {
           zIndex: 9999,
         }}
       >
-        {(list as any[]).map((item) => {
+        {safeList.map((item: any, index) => {
           let name = "";
           let id = "";
 
@@ -88,12 +89,12 @@ const Header = ({ breadcrumb }: HeaderProps) => {
             id = item;
           } else if ("instanceName" in item) {
             // Instance
-            name = item.instanceName;
-            id = item.instanceId.toString();
+            name = item.instanceName ?? "";
+            id = item.instanceId?.toString() ?? `instance-${index}`;
           } else if ("databaseName" in item) {
             // Database
-            name = item.databaseName;
-            id = item.databaseId.toString();
+            name = item.databaseName ?? "";
+            id = item.databaseId?.toString() ?? `db-${index}`;
           }
 
           return (
@@ -102,7 +103,7 @@ const Header = ({ breadcrumb }: HeaderProps) => {
               className={`dropdown-item ${name === selectedValue ? "active" : ""}`}
               onClick={() => handleSelect(target, name)}
             >
-              {name}
+              {name || "(no name)"}
             </button>
           );
         })}
