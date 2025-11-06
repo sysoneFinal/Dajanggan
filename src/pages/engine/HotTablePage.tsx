@@ -37,7 +37,8 @@ interface HotTableData {
     };
     topQueryTables: {
         tableNames: string[];
-        scanCounts: number[];
+        seqScanCounts: number[];
+        indexScanCounts: number[];
     };
     topDmlTables: {
         tableNames: string[];
@@ -97,7 +98,8 @@ const mockData: HotTableData = {
     },
     topQueryTables: {
         tableNames: ["orders", "users", "products", "payments", "inventory"],
-        scanCounts: [1000000, 850000, 720000, 650000, 580000],
+        seqScanCounts: [150000, 120000, 100000, 80000, 60000],
+        indexScanCounts: [850000, 730000, 620000, 570000, 520000],
     },
     topDmlTables: {
         tableNames: ["orders", "users", "products", "payments", "inventory"],
@@ -307,8 +309,8 @@ export default function HotTablePage() {
                     </div>
                 </WidgetCard>
 
-                {/* Vacuum 지연 시간 추이 */}
-                <WidgetCard title="Top-3 Vacuum 지연 테이블 (Last 24 Hours)" span={4}>
+                {/* Vacuum 지연 시간 추이 - 임계치 적용 */}
+                <WidgetCard title="Top-3 Vacuum 지연 테이블 (Last 24 Hours)" span={5}>
                     <Chart
                         type="line"
                         series={dashboard.vacuumDelayTrend.tables.map((table) => ({
@@ -318,11 +320,62 @@ export default function HotTablePage() {
                         categories={dashboard.vacuumDelayTrend.categories}
                         colors={["#8E79FF", "#FEA29B", "#77B2FB"]}
                         height={250}
+                        customOptions={{
+                            annotations: {
+                                yaxis: [
+                                    {
+                                        y: 5,
+                                        borderColor: "#60A5FA",
+                                        strokeDashArray: 4,
+                                        opacity: 0.6,
+                                        label: {
+                                            borderColor: "#60A5FA",
+                                            style: {
+                                                color: "#fff",
+                                                background: "#60A5FA",
+                                                fontSize: "11px",
+                                                fontWeight: 500,
+                                            },
+                                            text: "정상: 5초",
+                                            position: "right",
+                                        },
+                                    },
+                                    {
+                                        y: 10,
+                                        borderColor: "#FBBF24",
+                                        strokeDashArray: 4,
+                                        opacity: 0.7,
+                                        label: {
+                                            borderColor: "#FBBF24",
+                                            style: {
+                                                color: "#fff",
+                                                background: "#FBBF24",
+                                                fontSize: "11px",
+                                                fontWeight: 500,
+                                            },
+                                            text: "주의: 10초",
+                                            position: "right",
+                                        },
+                                    },
+                                ],
+                            },
+                            yaxis: {
+                                labels: {
+                                    style: {
+                                        colors: "#6B7280",
+                                        fontFamily: 'var(--font-family, "Pretendard", sans-serif)'
+                                    },
+                                    formatter: (val: number) => `${val.toFixed(1)}s`,
+                                },
+                                min: 0,
+                                max: 12,
+                            },
+                        }}
                     />
                 </WidgetCard>
 
                 {/* 테이블별 Dead Tuple 추이 - 임계치 적용 */}
-                <WidgetCard title="Top-3 Dead Tuple 테이블 (Last 24 Hours)" span={3}>
+                <WidgetCard title="Top-3 Dead Tuple 테이블 (Last 24 Hours)" span={5}>
                     <Chart
                         type="line"
                         series={dashboard.deadTupleTrend.tables.map((table) => ({
@@ -336,7 +389,7 @@ export default function HotTablePage() {
                             annotations: {
                                 yaxis: [
                                     {
-                                        y: 1000,
+                                        y: 1500,
                                         borderColor: "#60A5FA",
                                         strokeDashArray: 4,
                                         opacity: 0.6,
@@ -348,12 +401,12 @@ export default function HotTablePage() {
                                                 fontSize: "11px",
                                                 fontWeight: 500,
                                             },
-                                            text: "정상: 1K",
+                                            text: "정상: 1.5K",
                                             position: "right",
                                         },
                                     },
                                     {
-                                        y: 5000,
+                                        y: 3000,
                                         borderColor: "#FBBF24",
                                         strokeDashArray: 4,
                                         opacity: 0.7,
@@ -365,7 +418,7 @@ export default function HotTablePage() {
                                                 fontSize: "11px",
                                                 fontWeight: 500,
                                             },
-                                            text: "주의: 5K",
+                                            text: "주의: 3K",
                                             position: "right",
                                         },
                                     },
@@ -380,16 +433,19 @@ export default function HotTablePage() {
                                     formatter: (val: number) => `${(val / 1000).toFixed(1)}K`,
                                 },
                                 min: 0,
-                                max: 10000,
+                                max: 4000,
                             },
                         }}
                     />
                 </WidgetCard>
+            </ChartGridLayout>
 
+            {/* 두 번째 행: 3개 차트 */}
+            <ChartGridLayout>
                 {/* DB 전체 Dead Tuple 추이 - 임계치 적용 */}
-                <WidgetCard title="DB 전체 Dead Tuple 추이 (Last 24 Hours)" span={3}>
+                <WidgetCard title="DB 전체 Dead Tuple 추이 (Last 24 Hours)" span={4}>
                     <Chart
-                        type="area"
+                        type="line"
                         series={[{ name: "Total Dead Tuples", data: dashboard.totalDeadTuple.data }]}
                         categories={dashboard.totalDeadTuple.categories}
                         colors={["#8E79FF"]}
@@ -398,7 +454,7 @@ export default function HotTablePage() {
                             annotations: {
                                 yaxis: [
                                     {
-                                        y: 10000,
+                                        y: 20000,
                                         borderColor: "#60A5FA",
                                         strokeDashArray: 4,
                                         opacity: 0.6,
@@ -410,12 +466,12 @@ export default function HotTablePage() {
                                                 fontSize: "11px",
                                                 fontWeight: 500,
                                             },
-                                            text: "정상: 10K",
+                                            text: "정상: 20K",
                                             position: "right",
                                         },
                                     },
                                     {
-                                        y: 50000,
+                                        y: 35000,
                                         borderColor: "#FBBF24",
                                         strokeDashArray: 4,
                                         opacity: 0.7,
@@ -427,7 +483,7 @@ export default function HotTablePage() {
                                                 fontSize: "11px",
                                                 fontWeight: 500,
                                             },
-                                            text: "주의: 50K",
+                                            text: "주의: 35K",
                                             position: "right",
                                         },
                                     },
@@ -442,28 +498,28 @@ export default function HotTablePage() {
                                     formatter: (val: number) => `${(val / 1000).toFixed(0)}K`,
                                 },
                                 min: 0,
-                                max: 60000,
+                                max: 45000,
                             },
                         }}
                     />
                 </WidgetCard>
-            </ChartGridLayout>
-
-            {/* 두 번째 행: 3개 차트 */}
-            <ChartGridLayout>
-                {/* Top-N 테이블 조회량 */}
-                <WidgetCard title="Top-5 테이블 조회량 (Last 24 Hours)" span={6}>
+                {/* Top-5 테이블 조회량 - Seq Scan / Index Scan 구분 */}
+                <WidgetCard title="Top-5 테이블 조회량 (Last 24 Hours)" span={4}>
                     <Chart
                         type="bar"
-                        series={[{ name: "Scan Count", data: dashboard.topQueryTables.scanCounts }]}
+                        series={[
+                            { name: "Seq Scan", data: dashboard.topQueryTables.seqScanCounts },
+                            { name: "Index Scan", data: dashboard.topQueryTables.indexScanCounts },
+                        ]}
                         categories={dashboard.topQueryTables.tableNames}
-                        colors={["#8E79FF"]}
+                        colors={["#FEA29B", "#8E79FF"]}
                         height={250}
+                        isStacked={true}
                     />
                 </WidgetCard>
 
                 {/* Top-5 테이블 DML량 */}
-                <WidgetCard title="Top-5 테이블 DML량 (Last 24 Hours)" span={6}>
+                <WidgetCard title="Top-5 테이블 DML량 (Last 24 Hours)" span={4}>
                     <Chart
                         type="bar"
                         series={[
