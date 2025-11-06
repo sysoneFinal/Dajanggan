@@ -33,11 +33,6 @@ interface BGWriterData {
         average: number;
         total: number;
     };
-    backendFsync: {
-        categories: string[];
-        data: number[];
-        total: number;
-    };
     bgwriterVsCheckpoint: {
         categories: string[];
         bgwriter: number[];
@@ -45,12 +40,20 @@ interface BGWriterData {
         bgwriterTotal: number;
         checkpointTotal: number;
     };
+    bufferReuseRate: {
+        categories: string[];
+        data: number[];
+        average: number;
+        max: number;
+        min: number;
+    };
     recentStats?: {
+        bgwriterActivityRate?: number;
         cleanBufferReuseRate: number;
-        avgCleanRate: number;
-        backendDirectWriteRate: number;
-        bgwriterVsCheckpointRatio: number;
-        maxwrittenReachRate: number;
+        backendFsyncCount?: number;
+        bufferPoolUsageRate: number;
+        checkpointInterruptionCount: number;
+        dirtyBufferAccumulationRate: number;
     };
 }
 
@@ -72,11 +75,12 @@ const mockData: BGWriterData = {
         min: 95,
     },
     recentStats: {
+        bgwriterActivityRate: 65,
         cleanBufferReuseRate: 78,
-        avgCleanRate: 118,
-        backendDirectWriteRate: 2.8,
-        bgwriterVsCheckpointRatio: 38.5,
-        maxwrittenReachRate: 6.7,
+        backendFsyncCount: 0,
+        bufferPoolUsageRate: 87.2,
+        checkpointInterruptionCount: 12,
+        dirtyBufferAccumulationRate: 23.5,
     },
     bufferFlushRatio: {
         categories: [
@@ -97,14 +101,6 @@ const mockData: BGWriterData = {
         average: 63,
         total: 760,
     },
-    backendFsync: {
-        categories: [
-            "0:00", "2:00", "4:00", "6:00", "8:00", "10:00",
-            "12:00", "14:00", "16:00", "18:00", "20:00", "23:00"
-        ],
-        data: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-        total: 0,
-    },
     bgwriterVsCheckpoint: {
         categories: [
             "0:00", "2:00", "4:00", "6:00", "8:00", "10:00",
@@ -115,6 +111,16 @@ const mockData: BGWriterData = {
         bgwriterTotal: 19500,
         checkpointTotal: 31200,
     },
+    bufferReuseRate: {
+        categories: [
+            "0:00", "2:00", "4:00", "6:00", "8:00", "10:00",
+            "12:00", "14:00", "16:00", "18:00", "20:00", "23:00"
+        ],
+        data: [92, 89, 85, 83, 78, 82, 88, 91, 94, 93, 90, 87],
+        average: 87.7,
+        max: 94,
+        min: 78,
+    },
 };
 
 /** API 요청 */
@@ -124,10 +130,15 @@ async function fetchBGWriterData() {
     return res.json();
 }
 
+/**
+ * Backend Flush 비율 게이지 상태 판단
+ * - 0~30%: 정상 (BGWriter가 충분히 동작)
+ * - 30~50%: 주의 (Backend 직접 쓰기 증가)
+ * - 50% 이상: 경고 (BGWriter 튜닝 필요)
+ */
 const getBackendFlushGaugeStatus = (
     value: number
 ): "normal" | "warning" | "critical" => {
-    // 0~50%: 정상, 50~70%: 주의, 70% 이상: 경고
     if (value < 30) return "normal";
     if (value < 50) return "warning";
     return "critical";
@@ -146,11 +157,12 @@ export default function BGWriterPage() {
     const gaugeStatus = getBackendFlushGaugeStatus(dashboard.backendFlushRatio.value);
 
     const recentStats = dashboard.recentStats || {
+        bgwriterActivityRate: 65,
         cleanBufferReuseRate: 78,
-        avgCleanRate: 118,
-        backendDirectWriteRate: 2.8,
-        bgwriterVsCheckpointRatio: 38.5,
-        maxwrittenReachRate: 6.7,
+        backendFsyncCount: 0,
+        bufferPoolUsageRate: 87.2,
+        checkpointInterruptionCount: 12,
+        dirtyBufferAccumulationRate: 23.5,
     };
 
     const summaryCards = [
@@ -159,35 +171,54 @@ export default function BGWriterPage() {
             value: `${recentStats.bgwriterActivityRate}%`,
             diff: 2.5,
             desc: "최근 5분 평균",
-            status: recentStats.bgwriterActivityRate < 50 ? "warning" : "info"
+            status: (recentStats.bgwriterActivityRate || 0) < 50
+                ? "warning"
+                : "info"
         },
         {
-            label: "평균 Clean Rate",
-            value: `${recentStats.avgCleanRate}/s`,
-            diff: 3,
+            label: "Buffer Pool 사용률",
+            value: `${recentStats.bufferPoolUsageRate}%`,
+            diff: 1.2,
             desc: "최근 5분 평균",
-            status: "info" as const,
+            status: recentStats.bufferPoolUsageRate < 85
+                ? ("warning" as const)
+                : ("info" as const),
         },
         {
-            label: "Backend 직접 쓰기 비율",
-            value: `${recentStats.backendDirectWriteRate}%`,
-            diff: -0.5,
+            label: "Clean Buffer 재사용률",
+            value: `${recentStats.cleanBufferReuseRate}%`,
+            diff: 1.8,
             desc: "최근 5분 평균",
-            status: recentStats.backendDirectWriteRate > 10 ? ("warning" as const) : ("info" as const),
+            status: recentStats.cleanBufferReuseRate < 70
+                ? ("warning" as const)
+                : ("info" as const),
         },
         {
-            label: "BGWriter/Checkpoint 비율",
-            value: `${recentStats.bgwriterVsCheckpointRatio}%`,
-            diff: 1.5,
-            desc: "최근 5분 평균",
-            status: recentStats.bgwriterVsCheckpointRatio < 30 ? ("warning" as const) : ("info" as const),
+            label: "Checkpoint에 의한 BGWriter 중단",
+            value: `${recentStats.checkpointInterruptionCount}회`,
+            diff: -2,
+            desc: "최근 24시간",
+            status: recentStats.checkpointInterruptionCount > 10
+                ? ("warning" as const)
+                : ("info" as const),
+        },
+        {
+            label: "Dirty Buffer 누적률",
+            value: `${recentStats.dirtyBufferAccumulationRate}%`,
+            diff: 3.5,
+            desc: "현재",
+            status: recentStats.dirtyBufferAccumulationRate > 30
+                ? ("warning" as const)
+                : ("info" as const),
         },
         {
             label: "Backend Fsync 발생",
-            value: recentStats.backendFsyncCount,
+            value: recentStats.backendFsyncCount || 0,
             diff: 0,
             desc: "최근 5분 누적",
-            status: recentStats.backendFsyncCount > 0 ? "critical" : "info"
+            status: (recentStats.backendFsyncCount || 0) > 0
+                ? "critical"
+                : "info"
         },
     ];
 
@@ -243,10 +274,10 @@ export default function BGWriterPage() {
                     </div>
                 </WidgetCard>
 
-                {/* 버퍼 플러시 주체별 비율 */}
-                <WidgetCard title="버퍼 플러시 주체별 비율 (Last 24 Hours)" span={5}>
+                {/* 버퍼 플러시 주체별 비율 - 최근 1시간으로 변경 */}
+                <WidgetCard title="버퍼 플러시 주체별 비율 (최근 1시간)" span={5}>
                     <Chart
-                        type="area"
+                        type="line"
                         series={[
                             { name: "Backend", data: dashboard.bufferFlushRatio.backend },
                             { name: "Clean", data: dashboard.bufferFlushRatio.clean },
@@ -254,57 +285,28 @@ export default function BGWriterPage() {
                         categories={dashboard.bufferFlushRatio.categories}
                         colors={["#8E79FF", "#FEA29B"]}
                         height={250}
-                    />
-                </WidgetCard>
-
-                {/* BGWriter vs Checkpoint 쓰기 비중 */}
-                <WidgetCard title="BGWriter vs Checkpoint 쓰기 비중 (Last 24 Hours)" span={5}>
-                    <Chart
-                        type="line"
-                        series={[
-                            { name: "BGWriter", data: dashboard.bgwriterVsCheckpoint.bgwriter },
-                            { name: "Checkpoint", data: dashboard.bgwriterVsCheckpoint.checkpoint },
-                        ]}
-                        categories={dashboard.bgwriterVsCheckpoint.categories}
-                        colors={["#8E79FF", "#FEA29B"]}
-                        height={250}
-                    />
-                </WidgetCard>
-
-            </ChartGridLayout>
-
-            {/* 두 번째 행: 3개 카드 */}
-            <ChartGridLayout>
-                {/* BGWriter 활동량 추세 - 임계치 적용 */}
-                <WidgetCard title="BGWriter 활동량 추세 (Last 24 Hours)" span={4}>
-                    <Chart
-                        type="line"
-                        series={[{ name: "Buffers Clean/sec", data: dashboard.cleanRate.data }]}
-                        categories={dashboard.cleanRate.categories}
-                        colors={["#8E79FF"]}
-                        height={250}
                         customOptions={{
                             annotations: {
                                 yaxis: [
                                     {
-                                        y: 100,
-                                        borderColor: "#60A5FA",
+                                        y: 3000,
+                                        borderColor: "#10B981",
                                         strokeDashArray: 4,
                                         opacity: 0.6,
                                         label: {
-                                            borderColor: "#60A5FA",
+                                            borderColor: "#10B981",
                                             style: {
                                                 color: "#fff",
-                                                background: "#60A5FA",
+                                                background: "#10B981",
                                                 fontSize: "11px",
                                                 fontWeight: 500,
                                             },
-                                            text: "정상: 100/s",
+                                            text: "정상: 3000",
                                             position: "right",
                                         },
                                     },
                                     {
-                                        y: 50,
+                                        y: 2000,
                                         borderColor: "#FBBF24",
                                         strokeDashArray: 4,
                                         opacity: 0.7,
@@ -316,7 +318,111 @@ export default function BGWriterPage() {
                                                 fontSize: "11px",
                                                 fontWeight: 500,
                                             },
-                                            text: "주의: 50/s",
+                                            text: "주의: 2000",
+                                            position: "right",
+                                        },
+                                    },
+                                ],
+                            },
+                            yaxis: {
+                                labels: {
+                                    style: {
+                                        colors: "#6B7280",
+                                        fontFamily: 'var(--font-family, "Pretendard", sans-serif)'
+                                    },
+                                },
+                                min: 0,
+                            },
+                        }}
+                    />
+                </WidgetCard>
+
+                {/* BGWriter vs Checkpoint 쓰기 비중 - 24시간 유지 */}
+                <WidgetCard title="BGWriter vs Checkpoint 쓰기 비중 (최근 24시간)" span={5}>
+                    <Chart
+                        type="line"
+                        series={[
+                            { name: "BGWriter", data: dashboard.bgwriterVsCheckpoint.bgwriter },
+                            { name: "Checkpoint", data: dashboard.bgwriterVsCheckpoint.checkpoint },
+                        ]}
+                        categories={dashboard.bgwriterVsCheckpoint.categories}
+                        colors={["#8E79FF", "#FEA29B"]}
+                        height={250}
+                    />
+                    <div className="bgwriter-chart-footer">
+                        <div className="bgwriter-stat-item">
+                            <span className="bgwriter-stat-label">BGWriter</span>
+                            <span className="bgwriter-stat-value">{(dashboard.bgwriterVsCheckpoint.bgwriterTotal / 1000).toFixed(1)}K</span>
+                        </div>
+                        <div className="bgwriter-stat-item">
+                            <span className="bgwriter-stat-label">Checkpoint</span>
+                            <span className="bgwriter-stat-value">{(dashboard.bgwriterVsCheckpoint.checkpointTotal / 1000).toFixed(1)}K</span>
+                        </div>
+                    </div>
+                </WidgetCard>
+            </ChartGridLayout>
+
+            {/* 두 번째 행: 3개 카드 */}
+            <ChartGridLayout>
+                {/* BGWriter 활동량 추세 - 최근 6시간으로 변경 */}
+                <WidgetCard title="BGWriter 활동량 추세 (최근 6시간)" span={4}>
+                    <Chart
+                        type="line"
+                        series={[{ name: "Buffers Clean/sec", data: dashboard.cleanRate.data }]}
+                        categories={dashboard.cleanRate.categories}
+                        colors={["#8E79FF"]}
+                        height={250}
+                        customOptions={{
+                            annotations: {
+                                yaxis: [
+                                    {
+                                        y: 150,
+                                        borderColor: "#10B981",
+                                        strokeDashArray: 4,
+                                        opacity: 0.6,
+                                        label: {
+                                            borderColor: "#10B981",
+                                            style: {
+                                                color: "#fff",
+                                                background: "#10B981",
+                                                fontSize: "11px",
+                                                fontWeight: 500,
+                                            },
+                                            text: "정상: 150/s",
+                                            position: "right",
+                                        },
+                                    },
+                                    {
+                                        y: 100,
+                                        borderColor: "#FBBF24",
+                                        strokeDashArray: 4,
+                                        opacity: 0.7,
+                                        label: {
+                                            borderColor: "#FBBF24",
+                                            style: {
+                                                color: "#fff",
+                                                background: "#FBBF24",
+                                                fontSize: "11px",
+                                                fontWeight: 500,
+                                            },
+                                            text: "주의: 100/s",
+                                            position: "right",
+                                        },
+                                    },
+                                    {
+                                        y: 50,
+                                        borderColor: "#EF4444",
+                                        strokeDashArray: 4,
+                                        opacity: 0.7,
+                                        label: {
+                                            borderColor: "#EF4444",
+                                            style: {
+                                                color: "#fff",
+                                                background: "#EF4444",
+                                                fontSize: "11px",
+                                                fontWeight: 500,
+                                            },
+                                            text: "경고: 50/s",
                                             position: "right",
                                         },
                                     },
@@ -335,30 +441,201 @@ export default function BGWriterPage() {
                             },
                         }}
                     />
+                    <div className="bgwriter-chart-footer">
+                        <div className="bgwriter-stat-item">
+                            <span className="bgwriter-stat-label">평균</span>
+                            <span className="bgwriter-stat-value">{dashboard.cleanRate.average}/s</span>
+                        </div>
+                        <div className="bgwriter-stat-item">
+                            <span className="bgwriter-stat-label">최대</span>
+                            <span className="bgwriter-stat-value">{dashboard.cleanRate.max}/s</span>
+                        </div>
+                        <div className="bgwriter-stat-item">
+                            <span className="bgwriter-stat-label">최소</span>
+                            <span className="bgwriter-stat-value">{dashboard.cleanRate.min}/s</span>
+                        </div>
+                    </div>
                 </WidgetCard>
 
-                {/* Clean 스캔 상한 도달 추이 */}
-                <WidgetCard title="Clean 스캔 상한 도달 추이 (Last 24 Hours)" span={4}>
+                {/* Clean 스캔 상한 도달 추이 - 최근 12시간으로 변경 */}
+                <WidgetCard title="Clean 스캔 상한 도달 추이 (최근 12시간)" span={4}>
                     <Chart
                         type="line"
                         series={[{ name: "Maxwritten Clean", data: dashboard.maxwrittenClean.data }]}
                         categories={dashboard.maxwrittenClean.categories}
                         colors={["#8E79FF"]}
                         height={250}
+                        customOptions={{
+                            annotations: {
+                                yaxis: [
+                                    {
+                                        y: 100,
+                                        borderColor: "#EF4444",
+                                        strokeDashArray: 4,
+                                        opacity: 0.7,
+                                        label: {
+                                            borderColor: "#EF4444",
+                                            style: {
+                                                color: "#fff",
+                                                background: "#EF4444",
+                                                fontSize: "11px",
+                                                fontWeight: 500,
+                                            },
+                                            text: "경고: 100회",
+                                            position: "right",
+                                        },
+                                    },
+                                    {
+                                        y: 50,
+                                        borderColor: "#FBBF24",
+                                        strokeDashArray: 4,
+                                        opacity: 0.7,
+                                        label: {
+                                            borderColor: "#FBBF24",
+                                            style: {
+                                                color: "#fff",
+                                                background: "#FBBF24",
+                                                fontSize: "11px",
+                                                fontWeight: 500,
+                                            },
+                                            text: "주의: 50회",
+                                            position: "right",
+                                        },
+                                    },
+                                    {
+                                        y: 20,
+                                        borderColor: "#10B981",
+                                        strokeDashArray: 4,
+                                        opacity: 0.6,
+                                        label: {
+                                            borderColor: "#10B981",
+                                            style: {
+                                                color: "#fff",
+                                                background: "#10B981",
+                                                fontSize: "11px",
+                                                fontWeight: 500,
+                                            },
+                                            text: "정상: 20회",
+                                            position: "right",
+                                        },
+                                    },
+                                ],
+                            },
+                            yaxis: {
+                                labels: {
+                                    style: {
+                                        colors: "#6B7280",
+                                        fontFamily: 'var(--font-family, "Pretendard", sans-serif)'
+                                    },
+                                },
+                                min: 0,
+                            },
+                        }}
                     />
+                    <div className="bgwriter-chart-footer">
+                        <div className="bgwriter-stat-item">
+                            <span className="bgwriter-stat-label">평균</span>
+                            <span className="bgwriter-stat-value">{dashboard.maxwrittenClean.average}회</span>
+                        </div>
+                        <div className="bgwriter-stat-item">
+                            <span className="bgwriter-stat-label">총 발생</span>
+                            <span className="bgwriter-stat-value">{dashboard.maxwrittenClean.total}회</span>
+                        </div>
+                    </div>
                 </WidgetCard>
 
-                {/* buffers_backend_fsync 추이 */}
-                <WidgetCard title="Buffers Backend Fsync 추이 (Last 24 Hours)" span={4}>
+                {/* Buffer 재사용률 - 24시간 유지 */}
+                <WidgetCard title="Buffer 재사용률 (최근 24시간)" span={4}>
                     <Chart
                         type="line"
-                        series={[{ name: "Fsync Count", data: dashboard.backendFsync.data }]}
-                        categories={dashboard.backendFsync.categories}
+                        series={[{ name: "Buffer Reuse Rate", data: dashboard.bufferReuseRate.data }]}
+                        categories={dashboard.bufferReuseRate.categories}
                         colors={["#8E79FF"]}
                         height={250}
+                        customOptions={{
+                            annotations: {
+                                yaxis: [
+                                    {
+                                        y: 90,
+                                        borderColor: "#10B981",
+                                        strokeDashArray: 4,
+                                        opacity: 0.6,
+                                        label: {
+                                            borderColor: "#10B981",
+                                            style: {
+                                                color: "#fff",
+                                                background: "#10B981",
+                                                fontSize: "11px",
+                                                fontWeight: 500,
+                                            },
+                                            text: "양호: 90%",
+                                            position: "right",
+                                        },
+                                    },
+                                    {
+                                        y: 80,
+                                        borderColor: "#FBBF24",
+                                        strokeDashArray: 4,
+                                        opacity: 0.7,
+                                        label: {
+                                            borderColor: "#FBBF24",
+                                            style: {
+                                                color: "#fff",
+                                                background: "#FBBF24",
+                                                fontSize: "11px",
+                                                fontWeight: 500,
+                                            },
+                                            text: "주의: 80%",
+                                            position: "right",
+                                        },
+                                    },
+                                    {
+                                        y: 70,
+                                        borderColor: "#EF4444",
+                                        strokeDashArray: 4,
+                                        opacity: 0.7,
+                                        label: {
+                                            borderColor: "#EF4444",
+                                            style: {
+                                                color: "#fff",
+                                                background: "#EF4444",
+                                                fontSize: "11px",
+                                                fontWeight: 500,
+                                            },
+                                            text: "경고: 70%",
+                                            position: "right",
+                                        },
+                                    },
+                                ],
+                            },
+                            yaxis: {
+                                labels: {
+                                    style: {
+                                        colors: "#6B7280",
+                                        fontFamily: 'var(--font-family, "Pretendard", sans-serif)'
+                                    },
+                                    formatter: (val: number) => `${val}%`,
+                                },
+                                min: 0,
+                                max: 100,
+                            },
+                        }}
                     />
+                    <div className="bgwriter-chart-footer">
+                        <div className="bgwriter-stat-item">
+                            <span className="bgwriter-stat-label">평균</span>
+                            <span className="bgwriter-stat-value">{dashboard.bufferReuseRate.average}%</span>
+                        </div>
+                        <div className="bgwriter-stat-item">
+                            <span className="bgwriter-stat-label">최대</span>
+                            <span className="bgwriter-stat-value">{dashboard.bufferReuseRate.max}%</span>
+                        </div>
+                        <div className="bgwriter-stat-item">
+                            <span className="bgwriter-stat-label">최소</span>
+                            <span className="bgwriter-stat-value">{dashboard.bufferReuseRate.min}%</span>
+                        </div>
+                    </div>
                 </WidgetCard>
-
             </ChartGridLayout>
         </div>
     );
