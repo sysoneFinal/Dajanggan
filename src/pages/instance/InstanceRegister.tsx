@@ -8,7 +8,6 @@ import apiClient from "../../api/apiClient";
 export type NewInstance = {
   host: string;
   instance: string;
-  database: string;
   port: number | string;
   username: string;
   password: string;
@@ -29,7 +28,6 @@ type Props = {
 const fieldLabel = {
   host: "Host",
   instance: "Instance",
-  database: "Database",
   port: "Port",
   username: "Username",
   password: "Password",
@@ -41,7 +39,6 @@ const requiredMsg = (k: keyof typeof fieldLabel) => `${fieldLabel[k]} 값이 필
 const toInstanceDto = (f: NewInstance) => ({
   host: f.host,
   instanceName: f.instance,
-  dbname: f.database,
   port: Number(f.port),
   username: f.username,
   secretRef: f.password,
@@ -65,7 +62,6 @@ export default function NewInstanceModal({
   const [form, setForm] = useState<NewInstance>({
     host: initialValue?.host ?? "",
     instance: initialValue?.instance ?? "",
-    database: initialValue?.database ?? "",
     port: initialValue?.port ?? "",
     username: initialValue?.username ?? "",
     password: initialValue?.password ?? "",
@@ -83,7 +79,6 @@ export default function NewInstanceModal({
       setForm({
         host: initialValue.host ?? "",
         instance: initialValue.instance ?? "",
-        database: initialValue.database ?? "",
         port: initialValue.port ?? "",
         username: initialValue.username ?? "",
         password: initialValue.password ?? "",
@@ -109,7 +104,6 @@ export default function NewInstanceModal({
     const next: Partial<Record<keyof NewInstance, string>> = {};
     if (!form.host.trim()) next.host = requiredMsg("host");
     if (!form.instance.trim()) next.instance = requiredMsg("instance");
-    if (!form.database.trim()) next.database = requiredMsg("database");
     if (!form.port || Number(form.port) < 1 || Number(form.port) > 65535)
       next.port = "1~65535 사이 정수를 입력하세요.";
     if (!form.username.trim()) next.username = requiredMsg("username");
@@ -124,8 +118,7 @@ export default function NewInstanceModal({
   const connectionString = useMemo(() => {
     const user = encodeURIComponent(form.username);
     const host = form.host || "";
-    const db = form.database || "";
-    return `postgresql://${user}:@${host}:${form.port}/${db}`;
+    return `postgresql://${user}:@${host}:${form.port}`;
   }, [form]);
 
   const handleChange = (key: keyof NewInstance, value: string) => {
@@ -151,7 +144,6 @@ export default function NewInstanceModal({
           const payload: any = {
             host: form.host,
             instanceName: form.instance,
-            dbname: form.database,
             port: Number(form.port),
             username: form.username,
             ssimode: "require",
@@ -161,12 +153,12 @@ export default function NewInstanceModal({
           if (form.password && form.password.trim()) {
             payload.secretRef = form.password;
           }
-          const res = await apiClient.put(`/api/instances/${instanceId}`, payload);
+          const res = await apiClient.put(`/instances/${instanceId}`, payload);
           alert(`수정 성공!`);
         } else {
           // 생성 모드: POST 요청
           const payload = toInstanceDto(form);
-          const res = await apiClient.post("/api/instances", payload);
+          const res = await apiClient.post("/instances", payload);
           alert(`등록 성공! ID: ${res.data?.id ?? "unknown"}`);
         }
       }
@@ -245,14 +237,6 @@ export default function NewInstanceModal({
                   className={inputCls(!!errors.instance)}
                   value={form.instance}
                   onChange={(e) => handleChange("instance", e.target.value)}
-                />
-              </Field>
-
-              <Field label="Database" error={errors.database}>
-                <input
-                  className={inputCls(!!errors.database)}
-                  value={form.database}
-                  onChange={(e) => handleChange("database", e.target.value)}
                 />
               </Field>
 

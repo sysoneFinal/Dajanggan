@@ -25,8 +25,7 @@ export interface InstanceRow {
   createdAt: string;
   updatedAt: string;
   uptimeMs: number;    
-  dbname?: string;      // 추가
-  username?: string;    // 추가
+  username?: string;  
   databases?: DatabaseSummary[];
 }
 
@@ -40,8 +39,7 @@ type InstanceDto = {
     version?: string;
     updatedAt?: string;
     createdAt: string;
-    dbname?: string;      // 추가
-    username?: string;    // 추가
+    username?: string;   
     databases?: Array<{
         name: string;
         isEnabled: boolean;
@@ -159,7 +157,7 @@ const InstancePage: React.FC = () => {
     try {
       setLoading(true);
       setError(null);
-      const res = await apiClient.get("/api/instances");
+      const res = await apiClient.get("/instances");
       const list: InstanceDto[] = extractInstanceList(res.data);
       const mapped = (Array.isArray(list) ? list : [])
         .map(mapInstance)
@@ -191,7 +189,7 @@ const InstancePage: React.FC = () => {
     }
 
     try {
-      const res = await apiClient.get(`/api/instances/${key}/databases`);
+      const res = await apiClient.get(`/instances/${key}/databases`);
       const arr = Array.isArray(res.data) ? res.data : [res.data];
 
       const mappedDbs: DatabaseSummary[] = arr
@@ -257,7 +255,6 @@ const InstancePage: React.FC = () => {
     const payload: any = {
       host: form.host,
       instanceName: form.instance,
-      dbname: form.database,
       port: Number(form.port),
       username: form.username,
       sslmode: "require",
@@ -269,7 +266,7 @@ const InstancePage: React.FC = () => {
       payload.secretRef = form.password;
     }
 
-    await apiClient.put(`/api/instances/${editTarget.instanceId}`, payload);
+    await apiClient.put(`/instances/${editTarget.instanceId}`, payload);
     alert("수정 완료!");
     await fetchInstances(); // 목록 새로고침
   };
@@ -278,9 +275,8 @@ const InstancePage: React.FC = () => {
   const editInitialValue: Partial<NewInstance> | undefined = editTarget ? {
     host: editTarget.host,
     instance: editTarget.instanceName,
-    database: editTarget.dbname, // database 정보가 row에 없으므로 빈 값
     port: editTarget.port,
-    username: editTarget.username, // username 정보가 row에 없으므로 빈 값
+    username: editTarget.username,
     password: "",
   } : undefined;
 
@@ -352,7 +348,7 @@ const InstancePage: React.FC = () => {
                       className="danger"
                       onClick={async() => {
                         try {
-                          await apiClient.delete(`/api/instances/${deleteTarget.instanceId}`);
+                          await apiClient.delete(`/instances/${deleteTarget.instanceId}`);
                           alert("삭제되었습니다.");
                           setDeleteTarget(null);
                           setRows(prev => prev.filter(r => r.instanceId !== deleteTarget.instanceId));
