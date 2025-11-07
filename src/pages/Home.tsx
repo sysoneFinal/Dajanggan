@@ -1,13 +1,8 @@
-import { useEffect, useState } from "react";
 import styled from "@emotion/styled";
+import { useNavigate } from "react-router-dom";
 import InstanceSelector from "../components/dashboard/InstanceSelector";
-import apiClient from "../api/apiClient";
-
-interface Instance {
-  id: number;
-  name: string;
-  status: "normal" | "warning";
-}
+import { useInstanceContext } from "../context/InstanceContext";
+import type { Instance } from "../types/instance";
 
 const Wrapper = styled.div`
   display: flex;
@@ -20,27 +15,30 @@ const Wrapper = styled.div`
 `;
 
 export default function Home() {
-  const [instances, setInstances] = useState<Instance[]>([]);
+  const navigate = useNavigate();
+  const {
+    instances,              // 전역 Context에서 인스턴스 목록 받기
+    setSelectedInstance,    // 선택된 인스턴스 설정
+    refreshInstances,       // 필요시 새로고침 가능
+  } = useInstanceContext();
 
-  // 인스턴스 정보 가져오기
-  const getInstanceInfo = async () => {
-    try {
-      const response = await apiClient.get("/instances");
-      console.log("인스턴스 정보: ", response.data);
-      setInstances(response.data);
-    } catch (error) {
-      console.error("인스턴스 정보를 불러오는데 실패하였습니다. ", error);
-    }
+  /** 인스턴스 선택 시 */
+  const handleSelect = (instance: Instance) => {
+    setSelectedInstance(instance);
+    navigate(`/overview?instanceId=${instance.instanceId}`);
   };
-
-  useEffect(() => {
-    getInstanceInfo();
-  }, []);
 
   return (
     <Wrapper>
-      {/* props로 전달 */}
-      <InstanceSelector instances={instances} />
+      <InstanceSelector
+        instances={instances}
+        onSelect={handleSelect}
+      />
+      {instances.length === 0 && (
+        <p style={{ marginTop: "1rem", color: "#aaa" }}>
+          등록된 인스턴스가 없습니다.
+        </p>
+      )}
     </Wrapper>
   );
 }

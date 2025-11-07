@@ -364,9 +364,9 @@ export default function Chart({
       </style>
       <ReactApexChart
         options={baseOptions}
-        series={series}
+        series={series ?? []}
         type={normalizedType}
-        height={height}
+        height={height || 300}
       />
     </div>
   );

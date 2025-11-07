@@ -63,7 +63,7 @@
 }
 
 .theme-item {
-  width: 9.375rem; 
+  width: 8rem; 
   border-radius: 0.75rem; 
   background: transparent;
   overflow: hidden;
@@ -99,23 +99,39 @@
   display: flex;
   gap: 0.625rem; 
   flex-wrap: wrap;
+  flex-direction: row;
+}
+/* === 대시보드 전용 드롭다운 그림자 제거 === */
+.editor-panel .dropdown-select .dropdown-label {
+  box-shadow: none !important;
+  border: 1px solid rgba(123, 97, 255, 0.1); /* 살짝 경계만 남기기 */
+  background: rgba(255, 255, 255, 0.7);
 }
 
-.select-input {
-  flex: 1 1 11.25rem; 
-  border-radius: 0.75rem;
-  padding: 0.625rem 0.875rem; 
-  border: 0.0625rem solid rgba(255, 255, 255, 0.7);
-  background: rgba(255, 255, 255, 0.6);
-  font-size: 0.9375rem; 
-  color: #2f3136;
+/* === Metric 섹션 통일 === */
+.editor-panel .select-input {
+  appearance: none;
+  background: rgba(255, 255, 255, 0.7);
+  border: 1px solid rgba(123, 97, 255, 0.2);
+  border-radius: 10px;
+  padding: 8px 12px;
+  font-size: 0.85rem;
+  color: #111;
+  box-shadow: none; 
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+/* hover & focus 시 느낌 통일 */
+.editor-panel .select-input:hover,
+.editor-panel .select-input:focus {
+  border-color: rgba(123, 97, 255, 0.6);
   outline: none;
-  transition: border 0.2s, box-shadow 0.2s;
+  box-shadow: 0 0 0 2px rgba(123, 97, 255, 0.15);
 }
 
-.select-input:focus {
-  border-color: #7f81f2;
-  box-shadow: 0 0 0 0.1875rem rgba(127, 129, 242, 0.2); 
+/* placeholder 색상 조정 */
+.editor-panel .select-input option[value=""] {
+  color: #aaa;
 }
 
 /*  Chart Section  */
