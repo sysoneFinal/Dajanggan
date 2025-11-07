@@ -10,7 +10,7 @@ type InstanceDetailDto = {
   instanceName: string;
   dbname: string;
   port: number;
-  username: string;
+  userName: string;
   sslmode?: string;
   isEnabled?: boolean;
 };
@@ -52,7 +52,7 @@ export default function EditInstancePage() {
       host: form.host,
       instanceName: form.instance,
       port: Number(form.port),
-      username: form.username,
+      userName: form.userName,
       sslmode: "require",
       isEnabled: true,
     };
@@ -70,7 +70,7 @@ export default function EditInstancePage() {
     host: detail.host,
     instance: detail.instanceName,
     port: detail.port,
-    username: detail.username,
+    userName: detail.userName,
     password: "",
   } : undefined;
 

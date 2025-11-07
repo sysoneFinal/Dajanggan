@@ -9,7 +9,7 @@ export type NewInstance = {
   host: string;
   instance: string;
   port: number | string;
-  username: string;
+  userName: string;
   password: string;
 };
 
@@ -29,7 +29,7 @@ const fieldLabel = {
   host: "Host",
   instance: "Instance",
   port: "Port",
-  username: "Username",
+  userName: "Username",
   password: "Password",
 } as const;
 
@@ -40,14 +40,8 @@ const toInstanceDto = (f: NewInstance) => ({
   host: f.host,
   instanceName: f.instance,
   port: Number(f.port),
-  username: f.username,
+  userName: f.userName,
   secretRef: f.password,
-  ssimode: "require",
-  isEnabled: true,
-  slackEnabled: false,
-  slackChannel: undefined,
-  slackMention: undefined,
-  slackWebhookUrl: undefined
 });
 
 export default function NewInstanceModal({
@@ -63,7 +57,7 @@ export default function NewInstanceModal({
     host: initialValue?.host ?? "",
     instance: initialValue?.instance ?? "",
     port: initialValue?.port ?? "",
-    username: initialValue?.username ?? "",
+    userName: initialValue?.userName ?? "",
     password: initialValue?.password ?? "",
   });
 
@@ -80,7 +74,7 @@ export default function NewInstanceModal({
         host: initialValue.host ?? "",
         instance: initialValue.instance ?? "",
         port: initialValue.port ?? "",
-        username: initialValue.username ?? "",
+        userName: initialValue.userName ?? "",
         password: initialValue.password ?? "",
       });
     }
@@ -106,7 +100,7 @@ export default function NewInstanceModal({
     if (!form.instance.trim()) next.instance = requiredMsg("instance");
     if (!form.port || Number(form.port) < 1 || Number(form.port) > 65535)
       next.port = "1~65535 사이 정수를 입력하세요.";
-    if (!form.username.trim()) next.username = requiredMsg("username");
+    if (!form.userName.trim()) next.userName = requiredMsg("userName");
     // 편집 모드에서는 비밀번호가 비어있어도 OK (변경하지 않는 경우)
     if (mode === 'create' && !form.password) {
       next.password = requiredMsg("password");
@@ -116,7 +110,7 @@ export default function NewInstanceModal({
   };
 
   const connectionString = useMemo(() => {
-    const user = encodeURIComponent(form.username);
+    const user = encodeURIComponent(form.userName);
     const host = form.host || "";
     return `postgresql://${user}:@${host}:${form.port}`;
   }, [form]);
@@ -145,7 +139,7 @@ export default function NewInstanceModal({
             host: form.host,
             instanceName: form.instance,
             port: Number(form.port),
-            username: form.username,
+            userName: form.userName,
             ssimode: "require",
             isEnabled: true,
           };
@@ -155,6 +149,7 @@ export default function NewInstanceModal({
           }
           const res = await apiClient.put(`/instances/${instanceId}`, payload);
           alert(`수정 성공!`);
+        
         } else {
           // 생성 모드: POST 요청
           const payload = toInstanceDto(form);
@@ -250,11 +245,11 @@ export default function NewInstanceModal({
                 />
               </Field>
 
-              <Field label="Username" error={errors.username}>
+              <Field label="Username" error={errors.userName}>
                 <input
-                  className={inputCls(!!errors.username)}
-                  value={form.username}
-                  onChange={(e) => handleChange("username", e.target.value)}
+                  className={inputCls(!!errors.userName)}
+                  value={form.userName}
+                  onChange={(e) => handleChange("userName", e.target.value)}
                 />
               </Field>
 
@@ -265,7 +260,7 @@ export default function NewInstanceModal({
                 <input
                   type="password"
                   className={inputCls(!!errors.password)}
-                  placeholder={mode === 'edit' ? '변경하지 않으려면 비워두세요' : ''}
+                  placeholder={mode == 'edit'? "":""}
                   value={form.password}
                   onChange={(e) => handleChange("password", e.target.value)}
                 />

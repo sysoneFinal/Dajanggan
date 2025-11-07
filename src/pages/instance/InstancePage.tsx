@@ -20,12 +20,12 @@ export interface InstanceRow {
   instanceName: string;
   host: string;
   port: number;
-  isEnabled: boolean;
+  status: string;
   version: string;
   createdAt: string;
   updatedAt: string;
   uptimeMs: number;    
-  username?: string;  
+  userName?: string;  
   databases?: DatabaseSummary[];
 }
 
@@ -34,12 +34,11 @@ type InstanceDto = {
     instanceName?: string;
     host: string;
     port: number;
-    isEnabled?: boolean;
     status?: "active" | "inactive";  
     version?: string;
     updatedAt?: string;
     createdAt: string;
-    username?: string;   
+    userName?: string;   
     databases?: Array<{
         name: string;
         isEnabled: boolean;
@@ -117,13 +116,12 @@ export const mapInstance = (i: InstanceDto): InstanceRow => {
     instanceName: i.instanceName ?? i.host ?? String(id ?? "-"),
     host: i.host,
     port: Number(i.port),
-    isEnabled: toBooleanStatus(i.isEnabled ?? i.status),
     version: i.version ?? "-",
+    status: i.status,
     uptimeMs: Date.now() - Date.parse(i.createdAt),
     updatedAt: i.updatedAt ?? i.createdAt ?? new Date().toISOString(),
-    createdAt: i.createdAt,
-    dbname: i.dbname,      
-    username: i.username,   
+    createdAt: i.createdAt,    
+    userName: i.userName,   
     databases: dbs,
   };
 };
@@ -256,7 +254,7 @@ const InstancePage: React.FC = () => {
       host: form.host,
       instanceName: form.instance,
       port: Number(form.port),
-      username: form.username,
+      userName: form.userName,
       sslmode: "require",
       isEnabled: true,
     };
@@ -276,7 +274,7 @@ const InstancePage: React.FC = () => {
     host: editTarget.host,
     instance: editTarget.instanceName,
     port: editTarget.port,
-    username: editTarget.username,
+    userName: editTarget.userName,
     password: "",
   } : undefined;
 
@@ -296,6 +294,7 @@ const InstancePage: React.FC = () => {
           <div>Instance</div>
           <div>Host</div>
           <div>Port</div>
+          <div>User Name</div>
           <div>Status</div>
           <div>Version</div>
           <div>가동시간</div>
@@ -308,12 +307,14 @@ const InstancePage: React.FC = () => {
               <div className="il-cell il-strong">{r.instanceName}</div>
               <div className="il-cell">{r.host}</div>
               <div className="il-cell">{r.port}</div>
-              <div className="il-cell">
-                <span className={`il-dot ${r.isEnabled ? "il-dot--indigo" : "il-dot--red"}`} />
+              <div className="il-cell">{r.userName}</div>
+              <div className="il-cell">{r.status}</div>
+              {/* <div className="il-cell">
+                <span className={`il-dot ${r.status ? "il-dot--indigo" : "il-dot--red"}`} />
                 <span className="il-status-label">
-                  {r.isEnabled ? "active" : "inactive"}
+                  {r.status ? "active" : "inactive"}
                 </span>
-              </div>
+              </div> */}
               <div className="il-cell">{r.version}</div>
               <div className="il-cell">{formatMs(r.uptimeMs)}</div>
               <div className="il-cell">{formatDateTime(r.updatedAt)}</div>
@@ -399,12 +400,11 @@ const InstancePage: React.FC = () => {
       </div>
 
       {/* 인스턴스 등록 모달 */}
-      <NewInstanceModal
+     <NewInstanceModal
         open={openNewInstance}
-        onClose={() => setOpenNewInstance(false)}
-        onSubmit={async (payload) => {
-          console.log("새 인스턴스 등록:", payload);
-          await fetchInstances();
+        onClose={() => {
+          setOpenNewInstance(false);
+          fetchInstances(); 
         }}
       />
 
