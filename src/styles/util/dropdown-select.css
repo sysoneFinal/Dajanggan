@@ -7,12 +7,18 @@
   width: 250px; /*고정 값*/
 }
 
+/* 그림자 제거 옵션 */
+.dropdown-select.no-shadow .dropdown-label {
+  box-shadow: none !important;
+  border: 1px solid rgba(59, 130, 246, 0.4); /* 선택 시 테두리만 살짝 */
+}
+
 /* === 라벨 버튼 === */
 .dropdown-label {
   background: rgba(255, 255, 255, 0.45);
-  border: 1px solid rgba(255, 255, 255, 0.7);
-  padding: 0.8rem 1rem;
-  border-radius: 1rem;
+  border: 0.0625rem solid rgba(255, 255, 255, 0.7);
+  padding: 0.625rem 0.875rem;;
+  border-radius: 0.75rem;
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -21,7 +27,7 @@
   width: 100%;
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08);
   color: #111827;
-  font-size: 1.2rem;
+  font-size: 0.9375rem;
   backdrop-filter: blur(10px);
 }
 
@@ -30,7 +36,7 @@
 }
 
 .arrow {
-  font-size: 1.1rem;
+  font-size: 0.9rem;
   transition: transform 0.2s ease;
   display: inline-flex;
   align-items: center;
@@ -52,7 +58,7 @@
   border: 1px solid rgba(0, 0, 0, 0.08);
   border-radius: 0.7rem;
   box-shadow: 0 10px 25px rgba(0, 0, 0, 0.08);
-  padding: 0.6rem;
+  padding: 0.4rem;
   z-index: 10;
   max-height: 220px;
   overflow-y: auto;
@@ -72,7 +78,7 @@
   display: flex;
   align-items: center;
   gap: 0.8rem;
-  padding: 0.55rem 0.6rem;
+  padding: 0.5rem 0.55rem;
   border-radius: 0.5rem;
   cursor: pointer;
   transition: background 0.15s ease, transform 0.1s ease;
@@ -115,7 +121,7 @@
 .option-label {
   flex: 1;
   color: #111827;
-  font-size: 1.1rem;
+  font-size: 1rem;
   line-height: 1.4;
 }
 /* === 태그 === */
@@ -129,10 +135,9 @@
 }
 .tag-chip {
   background: rgba(99, 102, 241, 0.12); /* 보라 hover색 기반 */
-  color: #4f46e5;
-  font-weight: 600;
-  padding: 0.25rem 0.6rem;
-  border-radius: 0.6rem;
+  color: #1e1e1e;
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.5rem;
   display: inline-flex;
   align-items: center;
   line-height: 1.3;
@@ -160,3 +165,4 @@
 .dropdown-menu.multi::-webkit-scrollbar-thumb:hover {
   background: rgba(0, 0, 0, 0.25);
 }
+
