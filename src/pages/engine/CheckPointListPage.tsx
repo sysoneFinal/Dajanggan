@@ -14,7 +14,6 @@ import CsvButton from "../../components/util/CsvButton";
 import MultiSelectDropdown from "../../components/util/MultiSelectDropdown";
 import "/src/styles/engine/checkpointlist.css";
 
-// 데이터 타입 정의
 interface CheckpointData {
     id: string;
     timestamp: string;
@@ -23,11 +22,15 @@ interface CheckpointData {
     syncTime: number;
     totalTime: number;
     walGenerated: string;
-    bufferCount: number;
+    walFilesAdded: number;
+    walFilesRemoved: number;
+    checkpointDistance: string;
+    buffersWritten: number;
+    buffersBackend: number;
+    avgBuffersPerSec: number;
     status: "정상" | "주의" | "위험";
 }
 
-// 임시 목 데이터
 const mockData: CheckpointData[] = [
     {
         id: "1",
@@ -37,7 +40,12 @@ const mockData: CheckpointData[] = [
         syncTime: 2.8,
         totalTime: 3.0,
         walGenerated: "1.3GB",
-        bufferCount: 8541,
+        walFilesAdded: 5,
+        walFilesRemoved: 3,
+        checkpointDistance: "5분",
+        buffersWritten: 8541,
+        buffersBackend: 142,
+        avgBuffersPerSec: 2847,
         status: "정상",
     },
     {
@@ -48,7 +56,12 @@ const mockData: CheckpointData[] = [
         syncTime: 2.8,
         totalTime: 3.0,
         walGenerated: "1.3GB",
-        bufferCount: 6541,
+        walFilesAdded: 4,
+        walFilesRemoved: 2,
+        checkpointDistance: "3분",
+        buffersWritten: 6541,
+        buffersBackend: 98,
+        avgBuffersPerSec: 2180,
         status: "주의",
     },
     {
@@ -59,7 +72,12 @@ const mockData: CheckpointData[] = [
         syncTime: 1.6,
         totalTime: 2.0,
         walGenerated: "2.3GB",
-        bufferCount: 2351,
+        walFilesAdded: 8,
+        walFilesRemoved: 5,
+        checkpointDistance: "5분",
+        buffersWritten: 2351,
+        buffersBackend: 56,
+        avgBuffersPerSec: 1176,
         status: "정상",
     },
     {
@@ -70,7 +88,12 @@ const mockData: CheckpointData[] = [
         syncTime: 1.2,
         totalTime: 2.0,
         walGenerated: "2.3GB",
-        bufferCount: 8541,
+        walFilesAdded: 7,
+        walFilesRemoved: 4,
+        checkpointDistance: "2분",
+        buffersWritten: 8541,
+        buffersBackend: 234,
+        avgBuffersPerSec: 4270,
         status: "위험",
     },
     {
@@ -81,63 +104,13 @@ const mockData: CheckpointData[] = [
         syncTime: 2.3,
         totalTime: 4.4,
         walGenerated: "1.5GB",
-        bufferCount: 7541,
+        walFilesAdded: 6,
+        walFilesRemoved: 3,
+        checkpointDistance: "5분",
+        buffersWritten: 7541,
+        buffersBackend: 89,
+        avgBuffersPerSec: 1714,
         status: "정상",
-    },
-    {
-        id: "6",
-        timestamp: "2025-10-23 17:20:45",
-        type: "requested",
-        writeTime: 3.4,
-        syncTime: 2.8,
-        totalTime: 6.2,
-        walGenerated: "1.8GB",
-        bufferCount: 9541,
-        status: "주의",
-    },
-    {
-        id: "7",
-        timestamp: "2025-10-23 18:15:25",
-        type: "timed",
-        writeTime: 1.8,
-        syncTime: 1.9,
-        totalTime: 3.7,
-        walGenerated: "2.1GB",
-        bufferCount: 5351,
-        status: "정상",
-    },
-    {
-        id: "8",
-        timestamp: "2025-10-23 19:31:25",
-        type: "requested",
-        writeTime: 5.4,
-        syncTime: 2.2,
-        totalTime: 7.6,
-        walGenerated: "3.3GB",
-        bufferCount: 11541,
-        status: "위험",
-    },
-    {
-        id: "9",
-        timestamp: "2025-10-23 20:40:45",
-        type: "timed",
-        writeTime: 2.2,
-        syncTime: 2.5,
-        totalTime: 4.7,
-        walGenerated: "1.4GB",
-        bufferCount: 6541,
-        status: "정상",
-    },
-    {
-        id: "10",
-        timestamp: "2025-10-23 21:20:45",
-        type: "requested",
-        writeTime: 2.9,
-        syncTime: 3.1,
-        totalTime: 6.0,
-        walGenerated: "1.9GB",
-        bufferCount: 8241,
-        status: "주의",
     },
 ];
 
@@ -147,7 +120,7 @@ export default function CheckPointListPage() {
     const [currentPage, setCurrentPage] = useState(1);
     const pageSize = 10;
 
-    // 컬럼 정의
+    // 컬럼 정의 - 새 컬럼 추가
     const columns = useMemo<ColumnDef<CheckpointData>[]>(
         () => [
             {
@@ -166,6 +139,11 @@ export default function CheckPointListPage() {
                         </span>
                     );
                 },
+            },
+            {
+                accessorKey: "checkpointDistance",
+                header: "간격",
+                cell: (info) => info.getValue(),
             },
             {
                 accessorKey: "writeTime",
@@ -188,8 +166,28 @@ export default function CheckPointListPage() {
                 cell: (info) => info.getValue(),
             },
             {
-                accessorKey: "bufferCount",
-                header: "Buffer(개)",
+                accessorKey: "walFilesAdded",
+                header: "WAL 추가",
+                cell: (info) => info.getValue(),
+            },
+            {
+                accessorKey: "walFilesRemoved",
+                header: "WAL 제거",
+                cell: (info) => info.getValue(),
+            },
+            {
+                accessorKey: "buffersWritten",
+                header: "버퍼 쓰기(개)",
+                cell: (info) => (info.getValue() as number).toLocaleString(),
+            },
+            {
+                accessorKey: "buffersBackend",
+                header: "Backend(개)",
+                cell: (info) => (info.getValue() as number).toLocaleString(),
+            },
+            {
+                accessorKey: "avgBuffersPerSec",
+                header: "평균(개/초)",
                 cell: (info) => (info.getValue() as number).toLocaleString(),
             },
             {
@@ -243,15 +241,24 @@ export default function CheckPointListPage() {
 
     // CSV 내보내기 함수
     const handleExportCSV = () => {
-        const headers = ["시간", "유형", "Write(초)", "Sync(초)", "총 시간(초)", "WAL 생성", "Buffer(개)", "상태"];
+        const headers = [
+            "시간", "유형", "간격", "Write(초)", "Sync(초)", "총 시간(초)",
+            "WAL 생성", "WAL 추가", "WAL 제거",
+            "버퍼 쓰기(개)", "Backend(개)", "평균(개/초)", "상태"
+        ];
         const csvData = data.map((row) => [
             row.timestamp,
             row.type,
+            row.checkpointDistance,
             row.writeTime,
             row.syncTime,
             row.totalTime,
             row.walGenerated,
-            row.bufferCount,
+            row.walFilesAdded,
+            row.walFilesRemoved,
+            row.buffersWritten,
+            row.buffersBackend,
+            row.avgBuffersPerSec,
             row.status,
         ]);
 
