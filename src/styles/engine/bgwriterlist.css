@@ -39,23 +39,38 @@
     color: #374151;
 }
 
-/* 테이블 */
+/* 테이블 - 좌우 반응형 */
 .bgwriter-list-page__table {
     background: rgba(255, 255, 255, 0.6);
     border-radius: 0.7rem;
     border: 1px solid rgba(255, 255, 255, 0.7);
     box-shadow: 0 0.6rem 1.8rem rgba(0, 0, 0, 0.08);
     overflow-x: auto;
+    width: 100%;
+    -webkit-overflow-scrolling: touch;
 }
 
+/* 10개 컬럼 - 화면에 맞춰 늘어나도록 설정 */
 .bg-table-header,
 .bg-table-row {
     display: grid;
-    grid-template-columns: repeat(7, minmax(8rem, 1fr));
+    grid-template-columns:
+        minmax(160px, 1.8fr)  /* 시간 */
+        minmax(120px, 1.4fr)  /* 할당 버퍼 */
+        minmax(100px, 1.2fr)  /* Clean */
+        minmax(110px, 1.3fr)  /* Backend */
+        minmax(120px, 1.4fr)  /* Checkpoint */
+        minmax(100px, 1.2fr)  /* Fsync */
+        minmax(120px, 1.4fr)  /* 상한 도달 */
+        minmax(120px, 1.4fr)  /* 평균 사이클 */
+        minmax(140px, 1.8fr)  /* Backend 비율 */
+        minmax(80px, 1fr);    /* 상태 */
+    min-width: 1200px;
     text-align: center;
-    padding: 1.1rem;
+    padding: 1rem 0.8rem;
     align-items: center;
-    font-size: 1rem;
+    font-size: 0.9rem;
+    gap: 0.5rem;
 }
 
 .bg-table-header {
@@ -69,8 +84,16 @@
     color: #2e2f33;
 }
 
+.bg-table-row:hover {
+    background: rgba(123, 97, 255, 0.05);
+}
+
 .bg-table-row:nth-child(even) {
     background: rgba(255, 255, 255, 0.5);
+}
+
+.bg-table-row:nth-child(even):hover {
+    background: rgba(123, 97, 255, 0.08);
 }
 
 .bg-table-empty {
@@ -140,7 +163,19 @@
 }
 
 /* 반응형 */
+@media (max-width: 1600px) {
+    .bg-table-header,
+    .bg-table-row {
+        font-size: 0.85rem;
+        padding: 0.9rem 0.7rem;
+    }
+}
+
 @media (max-width: 768px) {
+    .bgwriter-list-page {
+        padding: 1rem;
+    }
+
     .summary-card h4 {
         font-size: 0.8rem;
     }
@@ -149,7 +184,8 @@
     }
     .bg-table-header,
     .bg-table-row {
-        grid-template-columns: repeat(7, minmax(6rem, 1fr));
-        font-size: 0.8rem;
+        font-size: 0.75rem;
+        padding: 0.8rem 0.5rem;
+        min-width: 1000px;
     }
 }

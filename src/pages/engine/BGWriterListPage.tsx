@@ -14,78 +14,97 @@ import CsvButton from "../../components/util/CsvButton";
 import MultiSelectDropdown from "../../components/util/MultiSelectDropdown";
 import "/src/styles/engine/bgwriterlist.css";
 
-// 데이터 타입 정의
 interface BGWriterData {
     id: string;
     timestamp: string;
+    buffersAlloc: number;
     cleanRate: number;
     backendRate: number;
+    checkpointBuffers: number;
     backendRatio: number;
     fsyncRate: number;
     maxWrittenRate: number;
+    avgCycleTime: number;
     status: "정상" | "주의" | "위험";
 }
 
-// 임시 목 데이터
 const mockData: BGWriterData[] = [
     {
         id: "1",
         timestamp: "2025-10-23 14:05:30",
+        buffersAlloc: 8542,
         cleanRate: 142,
         backendRate: 28,
+        checkpointBuffers: 3420,
         backendRatio: 16.5,
         fsyncRate: 12,
         maxWrittenRate: 0,
+        avgCycleTime: 200,
         status: "정상",
     },
     {
         id: "2",
         timestamp: "2025-10-23 14:05:30",
+        buffersAlloc: 9240,
         cleanRate: 142,
         backendRate: 28,
+        checkpointBuffers: 4100,
         backendRatio: 16.5,
         fsyncRate: 12,
         maxWrittenRate: 0,
+        avgCycleTime: 195,
         status: "정상",
     },
     {
         id: "3",
         timestamp: "2025-10-23 14:05:30",
+        buffersAlloc: 7890,
         cleanRate: 142,
         backendRate: 28,
+        checkpointBuffers: 2980,
         backendRatio: 16.5,
         fsyncRate: 12,
         maxWrittenRate: 0,
+        avgCycleTime: 210,
         status: "정상",
     },
     {
         id: "4",
         timestamp: "2025-10-23 14:05:30",
+        buffersAlloc: 11450,
         cleanRate: 142,
         backendRate: 28,
+        checkpointBuffers: 5240,
         backendRatio: 34.7,
         fsyncRate: 12,
         maxWrittenRate: 0,
+        avgCycleTime: 350,
         status: "주의",
     },
     {
         id: "5",
         timestamp: "2025-10-23 14:05:30",
+        buffersAlloc: 8120,
         cleanRate: 142,
         backendRate: 28,
+        checkpointBuffers: 3150,
         backendRatio: 16.5,
         fsyncRate: 12,
         maxWrittenRate: 0,
+        avgCycleTime: 185,
         status: "정상",
     },
     {
         id: "6",
         timestamp: "2025-10-23 14:05:30",
+        buffersAlloc: 15680,
         cleanRate: 142,
         backendRate: 28,
+        checkpointBuffers: 7890,
         backendRatio: 60.7,
         fsyncRate: 12,
         maxWrittenRate: 0,
+        avgCycleTime: 580,
         status: "위험",
     },
 ];
@@ -104,13 +123,17 @@ export default function BGWriterListPage() {
         return "#7B61FF"; // 녹색 (정상)
     };
 
-    // 컬럼 정의
     const columns = useMemo<ColumnDef<BGWriterData>[]>(
         () => [
             {
                 accessorKey: "timestamp",
                 header: "시간",
                 cell: (info) => info.getValue(),
+            },
+            {
+                accessorKey: "buffersAlloc",
+                header: "할당 버퍼(개)",
+                cell: (info) => (info.getValue() as number).toLocaleString(),
             },
             {
                 accessorKey: "cleanRate",
@@ -122,7 +145,11 @@ export default function BGWriterListPage() {
                 header: "Backend(개/s)",
                 cell: (info) => info.getValue(),
             },
-
+            {
+                accessorKey: "checkpointBuffers",
+                header: "Checkpoint(개)",
+                cell: (info) => (info.getValue() as number).toLocaleString(),
+            },
             {
                 accessorKey: "fsyncRate",
                 header: "Fsync(회/s)",
@@ -133,7 +160,11 @@ export default function BGWriterListPage() {
                 header: "상한 도달(회/분)",
                 cell: (info) => info.getValue(),
             },
-
+            {
+                accessorKey: "avgCycleTime",
+                header: "평균 사이클(ms)",
+                cell: (info) => info.getValue(),
+            },
             {
                 accessorKey: "backendRatio",
                 header: "Backend 비율(%)",
@@ -158,7 +189,6 @@ export default function BGWriterListPage() {
                     );
                 },
             },
-
             {
                 accessorKey: "status",
                 header: "상태",
@@ -210,14 +240,21 @@ export default function BGWriterListPage() {
 
     // CSV 내보내기 함수
     const handleExportCSV = () => {
-        const headers = ["시간", "Clean(개/s)", "Backend(개/s)", "Backend 비율(%)", "Fsync(회/s)", "상한 도달(회/분)", "상태"];
+        const headers = [
+            "시간", "할당 버퍼(개)", "Clean(개/s)", "Backend(개/s)",
+            "Checkpoint(개)", "Backend 비율(%)", "Fsync(회/s)",
+            "상한 도달(회/분)", "평균 사이클(ms)", "상태"
+        ];
         const csvData = data.map((row) => [
             row.timestamp,
+            row.buffersAlloc,
             row.cleanRate,
             row.backendRate,
+            row.checkpointBuffers,
             row.backendRatio,
             row.fsyncRate,
             row.maxWrittenRate,
+            row.avgCycleTime,
             row.status,
         ]);
 
