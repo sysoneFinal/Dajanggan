@@ -14,108 +14,141 @@ import CsvButton from "../../components/util/CsvButton";
 import MultiSelectDropdown from "../../components/util/MultiSelectDropdown";
 import "../../styles/system/memorylist.css";
 
-// 데이터 타입 정의
+// 전체 메모리 요약 정보 타입
+interface MemorySummary {
+    totalSharedBuffers: string;
+    usedSharedBuffers: string;
+    freeSharedBuffers: string;
+    dirtyBuffers: string;
+    dirtyPercent: number;
+    overallHitRatio: number;
+}
+
+// 데이터 타입 정의 - 컬럼 추가
 interface MemoryData {
     id: string;
     objectName: string;
-    type: string;
+    type: "table" | "index";
+    sizeMB: number;
     bufferCount: number;
     usagePercent: number;
     dirtyCount: number;
     dirtyPercent: number;
+    pinnedBuffers: number;
     hitPercent: number;
+    accessCount: number;
+    evictionCount: number;
+    avgAccessTime: number;
     status: "정상" | "주의" | "위험";
 }
 
-// 임시 목 데이터
+// 전체 메모리 요약 정보 (페이지 상단 표시용)
+const memorySummary: MemorySummary = {
+    totalSharedBuffers: "16 GB",
+    usedSharedBuffers: "12.4 GB",
+    freeSharedBuffers: "3.6 GB",
+    dirtyBuffers: "1.2 GB",
+    dirtyPercent: 9.7,
+    overallHitRatio: 97.8,
+};
+
+// 임시 목 데이터 - 새 컬럼 포함
 const mockData: MemoryData[] = [
     {
         id: "1",
         objectName: "orders",
         type: "table",
+        sizeMB: 2458,
         bufferCount: 12450,
         usagePercent: 15.2,
         dirtyCount: 845,
         dirtyPercent: 6.8,
+        pinnedBuffers: 24,
         hitPercent: 98.6,
+        accessCount: 245600,
+        evictionCount: 89,
+        avgAccessTime: 0.8,
         status: "정상",
     },
     {
         id: "2",
         objectName: "idx_orders_user_id",
         type: "index",
+        sizeMB: 256,
         bufferCount: 4820,
         usagePercent: 5.9,
         dirtyCount: 124,
         dirtyPercent: 2.6,
+        pinnedBuffers: 8,
         hitPercent: 99.2,
+        accessCount: 124500,
+        evictionCount: 23,
+        avgAccessTime: 0.5,
         status: "정상",
     },
     {
         id: "3",
         objectName: "users",
         type: "table",
+        sizeMB: 1842,
         bufferCount: 8540,
         usagePercent: 10.4,
         dirtyCount: 1240,
         dirtyPercent: 14.5,
+        pinnedBuffers: 18,
         hitPercent: 96.8,
+        accessCount: 189400,
+        evictionCount: 156,
+        avgAccessTime: 1.2,
         status: "주의",
     },
     {
         id: "4",
         objectName: "inventory",
         type: "table",
+        sizeMB: 3268,
         bufferCount: 15680,
         usagePercent: 19.1,
         dirtyCount: 3450,
         dirtyPercent: 22.0,
+        pinnedBuffers: 42,
         hitPercent: 94.2,
+        accessCount: 312400,
+        evictionCount: 345,
+        avgAccessTime: 2.1,
         status: "위험",
     },
     {
         id: "5",
         objectName: "idx_products_name",
         type: "index",
+        sizeMB: 89,
         bufferCount: 3240,
         usagePercent: 3.9,
         dirtyCount: 89,
         dirtyPercent: 2.7,
+        pinnedBuffers: 5,
         hitPercent: 97.5,
+        accessCount: 45600,
+        evictionCount: 34,
+        avgAccessTime: 0.7,
         status: "정상",
     },
     {
         id: "6",
         objectName: "cart_items",
         type: "table",
+        sizeMB: 456,
         bufferCount: 5840,
         usagePercent: 7.1,
         dirtyCount: 980,
         dirtyPercent: 16.6,
+        pinnedBuffers: 12,
         hitPercent: 95.6,
+        accessCount: 124800,
+        evictionCount: 178,
+        avgAccessTime: 1.5,
         status: "주의",
-    },
-    {
-        id: "7",
-        objectName: "reviews",
-        type: "table",
-        bufferCount: 6920,
-        usagePercent: 8.4,
-        dirtyCount: 456,
-        dirtyPercent: 6.6,
-        hitPercent: 98.1,
-        status: "정상",
-    },
-    {
-        id: "8",
-        objectName: "idx_inventory_sku",
-        type: "index",
-        bufferCount: 2840,
-        usagePercent: 3.5,
-        dirtyCount: 45,
-        dirtyPercent: 1.6,
-        hitPercent: 99.6,
-        status: "정상",
     },
 ];
 
@@ -124,24 +157,6 @@ export default function MemoryListPage() {
     const [sorting, setSorting] = useState<SortingState>([]);
     const [currentPage, setCurrentPage] = useState(1);
     const pageSize = 10;
-
-    // 프로그레스 바 색상 결정 함수
-    const getUsageColor = (percent: number) => {
-        if (percent >= 15) return "#FFD66B"; // 주황
-        return "#7B61FF"; // 녹색
-    };
-
-    const getDirtyColor = (percent: number) => {
-        if (percent >= 20) return "#FF928A"; // 빨강
-        if (percent >= 10) return "#FFD66B"; // 주황
-        return "#7B61FF"; // 녹색
-    };
-
-    const getHitColor = (percent: number) => {
-        if (percent >= 98) return "#7B61FF"; // 녹색
-        if (percent >= 95) return "#FFD66B"; // 주황
-        return "#FF928A"; // 빨강
-    };
 
     const columns = useMemo<ColumnDef<MemoryData>[]>(
         () => [
@@ -153,7 +168,15 @@ export default function MemoryListPage() {
             {
                 accessorKey: "type",
                 header: "타입",
-                cell: (info) => info.getValue(),
+                cell: (info) => {
+                    const value = info.getValue() as string;
+                    return <span className="badge badge-type">{value}</span>;
+                },
+            },
+            {
+                accessorKey: "sizeMB",
+                header: "크기(MB)",
+                cell: (info) => (info.getValue() as number).toLocaleString(),
             },
             {
                 accessorKey: "bufferCount",
@@ -165,27 +188,6 @@ export default function MemoryListPage() {
                 header: "점유율(%)",
                 cell: (info) => (info.getValue() as number).toLocaleString(),
             },
-            // {
-            //         const value = info.getValue() as number;
-            //         const color = getUsageColor(value);
-            //         return (
-            //             <div className="progress-cell">
-            //                 <div className="progress-bar-wrapper">
-            //                     <div className="progress-bar-track">
-            //                         <div
-            //                             className="progress-bar-fill"
-            //                             style={{
-            //                                 width: `${value}%`,
-            //                                 backgroundColor: color,
-            //                             }}
-            //                         />
-            //                     </div>
-            //                 </div>
-            //                 <span className="progress-value">{value}%</span>
-            //             </div>
-            //         );
-            //     },
-            // },
             {
                 accessorKey: "dirtyCount",
                 header: "Dirty(개)",
@@ -195,49 +197,31 @@ export default function MemoryListPage() {
                 accessorKey: "dirtyPercent",
                 header: "Dirty 비율(%)",
                 cell: (info) => (info.getValue() as number).toLocaleString(),
-                //     const value = info.getValue() as number;
-                //     const color = getDirtyColor(value);
-                //     return (
-                //         <div className="progress-cell">
-                //             <div className="progress-bar-wrapper">
-                //                 <div className="progress-bar-track">
-                //                     <div
-                //                         className="progress-bar-fill"
-                //                         style={{
-                //                             width: `${value}%`,
-                //                             backgroundColor: color,
-                //                         }}
-                //                     />
-                //                 </div>
-                //             </div>
-                //             <span className="progress-value">{value}%</span>
-                //         </div>
-                //     );
-                // },
+            },
+            {
+                accessorKey: "pinnedBuffers",
+                header: "고정 버퍼",
+                cell: (info) => (info.getValue() as number).toLocaleString(),
             },
             {
                 accessorKey: "hitPercent",
                 header: "Hit 비율(%)",
                 cell: (info) => (info.getValue() as number).toLocaleString(),
-                //     const value = info.getValue() as number;
-                //     const color = getHitColor(value);
-                //     return (
-                //         <div className="progress-cell">
-                //             <div className="progress-bar-wrapper">
-                //                 <div className="progress-bar-track">
-                //                     <div
-                //                         className="progress-bar-fill"
-                //                         style={{
-                //                             width: `${value}%`,
-                //                             backgroundColor: color,
-                //                         }}
-                //                     />
-                //                 </div>
-                //             </div>
-                //             <span className="progress-value">{value}%</span>
-                //         </div>
-                //     );
-                // },
+            },
+            {
+                accessorKey: "accessCount",
+                header: "접근 횟수",
+                cell: (info) => (info.getValue() as number).toLocaleString(),
+            },
+            {
+                accessorKey: "evictionCount",
+                header: "Eviction",
+                cell: (info) => (info.getValue() as number).toLocaleString(),
+            },
+            {
+                accessorKey: "avgAccessTime",
+                header: "평균 시간(ms)",
+                cell: (info) => info.getValue(),
             },
             {
                 accessorKey: "status",
@@ -290,23 +274,23 @@ export default function MemoryListPage() {
     // CSV 내보내기 함수
     const handleExportCSV = () => {
         const headers = [
-            "객체명",
-            "타입",
-            "버퍼(개)",
-            "점유율(%)",
-            "Dirty(개)",
-            "Dirty 비율(%)",
-            "Hit 비율(%)",
-            "상태",
+            "객체명", "타입", "크기(MB)", "버퍼(개)", "점유율(%)",
+            "Dirty(개)", "Dirty 비율(%)", "고정 버퍼",
+            "Hit 비율(%)", "접근 횟수", "Eviction", "평균 시간(ms)", "상태",
         ];
         const csvData = data.map((row) => [
             row.objectName,
             row.type,
+            row.sizeMB,
             row.bufferCount,
             row.usagePercent,
             row.dirtyCount,
             row.dirtyPercent,
+            row.pinnedBuffers,
             row.hitPercent,
+            row.accessCount,
+            row.evictionCount,
+            row.avgAccessTime,
             row.status,
         ]);
 

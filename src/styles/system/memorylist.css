@@ -23,23 +23,41 @@
     min-width: 200px;
 }
 
-/* 테이블 */
+/* 테이블 - 좌우 반응형 */
 .memory-list-page__table {
     background: rgba(255, 255, 255, 0.6);
     border-radius: 0.7rem;
     border: 1px solid rgba(255, 255, 255, 0.7);
     box-shadow: 0 0.6rem 1.8rem rgba(0, 0, 0, 0.08);
     overflow-x: auto;
+    width: 100%;
+    -webkit-overflow-scrolling: touch;
 }
 
+/* 13개 컬럼 - 화면에 맞춰 늘어나도록 설정 */
 .memory-table-header,
 .memory-table-row {
     display: grid;
-    grid-template-columns: repeat(8, minmax(8rem, 1fr));
+    grid-template-columns:
+        minmax(150px, 1.8fr)  /* 객체명 */
+        minmax(90px, 1fr)     /* 타입 */
+        minmax(100px, 1.2fr)  /* 크기(MB) */
+        minmax(100px, 1.2fr)  /* 버퍼(개) */
+        minmax(100px, 1.2fr)  /* 점유율(%) */
+        minmax(100px, 1.2fr)  /* Dirty(개) */
+        minmax(110px, 1.3fr)  /* Dirty 비율(%) */
+        minmax(100px, 1.2fr)  /* 고정 버퍼 */
+        minmax(100px, 1.2fr)  /* Hit 비율(%) */
+        minmax(110px, 1.3fr)  /* 접근 횟수 */
+        minmax(100px, 1.2fr)  /* Eviction */
+        minmax(110px, 1.3fr)  /* 평균 시간 */
+        minmax(80px, 1fr);    /* 상태 */
+    min-width: 1450px;
     text-align: center;
-    padding: 1.1rem;
+    padding: 1rem 0.8rem;
     align-items: center;
-    font-size: 1rem;
+    font-size: 0.9rem;
+    gap: 0.5rem;
 }
 
 .memory-table-header {
@@ -53,8 +71,16 @@
     color: #2e2f33;
 }
 
+.memory-table-row:hover {
+    background: rgba(123, 97, 255, 0.05);
+}
+
 .memory-table-row:nth-child(even) {
     background: rgba(255, 255, 255, 0.5);
+}
+
+.memory-table-row:nth-child(even):hover {
+    background: rgba(123, 97, 255, 0.08);
 }
 
 .memory-table-empty {
@@ -80,40 +106,18 @@
     font-weight: 700;
 }
 
-/* 프로그레스 바 스타일 */
-.progress-cell {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    justify-content: center;
-}
-
-.progress-bar-wrapper {
-    flex: 1;
-    max-width: 150px;
-}
-
-.progress-bar-track {
-    width: 100%;
-    height: 8px;
-    background-color: #E5E7EB;
+/* 배지 스타일 */
+.badge {
+    padding: 4px 12px;
     border-radius: 4px;
-    overflow: hidden;
-    position: relative;
-}
-
-.progress-bar-fill {
-    height: 100%;
-    border-radius: 4px;
-    transition: width 0.3s ease, background-color 0.3s ease;
-}
-
-.progress-value {
-    font-size: 13px;
+    font-size: 12px;
     font-weight: 500;
-    color: #374151;
-    min-width: 45px;
-    text-align: right;
+    display: inline-block;
+}
+
+.badge-type {
+    background-color: #E0E7FF;
+    color: #3730A3;
 }
 
 /* 정렬 아이콘 */
@@ -124,14 +128,57 @@
 }
 
 /* 반응형 */
+@media (max-width: 1600px) {
+    .memory-summary {
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 1rem;
+    }
+
+    .memory-summary-card {
+        padding: 1.2rem;
+    }
+
+    .summary-value {
+        font-size: 1.5rem;
+    }
+
+    .memory-table-header,
+    .memory-table-row {
+        font-size: 0.85rem;
+        padding: 0.9rem 0.7rem;
+    }
+}
+
 @media (max-width: 768px) {
+    .memory-list-page {
+        padding: 1rem;
+    }
+
+    .memory-summary {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 0.8rem;
+    }
+
+    .memory-summary-card {
+        padding: 1rem;
+    }
+
+    .memory-summary-card h3 {
+        font-size: 0.8rem;
+    }
+
+    .summary-value {
+        font-size: 1.3rem;
+    }
+
     .memory-list-page__filters {
         flex-wrap: wrap;
     }
 
     .memory-table-header,
     .memory-table-row {
-        grid-template-columns: repeat(8, minmax(6rem, 1fr));
-        font-size: 0.8rem;
+        font-size: 0.75rem;
+        padding: 0.8rem 0.5rem;
+        min-width: 1250px;
     }
 }
