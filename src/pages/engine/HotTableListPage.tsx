@@ -11,21 +11,28 @@ import {
 } from "@tanstack/react-table";
 import Pagination from "../../components/util/Pagination";
 import CsvButton from "../../components/util/CsvButton";
-import MultiSelectDropdown from "../../components/util/MultiSelectDropdown";
 import "/src/styles/engine/hottablelist.css";
 
 // 데이터 타입 정의
 interface HotTableData {
     id: string;
     tableName: string;
+    schemaName: string;
     size: string;
-    selectRate: number;
-    updateRate: number;
-    deadTuple: number;
-    deadPercent: number;
+    seqScan: number;            // Sequential Scan 횟수
+    seqTupRead: number;         // Seq Scan으로 읽은 튜플
+    idxScan: number;            // Index Scan 횟수
+    idxTupFetch: number;        // Index로 가져온 튜플
+    nTupIns: number;            // Insert 횟수
+    nTupUpd: number;            // Update 횟수
+    nTupDel: number;            // Delete 횟수
+    nTupHotUpd: number;         // HOT Update 횟수
+    nLiveTup: number;           // Live 튜플 수
+    nDeadTup: number;           // Dead 튜플 수
+    lastVacuum: string;         // 마지막 VACUUM
+    lastAutoVacuum: string;     // 마지막 Auto VACUUM
+    bloatPercent: number;       // Bloat 비율
     cacheHit: number;
-    vacuumDelay: string;
-    seqScan: number;
     status: "정상" | "주의" | "위험";
 }
 
@@ -33,263 +40,108 @@ interface HotTableData {
 const mockData: HotTableData[] = [
     {
         id: "1",
-        tableName: "users",
-        size: "2.4GB",
-        selectRate: 1280,
-        updateRate: 85,
-        deadTuple: 12150,
-        deadPercent: 8.5,
+        tableName: "orders",
+        schemaName: "public",
+        size: "2.4 GB",
+        seqScan: 450,
+        seqTupRead: 1250000,
+        idxScan: 85400,
+        idxTupFetch: 425000,
+        nTupIns: 12500,
+        nTupUpd: 8400,
+        nTupDel: 340,
+        nTupHotUpd: 7850,
+        nLiveTup: 1240000,
+        nDeadTup: 3400,
+        lastVacuum: "2025-10-23 10:30",
+        lastAutoVacuum: "2025-10-23 13:45",
+        bloatPercent: 5.2,
         cacheHit: 98.5,
-        vacuumDelay: "2시간",
-        seqScan: 12.5,
         status: "정상",
     },
     {
         id: "2",
-        tableName: "orders",
-        size: "4.2GB",
-        selectRate: 2240,
-        updateRate: 45860,
-        deadTuple: 42150,
-        deadPercent: 15.5,
-        cacheHit: 94.2,
-        vacuumDelay: "5시간",
-        seqScan: 8.7,
+        tableName: "users",
+        schemaName: "public",
+        size: "1.8 GB",
+        seqScan: 120,
+        seqTupRead: 450000,
+        idxScan: 124500,
+        idxTupFetch: 248000,
+        nTupIns: 5600,
+        nTupUpd: 12400,
+        nTupDel: 120,
+        nTupHotUpd: 11200,
+        nLiveTup: 450000,
+        nDeadTup: 1200,
+        lastVacuum: "2025-10-23 09:15",
+        lastAutoVacuum: "2025-10-23 14:20",
+        bloatPercent: 3.8,
+        cacheHit: 99.1,
         status: "정상",
     },
     {
         id: "3",
         tableName: "products",
-        size: "1.4GB",
-        selectRate: 921,
-        updateRate: 25,
-        deadTuple: 42150,
-        deadPercent: 3.5,
-        cacheHit: 98.7,
-        vacuumDelay: "1시간",
-        seqScan: 48.5,
-        status: "위험",
+        schemaName: "public",
+        size: "856 MB",
+        seqScan: 2340,
+        seqTupRead: 3400000,
+        idxScan: 45600,
+        idxTupFetch: 124000,
+        nTupIns: 890,
+        nTupUpd: 3400,
+        nTupDel: 45,
+        nTupHotUpd: 2100,
+        nLiveTup: 85000,
+        nDeadTup: 8400,
+        lastVacuum: "2025-10-22 18:30",
+        lastAutoVacuum: "2025-10-23 08:15",
+        bloatPercent: 18.4,
+        cacheHit: 94.2,
+        status: "주의",
     },
     {
         id: "4",
-        tableName: "reviews",
-        size: "3.4GB",
-        selectRate: 1840,
-        updateRate: 420,
-        deadTuple: 4150,
-        deadPercent: 8.5,
-        cacheHit: 98.2,
-        vacuumDelay: "2시간",
-        seqScan: 4.5,
-        status: "정상",
+        tableName: "inventory",
+        schemaName: "public",
+        size: "3.2 GB",
+        seqScan: 89,
+        seqTupRead: 890000,
+        idxScan: 156000,
+        idxTupFetch: 564000,
+        nTupIns: 24500,
+        nTupUpd: 45600,
+        nTupDel: 890,
+        nTupHotUpd: 38400,
+        nLiveTup: 2340000,
+        nDeadTup: 45600,
+        lastVacuum: "2025-10-21 14:20",
+        lastAutoVacuum: "2025-10-22 22:45",
+        bloatPercent: 34.7,
+        cacheHit: 91.5,
+        status: "위험",
     },
     {
         id: "5",
-        tableName: "carts",
-        size: "4.4GB",
-        selectRate: 705,
-        updateRate: 78,
-        deadTuple: 62150,
-        deadPercent: 22.5,
-        cacheHit: 90.9,
-        vacuumDelay: "8시간",
-        seqScan: 18.5,
-        status: "정상",
-    },
-    {
-        id: "6",
         tableName: "cart_items",
-        size: "1.1GB",
-        selectRate: 2240,
-        updateRate: 850,
-        deadTuple: 7150,
-        deadPercent: 5.1,
-        cacheHit: 98.9,
-        vacuumDelay: "2시간",
-        seqScan: 4.5,
+        schemaName: "public",
+        size: "456 MB",
+        seqScan: 560,
+        seqTupRead: 1240000,
+        idxScan: 34500,
+        idxTupFetch: 89000,
+        nTupIns: 45600,
+        nTupUpd: 12400,
+        nTupDel: 8900,
+        nTupHotUpd: 9800,
+        nLiveTup: 124000,
+        nDeadTup: 2300,
+        lastVacuum: "2025-10-23 11:10",
+        lastAutoVacuum: "2025-10-23 14:05",
+        bloatPercent: 7.6,
+        cacheHit: 97.8,
         status: "정상",
-    },
-    {
-        id: "7",
-        tableName: "points",
-        size: "4.4GB",
-        selectRate: 1740,
-        updateRate: 850,
-        deadTuple: 16150,
-        deadPercent: 18.9,
-        cacheHit: 88.9,
-        vacuumDelay: "6시간",
-        seqScan: 22.5,
-        status: "주의",
-    },
-    {
-        id: "8",
-        tableName: "points",
-        size: "4.4GB",
-        selectRate: 1740,
-        updateRate: 850,
-        deadTuple: 16150,
-        deadPercent: 18.9,
-        cacheHit: 88.9,
-        vacuumDelay: "6시간",
-        seqScan: 22.5,
-        status: "주의",
-    },
-    {
-        id: "9",
-        tableName: "points",
-        size: "4.4GB",
-        selectRate: 1740,
-        updateRate: 850,
-        deadTuple: 16150,
-        deadPercent: 18.9,
-        cacheHit: 88.9,
-        vacuumDelay: "6시간",
-        seqScan: 22.5,
-        status: "주의",
-    },
-    {
-        id: "10",
-        tableName: "points",
-        size: "4.4GB",
-        selectRate: 1740,
-        updateRate: 850,
-        deadTuple: 16150,
-        deadPercent: 18.9,
-        cacheHit: 88.9,
-        vacuumDelay: "6시간",
-        seqScan: 22.5,
-        status: "주의",
-    },
-    {
-        id: "11",
-        tableName: "points",
-        size: "4.4GB",
-        selectRate: 1740,
-        updateRate: 850,
-        deadTuple: 16150,
-        deadPercent: 18.9,
-        cacheHit: 88.9,
-        vacuumDelay: "6시간",
-        seqScan: 22.5,
-        status: "주의",
-    },
-    {
-        id: "12",
-        tableName: "points",
-        size: "4.4GB",
-        selectRate: 1740,
-        updateRate: 850,
-        deadTuple: 16150,
-        deadPercent: 18.9,
-        cacheHit: 88.9,
-        vacuumDelay: "6시간",
-        seqScan: 22.5,
-        status: "주의",
-    },
-    {
-        id: "13",
-        tableName: "points",
-        size: "4.4GB",
-        selectRate: 1740,
-        updateRate: 850,
-        deadTuple: 16150,
-        deadPercent: 18.9,
-        cacheHit: 88.9,
-        vacuumDelay: "6시간",
-        seqScan: 22.5,
-        status: "주의",
-    },
-    {
-        id: "14",
-        tableName: "points",
-        size: "4.4GB",
-        selectRate: 1740,
-        updateRate: 850,
-        deadTuple: 16150,
-        deadPercent: 18.9,
-        cacheHit: 88.9,
-        vacuumDelay: "6시간",
-        seqScan: 22.5,
-        status: "주의",
-    },
-    {
-        id: "15",
-        tableName: "points",
-        size: "4.4GB",
-        selectRate: 1740,
-        updateRate: 850,
-        deadTuple: 16150,
-        deadPercent: 18.9,
-        cacheHit: 88.9,
-        vacuumDelay: "6시간",
-        seqScan: 22.5,
-        status: "주의",
-    },
-    {
-        id: "16",
-        tableName: "points",
-        size: "4.4GB",
-        selectRate: 1740,
-        updateRate: 850,
-        deadTuple: 16150,
-        deadPercent: 18.9,
-        cacheHit: 88.9,
-        vacuumDelay: "6시간",
-        seqScan: 22.5,
-        status: "주의",
-    },
-    {
-        id: "17",
-        tableName: "points",
-        size: "4.4GB",
-        selectRate: 1740,
-        updateRate: 850,
-        deadTuple: 16150,
-        deadPercent: 18.9,
-        cacheHit: 88.9,
-        vacuumDelay: "6시간",
-        seqScan: 22.5,
-        status: "주의",
-    },
-    {
-        id: "18",
-        tableName: "points",
-        size: "4.4GB",
-        selectRate: 1740,
-        updateRate: 850,
-        deadTuple: 16150,
-        deadPercent: 18.9,
-        cacheHit: 88.9,
-        vacuumDelay: "6시간",
-        seqScan: 22.5,
-        status: "주의",
-    },
-    {
-        id: "19",
-        tableName: "points",
-        size: "4.4GB",
-        selectRate: 1740,
-        updateRate: 850,
-        deadTuple: 16150,
-        deadPercent: 18.9,
-        cacheHit: 88.9,
-        vacuumDelay: "6시간",
-        seqScan: 22.5,
-        status: "주의",
-    },
-    {
-        id: "20",
-        tableName: "points",
-        size: "4.4GB",
-        selectRate: 1740,
-        updateRate: 850,
-        deadTuple: 16150,
-        deadPercent: 18.9,
-        cacheHit: 88.9,
-        vacuumDelay: "6시간",
-        seqScan: 22.5,
-        status: "주의",
     },
 ];
 
@@ -297,20 +149,29 @@ export default function HotTableListPage() {
     const [data] = useState<HotTableData[]>(mockData);
     const [sorting, setSorting] = useState<SortingState>([]);
     const [currentPage, setCurrentPage] = useState(1);
-    const pageSize = 15;
+    const [showHighBloatOnly, setShowHighBloatOnly] = useState(false);
+    const pageSize = 10;
 
-    // 프로그레스 바 색상 결정 함수
-    const getSeqScanColor = (percent: number) => {
-        if (percent >= 40) return "#FF928A"; // 빨강
-        if (percent >= 20) return "#FFD66B"; // 주황
-        return "#7B61FF"; // 녹색
-    };
+    // 필터링된 데이터
+    const filteredData = useMemo(() => {
+        let result = data;
+        if (showHighBloatOnly) {
+            result = result.filter((row) => row.bloatPercent >= 15);
+        }
+        return result;
+    }, [data, showHighBloatOnly]);
 
+    // 컬럼 정의
     const columns = useMemo<ColumnDef<HotTableData>[]>(
         () => [
             {
                 accessorKey: "tableName",
-                header: "테이블명",
+                header: "테이블 명",
+                cell: (info) => info.getValue(),
+            },
+            {
+                accessorKey: "schemaName",
+                header: "스키마",
                 cell: (info) => info.getValue(),
             },
             {
@@ -319,58 +180,65 @@ export default function HotTableListPage() {
                 cell: (info) => info.getValue(),
             },
             {
-                accessorKey: "selectRate",
-                header: "조회(건/s)",
+                accessorKey: "seqScan",
+                header: "Seq Scan",
                 cell: (info) => (info.getValue() as number).toLocaleString(),
             },
             {
-                accessorKey: "updateRate",
-                header: "변경(건/s)",
+                accessorKey: "idxScan",
+                header: "Idx Scan",
                 cell: (info) => (info.getValue() as number).toLocaleString(),
             },
             {
-                accessorKey: "deadTuple",
-                header: "Dead Tuple",
+                accessorKey: "nTupIns",
+                header: "Insert",
                 cell: (info) => (info.getValue() as number).toLocaleString(),
             },
             {
-                accessorKey: "deadPercent",
-                header: "Dead 비율(%)",
+                accessorKey: "nTupUpd",
+                header: "Update",
                 cell: (info) => (info.getValue() as number).toLocaleString(),
+            },
+            {
+                accessorKey: "nTupDel",
+                header: "Delete",
+                cell: (info) => (info.getValue() as number).toLocaleString(),
+            },
+            {
+                accessorKey: "nTupHotUpd",
+                header: "HOT Update",
+                cell: (info) => (info.getValue() as number).toLocaleString(),
+            },
+            {
+                accessorKey: "nLiveTup",
+                header: "Live 튜플",
+                cell: (info) => (info.getValue() as number).toLocaleString(),
+            },
+            {
+                accessorKey: "nDeadTup",
+                header: "Dead 튜플",
+                cell: (info) => (info.getValue() as number).toLocaleString(),
+            },
+            {
+                accessorKey: "bloatPercent",
+                header: "Bloat(%)",
+                cell: (info) => {
+                    const value = info.getValue() as number;
+                    let className = "bloat-normal";
+                    if (value >= 30) className = "bloat-high";
+                    else if (value >= 15) className = "bloat-medium";
+                    return <span className={className}>{value}%</span>;
+                },
+            },
+            {
+                accessorKey: "lastAutoVacuum",
+                header: "마지막 Auto VACUUM",
+                cell: (info) => info.getValue(),
             },
             {
                 accessorKey: "cacheHit",
                 header: "캐시 Hit(%)",
                 cell: (info) => (info.getValue() as number).toLocaleString(),
-            },
-            {
-                accessorKey: "vacuumDelay",
-                header: "Vaccum 지연",
-                cell: (info) => info.getValue(),
-            },
-            {
-                accessorKey: "seqScan",
-                header: "Seq Scan(%)",
-                cell: (info) => {
-                    const value = info.getValue() as number;
-                    const color = getSeqScanColor(value);
-                    return (
-                        <div className="progress-cell">
-                            <div className="progress-bar-wrapper">
-                                <div className="progress-bar-track">
-                                    <div
-                                        className="progress-bar-fill"
-                                        style={{
-                                            width: `${value}%`,
-                                            backgroundColor: color,
-                                        }}
-                                    />
-                                </div>
-                            </div>
-                            <span className="progress-value">{value}%</span>
-                        </div>
-                    );
-                },
             },
             {
                 accessorKey: "status",
@@ -396,8 +264,9 @@ export default function HotTableListPage() {
         []
     );
 
+    // 테이블 인스턴스 생성
     const table = useReactTable({
-        data,
+        data: filteredData,
         columns,
         state: {
             sorting,
@@ -414,7 +283,7 @@ export default function HotTableListPage() {
         manualPagination: false,
     });
 
-    const totalPages = Math.ceil(data.length / pageSize);
+    const totalPages = Math.ceil(filteredData.length / pageSize);
 
     const handlePageChange = (page: number) => {
         setCurrentPage(page);
@@ -423,27 +292,26 @@ export default function HotTableListPage() {
     // CSV 내보내기 함수
     const handleExportCSV = () => {
         const headers = [
-            "테이블명",
-            "크기",
-            "조회(건/s)",
-            "변경(건/s)",
-            "Dead Tuple",
-            "Dead 비율(%)",
-            "캐시 Hit(%)",
-            "Vaccum 지연",
-            "Seq Scan(%)",
-            "상태",
+            "테이블 명", "스키마", "크기", "Seq Scan", "Idx Scan",
+            "Insert", "Update", "Delete", "HOT Update",
+            "Live 튜플", "Dead 튜플", "Bloat(%)",
+            "마지막 Auto VACUUM", "캐시 Hit(%)", "상태"
         ];
-        const csvData = data.map((row) => [
+        const csvData = filteredData.map((row) => [
             row.tableName,
+            row.schemaName,
             row.size,
-            row.selectRate,
-            row.updateRate,
-            row.deadTuple,
-            row.deadPercent,
-            row.cacheHit,
-            row.vacuumDelay,
             row.seqScan,
+            row.idxScan,
+            row.nTupIns,
+            row.nTupUpd,
+            row.nTupDel,
+            row.nTupHotUpd,
+            row.nLiveTup,
+            row.nDeadTup,
+            row.bloatPercent,
+            row.lastAutoVacuum,
+            row.cacheHit,
             row.status,
         ]);
 
@@ -480,15 +348,19 @@ export default function HotTableListPage() {
         <main className="hottable-list-page">
             {/* 필터 선택 영역 */}
             <section className="hottable-list-page__filters">
-                <MultiSelectDropdown
-                    label="상태"
-                    options={[
-                        "정상",
-                        "주의",
-                        "위험",
-                    ]}
-                    onChange={(values) => console.log("선택된 상태:", values)}
-                />
+                <div className="filter-list-toggles">
+                    <label className="toggle-label">
+                        <input
+                            type="checkbox"
+                            checked={showHighBloatOnly}
+                            onChange={(e) => {
+                                setShowHighBloatOnly(e.target.checked);
+                                setCurrentPage(1);
+                            }}
+                        />
+                        <span>High Bloat 테이블만 보기 (≥15%)</span>
+                    </label>
+                </div>
                 <CsvButton onClick={handleExportCSV} tooltip="CSV 파일 저장"/>
             </section>
 
