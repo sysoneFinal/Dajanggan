@@ -20,15 +20,20 @@ interface CPUData {
     totalCPU: number;
     userCPU: number;
     systemCPU: number;
+    idleCPU: number;
     ioWait: number;
+    stealCPU: number;
+    loadAvg1: number;
+    loadAvg5: number;
+    loadAvg15: number;
     activeSessions: number;
     parallelWorkers: number;
     waitingSessions: number;
     workerTime: number;
+    contextSwitches: number;
     status: "정상" | "주의" | "위험";
 }
 
-// 임시 목 데이터
 const mockData: CPUData[] = [
     {
         id: "1",
@@ -36,11 +41,17 @@ const mockData: CPUData[] = [
         totalCPU: 85,
         userCPU: 75,
         systemCPU: 13,
+        idleCPU: 10,
         ioWait: 8,
+        stealCPU: 2,
+        loadAvg1: 8.45,
+        loadAvg5: 7.82,
+        loadAvg15: 6.91,
         activeSessions: 45,
         parallelWorkers: 12,
         waitingSessions: 8,
         workerTime: 125.3,
+        contextSwitches: 15420,
         status: "위험",
     },
     {
@@ -49,11 +60,17 @@ const mockData: CPUData[] = [
         totalCPU: 65,
         userCPU: 58,
         systemCPU: 7,
+        idleCPU: 28,
         ioWait: 12,
+        stealCPU: 0,
+        loadAvg1: 5.23,
+        loadAvg5: 5.67,
+        loadAvg15: 5.42,
         activeSessions: 38,
         parallelWorkers: 8,
         waitingSessions: 15,
         workerTime: 98.7,
+        contextSwitches: 12340,
         status: "정상",
     },
     {
@@ -62,11 +79,17 @@ const mockData: CPUData[] = [
         totalCPU: 45,
         userCPU: 38,
         systemCPU: 7,
+        idleCPU: 50,
         ioWait: 5,
+        stealCPU: 0,
+        loadAvg1: 3.12,
+        loadAvg5: 3.45,
+        loadAvg15: 3.78,
         activeSessions: 28,
         parallelWorkers: 5,
         waitingSessions: 5,
         workerTime: 67.2,
+        contextSwitches: 9840,
         status: "정상",
     },
     {
@@ -75,11 +98,17 @@ const mockData: CPUData[] = [
         totalCPU: 78,
         userCPU: 68,
         systemCPU: 10,
+        idleCPU: 12,
         ioWait: 15,
+        stealCPU: 0,
+        loadAvg1: 6.89,
+        loadAvg5: 6.45,
+        loadAvg15: 6.12,
         activeSessions: 52,
         parallelWorkers: 15,
         waitingSessions: 12,
         workerTime: 134.9,
+        contextSwitches: 14560,
         status: "정상",
     },
     {
@@ -88,11 +117,17 @@ const mockData: CPUData[] = [
         totalCPU: 42,
         userCPU: 35,
         systemCPU: 7,
+        idleCPU: 52,
         ioWait: 6,
+        stealCPU: 0,
+        loadAvg1: 2.87,
+        loadAvg5: 3.12,
+        loadAvg15: 3.34,
         activeSessions: 25,
         parallelWorkers: 4,
         waitingSessions: 3,
         workerTime: 54.6,
+        contextSwitches: 8920,
         status: "정상",
     },
     {
@@ -101,11 +136,17 @@ const mockData: CPUData[] = [
         totalCPU: 92,
         userCPU: 81,
         systemCPU: 9,
+        idleCPU: 6,
         ioWait: 22,
+        stealCPU: 2,
+        loadAvg1: 10.24,
+        loadAvg5: 9.67,
+        loadAvg15: 8.91,
         activeSessions: 68,
         parallelWorkers: 20,
         waitingSessions: 19,
         workerTime: 191.6,
+        contextSwitches: 18750,
         status: "위험",
     },
 ];
@@ -123,7 +164,6 @@ export default function CPUListPage() {
         return "#7B61FF"; // 녹색 (정상)
     };
 
-    // 컬럼 정의
     const columns = useMemo<ColumnDef<CPUData>[]>(
         () => [
             {
@@ -142,8 +182,33 @@ export default function CPUListPage() {
                 cell: (info) => info.getValue(),
             },
             {
+                accessorKey: "idleCPU",
+                header: "Idle CPU(%)",
+                cell: (info) => info.getValue(),
+            },
+            {
                 accessorKey: "ioWait",
                 header: "I/O Wait(%)",
+                cell: (info) => info.getValue(),
+            },
+            {
+                accessorKey: "stealCPU",
+                header: "Steal CPU(%)",
+                cell: (info) => info.getValue(),
+            },
+            {
+                accessorKey: "loadAvg1",
+                header: "Load Avg (1m)",
+                cell: (info) => info.getValue(),
+            },
+            {
+                accessorKey: "loadAvg5",
+                header: "Load Avg (5m)",
+                cell: (info) => info.getValue(),
+            },
+            {
+                accessorKey: "loadAvg15",
+                header: "Load Avg (15m)",
                 cell: (info) => info.getValue(),
             },
             {
@@ -165,6 +230,11 @@ export default function CPUListPage() {
                 accessorKey: "workerTime",
                 header: "병렬 워커 시간(ms)",
                 cell: (info) => info.getValue(),
+            },
+            {
+                accessorKey: "contextSwitches",
+                header: "Context Switch",
+                cell: (info) => (info.getValue() as number).toLocaleString(),
             },
             {
                 accessorKey: "totalCPU",
@@ -242,27 +312,28 @@ export default function CPUListPage() {
     // CSV 내보내기 함수
     const handleExportCSV = () => {
         const headers = [
-            "시간",
-            "전체 CPU(%)",
-            "User CPU(%)",
-            "System CPU(%)",
-            "I/O Wait(%)",
-            "활성 세션",
-            "병렬 워커",
-            "대기 세션",
-            "병렬 워커 시간(ms)",
-            "상태",
+            "시간", "전체 CPU(%)", "User CPU(%)", "System CPU(%)",
+            "Idle CPU(%)", "I/O Wait(%)", "Steal CPU(%)",
+            "Load Avg (1m)", "Load Avg (5m)", "Load Avg (15m)",
+            "활성 세션", "병렬 워커", "대기 세션",
+            "병렬 워커 시간(ms)", "Context Switch", "상태",
         ];
         const csvData = data.map((row) => [
             row.time,
             row.totalCPU,
             row.userCPU,
             row.systemCPU,
+            row.idleCPU,
             row.ioWait,
+            row.stealCPU,
+            row.loadAvg1,
+            row.loadAvg5,
+            row.loadAvg15,
             row.activeSessions,
             row.parallelWorkers,
             row.waitingSessions,
             row.workerTime,
+            row.contextSwitches,
             row.status,
         ]);
 
