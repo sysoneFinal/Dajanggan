@@ -5,12 +5,9 @@ import "../../styles/engine/checkpoint.css";
 import GaugeChart from "../../components/chart/GaugeChart";
 import WidgetCard from "../../components/util/WidgetCard";
 import ChartGridLayout from "../../components/layout/ChartGridLayout";
-import {useSearchParams} from "react-router-dom";
-import apiClient from "../../../src/api/apiClient";
 
 /** Checkpoint API 응답 타입 */
 interface CheckpointData {
-    instance?: number;
     requestRatio: {
         value: number;
         requestedCount: number;
@@ -61,18 +58,12 @@ interface CheckpointData {
         min: number;
     };
     recentStats?: {
-        buffersWritten: { current: number; diff: number };
-        avgTotalProcessTime: { current: number; diff: number };
-        checkpointDistance: { current: number; diff: number };
-        checkpointInterval: { current: number; diff: number };
-        avgWalGenerationSpeed: { current: number; diff: number };
+        buffersWritten: number;
+        avgTotalProcessTime: number;
+        checkpointDistance: number;
+        checkpointInterval: number;
+        avgWalGenerationSpeed: number;
     };
-}
-/** 백엔드 API 응답 타입 */
-interface CheckpointApiResponse {
-    data: CheckpointData;
-    timestamp: string;
-    success: boolean;
 }
 
 /** 더미 데이터 */
@@ -156,20 +147,12 @@ const mockData: CheckpointData = {
         avgWalGenerationSpeed: 9.2,
     },
 };
-/** API 요청 함수 - 백엔드 엔드포인트와 연결 */
-async function fetchCheckpointData(instanceId: number): Promise<CheckpointData> {
-    const response = await apiClient.get<CheckpointApiResponse>(
-        `/api/engine/checkpoint/dashboard`,
-        {
-            params: { instanceId }
-        }
-    );
 
-    if (!response.data.success) {
-        throw new Error("Failed to fetch checkpoint data");
-    }
-
-    return response.data.data;
+/** API 요청 */
+async function fetchCheckpointData() {
+    const res = await fetch("/api/dashboard/checkpoint");
+    if (!res.ok) throw new Error("Failed to fetch checkpoint data");
+    return res.json();
 }
 
 const getCheckpointRequestGaugeStatus = (
@@ -184,42 +167,22 @@ const getCheckpointRequestGaugeStatus = (
 
 /** 메인 컴포넌트 */
 export default function CheckPointPage() {
-    const [searchParams] = useSearchParams();
-    const instanceId = Number(searchParams.get("instanceId")) || 1;
-
-    const { data, isLoading, error } = useQuery({
-        queryKey: ["checkpointDashboard", instanceId],
-        queryFn: () => fetchCheckpointData(instanceId),
+    const { data } = useQuery({
+        queryKey: ["checkpointDashboard"],
+        queryFn: fetchCheckpointData,
         retry: 1,
-        refetchInterval: 30000, // 30초마다 자동 갱신
     });
 
-    if (isLoading) {
-        return (
-            <div className="loading-container">
-                <p>Loading checkpoint data...</p>
-            </div>
-        );
-    }
+    const dashboard = data || mockData;
 
-    if (error) {
-        return (
-            <div className="error-container">
-                <p>Error loading checkpoint data: {error.message}</p>
-            </div>
-        );
-    }
-
-    const dashboard = data!;
     const gaugeStatus = getCheckpointRequestGaugeStatus(dashboard.requestRatio.value);
 
-    // recentStats가 없을 경우 기본값 설정
     const recentStats = dashboard.recentStats || {
-        buffersWritten: { current: 0, diff: 0 },
-        avgTotalProcessTime: { current: 0, diff: 0 },
-        checkpointDistance: { current: 0, diff: 0 },
-        checkpointInterval: { current: 0, diff: 0 },
-        avgWalGenerationSpeed: { current: 0, diff: 0 },
+        buffersWritten: 4280,
+        avgTotalProcessTime: 1.78,
+        checkpointDistance: 85,
+        checkpointInterval: 4.8,
+        avgWalGenerationSpeed: 9.2,
     };
 
     const summaryCards = [
@@ -241,10 +204,12 @@ export default function CheckPointPage() {
         },
         {
             label: "평균 Checkpoint 간격",
-            value: `${recentStats.checkpointInterval.current.toFixed(1)}분`,
-            diff: recentStats.checkpointInterval.diff,
-            desc: "최근 5분",
-            status: recentStats.checkpointInterval.current < 3 ? "warning" : "success" as const,
+            value: `${recentStats.checkpointInterval}분`,
+            diff: 0.3,
+            desc: "최근 5분 평균",
+            status: recentStats.checkpointInterval < 3
+                ? ("warning" as const)
+                : ("info" as const),
         },
         {
             label: "평균 Buffer 처리량",
@@ -257,11 +222,12 @@ export default function CheckPointPage() {
         },
         {
             label: "Checkpoint 거리",
-            value: `${recentStats.checkpointDistance.current.toFixed(0)}%`,
-            diff: recentStats.checkpointDistance.diff,
-            desc: "max_wal_size 기준",
-            status:                 recentStats.checkpointDistance.current > 80 ? "warning" :
-                recentStats.checkpointDistance.current > 60 ? "normal" : "success" as const,
+            value: `${recentStats.checkpointDistance}%`,
+            diff: 5,
+            desc: "최근 5분 평균",
+            status: recentStats.checkpointDistance > 90
+                ? ("warning" as const)
+                : ("info" as const),
         },
     ];
 
@@ -328,6 +294,13 @@ export default function CheckPointPage() {
                         categories={dashboard.occurrence.categories}
                         colors={["#8E79FF", "#FEA29B"]}
                         height={250}
+                        xaxisOptions={{
+                            title: { text: "시간", style: { fontSize: "12px", color: "#6B7280" } }
+                        }}
+                        yaxisOptions={{
+                            title: { text: "발생 횟수", style: { fontSize: "12px", color: "#6B7280" } }
+                        }}
+
                     />
                 </WidgetCard>
 
@@ -342,6 +315,12 @@ export default function CheckPointPage() {
                         categories={dashboard.processTime.categories}
                         colors={["#8E79FF", "#FEA29B"]}
                         height={250}
+                        xaxisOptions={{
+                            title: { text: "시간", style: { fontSize: "12px", color: "#6B7280" } }
+                        }}
+                        yaxisOptions={{
+                            title: { text: "처리 시간 (ms)", style: { fontSize: "12px", color: "#6B7280" } }
+                        }}
                         customOptions={{
                             annotations: {
                                 yaxis: [
@@ -407,6 +386,12 @@ export default function CheckPointPage() {
                         categories={dashboard.walGeneration.categories}
                         colors={["#8E79FF"]}
                         height={250}
+                        xaxisOptions={{
+                            title: { text: "시간", style: { fontSize: "12px", color: "#6B7280" } }
+                        }}
+                        yaxisOptions={{
+                            title: { text: "WAL 생성량 (GB)", style: { fontSize: "12px", color: "#6B7280" } }
+                        }}
                         customOptions={{
                             annotations: {
                                 yaxis: [
@@ -469,6 +454,12 @@ export default function CheckPointPage() {
                         categories={dashboard.buffer.categories}
                         colors={["#8E79FF"]}
                         height={250}
+                        xaxisOptions={{
+                            title: { text: "시간", style: { fontSize: "12px", color: "#6B7280" } }
+                        }}
+                        yaxisOptions={{
+                            title: { text: "Buffers/sec", style: { fontSize: "12px", color: "#6B7280" } }
+                        }}
                         customOptions={{
                             annotations: {
                                 yaxis: [
@@ -530,6 +521,12 @@ export default function CheckPointPage() {
                         categories={dashboard.checkpointInterval.categories}
                         colors={["#8E79FF"]}
                         height={250}
+                        xaxisOptions={{
+                            title: { text: "시간", style: { fontSize: "12px", color: "#6B7280" } }
+                        }}
+                        yaxisOptions={{
+                            title: { text: "간격 (분)", style: { fontSize: "12px", color: "#6B7280" } }
+                        }}
                         customOptions={{
                             annotations: {
                                 yaxis: [

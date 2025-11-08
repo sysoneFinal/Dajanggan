@@ -13,6 +13,7 @@ interface CPUData {
         description: string;
         runningQueries: number;
         waitingQueries: number;
+        idleConnections: number;
     };
     cpuUsageTrend: {
         categories: string[];
@@ -30,9 +31,12 @@ interface CPUData {
         warning: Array<{ x: number; y: number }>;
         danger: Array<{ x: number; y: number }>;
     };
-    cpuByUser: {
-        users: string[];
-        cpuTime: number[];
+    backendProcessStats: {
+        types: string[];
+        activeCount: number[];
+        idleCount: number[];
+        totalCount: number[];
+        colors: string[];
     };
     waitEventDistribution: {
         categories: string[];
@@ -42,11 +46,20 @@ interface CPUData {
         lock: number[];
         other: number[];
     };
-    recentStats?: {
-        systemUserCpuRatio: string;
+    recentStats: {
+        loadAverage: {
+            one: number;
+            five: number;
+            fifteen: number;
+        };
         ioWait: number;
-        cpuQueueLength: number;
-        cpuStealTime: number;
+        connections: {
+            active: number;
+            idle: number;
+            total: number;
+        };
+        idleCpu: number;
+        contextSwitches: number;
         postgresqlBackendCpu: number;
     };
 }
@@ -58,6 +71,7 @@ const dummyData: CPUData = {
         description: "CPU utilization rate",
         runningQueries: 45,
         waitingQueries: 12,
+        idleConnections: 28,
     },
     cpuUsageTrend: {
         categories: [
@@ -67,7 +81,7 @@ const dummyData: CPUData = {
     },
     cpuLoadTypes: {
         categories: [
-            "02:38", "07:26", "12:14", "오전", "05:02", "09:50"
+            "02:38", "07:26", "12:14", "17:02", "21:50", "02:38"
         ],
         autoVacuum: [8, 6, 7, 9, 8, 7],
         bgWriter: [10, 9, 8, 10, 11, 9],
@@ -94,9 +108,19 @@ const dummyData: CPUData = {
             { x: 32, y: 38 },
         ],
     },
-    cpuByUser: {
-        users: ["app_user", "analytics_user", "report_user", "batch_user", "admin"],
-        cpuTime: [45000, 32000, 28000, 21000, 8000],
+    backendProcessStats: {
+        types: [
+            "Client Backend",
+            "Autovacuum Worker",
+            "Background Writer",
+            "Checkpointer",
+            "WAL Writer",
+            "WAL Sender"
+        ],
+        activeCount: [35, 2, 0, 0, 0, 1],      // 활성 상태 프로세스
+        idleCount: [28, 0, 1, 1, 1, 0],        // 유휴 상태 프로세스
+        totalCount: [63, 2, 1, 1, 1, 1],       // 전체 프로세스
+        colors: ["#8E79FF", "#51DAA8", "#77B2FB", "#FFD66B", "#FEA29B", "#A78BFA"]
     },
     waitEventDistribution: {
         categories: ["0:00", "2:00", "4:00", "6:00", "8:00", "10:00", "14:00", "16:00", "18:00", "20:00", "22:00"],
@@ -106,12 +130,20 @@ const dummyData: CPUData = {
         lock: [10, 8, 12, 10, 10, 8, 10, 8, 10, 12, 10],
         other: [5, 3, 3, 5, 5, 4, 3, 3, 4, 3, 5],
     },
-    // 최근 5분 평균 통계
     recentStats: {
-        systemUserCpuRatio: "18.5/23.8",
+        loadAverage: {
+            one: 2.45,
+            five: 2.12,
+            fifteen: 1.89,
+        },
         ioWait: 18.5,
-        cpuQueueLength: 2.3,
-        cpuStealTime: 2.4,
+        connections: {
+            active: 45,
+            idle: 28,
+            total: 73,
+        },
+        idleCpu: 64.3,
+        contextSwitches: 12500,
         postgresqlBackendCpu: 41.2,
     },
 };
@@ -197,54 +229,46 @@ export default function CPUPage() {
     const gaugeColor = getGaugeColor(data.cpuUsage.value);
 
     // 최근 5분 평균 통계
-    const recentStats = data.recentStats || {
-        systemUserCpuRatio: "18.5/23.8",
-        ioWait: 18.5,
-        cpuQueueLength: 2.3,
-        cpuStealTime: 2.4,
-        postgresqlBackendCpu: 41.2,
-    };
+    const recentStats = data.recentStats;
 
-    // 요약 카드 데이터 계산 (최근 5분 평균 기준)
+    // 요약 카드 데이터 (개선된 버전)
     const summaryCards = [
         {
-            label: "System/User CPU 비율",
-            value: recentStats.systemUserCpuRatio,
-            diff: 1.2,
-            desc: "최근 5분 평균",
-            status: "info" as const,
+            label: "Load Average (1m/5m/15m)",
+            value: `${recentStats.loadAverage.one} / ${recentStats.loadAverage.five} / ${recentStats.loadAverage.fifteen}`,
+            // diff: recentStats.loadAverage.one - recentStats.loadAverage.five,
+            desc: "시스템 부하 평균",
+            status: (recentStats.loadAverage.one > 4 ? "warning" : "info") as const,
             link: "http://localhost:5173/instance/cpu/usage",
         },
         {
             label: "I/O Wait",
             value: `${recentStats.ioWait}%`,
             diff: 2.3,
-            desc: "최근 5분 평균",
-            status: "info" as const,
+            desc: "디스크 대기 시간",
+            status: (recentStats.ioWait > 20 ? "warning" : "info") as const,
             link: "http://localhost:5173/instance/cpu/usage",
         },
         {
-            label: "CPU 대기열 길이",
-            value: recentStats.cpuQueueLength.toString(),
-            diff: 0.5,
-            desc: "최근 5분 평균",
-            status: "info" as const,
-        },
-        {
-            label: "CPU Steal Time",
-            value: `${recentStats.cpuStealTime}%`,
-            diff: 0.3,
-            desc: "최근 5분 평균",
-            status: recentStats.cpuStealTime > 10
-                ? ("warning" as const)
-                : ("info" as const),
+            label: "Active / Idle Connections",
+            value: `${recentStats.connections.active} / ${recentStats.connections.idle}`,
+            diff: 5,
+            desc: "활성 / 유휴 연결",
+            status: (recentStats.connections.active > 80 ? "warning" : "info") as const,
         },
         {
             label: "PostgreSQL Backend CPU",
             value: `${recentStats.postgresqlBackendCpu}%`,
             diff: 3.2,
-            desc: "최근 5분 평균",
-            status: "info" as const,
+            desc: "PG 프로세스 CPU 사용률",
+            status: (recentStats.postgresqlBackendCpu > 80 ? "warning" : "info") as const,
+        },
+        {
+            label: "Idle CPU",
+            value: `${recentStats.idleCpu}%`,
+            diff: -2.5,
+            desc: "여유 리소스",
+            status: (recentStats.idleCpu < 20 ? "critical" : "info") as const,
         },
     ];
 
@@ -260,7 +284,7 @@ export default function CPUPage() {
                         diff={card.diff}
                         desc={card.desc}
                         status={card.status}
-                        link={card.link}
+                        // link={card.link}
                     />
                 ))}
             </div>
@@ -302,7 +326,7 @@ export default function CPUPage() {
 
                 <WidgetCard title="CPU 사용률 추이 (Last 24 Hours)" span={5}>
                     <Chart
-                        type="area"
+                        type="line"
                         series={[
                             { name: "CPU 사용률", data: data.cpuUsageTrend.data }
                         ]}
@@ -311,13 +335,11 @@ export default function CPUPage() {
                         colors={["#8E79FF"]}
                         showGrid={true}
                         showLegend={false}
+                        xaxisOptions={{
+                            title: { text: "시간", style: { fontSize: "12px", color: "#6B7280" } }
+                        }}
                         yaxisOptions={{
-                            min: 0,
-                            max: 100,
-                            labels: {
-                                style: { colors: "#6B7280" },
-                                formatter: (val: number) => `${val}%`,
-                            },
+                            title: { text: "CPU 사용률 (%)", style: { fontSize: "12px", color: "#6B7280" } }
                         }}
                         tooltipFormatter={(value: number) => `${value}%`}
                         customOptions={{
@@ -400,6 +422,12 @@ export default function CPUPage() {
                         ]}
                         categories={data.cpuLoadTypes.categories}
                         height={250}
+                        xaxisOptions={{
+                            title: { text: "시간", style: { fontSize: "12px", color: "#6B7280" } }
+                        }}
+                        yaxisOptions={{
+                            title: { text: "CPU 부하 (%)", style: { fontSize: "12px", color: "#6B7280" } }
+                        }}
                         colors={["#8E79FF", "#77B2FB", "#51DAA8", "#FEA29B"]}
                         showGrid={true}
                         showLegend={true}
@@ -433,7 +461,7 @@ export default function CPUPage() {
                         showLegend={false}
                         xaxisOptions={{
                             title: { text: "I/O Wait (%)", style: { fontSize: "12px", color: "#6B7280" } },
-                            labels: { formatter: (val: String) => `${val}%` },
+                            labels: { formatter: (val: string) => `${val}%` },
                             min: 0,
                             max: 40,
                         }}
@@ -453,24 +481,80 @@ export default function CPUPage() {
                     />
                 </WidgetCard>
 
-                <WidgetCard title="사용자별 CPU 사용량 Top 5" span={4}>
+                <WidgetCard title="Backend 프로세스 타입별 분포" span={4}>
                     <Chart
                         type="bar"
                         series={[
-                            { name: "CPU Time (ms)", data: data.cpuByUser.cpuTime }
+                            {
+                                name: "Active",
+                                data: data.backendProcessStats.activeCount,
+                            },
+                            {
+                                name: "Idle",
+                                data: data.backendProcessStats.idleCount,
+                            },
                         ]}
-                        categories={data.cpuByUser.users}
+                        categories={data.backendProcessStats.types}
                         height={250}
-                        colors={["#8E79FF"]}
+                        colors={["#8E79FF", "#D1D5DB"]}
                         showGrid={true}
-                        showLegend={false}
+                        showLegend={true}
+                        isStacked={true}
                         xaxisOptions={{
-                            title: { text: "CPU Time (ms)", style: { fontSize: "12px", color: "#6B7280" } },
+                            title: { text: "프로세스 수", style: { fontSize: "12px", color: "#6B7280" } },
                         }}
                         yaxisOptions={{
-                            title: { text: "사용자", style: { fontSize: "12px", color: "#6B7280" } },
+                            title: { text: "Backend Type", style: { fontSize: "12px", color: "#6B7280" } },
                         }}
-                        tooltipFormatter={(value: number) => `${value.toLocaleString()} ms`}
+                        customOptions={{
+                            chart: {
+                                stacked: true,
+                            },
+                            plotOptions: {
+                                bar: {
+                                    horizontal: true,
+                                    barHeight: "70%",
+                                },
+                            },
+                            dataLabels: {
+                                enabled: true,
+                                formatter: function(val: number, opts: any) {
+                                    const seriesIndex = opts.seriesIndex;
+                                    const dataPointIndex = opts.dataPointIndex;
+                                    const total = data.backendProcessStats.totalCount[dataPointIndex];
+                                    const value = val as number;
+
+                                    // Active는 개수와 비율, Idle은 개수만
+                                    if (seriesIndex === 0) {
+                                        const percentage = ((value / total) * 100).toFixed(0);
+                                        return `${value} (${percentage}%)`;
+                                    }
+                                    return value > 0 ? `${value}` : '';
+                                },
+                                style: {
+                                    fontSize: "11px",
+                                    colors: ["#fff"],
+                                    fontWeight: 600,
+                                },
+                            },
+                            legend: {
+                                position: "top",
+                                horizontalAlign: "right",
+                                fontSize: "12px",
+                                fontFamily: 'var(--font-family, "Pretendard", sans-serif)',
+                                markers: {
+                                    width: 12,
+                                    height: 12,
+                                    radius: 3,
+                                },
+                            },
+                        }}
+                        tooltipFormatter={(value: number, opts: any) => {
+                            const dataPointIndex = opts.dataPointIndex;
+                            const total = data.backendProcessStats.totalCount[dataPointIndex];
+                            const percentage = ((value / total) * 100).toFixed(1);
+                            return `${value}개 (${percentage}%)`;
+                        }}
                     />
                 </WidgetCard>
 

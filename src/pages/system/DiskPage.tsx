@@ -20,28 +20,22 @@ interface DiskIOData {
             data: number[];
         }>;
     };
-    readsWrites: {
+    queueDepth: {
         categories: string[];
-        reads: number[];
-        writes: number[];
+        queueLength: number[];
+        average: number;
     };
-    latency: {
+    ioLatency: {
         categories: string[];
         readLatency: number[];
         writeLatency: number[];
-        average: number;
-        max: number;
-        min: number;
+        avgRead: number;
+        avgWrite: number;
     };
     throughput: {
         categories: string[];
         iops: number[];
         throughputMB: number[];
-    };
-    blockLatency: {
-        categories: string[];
-        readLatency: number[];
-        writeLatency: number[];
     };
     evictions: {
         categories: string[];
@@ -58,7 +52,7 @@ interface DiskIOData {
         iopsSaturation: number;
         avgLatency: number;
         walBottleneck: number;
-        readWriteRatio: string;
+        bufferEvictionRate: number;
     };
 }
 
@@ -78,28 +72,22 @@ const dummyData: DiskIOData = {
             { name: "Checkpointer", data: [3500, 3000, 3800, 2500, 2800, 3200, 3000, 3500, 3300, 2900, 2600, 3400] },
         ],
     },
-    readsWrites: {
+    queueDepth: {
         categories: ["0:00", "2:00", "4:00", "6:00", "8:00", "10:00", "12:00", "14:00", "16:00", "18:00", "20:00", "22:00"],
-        reads: [60, 55, 65, 70, 80, 65, 70, 60, 65, 70, 75, 60],
-        writes: [40, 45, 35, 30, 20, 35, 30, 40, 35, 30, 25, 40],
+        queueLength: [1.2, 1.8, 2.5, 4.2, 5.8, 3.5, 2.8, 4.5, 3.2, 2.1, 1.5, 1.0],
+        average: 2.8,
     },
-    latency: {
-        categories: ["0:00", "4:00", "8:00", "12:00", "16:00", "20:00", "24:00"],
-        readLatency: [8, 7, 15, 19, 12, 10, 7],
-        writeLatency: [5, 5, 8, 10, 7, 6, 5],
-        average: 11.14,
-        max: 19,
-        min: 5,
+    ioLatency: {
+        categories: ["0:00", "2:00", "4:00", "6:00", "8:00", "10:00", "12:00", "14:00", "16:00", "18:00", "20:00", "22:00"],
+        readLatency: [8, 7, 12, 15, 18, 10, 9, 14, 11, 8, 13, 7],
+        writeLatency: [5, 4, 7, 9, 11, 6, 5, 8, 7, 5, 8, 4],
+        avgRead: 10.2,
+        avgWrite: 6.6,
     },
     throughput: {
         categories: ["0:00", "4:00", "8:00", "12:00", "16:00", "20:00", "24:00"],
         iops: [5000, 8000, 12000, 10000, 8000, 6000, 5000],
         throughputMB: [120, 180, 320, 280, 200, 150, 120],
-    },
-    blockLatency: {
-        categories: ["0:00", "2:00", "4:00", "6:00", "8:00", "10:00", "12:00", "14:00", "16:00", "18:00", "20:00", "22:00"],
-        readLatency: [5, 6, 7, 8, 6, 5, 6, 7, 6, 5, 6, 5],
-        writeLatency: [3, 3, 4, 5, 4, 3, 3, 4, 3, 3, 3, 3],
     },
     evictions: {
         categories: ["0:00", "2:00", "4:00", "6:00", "8:00", "10:00", "12:00", "14:00", "16:00", "18:00", "20:00", "22:00"],
@@ -116,7 +104,7 @@ const dummyData: DiskIOData = {
         iopsSaturation: 82,
         avgLatency: 4.8,
         walBottleneck: 8,
-        readWriteRatio: "62/38",
+        bufferEvictionRate: 117,
     },
 };
 
@@ -131,14 +119,14 @@ const getDiskUtilizationColor = (value: number): string => {
 export default function DiskPage() {
     const [data] = useState<DiskIOData>(dummyData);
 
-    const DiskUtilizationColor = getDiskUtilizationColor(data.diskUsage);
+    const DiskUtilizationColor = getDiskUtilizationColor(data.diskUsage.value);
 
     const recentStats = data.recentStats || {
         diskQueueLength: 3.2,
         iopsSaturation: 82,
         avgLatency: 4.8,
         walBottleneck: 8,
-        readWriteRatio: "62/38",
+        bufferEvictionRate: 117,
     };
 
     const summaryCards = [
@@ -171,11 +159,11 @@ export default function DiskPage() {
             status: recentStats.walBottleneck > 15 ? ("warning" as const) : ("info" as const),
         },
         {
-            label: "읽기/쓰기 비율",
-            value: recentStats.readWriteRatio,
-            diff: 2,
+            label: "버퍼 교체 빈도",
+            value: `${recentStats.bufferEvictionRate}/sec`,
+            diff: 8,
             desc: "최근 5분 평균",
-            status: "info" as const,
+            status: recentStats.bufferEvictionRate > 100 ? ("warning" as const) : ("info" as const),
         },
     ];
 
@@ -195,7 +183,7 @@ export default function DiskPage() {
                 ))}
             </div>
 
-            {/* 첫 번째 행: 게이지 + 2개 차트 */}
+            {/* 첫 번째 행: 3개 차트 */}
             <ChartGridLayout>
                 <WidgetCard title="DISK 사용률" span={2}>
                     <div style={{
@@ -218,33 +206,33 @@ export default function DiskPage() {
                         />
                         <div className="cpu-gauge-details">
                             <div className="cpu-detail-item">
-                                <span className="cpu-detail-label">Read</span>
+                                <span className="cpu-detail-label">IOPS Read</span>
                                 <span className="cpu-detail-value">{(data.diskUsage.iopsRead / 1000).toFixed(1)}K</span>
                             </div>
                             <div className="cpu-detail-divider"></div>
                             <div className="cpu-detail-item">
-                                <span className="cpu-detail-label">Write</span>
+                                <span className="cpu-detail-label">IOPS Write</span>
                                 <span className="cpu-detail-value">{(data.diskUsage.iopsWrite / 1000).toFixed(1)}K</span>
                             </div>
                         </div>
                     </div>
                 </WidgetCard>
 
-                <WidgetCard title="프로세스별 디스크 I/O 쓰기량" span={5}>
+                <WidgetCard title="Process별 I/O 활동" span={5}>
                     <Chart
                         type="line"
                         series={data.processIO.series}
                         categories={data.processIO.categories}
                         height={250}
-                        colors={["#8E79FF", "#FEA29B", "#77B2FB", "#51DAA8"]}
-                        isStacked={true}
+                        colors={["#8E79FF", "#60A5FA", "#FEA29B", "#FFD66B"]}
                         showLegend={true}
                         showGrid={true}
+                        isStacked={true}
                         xaxisOptions={{
-                            title: { text: "시간", style: { fontSize: "12px", color: "#6B7280" } },
+                            title: { text: "시간", style: { fontSize: "12px", color: "#6B7280" } }
                         }}
                         yaxisOptions={{
-                            title: { text: "I/O 쓰기량", style: { fontSize: "12px", color: "#6B7280" } },
+                            title: { text: "I/O Operations", style: { fontSize: "12px", color: "#6B7280" } },
                             labels: {
                                 formatter: (val: number) => `${(val / 1000).toFixed(1)}K`,
                             },
@@ -252,14 +240,14 @@ export default function DiskPage() {
                     />
                 </WidgetCard>
 
-                <WidgetCard title="평균 블록 I/O 시간 추이 (Last 24 Hours)" span={5}>
+                <WidgetCard title="I/O Latency (Read/Write)" span={5}>
                     <Chart
                         type="line"
                         series={[
-                            { name: "Read Latency (ms)", data: data.blockLatency.readLatency },
-                            { name: "Write Latency (ms)", data: data.blockLatency.writeLatency },
+                            { name: "Read Latency", data: data.ioLatency.readLatency },
+                            { name: "Write Latency", data: data.ioLatency.writeLatency },
                         ]}
-                        categories={data.blockLatency.categories}
+                        categories={data.ioLatency.categories}
                         height={250}
                         colors={["#8E79FF", "#FEA29B"]}
                         showLegend={true}
@@ -309,80 +297,20 @@ export default function DiskPage() {
                                             position: "right",
                                         },
                                     },
-                                ],
-                            },
-                            yaxis: {
-                                labels: {
-                                    style: {
-                                        colors: "#6B7280",
-                                        fontFamily: 'var(--font-family, "Pretendard", sans-serif)'
-                                    },
-                                    formatter: (val: number) => `${val}ms`,
-                                },
-                                min: 0,
-                                max: 12,
-                            },
-                        }}
-                    />
-                </WidgetCard>
-
-            </ChartGridLayout>
-
-            {/* 두 번째 행: 3개 차트 */}
-            <ChartGridLayout>
-                <WidgetCard title="Disk I/O 지연시간 (Last 24 Hours)" span={4}>
-                    <Chart
-                        type="line"
-                        series={[
-                            { name: "지연시간 (ms)", data: data.latency.readLatency },
-                        ]}
-                        categories={data.latency.categories}
-                        height={250}
-                        colors={["#8E79FF"]}
-                        showLegend={false}
-                        showGrid={true}
-                        xaxisOptions={{
-                            title: { text: "시간", style: { fontSize: "12px", color: "#6B7280" } },
-                        }}
-                        yaxisOptions={{
-                            title: { text: "지연시간 (ms)", style: { fontSize: "12px", color: "#6B7280" } },
-                            labels: { formatter: (val: number) => `${val}ms` },
-                        }}
-                        tooltipFormatter={(value: number) => `${value}ms`}
-                        customOptions={{
-                            annotations: {
-                                yaxis: [
                                     {
-                                        y: 5,
-                                        borderColor: "#60A5FA",
-                                        strokeDashArray: 4,
-                                        opacity: 0.6,
-                                        label: {
-                                            borderColor: "#60A5FA",
-                                            style: {
-                                                color: "#fff",
-                                                background: "#60A5FA",
-                                                fontSize: "11px",
-                                                fontWeight: 500,
-                                            },
-                                            text: "정상: 5ms",
-                                            position: "right",
-                                        },
-                                    },
-                                    {
-                                        y: 10,
-                                        borderColor: "#FBBF24",
+                                        y: 20,
+                                        borderColor: "#FEA29B",
                                         strokeDashArray: 4,
                                         opacity: 0.7,
                                         label: {
-                                            borderColor: "#FBBF24",
+                                            borderColor: "#FEA29B",
                                             style: {
                                                 color: "#fff",
-                                                background: "#FBBF24",
+                                                background: "#FEA29B",
                                                 fontSize: "11px",
                                                 fontWeight: 500,
                                             },
-                                            text: "주의: 10ms",
+                                            text: "경고: 20ms",
                                             position: "right",
                                         },
                                     },
@@ -402,7 +330,10 @@ export default function DiskPage() {
                         }}
                     />
                 </WidgetCard>
+            </ChartGridLayout>
 
+            {/* 두 번째 행: 3개 차트 */}
+            <ChartGridLayout>
                 <WidgetCard title="Disk 처리 효율 (IOPS vs MB/s)" span={4}>
                     <Chart
                         type="line"
@@ -420,14 +351,20 @@ export default function DiskPage() {
                         }}
                         yaxisOptions={[
                             {
-                                title: { text: "IOPS" },
+                                title: {
+                                    text: "IOPS",
+                                    style: { fontSize: "12px", color: "#6B7280" },
+                                },
                                 labels: {
                                     formatter: (val: number) => `${(val / 1000).toFixed(0)}K`,
                                 },
                             },
                             {
                                 opposite: true,
-                                title: { text: "MB/s" },
+                                title: {
+                                    text: "MB/s",
+                                    style: { fontSize: "12px", color: "#6B7280" },
+                                },
                                 labels: {
                                     formatter: (val: number) => `${val}MB`,
                                 },
@@ -438,7 +375,7 @@ export default function DiskPage() {
 
                 <WidgetCard title="WAL 쓰기량 변화" span={4}>
                     <Chart
-                        type="area"
+                        type="line"
                         series={[{ name: "WAL Bytes/sec", data: data.walBytes.walBytes }]}
                         categories={data.walBytes.categories}
                         height={250}
@@ -455,14 +392,137 @@ export default function DiskPage() {
                             },
                         }}
                         tooltipFormatter={(value: number) => `${(value / 1000000).toFixed(2)}MB/s`}
+                        customOptions={{
+                            annotations: {
+                                yaxis: [
+                                    {
+                                        y: 4000000,
+                                        borderColor: "#60A5FA",
+                                        strokeDashArray: 4,
+                                        opacity: 0.6,
+                                        label: {
+                                            borderColor: "#60A5FA",
+                                            style: {
+                                                color: "#fff",
+                                                background: "#60A5FA",
+                                                fontSize: "11px",
+                                                fontWeight: 500,
+                                            },
+                                            text: "정상: 4MB/s",
+                                            position: "right",
+                                        },
+                                    },
+                                    {
+                                        y: 7000000,
+                                        borderColor: "#FBBF24",
+                                        strokeDashArray: 4,
+                                        opacity: 0.7,
+                                        label: {
+                                            borderColor: "#FBBF24",
+                                            style: {
+                                                color: "#fff",
+                                                background: "#FBBF24",
+                                                fontSize: "11px",
+                                                fontWeight: 500,
+                                            },
+                                            text: "주의: 7MB/s",
+                                            position: "right",
+                                        },
+                                    },
+                                ],
+                            },
+                            yaxis: {
+                                labels: {
+                                    style: {
+                                        colors: "#6B7280",
+                                        fontFamily: 'var(--font-family, "Pretendard", sans-serif)'
+                                    },
+                                    formatter: (val: number) => `${(val / 1000000).toFixed(1)}M`,
+                                },
+                                min: 0,
+                                max: 8000000,
+                            },
+                        }}
                     />
                 </WidgetCard>
 
+                <WidgetCard title="Disk Queue Depth 추이" span={4}>
+                    <Chart
+                        type="line"
+                        series={[
+                            { name: "Queue Length", data: data.queueDepth.queueLength },
+                        ]}
+                        categories={data.queueDepth.categories}
+                        height={250}
+                        colors={["#8E79FF"]}
+                        showLegend={false}
+                        showGrid={true}
+                        xaxisOptions={{
+                            title: { text: "시간", style: { fontSize: "12px", color: "#6B7280" } },
+                        }}
+                        yaxisOptions={{
+                            title: { text: "대기열 길이", style: { fontSize: "12px", color: "#6B7280" } },
+                            labels: { formatter: (val: number) => `${val.toFixed(1)}` },
+                        }}
+                        tooltipFormatter={(value: number) => `${value.toFixed(2)}`}
+                        customOptions={{
+                            annotations: {
+                                yaxis: [
+                                    {
+                                        y: 2,
+                                        borderColor: "#60A5FA",
+                                        strokeDashArray: 4,
+                                        opacity: 0.6,
+                                        label: {
+                                            borderColor: "#60A5FA",
+                                            style: {
+                                                color: "#fff",
+                                                background: "#60A5FA",
+                                                fontSize: "11px",
+                                                fontWeight: 500,
+                                            },
+                                            text: "정상: 2",
+                                            position: "right",
+                                        },
+                                    },
+                                    {
+                                        y: 5,
+                                        borderColor: "#FBBF24",
+                                        strokeDashArray: 4,
+                                        opacity: 0.7,
+                                        label: {
+                                            borderColor: "#FBBF24",
+                                            style: {
+                                                color: "#fff",
+                                                background: "#FBBF24",
+                                                fontSize: "11px",
+                                                fontWeight: 500,
+                                            },
+                                            text: "주의: 5",
+                                            position: "right",
+                                        },
+                                    },
+                                ],
+                            },
+                            yaxis: {
+                                labels: {
+                                    style: {
+                                        colors: "#6B7280",
+                                        fontFamily: 'var(--font-family, "Pretendard", sans-serif)'
+                                    },
+                                    formatter: (val: number) => `${val.toFixed(1)}`,
+                                },
+                                min: 0,
+                                max: 8,
+                            },
+                        }}
+                    />
+                </WidgetCard>
             </ChartGridLayout>
 
-            {/* 세 번째 행: 2개 차트 */}
+            {/* 세 번째 행: 1개 차트 */}
             <ChartGridLayout>
-                <WidgetCard title="버퍼 교체(Evictions) 추이" span={6}>
+                <WidgetCard title="버퍼 교체(Evictions) 추이" span={12}>
                     <Chart
                         type="line"
                         series={[{ name: "Evictions/sec", data: data.evictions.evictionRate }]}
@@ -479,30 +539,55 @@ export default function DiskPage() {
                             labels: { formatter: (val: number) => `${val}` },
                         }}
                         tooltipFormatter={(value: number) => `${value}/sec`}
-                    />
-                </WidgetCard>
-
-                <WidgetCard title="Reads vs Writes (100%)" span={6}>
-                    <Chart
-                        type="bar"
-                        series={[
-                            { name: "Reads (%)", data: data.readsWrites.reads },
-                            { name: "Writes (%)", data: data.readsWrites.writes },
-                        ]}
-                        categories={data.readsWrites.categories}
-                        height={250}
-                        colors={["#8E79FF", "#FEA29B"]}
-                        isStacked={true}
-                        showLegend={true}
-                        showGrid={true}
                         customOptions={{
-                            plotOptions: {
-                                bar: {
-                                    horizontal: true,
-                                },
+                            annotations: {
+                                yaxis: [
+                                    {
+                                        y: 100,
+                                        borderColor: "#60A5FA",
+                                        strokeDashArray: 4,
+                                        opacity: 0.6,
+                                        label: {
+                                            borderColor: "#60A5FA",
+                                            style: {
+                                                color: "#fff",
+                                                background: "#60A5FA",
+                                                fontSize: "11px",
+                                                fontWeight: 500,
+                                            },
+                                            text: "정상: 100/sec",
+                                            position: "right",
+                                        },
+                                    },
+                                    {
+                                        y: 200,
+                                        borderColor: "#FBBF24",
+                                        strokeDashArray: 4,
+                                        opacity: 0.7,
+                                        label: {
+                                            borderColor: "#FBBF24",
+                                            style: {
+                                                color: "#fff",
+                                                background: "#FBBF24",
+                                                fontSize: "11px",
+                                                fontWeight: 500,
+                                            },
+                                            text: "주의: 200/sec",
+                                            position: "right",
+                                        },
+                                    },
+                                ],
                             },
                             yaxis: {
-                                max: 100,
+                                labels: {
+                                    style: {
+                                        colors: "#6B7280",
+                                        fontFamily: 'var(--font-family, "Pretendard", sans-serif)'
+                                    },
+                                    formatter: (val: number) => `${val}`,
+                                },
+                                min: 0,
+                                max: 250,
                             },
                         }}
                     />

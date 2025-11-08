@@ -185,15 +185,6 @@ export default function BGWriterPage() {
                 : ("info" as const),
         },
         {
-            label: "Clean Buffer 재사용률",
-            value: `${recentStats.cleanBufferReuseRate}%`,
-            diff: 1.8,
-            desc: "최근 5분 평균",
-            status: recentStats.cleanBufferReuseRate < 70
-                ? ("warning" as const)
-                : ("info" as const),
-        },
-        {
             label: "Checkpoint에 의한 BGWriter 중단",
             value: `${recentStats.checkpointInterruptionCount}회`,
             diff: -2,
@@ -285,19 +276,25 @@ export default function BGWriterPage() {
                         categories={dashboard.bufferFlushRatio.categories}
                         colors={["#8E79FF", "#FEA29B"]}
                         height={250}
+                        xaxisOptions={{
+                            title: { text: "시간", style: { fontSize: "12px", color: "#6B7280" } }
+                        }}
+                        yaxisOptions={{
+                            title: { text: "Buffers/sec", style: { fontSize: "12px", color: "#6B7280" } }
+                        }}
                         customOptions={{
                             annotations: {
                                 yaxis: [
                                     {
                                         y: 3000,
-                                        borderColor: "#10B981",
+                                        borderColor: "#60A5FA",
                                         strokeDashArray: 4,
                                         opacity: 0.6,
                                         label: {
-                                            borderColor: "#10B981",
+                                            borderColor: "#60A5FA",
                                             style: {
                                                 color: "#fff",
-                                                background: "#10B981",
+                                                background: "#60a5fa",
                                                 fontSize: "11px",
                                                 fontWeight: 500,
                                             },
@@ -307,7 +304,7 @@ export default function BGWriterPage() {
                                     },
                                     {
                                         y: 2000,
-                                        borderColor: "#FBBF24",
+                                        borderColor: "#fbbf24",
                                         strokeDashArray: 4,
                                         opacity: 0.7,
                                         label: {
@@ -377,14 +374,14 @@ export default function BGWriterPage() {
                                 yaxis: [
                                     {
                                         y: 150,
-                                        borderColor: "#10B981",
+                                        borderColor: "#60A5FA",
                                         strokeDashArray: 4,
                                         opacity: 0.6,
                                         label: {
-                                            borderColor: "#10B981",
+                                            borderColor: "#60A5FA",
                                             style: {
                                                 color: "#fff",
-                                                background: "#10B981",
+                                                background: "#60A5FA",
                                                 fontSize: "11px",
                                                 fontWeight: 500,
                                             },
@@ -411,14 +408,14 @@ export default function BGWriterPage() {
                                     },
                                     {
                                         y: 50,
-                                        borderColor: "#EF4444",
+                                        borderColor: "#FEA29B",
                                         strokeDashArray: 4,
                                         opacity: 0.7,
                                         label: {
-                                            borderColor: "#EF4444",
+                                            borderColor: "#FEA29B",
                                             style: {
                                                 color: "#fff",
-                                                background: "#EF4444",
+                                                background: "#FEA29B",
                                                 fontSize: "11px",
                                                 fontWeight: 500,
                                             },
@@ -465,19 +462,26 @@ export default function BGWriterPage() {
                         categories={dashboard.maxwrittenClean.categories}
                         colors={["#8E79FF"]}
                         height={250}
+                        xaxisOptions={{
+                            title: { text: "시간", style: { fontSize: "12px", color: "#6B7280" } }
+                        }}
+                        yaxisOptions={{
+                            title: { text: "Maxwritten Clean (회)", style: { fontSize: "12px", color: "#6B7280" } }
+                        }}
+
                         customOptions={{
                             annotations: {
                                 yaxis: [
                                     {
                                         y: 100,
-                                        borderColor: "#EF4444",
+                                        borderColor: "#FEA29B",
                                         strokeDashArray: 4,
                                         opacity: 0.7,
                                         label: {
-                                            borderColor: "#EF4444",
+                                            borderColor: "#FEA29B",
                                             style: {
                                                 color: "#fff",
-                                                background: "#EF4444",
+                                                background: "#FEA29B",
                                                 fontSize: "11px",
                                                 fontWeight: 500,
                                             },
@@ -504,14 +508,14 @@ export default function BGWriterPage() {
                                     },
                                     {
                                         y: 20,
-                                        borderColor: "#10B981",
+                                        borderColor: "#60A5FA",
                                         strokeDashArray: 4,
                                         opacity: 0.6,
                                         label: {
-                                            borderColor: "#10B981",
+                                            borderColor: "#60A5FA",
                                             style: {
                                                 color: "#fff",
-                                                background: "#10B981",
+                                                background: "#60A5FA",
                                                 fontSize: "11px",
                                                 fontWeight: 500,
                                             },
@@ -552,19 +556,26 @@ export default function BGWriterPage() {
                         categories={dashboard.bufferReuseRate.categories}
                         colors={["#8E79FF"]}
                         height={250}
+                        xaxisOptions={{
+                            title: { text: "시간", style: { fontSize: "12px", color: "#6B7280" } }
+                        }}
+                        yaxisOptions={{
+                            title: { text: "재사용률 (%)", style: { fontSize: "12px", color: "#6B7280" } }
+                        }}
+
                         customOptions={{
                             annotations: {
                                 yaxis: [
                                     {
                                         y: 90,
-                                        borderColor: "#10B981",
+                                        borderColor: "#60A5FA",
                                         strokeDashArray: 4,
                                         opacity: 0.6,
                                         label: {
-                                            borderColor: "#10B981",
+                                            borderColor: "#60A5FA",
                                             style: {
                                                 color: "#fff",
-                                                background: "#10B981",
+                                                background: "#60A5FA",
                                                 fontSize: "11px",
                                                 fontWeight: 500,
                                             },
@@ -591,14 +602,14 @@ export default function BGWriterPage() {
                                     },
                                     {
                                         y: 70,
-                                        borderColor: "#EF4444",
+                                        borderColor: "#FEA29B",
                                         strokeDashArray: 4,
                                         opacity: 0.7,
                                         label: {
-                                            borderColor: "#EF4444",
+                                            borderColor: "#FEA29B",
                                             style: {
                                                 color: "#fff",
-                                                background: "#EF4444",
+                                                background: "#FEA29B",
                                                 fontSize: "11px",
                                                 fontWeight: 500,
                                             },

@@ -52,6 +52,8 @@ interface HotTableData {
         deadTupleCount: number;
         seqScanRatio: number;
         updateDeleteRatio: number;
+        avgVacuumDelay: number;
+        totalBloat: number;
     };
 }
 
@@ -113,6 +115,8 @@ const mockData: HotTableData = {
         deadTupleCount: 1850,
         seqScanRatio: 18,
         updateDeleteRatio: 2.3,
+        avgVacuumDelay: 8.5,
+        totalBloat: 6.4,
     },
 };
 
@@ -214,6 +218,8 @@ export default function HotTablePage() {
         deadTupleCount: 1850,
         seqScanRatio: 18,
         updateDeleteRatio: 2.3,
+        avgVacuumDelay: 8.5,
+        totalBloat: 6.4,
     };
 
     const summaryCards = [
@@ -269,14 +275,14 @@ export default function HotTablePage() {
                         diff={card.diff}
                         desc={card.desc}
                         status={card.status}
-                        link={card.link}
+                        // link={card.link}
                     />
                 ))}
             </div>
 
             {/* 첫 번째 행: 3개 차트 */}
             <ChartGridLayout>
-                <WidgetCard title={`${dashboard.cacheHitRatio.tableName} Cache Hit Ratio`} span={2}>
+                <WidgetCard title={`Top Cache Hit Ratio`} span={2}>
                     <div style={{
                         display: 'flex',
                         flexDirection: 'column',
@@ -297,8 +303,8 @@ export default function HotTablePage() {
                         />
                         <div className="cpu-gauge-details">
                             <div className="cpu-detail-item">
-                                <span className="cpu-detail-label">Buffer Hits</span>
-                                <span className="cpu-detail-value">{(dashboard.cacheHitRatio.bufferHits / 1000).toFixed(1)}K</span>
+                                <span className="cpu-detail-label">Top table</span>
+                                <span className="cpu-detail-value">{(dashboard.cacheHitRatio.tableName)}</span>
                             </div>
                             <div className="cpu-detail-divider"></div>
                             <div className="cpu-detail-item">
@@ -320,6 +326,12 @@ export default function HotTablePage() {
                         categories={dashboard.vacuumDelayTrend.categories}
                         colors={["#8E79FF", "#FEA29B", "#77B2FB"]}
                         height={250}
+                        xaxisOptions={{
+                            title: { text: "시간", style: { fontSize: "12px", color: "#6B7280" } }
+                        }}
+                        yaxisOptions={{
+                            title: { text: "Vacuum Delay (초)", style: { fontSize: "12px", color: "#6B7280" } }
+                        }}
                         customOptions={{
                             annotations: {
                                 yaxis: [
@@ -385,6 +397,12 @@ export default function HotTablePage() {
                         categories={dashboard.deadTupleTrend.categories}
                         colors={["#8E79FF", "#77B2FB", "#FEA29B"]}
                         height={250}
+                        xaxisOptions={{
+                            title: { text: "시간", style: { fontSize: "12px", color: "#6B7280" } }
+                        }}
+                        yaxisOptions={{
+                            title: { text: "Dead Tuples", style: { fontSize: "12px", color: "#6B7280" } }
+                        }}
                         customOptions={{
                             annotations: {
                                 yaxis: [
@@ -450,6 +468,12 @@ export default function HotTablePage() {
                         categories={dashboard.totalDeadTuple.categories}
                         colors={["#8E79FF"]}
                         height={250}
+                        xaxisOptions={{
+                            title: { text: "시간", style: { fontSize: "12px", color: "#6B7280" } }
+                        }}
+                        yaxisOptions={{
+                            title: { text: "Total Dead Tuples", style: { fontSize: "12px", color: "#6B7280" } }
+                        }}
                         customOptions={{
                             annotations: {
                                 yaxis: [
@@ -514,6 +538,12 @@ export default function HotTablePage() {
                         categories={dashboard.topQueryTables.tableNames}
                         colors={["#FEA29B", "#8E79FF"]}
                         height={250}
+                        xaxisOptions={{
+                            title: { text: "테이블명", style: { fontSize: "12px", color: "#6B7280" } }
+                        }}
+                        yaxisOptions={{
+                            title: { text: "조회 횟수", style: { fontSize: "12px", color: "#6B7280" } }
+                        }}
                         isStacked={true}
                     />
                 </WidgetCard>
@@ -530,6 +560,12 @@ export default function HotTablePage() {
                         categories={dashboard.topDmlTables.tableNames}
                         colors={["#FEA29B", "#8E79FF", "#77B2FB"]}
                         height={250}
+                        xaxisOptions={{
+                            title: { text: "테이블명", style: { fontSize: "12px", color: "#6B7280" } }
+                        }}
+                        yaxisOptions={{
+                            title: { text: "DML 횟수", style: { fontSize: "12px", color: "#6B7280" } }
+                        }}
                         isStacked={true}
                     />
 
