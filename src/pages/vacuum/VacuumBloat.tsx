@@ -1,15 +1,16 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useState, useRef } from "react";
 import Chart from "../../components/chart/ChartComponent";
 import WidgetCard from "../../components/util/WidgetCard";
 import SummaryCard from "../../components/util/SummaryCard";
+import BloatDetailPage from "./VacuumBloatDetail"; // 임포트 추가
 import "/src/styles/vacuum/VacuumPage.css";
 import apiClient from "../../api/apiClient";
 import { useInstanceContext } from "../../context/InstanceContext";
 
-// ====== 서버 DTO와 1:1 매칭 ======
+// ====== 서버 DTO 타입 ======
 type XminHorizonMonitor = {
-  data: number[][];     
-  labels: string[];   
+  data: number[][];
+  labels: string[];
 };
 type BloatTrend = { data: number[]; labels: string[] };
 type BloatDistribution = { data: number[]; labels: string[] };
@@ -21,29 +22,30 @@ type DashboardResponse = {
   kpi: Kpi;
 };
 
-// ====== 상수/유틸 ======
+// ====== 상수 ======
 const WARN_H = 4;
 const ALERT_H = 6;
 
-// ====== 페이지 ======
 const VacuumBloatPage: React.FC = () => {
   const { selectedInstance, selectedDatabase } = useInstanceContext();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [resp, setResp] = useState<DashboardResponse | null>(null);
+  
+  // 드릴다운 상태 추가
+  const [expanded, setExpanded] = useState(true);
   const detailRef = useRef<HTMLDivElement>(null);
-  const [expanded, setExpanded] = useState(false);
 
-  const toggleDetail = () => {
-    setExpanded((p) => {
-      const n = !p;
-      if (n) setTimeout(() => detailRef.current?.scrollIntoView({ behavior: "smooth" }), 0);
-      return n;
+  const toggle = () => {
+    setExpanded((prev) => {
+      const next = !prev;
+      if (next) setTimeout(() => detailRef.current?.scrollIntoView({ behavior: "smooth" }), 0);
+      return next;
     });
   };
 
   useEffect(() => {
-    // Instance가 선택되지 않았으면 빈 데이터 표시
+    // Instance가 선택되지 않으면 초기화
     if (!selectedInstance) {
       setResp(null);
       setLoading(false);
@@ -52,30 +54,68 @@ const VacuumBloatPage: React.FC = () => {
     }
 
     const ac = new AbortController();
+    
     (async () => {
       try {
         setLoading(true);
         setError(null);
 
         const databaseId = selectedDatabase?.databaseId;
-        
-        console.log('Fetching bloat dashboard data...', { 
-          instanceId: selectedInstance.instanceId, 
-          databaseId 
+
+        console.log('Fetching bloat dashboard...', {
+          instanceId: selectedInstance.instanceId,
+          instanceName: selectedInstance.instanceName,
+          databaseId,
+          databaseName: selectedDatabase?.databaseName
         });
 
+        // API 호출 - databaseId가 있으면 파라미터로 전달
+        const params: any = {};
+        if (databaseId) {
+          params.databaseId = databaseId;
+        }
+
         const res = await apiClient.get<DashboardResponse>("/vacuum/bloat/dashboard", {
-          params: databaseId ? { databaseId } : undefined,
+          params,
           signal: ac.signal,
         });
 
         console.log('Bloat API Response:', res.data);
 
-        // 최소 유효성
-        if (!res.data?.xminHorizonMonitor?.labels?.length || !res.data?.xminHorizonMonitor?.data?.length) {
-          throw new Error("Xmin Horizon 데이터가 비었습니다.");
+        // 데이터 검증 및 기본값 설정
+        if (!res.data) {
+          throw new Error("응답 데이터가 없습니다.");
         }
-        setResp(res.data);
+
+        const validated: DashboardResponse = {
+          xminHorizonMonitor: {
+            data: res.data.xminHorizonMonitor?.data || [[], []],
+            labels: res.data.xminHorizonMonitor?.labels || []
+          },
+          bloatTrend: {
+            data: res.data.bloatTrend?.data || [],
+            labels: res.data.bloatTrend?.labels || []
+          },
+          bloatDistribution: {
+            data: res.data.bloatDistribution?.data || [],
+            labels: res.data.bloatDistribution?.labels || []
+          },
+          kpi: {
+            tableBloat: res.data.kpi?.tableBloat || "0B",
+            criticalTable: res.data.kpi?.criticalTable || 0,
+            bloatGrowth: res.data.kpi?.bloatGrowth || "+0B"
+          }
+        };
+
+        console.log('Validated Bloat Data:', {
+          xminDataLength: validated.xminHorizonMonitor.data?.[0]?.length || 0,
+          xminLabelsLength: validated.xminHorizonMonitor.labels.length,
+          bloatTrendLength: validated.bloatTrend.data.length,
+          bloatDistLength: validated.bloatDistribution.data.length,
+          kpi: validated.kpi
+        });
+
+        setResp(validated);
       } catch (e: any) {
         if (e?.name !== "CanceledError") {
           console.error('Failed to fetch bloat dashboard:', e);
@@ -85,37 +125,66 @@ const VacuumBloatPage: React.FC = () => {
         setLoading(false);
       }
     })();
-    return () => ac.abort();
-  }, [selectedInstance, selectedDatabase]);
 
-  // ====== 시리즈 구성 ======
+    return () => ac.abort();
+  }, [selectedInstance, selectedDatabase]); // Instance 또는 Database 변경 시 재조회
+
+  // ====== 차트 시리즈 ======
   const xminSeries = useMemo(() => {
-    if (!resp?.xminHorizonMonitor) return [];
-    const [ageHours = []] = resp.xminHorizonMonitor.data; // 첫 시리즈는 Age
-    const warn = Array(ageHours.length).fill(WARN_H);
-    const alert = Array(ageHours.length).fill(ALERT_H);
+    if (!resp?.xminHorizonMonitor?.data?.length) {
+      return [];
+    }
+
+    const [ageHours = []] = resp.xminHorizonMonitor.data;
+
+    console.log('원본 ageHours 데이터:', ageHours.slice(0, 5));
+    
+    const ageHoursConverted = ageHours.map(seconds => seconds / 3600);
+    
+    console.log('변환된 데이터:', ageHoursConverted.slice(0, 5));
+    
+    if (ageHoursConverted.length === 0) {
+      return [];
+    }
+
+    const warn = Array(ageHoursConverted.length).fill(WARN_H);
+    const alert = Array(ageHoursConverted.length).fill(ALERT_H);
+
     return [
-      { name: "Xmin Horizon Age", data: ageHours },
+      { name: "Xmin Horizon Age", data: ageHoursConverted },
       { name: `Warning Threshold (${WARN_H}h)`, data: warn },
       { name: `Alert Threshold (${ALERT_H}h)`, data: alert },
     ];
   }, [resp?.xminHorizonMonitor]);
 
   const bloatTrendSeries = useMemo(() => {
-    if (!resp?.bloatTrend) return [];
-    return [{ name: "Total Bloat", data: resp.bloatTrend.data ?? [] }];
+    if (!resp?.bloatTrend?.data?.length) {
+      return [];
+    }
+    return [{ name: "Total Bloat (GB)", data: resp.bloatTrend.data }];
   }, [resp?.bloatTrend]);
 
   const bloatDistSeries = useMemo(() => {
-    if (!resp?.bloatDistribution) return [];
-    return [{ name: "Tables", data: resp.bloatDistribution.data ?? [] }];
+    if (!resp?.bloatDistribution?.data?.length) {
+      return [];
+    }
+    return [{ name: "Tables", data: resp.bloatDistribution.data }];
   }, [resp?.bloatDistribution]);
 
-  // Instance 선택 안됨
+  // ====== 렌더링 ======
+  
+  // Instance 미선택
   if (!selectedInstance) {
     return (
       <div className="vd-root">
-        <div style={{ padding: '40px', textAlign: 'center', color: '#6B7280' }}>
+        <div style={{
+          padding: '40px',
+          textAlign: 'center',
+          color: '#6B7280',
+          backgroundColor: '#F9FAFB',
+          borderRadius: '8px',
+          margin: '16px'
+        }}>
           <p style={{ fontSize: '18px', fontWeight: '500', marginBottom: '8px' }}>
             Instance를 선택해주세요
           </p>
@@ -127,27 +196,49 @@ const VacuumBloatPage: React.FC = () => {
     );
   }
 
+  // 로딩 중
   if (loading) {
     return (
       <div className="vd-root">
-        <div className="il-banner il-banner--muted">
-          Loading dashboard data for <strong>{selectedInstance.instanceName}</strong>
-          {selectedDatabase && <span> / <strong>{selectedDatabase.databaseName}</strong></span>}
-          ...
+        <div style={{
+          padding: '40px',
+          textAlign: 'center',
+          color: '#6B7280',
+          backgroundColor: '#F9FAFB',
+          borderRadius: '8px',
+          margin: '16px'
+        }}>
+          <div style={{ fontSize: '16px', marginBottom: '8px' }}>
+            Loading bloat dashboard for{' '}
+            <strong>{selectedInstance.instanceName}</strong>
+            {selectedDatabase && (
+              <span> / <strong>{selectedDatabase.databaseName}</strong></span>
+            )}
+          </div>
+          <div style={{ fontSize: '14px', color: '#9CA3AF' }}>
+            Please wait...
+          </div>
         </div>
       </div>
     );
   }
 
+  // 에러 발생
   if (error) {
     return (
       <div className="vd-root">
-        <div className="il-banner il-banner--error">
+        <div style={{
+          padding: '24px',
+          backgroundColor: '#FEE2E2',
+          color: '#991B1B',
+          borderRadius: '8px',
+          margin: '16px'
+        }}>
           <p style={{ fontSize: '18px', fontWeight: '500', marginBottom: '8px' }}>
-            Failed to load bloat dashboard
+            ⚠️ Failed to load bloat dashboard
           </p>
           <p style={{ fontSize: '14px', marginTop: '8px' }}>{error}</p>
-          <p style={{ fontSize: '12px', marginTop: '16px', color: '#6B7280' }}>
+          <p style={{ fontSize: '12px', marginTop: '16px', color: '#7F1D1D' }}>
             Instance: {selectedInstance.instanceName}
             {selectedDatabase && ` / Database: ${selectedDatabase.databaseName}`}
           </p>
@@ -156,103 +247,259 @@ const VacuumBloatPage: React.FC = () => {
     );
   }
 
+  // 데이터 없음
+  if (!resp) {
+    return (
+      <div className="vd-root">
+        <div style={{
+          padding: '40px',
+          textAlign: 'center',
+          color: '#6B7280',
+          backgroundColor: '#F9FAFB',
+          borderRadius: '8px',
+          margin: '16px'
+        }}>
+          표시할 데이터가 없습니다.
+        </div>
+      </div>
+    );
+  }
+
+  // 메인 대시보드
   return (
     <div className="vd-root">
-      {!resp ? (
-        <div className="il-empty">표시할 데이터가 없습니다.</div>
-      ) : (
-        <>
-          <div className="vd-main-layout">
-            {/* 좌측 대형: Xmin Horizon */}
-            <div className="vd-left-large">
-              <WidgetCard title="Xmin Horizon Monitor (last 7d)" height="clamp(320px, 43vh, 520px)">
-                <Chart
-                  type="area"
-                  series={xminSeries}
-                  categories={resp.xminHorizonMonitor.labels}
-                  width="100%"
-                  height="350px"
-                  showToolbar={false}
-                  customOptions={{
-                    chart: { redrawOnParentResize: true, redrawOnWindowResize: true, toolbar: { show: false } },
-                    dataLabels: { enabled: false },
-                    stroke: { curve: "smooth", width: [2, 2, 2], dashArray: [0, 8, 8] },
-                    fill: { type: "gradient", gradient: { shadeIntensity: 0.2, opacityFrom: 0.25, opacityTo: 0.05, stops: [0, 100] } },
-                    markers: { size: 0 },
-                    grid: { borderColor: "#E5E7EB", strokeDashArray: 4 },
-                    legend: { show: true, position: "bottom" },
-                    xaxis: {
-                      categories: resp.xminHorizonMonitor.labels,
-                      labels: { style: { colors: "#9CA3AF" } },
-                      axisBorder: { show: false },
-                      axisTicks: { show: false },
-                    },
-                    yaxis: {
-                      min: 0,
-                      max: 8,
-                      tickAmount: 4,
-                      labels: { formatter: (v: number) => `${v}h` },
-                    },
-                    annotations: {
-                      yaxis: [
-                        {
-                          y: WARN_H,
-                          borderColor: "#F59E0B",
-                          strokeDashArray: 8,
-                          label: { text: `Warn (${WARN_H}h)`, position: "right", style: { background: "transparent", color: "#F59E0B", fontWeight: 700 } },
+      <div className="vd-main-layout">
+        {/* 좌측: Xmin Horizon Monitor */}
+        <div className="vd-left-large">
+          <WidgetCard title="Xmin Horizon Monitor (last 7d)" height="clamp(320px, 38.8vh, 520px)">
+            {xminSeries.length > 0 ? (
+              <Chart
+                type="line"
+                series={xminSeries}
+                categories={resp.xminHorizonMonitor.labels}
+                width="100%"
+                height="350px"
+                showToolbar={false}
+                customOptions={{
+                  chart: {
+                    redrawOnParentResize: true,
+                    redrawOnWindowResize: true,
+                    toolbar: { show: false }
+                  },
+                  dataLabels: { enabled: false },
+                  stroke: {
+                    curve: "smooth",
+                    width: [2, 2, 2],
+                    dashArray: [0, 8, 8]
+                  },
+                  markers: { size: 0 },
+                  grid: { borderColor: "#E5E7EB", strokeDashArray: 4 },
+                  legend: { show: true, position: "bottom" },
+                  xaxis: {
+                    categories: resp.xminHorizonMonitor.labels,
+                    labels: { style: { colors: "#9CA3AF" } },
+                    axisBorder: { show: false },
+                    axisTicks: { show: false },
+                  },
+                  yaxis: {
+                    min: 0,
+                    tickAmount: 4,
+                    labels: { formatter: (v: number) => `${v}h` },
+                  },
+                  annotations: {
+                    yaxis: [
+                      {
+                        y: WARN_H,
+                        borderColor: "#F59E0B",
+                        strokeDashArray: 8,
+                        label: {
+                          text: `Warn (${WARN_H}h)`,
+                          position: "right",
+                          style: {
+                            background: "transparent",
+                            color: "#F59E0B",
+                            fontWeight: 700
+                          }
                         },
-                        {
-                          y: ALERT_H,
-                          borderColor: "#EF4444",
-                          strokeDashArray: 8,
-                          label: { text: `Alert (${ALERT_H}h)`, position: "right", style: { background: "transparent", color: "#EF4444", fontWeight: 700 } },
+                      },
+                      {
+                        y: ALERT_H,
+                        borderColor: "#EF4444",
+                        strokeDashArray: 8,
+                        label: {
+                          text: `Alert (${ALERT_H}h)`,
+                          position: "right",
+                          style: {
+                            background: "transparent",
+                            color: "#EF4444",
+                            fontWeight: 700
+                          }
                         },
-                      ],
-                    },
-                    tooltip: { shared: true, y: { formatter: (val: number) => `${val.toFixed(2)}h` } },
-                  }}
-                />
-              </WidgetCard>
-            </div>
-
-            {/* 우측 스택: KPI + 2차트 */}
-            <div className="vd-right-stack">
-              {/* KPI */}
-              <div className="vd-kpi-row">
-                <SummaryCard label="Est. Table Bloat" value={resp.kpi.tableBloat} diff={3} />
-                <SummaryCard label="Critical Tables" value={resp.kpi.criticalTable} diff={3} />
-                <SummaryCard label="Bloat Growth" value={resp.kpi.bloatGrowth} diff={3} desc="30d" />
+                      },
+                    ],
+                  },
+                  tooltip: {
+                    shared: true,
+                    y: { formatter: (val: number) => `${val.toFixed(2)}h` }
+                  },
+                }}
+              />
+            ) : (
+              <div style={{
+                textAlign: 'center',
+                color: '#9CA3AF'
+              }}>
+                <div style={{ fontSize: '16px', marginBottom: '8px' }}>
+                  최근 7일간 Xmin Horizon 데이터가 없습니다.
+                </div>
+                <div style={{ fontSize: '14px' }}>
+                  {selectedDatabase
+                    ? `Database "${selectedDatabase.databaseName}"에 데이터가 없습니다.`
+                    : "Instance 전체에 데이터가 없습니다."}
+                </div>
               </div>
+            )}
+          </WidgetCard>
+        </div>
 
-              <div className="vd-chart-row">
-                {/* Total Bloat Trend */}
-                <WidgetCard title="Total Bloat Trend (Last 30 Days)">
-                  <Chart
-                    type="line"
-                    series={bloatTrendSeries}
-                    categories={resp.bloatTrend.labels}
-                    width="100%"
-                  />
-                </WidgetCard>
-
-                {/* Bloat Distribution */}
-                <WidgetCard title="Bloat Distribution by Percentage (24h)">
-                  <Chart
-                    type="bar"
-                    series={bloatDistSeries}
-                    categories={resp.bloatDistribution.labels}
-                    width="100%"
-                  />
-                </WidgetCard>
-              </div>
-            </div>
+        {/* 우측: KPI + 차트 */}
+        <div className="vd-right-stack">
+          {/* KPI 카드 */}
+          <div className="vd-kpi-row">
+            <SummaryCard
+              label="Est. Table Bloat"
+              value={resp.kpi.tableBloat}
+              diff={0}
+            />
+            <SummaryCard
+              label="Critical Tables"
+              value={resp.kpi.criticalTable}
+              diff={0}
+            />
+            <SummaryCard
+              label="Bloat Growth"
+              value={resp.kpi.bloatGrowth}
+              diff={0}
+              desc="30d"
+            />
           </div>
 
-          {/* (옵션) 상세 섹션 훅업 자리 */}
-          <div ref={detailRef} className="mt-8" />
-          {/* <BloatDetailPage onToggle={toggleDetail} expanded={expanded} /> */}
-        </>
-      )}
+          {/* 차트 행 */}
+          <div className="vd-chart-row">
+            {/* Bloat Trend */}
+            <WidgetCard title="Total Bloat Trend (Last 30 Days)">
+              {bloatTrendSeries.length > 0 && resp.bloatTrend.labels.length > 0 ? (
+                <Chart
+                  type="line"
+                  series={bloatTrendSeries}
+                  categories={resp.bloatTrend.labels}
+                  width="100%"
+                  customOptions={{
+                    chart: {
+                      toolbar: { show: false },
+                      redrawOnParentResize: true,
+                      redrawOnWindowResize: true
+                    },
+                    stroke: {
+                      curve: "smooth",
+                      width: 2
+                    },
+                    markers: {
+                      size: 4
+                    },
+                    grid: {
+                      borderColor: "#E5E7EB",
+                      strokeDashArray: 4
+                    },
+                    xaxis: {
+                      labels: {
+                        style: { colors: "#9CA3AF" }
+                      }
+                    },
+                    yaxis: {
+                      title: { text: "Bloat (GB)" },
+                      labels: {
+                        formatter: (val: number) => `${val.toFixed(1)}GB`
+                      }
+                    },
+                    tooltip: {
+                      y: {
+                        formatter: (val: number) => `${val.toFixed(2)} GB`
+                      }
+                    }
+                  }}
+                />
+              ) : (
+                <div style={{
+                  textAlign: 'center',
+                  color: '#9CA3AF'
+                }}>
+                  최근 30일간 Bloat 트렌드 데이터가 없습니다.
+                </div>
+              )}
+            </WidgetCard>
+
+            {/* Bloat Distribution */}
+            <WidgetCard title="Bloat Distribution by Percentage (24h)">
+              {bloatDistSeries.length > 0 && resp.bloatDistribution.labels.length > 0 ? (
+                <Chart
+                  type="bar"
+                  series={bloatDistSeries}
+                  categories={resp.bloatDistribution.labels}
+                  width="100%"
+                  customOptions={{
+                    chart: {
+                      toolbar: { show: false },
+                      redrawOnParentResize: true,
+                      redrawOnWindowResize: true
+                    },
+                    plotOptions: {
+                      bar: {
+                        borderRadius: 4,
+                        dataLabels: {
+                          position: "top"
+                        }
+                      }
+                    },
+                    dataLabels: {
+                      enabled: true,
+                      formatter: (val: number) => val.toString(),
+                      offsetY: -20,
+                      style: {
+                        fontSize: "12px",
+                        colors: ["#304758"]
+                      }
+                    },
+                    xaxis: {
+                      labels: {
+                        style: { colors: "#9CA3AF" }
+                      }
+                    },
+                    yaxis: {
+                      title: { text: "Table Count" }
+                    },
+                    grid: {
+                      borderColor: "#E5E7EB",
+                      strokeDashArray: 4
+                    }
+                  }}
+                />
+              ) : (
+                <div style={{
+                  textAlign: 'center',
+                  color: '#9CA3AF'
+                }}>
+                  최근 24시간 내 Bloat 분포 데이터가 없습니다.
+                </div>
+              )}
+            </WidgetCard>
+          </div>
+        </div>
+      </div>
+
+      {/* 드릴다운 섹션 */}
+      <div ref={detailRef} className="mt-8" />
+      <BloatDetailPage onToggle={toggle} expanded={expanded} />
     </div>
   );
 };
