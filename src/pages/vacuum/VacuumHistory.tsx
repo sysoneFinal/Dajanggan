@@ -1,4 +1,4 @@
-import { Fragment, useMemo, useState } from "react";
+import { Fragment, useMemo, useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import {
     useReactTable,
@@ -13,8 +13,10 @@ import {
 import Pagination from "../../components/util/Pagination";
 import CsvButton from "../../components/util/CsvButton";
 import MultiSelectDropdown from "../../components/util/MultiSelectDropdown";
+import apiClient from "../../api/apiClient";
 import "/src/styles/vacuum/VacuumHistory-list.css";
 
+/* ---------- 타입 정의 ---------- */
 type VacuumHistoryRow = {
   executedAt: string;
   table: string;
@@ -27,95 +29,141 @@ type VacuumHistoryRow = {
   bloatAfter: string;
 };
 
-const baseRows: VacuumHistoryRow[] = [
-  {
-    executedAt: "2024-04-23 15:26",
-    table: "orders",
-    type: "Vacuum",
-    trigger: "Autovacuum",
-    status: "완료",
-    tuples: "127K",
-    duration: "5m 30s",
-    bloatBefore: "9.4%",
-    bloatAfter: "6.1%",
-  },
-  {
-    executedAt: "2024-04-23 08:30",
-    table: "orders",
-    type: "Analyze",
-    trigger: "Schedule",
-    status: "완료",
-    tuples: "81K",
-    duration: "2m 15s",
-    bloatBefore: "12.7%",
-    bloatAfter: "9.4%",
-  },
-  {
-    executedAt: "2024-04-22 13:15",
-    table: "sessions",
-    type: "Autovacuum",
-    trigger: "Autovacuum",
-    status: "완료",
-    tuples: "55K",
-    duration: "3m 45s",
-    bloatBefore: "4.5%",
-    bloatAfter: "1.2%",
-  },
-  {
-    executedAt: "2024-04-21 19:40",
-    table: "sessions",
-    type: "Vacuum",
-    trigger: "Manual",
-    status: "완료",
-    tuples: "22K",
-    duration: "1m 50s",
-    bloatBefore: "7.8%",
-    bloatAfter: "4.5%",
-  },
-  {
-    executedAt: "2024-04-21 14:22",
-    table: "products",
-    type: "Vacuum",
-    trigger: "Schedule",
-    status: "실패",
-    tuples: "0",
-    duration: "0m 45s",
-    bloatBefore: "15.2%",
-    bloatAfter: "15.2%",
-  },
-  {
-    executedAt: "2024-04-20 22:10",
-    table: "users",
-    type: "Autovacuum",
-    trigger: "Autovacuum",
-    status: "완료",
-    tuples: "89K",
-    duration: "4m 20s",
-    bloatBefore: "11.3%",
-    bloatAfter: "7.8%",
-  },
-];
+// 백엔드 API 응답 타입
+type ApiHistoryRow = {
+  databaseId: number;
+  lastVacuum: string;
+  lastAutovacuum: string;
+  deadTuples: number;
+  modSinceAnalyze: number;
+  bloatBytes: number;
+  bloatRatio: number;
+  tableSize: number;
+  vacuumCount24h: number;
+  autovacuumCount24h: number;
+};
 
-// 총 48개 생성 (다양한 시간대로)
-const historyDemo: VacuumHistoryRow[] = Array.from({ length: 48 }, (_, i) => {
-  const baseRow = baseRows[i % baseRows.length];
-  const hoursAgo = i * 2;
-  const date = new Date();
-  date.setHours(date.getHours() - hoursAgo);
-  
-  return {
-    ...baseRow,
-    executedAt: `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")} ${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`,
-    table: i % 3 === 0 ? baseRow.table : `${baseRow.table}_${Math.floor(i / 6)}`,
-  };
-});
+/* ---------- 유틸리티 함수 ---------- */
+function formatNumber(num: number): string {
+  if (num >= 1000000) return `${(num / 1000000).toFixed(1)}M`;
+  if (num >= 1000) return `${(num / 1000).toFixed(1)}K`;
+  return num.toString();
+}
 
-export default function VacuumHistoryTable({ rows = historyDemo }: { rows?: VacuumHistoryRow[] }) {
-  const [data] = useState<VacuumHistoryRow[]>(rows);
+function formatDateTime(dateStr: string | null): string {
+  if (!dateStr) return "-";
+  const date = new Date(dateStr);
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  const hours = String(date.getHours()).padStart(2, "0");
+  const minutes = String(date.getMinutes()).padStart(2, "0");
+  return `${year}-${month}-${day} ${hours}:${minutes}`;
+}
+
+function formatBloatRatio(ratio: number): string {
+  return `${(ratio * 100).toFixed(1)}%`;
+}
+
+function transformApiResponse(apiData: ApiHistoryRow[]): VacuumHistoryRow[] {
+  if (!apiData || !Array.isArray(apiData)) {
+    console.warn('Invalid API response:', apiData);
+    return [];
+  }
+
+  return apiData.flatMap(row => {
+    const results: VacuumHistoryRow[] = [];
+    
+    // Vacuum 이력
+    if (row.lastVacuum) {
+      results.push({
+        executedAt: formatDateTime(row.lastVacuum),
+        table: `DB_${row.databaseId}`,
+        type: "Vacuum",
+        trigger: "Manual",
+        status: "완료",
+        tuples: formatNumber(row.deadTuples || 0),
+        duration: "-", // API에서 duration 정보가 없음
+        bloatBefore: formatBloatRatio(row.bloatRatio || 0),
+        bloatAfter: "-", // API에서 after 정보가 없음
+      });
+    }
+    
+    // Autovacuum 이력
+    if (row.lastAutovacuum) {
+      results.push({
+        executedAt: formatDateTime(row.lastAutovacuum),
+        table: `DB_${row.databaseId}`,
+        type: "Autovacuum",
+        trigger: "Autovacuum",
+        status: "완료",
+        tuples: formatNumber(row.deadTuples || 0),
+        duration: "-",
+        bloatBefore: formatBloatRatio(row.bloatRatio || 0),
+        bloatAfter: "-",
+      });
+    }
+    
+    return results;
+  }).sort((a, b) => {
+    // 최신 순으로 정렬
+    return new Date(b.executedAt).getTime() - new Date(a.executedAt).getTime();
+  });
+}
+
+/* ---------- 메인 컴포넌트 ---------- */
+export default function VacuumHistoryTable() {
+  const [data, setData] = useState<VacuumHistoryRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [sorting, setSorting] = useState<SortingState>([{ id: "executedAt", desc: true }]);
   const [currentPage, setCurrentPage] = useState(1);
+  const [selectedHours, setSelectedHours] = useState<number>(168); // 기본 7일
+  const [selectedStatus, setSelectedStatus] = useState<string | null>(null);
   const pageSize = 14;
   const navigate = useNavigate();
+
+  // API 호출
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        
+        console.log('Fetching vacuum history data...', { hours: selectedHours, status: selectedStatus });
+        
+        const response = await apiClient.get<ApiHistoryRow[]>(
+          '/vacuum/history',
+          {
+            params: {
+              hours: selectedHours,
+              status: selectedStatus,
+            }
+          }
+        );
+        
+        console.log('API Response:', response.data);
+        
+        const transformedData = transformApiResponse(response.data);
+        console.log('Transformed Data:', transformedData);
+        
+        setData(transformedData);
+        setCurrentPage(1); // 필터 변경 시 첫 페이지로
+      } catch (err: any) {
+        console.error('Failed to fetch vacuum history:', err);
+        console.error('Error details:', {
+          message: err.message,
+          response: err.response?.data,
+          status: err.response?.status
+        });
+        setError(err.response?.data?.message || err.message || 'Failed to load data');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [selectedHours, selectedStatus]); // 필터 변경 시 재조회
 
   // 컬럼 정의
   const columns = useMemo<ColumnDef<VacuumHistoryRow>[]>(
@@ -137,12 +185,7 @@ export default function VacuumHistoryTable({ rows = historyDemo }: { rows?: Vacu
         header: "작업 유형",
         cell: (info) => {
           const value = info.getValue() as string;
-          
-          return (
-            <span >
-              {value}
-            </span>
-          );
+          return <span>{value}</span>;
         },
       },
       {
@@ -268,6 +311,29 @@ export default function VacuumHistoryTable({ rows = historyDemo }: { rows?: Vacu
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
   };
+
+  // 로딩 상태
+  if (loading) {
+    return (
+      <main className="vacuum-page">
+        <div style={{ padding: '40px', textAlign: 'center', color: '#6B7280' }}>
+          Loading history data...
+        </div>
+      </main>
+    );
+  }
+
+  // 에러 상태
+  if (error) {
+    return (
+      <main className="vacuum-page">
+        <div style={{ padding: '40px', textAlign: 'center', color: '#ef4444' }}>
+          <p>Failed to load vacuum history</p>
+          <p style={{ fontSize: '14px', marginTop: '8px' }}>{error}</p>
+        </div>
+      </main>
+    );
+  }
 
   return (
     <main className="vacuum-page">
