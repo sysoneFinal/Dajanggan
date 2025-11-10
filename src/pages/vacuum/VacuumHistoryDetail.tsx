@@ -108,7 +108,7 @@ export default function VacuumRecordDetailPage({ data = demo }: { data?: VacuumR
       <div className="vd-grid4">
         <section className="vd-card">
           <header className="vd-card__header">
-            <h2>VACUUM - {data.tableName} <span className="vd-dim">({data.startTime.split(" ")[0]} {data.startTime.split(",")[1]})</span></h2>
+            <h2>VACUUM - {data.tableName} </h2>
             <div className="vd-kpis">
               <div className="vd-chip">
                 <span className="vd-chip__label">Autovacuum</span>

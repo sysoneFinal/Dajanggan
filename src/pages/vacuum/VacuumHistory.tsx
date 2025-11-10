@@ -1,123 +1,194 @@
-import { Fragment, useMemo, useState } from "react";
+import { Fragment, useMemo, useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import {
-    useReactTable,
-    getCoreRowModel,
-    getSortedRowModel,
-    getFilteredRowModel,
-    getPaginationRowModel,
-    flexRender,
-    type ColumnDef,
-    type SortingState,
+  useReactTable,
+  getCoreRowModel,
+  getSortedRowModel,
+  getFilteredRowModel,
+  getPaginationRowModel,
+  flexRender,
+  type ColumnDef,
+  type SortingState,
 } from "@tanstack/react-table";
 import Pagination from "../../components/util/Pagination";
 import CsvButton from "../../components/util/CsvButton";
 import MultiSelectDropdown from "../../components/util/MultiSelectDropdown";
+import apiClient from "../../api/apiClient";
+import { useInstanceContext } from "../../context/InstanceContext";
 import "/src/styles/vacuum/VacuumHistory-list.css";
 
+/* ---------- 타입 정의 ---------- */
 type VacuumHistoryRow = {
   executedAt: string;
   table: string;
   type: "Vacuum" | "Autovacuum" | "Analyze";
   trigger: "Manual" | "Autovacuum" | "Schedule";
-  status: "완료" | "실패" | "취소";
+  status: "완료" | "실패" | "취소" | "정상" | "주의";
   tuples: string;
   duration: string;
   bloatBefore: string;
   bloatAfter: string;
 };
 
-const baseRows: VacuumHistoryRow[] = [
-  {
-    executedAt: "2024-04-23 15:26",
-    table: "orders",
-    type: "Vacuum",
-    trigger: "Autovacuum",
-    status: "완료",
-    tuples: "127K",
-    duration: "5m 30s",
-    bloatBefore: "9.4%",
-    bloatAfter: "6.1%",
-  },
-  {
-    executedAt: "2024-04-23 08:30",
-    table: "orders",
-    type: "Analyze",
-    trigger: "Schedule",
-    status: "완료",
-    tuples: "81K",
-    duration: "2m 15s",
-    bloatBefore: "12.7%",
-    bloatAfter: "9.4%",
-  },
-  {
-    executedAt: "2024-04-22 13:15",
-    table: "sessions",
-    type: "Autovacuum",
-    trigger: "Autovacuum",
-    status: "완료",
-    tuples: "55K",
-    duration: "3m 45s",
-    bloatBefore: "4.5%",
-    bloatAfter: "1.2%",
-  },
-  {
-    executedAt: "2024-04-21 19:40",
-    table: "sessions",
-    type: "Vacuum",
-    trigger: "Manual",
-    status: "완료",
-    tuples: "22K",
-    duration: "1m 50s",
-    bloatBefore: "7.8%",
-    bloatAfter: "4.5%",
-  },
-  {
-    executedAt: "2024-04-21 14:22",
-    table: "products",
-    type: "Vacuum",
-    trigger: "Schedule",
-    status: "실패",
-    tuples: "0",
-    duration: "0m 45s",
-    bloatBefore: "15.2%",
-    bloatAfter: "15.2%",
-  },
-  {
-    executedAt: "2024-04-20 22:10",
-    table: "users",
-    type: "Autovacuum",
-    trigger: "Autovacuum",
-    status: "완료",
-    tuples: "89K",
-    duration: "4m 20s",
-    bloatBefore: "11.3%",
-    bloatAfter: "7.8%",
-  },
-];
+type ApiHistoryRow = {
+  table: string;
+  lastVacuum: string;
+  lastAutovacuum: string;
+  deadTuples: string;
+  modSinceAnalyze: string;
+  bloatPct: string;
+  frequency: string;
+  status: string;
+};
 
-// 총 48개 생성 (다양한 시간대로)
-const historyDemo: VacuumHistoryRow[] = Array.from({ length: 48 }, (_, i) => {
-  const baseRow = baseRows[i % baseRows.length];
-  const hoursAgo = i * 2;
-  const date = new Date();
-  date.setHours(date.getHours() - hoursAgo);
-  
-  return {
-    ...baseRow,
-    executedAt: `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")} ${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`,
-    table: i % 3 === 0 ? baseRow.table : `${baseRow.table}_${Math.floor(i / 6)}`,
-  };
-});
+/* ---------- 유틸리티 ---------- */
+function transformApiResponse(apiData: ApiHistoryRow[]): VacuumHistoryRow[] {
+  if (!apiData || !Array.isArray(apiData)) {
+    console.warn("Invalid API response:", apiData);
+    return [];
+  }
 
-export default function VacuumHistoryTable({ rows = historyDemo }: { rows?: VacuumHistoryRow[] }) {
-  const [data] = useState<VacuumHistoryRow[]>(rows);
-  const [sorting, setSorting] = useState<SortingState>([{ id: "executedAt", desc: true }]);
+  const rows = apiData.flatMap((row) => {
+    const results: VacuumHistoryRow[] = [];
+
+    if (row.lastVacuum && row.lastVacuum !== "-") {
+      results.push({
+        executedAt: row.lastVacuum,
+        table: row.table,
+        type: "Vacuum",
+        trigger: "Manual",
+        status: row.status === "주의" ? "주의" : "정상",
+        tuples: row.deadTuples,
+        duration: "-",
+        bloatBefore: row.bloatPct,
+        bloatAfter: "-",
+      });
+    }
+
+    if (row.lastAutovacuum && row.lastAutovacuum !== "-") {
+      results.push({
+        executedAt: row.lastAutovacuum,
+        table: row.table,
+        type: "Autovacuum",
+        trigger: "Autovacuum",
+        status: row.status === "주의" ? "주의" : "정상",
+        tuples: row.deadTuples,
+        duration: "-",
+        bloatBefore: row.bloatPct,
+        bloatAfter: "-",
+      });
+    }
+
+    return results;
+  });
+
+  rows.sort(
+    (a, b) => new Date(b.executedAt).getTime() - new Date(a.executedAt).getTime()
+  );
+  return rows;
+}
+
+/* ---------- 메인 컴포넌트 ---------- */
+export default function VacuumHistoryTable() {
+  const { selectedInstance, selectedDatabase } = useInstanceContext();
+  const [data, setData] = useState<VacuumHistoryRow[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // 정렬/페이지
+  const [sorting, setSorting] = useState<SortingState>([
+    { id: "executedAt", desc: true },
+  ]);
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 14;
+
+  // 필터 상태
+  const [selectedPeriod, setSelectedPeriod] = useState<string>("최근 7일");
+  const [selectedStatus, setSelectedStatus] = useState<string | null>(null);
+
   const navigate = useNavigate();
 
-  // 컬럼 정의
+  /* ---------- API 호출 (Instance/Database 변경시만) ---------- */
+  useEffect(() => {
+    if (!selectedInstance) {
+      setData([]);
+      setLoading(false);
+      setError(null);
+      return;
+    }
+
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+
+        // 최대 범위(30일)로 한번만 조회
+        const params: any = { hours: 720 }; // 30일
+        const databaseId = selectedDatabase?.databaseId;
+        if (databaseId) params.databaseId = Number(databaseId);
+
+        console.log('Fetching vacuum history...', params);
+
+        const response = await apiClient.get<ApiHistoryRow[]>("/vacuum/history", {
+          params,
+        });
+
+        console.log('API Response:', response.data);
+
+        const transformed = transformApiResponse(response.data);
+        setData(transformed);
+        setCurrentPage(1);
+      } catch (err: any) {
+        console.error("Failed to fetch vacuum history:", err);
+        setError(
+          err.response?.data?.message || err.message || "Failed to load data"
+        );
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [selectedInstance, selectedDatabase]); // 필터 변경 시 재호출 안함
+
+  /* ---------- 클라이언트 필터링 ---------- */
+  const filteredData = useMemo(() => {
+    console.log('Filtering data...', {
+      totalRows: data.length,
+      selectedPeriod,
+      selectedStatus
+    });
+
+    // 기간 필터
+    const periodMapping: Record<string, number> = {
+      "오늘": 24,
+      "최근 7일": 168,
+      "최근 30일": 720,
+    };
+    const hoursWindow = periodMapping[selectedPeriod] || 720;
+    const cutoffTime = Date.now() - (hoursWindow * 60 * 60 * 1000);
+
+    let filtered = data.filter((row) => {
+      const rowTime = new Date(row.executedAt).getTime();
+      return !isNaN(rowTime) && rowTime >= cutoffTime;
+    });
+
+    // 상태 필터
+    if (selectedStatus) {
+      filtered = filtered.filter((row) => row.status === selectedStatus);
+    }
+
+    console.log('Filtered result:', {
+      originalCount: data.length,
+      filteredCount: filtered.length,
+      period: selectedPeriod,
+      status: selectedStatus
+    });
+
+    return filtered;
+  }, [data, selectedPeriod, selectedStatus]);
+
+  /* ---------- 컬럼 ---------- */
   const columns = useMemo<ColumnDef<VacuumHistoryRow>[]>(
     () => [
       {
@@ -127,72 +198,63 @@ export default function VacuumHistoryTable({ rows = historyDemo }: { rows?: Vacu
           <div className="vd-td-strong">{info.getValue() as string}</div>
         ),
       },
-      {
-        accessorKey: "table",
-        header: "테이블",
-        cell: (info) => info.getValue(),
+      { 
+        accessorKey: "table", 
+        header: "테이블", 
+        cell: (info) => (
+          <div style={{ fontWeight: 500 }}>{info.getValue() as string}</div>
+        )
       },
       {
         accessorKey: "type",
         header: "작업 유형",
-        cell: (info) => {
-          const value = info.getValue() as string;
-          
-          return (
-            <span >
-              {value}
-            </span>
-          );
-        },
+        cell: (info) => <span>{info.getValue() as string}</span>,
       },
-      {
-        accessorKey: "trigger",
-        header: "트리거",
-        cell: (info) => info.getValue(),
+      { 
+        accessorKey: "trigger", 
+        header: "트리거", 
+        cell: (info) => info.getValue() 
       },
       {
         accessorKey: "status",
         header: "상태",
         cell: (info) => {
           const value = info.getValue() as string;
-          const statusClass = 
-            value === "완료" ? "vd-badge--ok" :
-            value === "실패" ? "vd-badge--error" :
-            "vd-badge--warn";
-          return (
-            <span className={`vd-badge ${statusClass}`}>
-              {value}
-            </span>
-          );
+          const statusClass =
+            value === "정상"
+              ? "vd-badge--ok"
+              : value === "주의"
+              ? "vd-badge--warn"
+              : "vd-badge--error";
+          return <span className={`vd-badge ${statusClass}`}>{value}</span>;
         },
       },
-      {
-        accessorKey: "tuples",
-        header: "처리량",
-        cell: (info) => info.getValue(),
+      { 
+        accessorKey: "tuples", 
+        header: "처리량", 
+        cell: (info) => info.getValue() 
       },
-      {
-        accessorKey: "duration",
-        header: "소요 시간",
-        cell: (info) => info.getValue(),
+      { 
+        accessorKey: "duration", 
+        header: "소요 시간", 
+        cell: (info) => info.getValue() 
       },
-      {
-        accessorKey: "bloatBefore",
-        header: "시작 Bloat",
-        cell: (info) => info.getValue(),
-      },
-      {
-        accessorKey: "bloatAfter",
-        header: "종료 Bloat",
-        cell: (info) => info.getValue(),
+      { 
+        accessorKey: "bloatBefore", 
+        header: "Bloat", 
+        cell: (info) => (
+          <span style={{ color: "#DC2626", fontWeight: 500 }}>
+            {info.getValue() as string}
+          </span>
+        )
       },
     ],
     []
   );
 
-  // 테이블 인스턴스 생성
+  /* ---------- 테이블 인스턴스 ---------- */
   const table = useReactTable({
-    data,
+    data: filteredData,
     columns,
     state: {
       sorting,
@@ -209,19 +271,15 @@ export default function VacuumHistoryTable({ rows = historyDemo }: { rows?: Vacu
     manualPagination: false,
   });
 
-  const totalPages = Math.ceil(data.length / pageSize);
+  const totalPages = Math.ceil(filteredData.length / pageSize);
 
-  const handlePageChange = (page: number) => {
-    setCurrentPage(page);
-  };
+  /* ---------- 이벤트 핸들러 ---------- */
+  const handlePageChange = (page: number) => setCurrentPage(page);
 
   const handleRowClick = (row: VacuumHistoryRow) => {
-    navigate("/database/vacuum/history-detail", {
-      state: { historyData: row },
-    });
+    navigate("/database/vacuum/history-detail", { state: { historyData: row } });
   };
 
-  // CSV 내보내기 함수
   const handleExportCSV = () => {
     const headers = [
       "실행 시각",
@@ -231,10 +289,9 @@ export default function VacuumHistoryTable({ rows = historyDemo }: { rows?: Vacu
       "상태",
       "처리량",
       "소요 시간",
-      "시작 Bloat",
-      "종료 Bloat"
+      "Bloat",
     ];
-    const csvData = data.map((row) => [
+    const csvData = filteredData.map((row) => [
       row.executedAt,
       row.table,
       row.type,
@@ -243,21 +300,24 @@ export default function VacuumHistoryTable({ rows = historyDemo }: { rows?: Vacu
       row.tuples,
       row.duration,
       row.bloatBefore,
-      row.bloatAfter
     ]);
 
-    const csvContent = [
-      headers.join(","),
-      ...csvData.map((row) => row.join(",")),
-    ].join("\n");
-
+    const csvContent = [headers.join(","), ...csvData.map((r) => r.join(","))].join(
+      "\n"
+    );
     const BOM = "\uFEFF";
-    const blob = new Blob([BOM + csvContent], { type: "text/csv;charset=utf-8;" });
+    const blob = new Blob([BOM + csvContent], {
+      type: "text/csv;charset=utf-8;",
+    });
     const link = document.createElement("a");
     const url = URL.createObjectURL(blob);
 
     const now = new Date();
-    const fileName = `vacuum_history_${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}${String(now.getDate()).padStart(2, "0")}_${String(now.getHours()).padStart(2, "0")}${String(now.getMinutes()).padStart(2, "0")}.csv`;
+    const fileName = `vacuum_history_${now.getFullYear()}${String(
+      now.getMonth() + 1
+    ).padStart(2, "0")}${String(now.getDate()).padStart(2, "0")}_${String(
+      now.getHours()
+    ).padStart(2, "0")}${String(now.getMinutes()).padStart(2, "0")}.csv`;
 
     link.setAttribute("href", url);
     link.setAttribute("download", fileName);
@@ -269,29 +329,95 @@ export default function VacuumHistoryTable({ rows = historyDemo }: { rows?: Vacu
     URL.revokeObjectURL(url);
   };
 
+  /* ---------- 상태별 렌더 ---------- */
+  if (!selectedInstance) {
+    return (
+      <main className="vacuum-page">
+        <div style={{ padding: "40px", textAlign: "center", color: "#6B7280" }}>
+          <p style={{ fontSize: "18px", fontWeight: "500", marginBottom: "8px" }}>
+            Instance를 선택해주세요
+          </p>
+          <p style={{ fontSize: "14px", color: "#9CA3AF" }}>
+            상단 헤더에서 Instance를 선택하면 History 데이터가 표시됩니다.
+          </p>
+        </div>
+      </main>
+    );
+  }
+
+  if (loading) {
+    return (
+      <main className="vacuum-page">
+        <div style={{ 
+          padding: "40px", 
+          textAlign: "center", 
+          color: "#6B7280",
+          backgroundColor: "#F9FAFB",
+          borderRadius: "8px",
+          margin: "16px"
+        }}>
+          <div style={{ fontSize: "16px", marginBottom: "8px" }}>
+            Loading history data for <strong>{selectedInstance.instanceName}</strong>
+            {selectedDatabase && (
+              <span> / <strong>{selectedDatabase.databaseName}</strong></span>
+            )}
+          </div>
+          <div style={{ fontSize: "14px", color: "#9CA3AF" }}>
+            Please wait...
+          </div>
+        </div>
+      </main>
+    );
+  }
+
+  if (error) {
+    return (
+      <main className="vacuum-page">
+        <div style={{ 
+          padding: "24px", 
+          backgroundColor: "#FEE2E2",
+          color: "#991B1B",
+          borderRadius: "8px",
+          margin: "16px"
+        }}>
+          <p style={{ fontSize: "18px", fontWeight: "500", marginBottom: "8px" }}>
+            ⚠️ Failed to load vacuum history
+          </p>
+          <p style={{ fontSize: "14px", marginTop: "8px" }}>{error}</p>
+          <p style={{ fontSize: "12px", marginTop: "16px", color: "#7F1D1D" }}>
+            Instance: {selectedInstance.instanceName}
+            {selectedDatabase && ` / Database: ${selectedDatabase.databaseName}`}
+          </p>
+        </div>
+      </main>
+    );
+  }
+
   return (
     <main className="vacuum-page">
       {/* 필터 선택 영역 */}
       <section className="vacuum-page__filters">
         <MultiSelectDropdown
           label="기간"
-          options={[
-            "오늘",
-            "최근 7일",
-            "최근 30일",
-            "사용자 지정",
-          ]}
-          onChange={(values) => console.log("선택된 기간:", values)}
-        />
-        <MultiSelectDropdown
-          label="작업 유형"
-          options={["Vacuum", "Autovacuum", "Analyze"]}
-          onChange={(values) => console.log("선택된 작업:", values)}
+          options={["오늘", "최근 7일", "최근 30일"]}
+          values={[selectedPeriod]}
+          onChange={(values: string[]) => {
+            const newPeriod = values[0] || "최근 7일";
+            console.log('Period changed:', newPeriod);
+            setSelectedPeriod(newPeriod);
+            setCurrentPage(1);
+          }}
         />
         <MultiSelectDropdown
           label="상태"
-          options={["완료", "실패", "취소"]}
-          onChange={(values) => console.log("선택된 상태:", values)}
+          options={["정상", "주의"]}
+          values={selectedStatus ? [selectedStatus] : []}
+          onChange={(values: string[]) => {
+            const newStatus = values.length > 0 ? values[0] : null;
+            console.log('Status changed:', newStatus);
+            setSelectedStatus(newStatus);
+            setCurrentPage(1);
+          }}
         />
         <CsvButton onClick={handleExportCSV} tooltip="CSV 파일 저장" />
       </section>
@@ -307,10 +433,7 @@ export default function VacuumHistoryTable({ rows = historyDemo }: { rows?: Vacu
                   onClick={header.column.getToggleSortingHandler()}
                   style={{ cursor: "pointer" }}
                 >
-                  {flexRender(
-                    header.column.columnDef.header,
-                    header.getContext()
-                  )}
+                  {flexRender(header.column.columnDef.header, header.getContext())}
                   {header.column.getIsSorted() && (
                     <span className="sort-icon">
                       {header.column.getIsSorted() === "asc" ? " ▲" : " ▼"}
@@ -338,7 +461,11 @@ export default function VacuumHistoryTable({ rows = historyDemo }: { rows?: Vacu
             </div>
           ))
         ) : (
-          <div className="vacuum-table-empty">데이터가 없습니다.</div>
+          <div className="vacuum-table-empty">
+            {selectedDatabase
+              ? `${selectedDatabase.databaseName}에 "${selectedPeriod}" 기간의 ${selectedStatus ? `"${selectedStatus}"` : ''} 데이터가 없습니다.`
+              : `"${selectedPeriod}" 기간의 ${selectedStatus ? `"${selectedStatus}"` : ''} 데이터가 없습니다.`}
+          </div>
         )}
       </section>
 
