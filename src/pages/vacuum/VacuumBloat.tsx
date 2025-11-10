@@ -173,23 +173,13 @@ const VacuumBloatPage: React.FC = () => {
 
   // ====== 렌더링 ======
   
-  // Instance 미선택
-  if (!selectedInstance) {
+  // Instance나 Database가 선택되지 않은 경우
+  if (!selectedInstance || !selectedDatabase) {
     return (
       <div className="vd-root">
-        <div style={{
-          padding: '40px',
-          textAlign: 'center',
-          color: '#6B7280',
-          backgroundColor: '#F9FAFB',
-          borderRadius: '8px',
-          margin: '16px'
-        }}>
+        <div style={{ padding: '40px', textAlign: 'center', color: '#6B7280' }}>
           <p style={{ fontSize: '18px', fontWeight: '500', marginBottom: '8px' }}>
-            Instance를 선택해주세요
-          </p>
-          <p style={{ fontSize: '14px', color: '#9CA3AF' }}>
-            상단 헤더에서 Instance를 선택하면 대시보드 데이터가 표시됩니다.
+            Instance와 Database를 선택해주세요
           </p>
         </div>
       </div>
