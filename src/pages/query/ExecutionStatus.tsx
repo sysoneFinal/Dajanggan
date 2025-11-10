@@ -48,6 +48,12 @@ const demoDataByTime: Record<TimeFilter, DashboardData> = {
       { id: "#9012", shortQuery: "SELECT - users, orders", fullQuery: "SELECT users.*, COUNT(orders.id) as order_count FROM users LEFT JOIN orders ON users.id = orders.user_id GROUP BY users.id", executionCount: 145, avgTime: "32ms", totalTime: "4.6s", callCount: 145 },
       { id: "#6789", shortQuery: "UPDATE - users", fullQuery: "UPDATE users SET last_login = NOW() WHERE id = ?", executionCount: 389, avgTime: "9ms", totalTime: "3.5s", callCount: 389 },
       { id: "#4444", shortQuery: "SELECT AVG - orders", fullQuery: "SELECT AVG(total_amount) FROM orders WHERE created_at > '2024-01-01'", executionCount: 78, avgTime: "58ms", totalTime: "4.5s", callCount: 78 },
+      { id: "#1111", shortQuery: "SELECT - products", fullQuery: "SELECT * FROM products WHERE category_id = ?", executionCount: 523, avgTime: "7ms", totalTime: "3.7s", callCount: 523 },
+      { id: "#2222", shortQuery: "UPDATE - orders", fullQuery: "UPDATE orders SET status = 'shipped' WHERE id = ?", executionCount: 312, avgTime: "15ms", totalTime: "4.7s", callCount: 312 },
+      { id: "#3344", shortQuery: "INSERT - users", fullQuery: "INSERT INTO users (email, name, created_at) VALUES (?, ?, NOW())", executionCount: 89, avgTime: "11ms", totalTime: "1.0s", callCount: 89 },
+      { id: "#5566", shortQuery: "SELECT - sessions", fullQuery: "SELECT * FROM sessions WHERE expires_at > NOW()", executionCount: 234, avgTime: "5ms", totalTime: "1.2s", callCount: 234 },
+      { id: "#7788", shortQuery: "DELETE - logs", fullQuery: "DELETE FROM logs WHERE created_at < NOW() - INTERVAL '30 days'", executionCount: 23, avgTime: "120ms", totalTime: "2.8s", callCount: 23 },
+      { id: "#9999", shortQuery: "SELECT - analytics", fullQuery: "SELECT DATE(created_at), COUNT(*) FROM orders GROUP BY DATE(created_at)", executionCount: 156, avgTime: "45ms", totalTime: "7.0s", callCount: 156 },
     ],
   },
   "6h": {
@@ -62,6 +68,12 @@ const demoDataByTime: Record<TimeFilter, DashboardData> = {
       { id: "#9012", shortQuery: "SELECT - users, orders", fullQuery: "SELECT users.*, COUNT(orders.id) as order_count FROM users LEFT JOIN orders ON users.id = orders.user_id GROUP BY users.id", executionCount: 456, avgTime: "38ms", totalTime: "17.3s", callCount: 456 },
       { id: "#6789", shortQuery: "UPDATE - users", fullQuery: "UPDATE users SET last_login = NOW() WHERE id = ?", executionCount: 923, avgTime: "11ms", totalTime: "10.2s", callCount: 923 },
       { id: "#4444", shortQuery: "SELECT AVG - orders", fullQuery: "SELECT AVG(total_amount) FROM orders WHERE created_at > '2024-01-01'", executionCount: 167, avgTime: "68ms", totalTime: "11.4s", callCount: 167 },
+      { id: "#1111", shortQuery: "SELECT - products", fullQuery: "SELECT * FROM products WHERE category_id = ?", executionCount: 1023, avgTime: "8ms", totalTime: "8.2s", callCount: 1023 },
+      { id: "#2222", shortQuery: "UPDATE - orders", fullQuery: "UPDATE orders SET status = 'shipped' WHERE id = ?", executionCount: 612, avgTime: "16ms", totalTime: "9.8s", callCount: 612 },
+      { id: "#3344", shortQuery: "INSERT - users", fullQuery: "INSERT INTO users (email, name, created_at) VALUES (?, ?, NOW())", executionCount: 189, avgTime: "12ms", totalTime: "2.3s", callCount: 189 },
+      { id: "#5566", shortQuery: "SELECT - sessions", fullQuery: "SELECT * FROM sessions WHERE expires_at > NOW()", executionCount: 534, avgTime: "6ms", totalTime: "3.2s", callCount: 534 },
+      { id: "#7788", shortQuery: "DELETE - logs", fullQuery: "DELETE FROM logs WHERE created_at < NOW() - INTERVAL '30 days'", executionCount: 45, avgTime: "125ms", totalTime: "5.6s", callCount: 45 },
+      { id: "#9999", shortQuery: "SELECT - analytics", fullQuery: "SELECT DATE(created_at), COUNT(*) FROM orders GROUP BY DATE(created_at)", executionCount: 356, avgTime: "48ms", totalTime: "17.1s", callCount: 356 },
     ],
   },
   "24h": {
@@ -76,6 +88,12 @@ const demoDataByTime: Record<TimeFilter, DashboardData> = {
       { id: "#9012", shortQuery: "SELECT - users, orders", fullQuery: "SELECT users.*, COUNT(orders.id) as order_count FROM users LEFT JOIN orders ON users.id = orders.user_id GROUP BY users.id", executionCount: 678, avgTime: "45ms", totalTime: "30.5s", callCount: 678 },
       { id: "#6789", shortQuery: "UPDATE - users", fullQuery: "UPDATE users SET last_login = NOW() WHERE id = ?", executionCount: 1567, avgTime: "12ms", totalTime: "18.8s", callCount: 1567 },
       { id: "#4444", shortQuery: "SELECT AVG - orders", fullQuery: "SELECT AVG(total_amount) FROM orders WHERE created_at > '2024-01-01'", executionCount: 234, avgTime: "78ms", totalTime: "18.3s", callCount: 234 },
+      { id: "#1111", shortQuery: "SELECT - products", fullQuery: "SELECT * FROM products WHERE category_id = ?", executionCount: 1523, avgTime: "9ms", totalTime: "13.7s", callCount: 1523 },
+      { id: "#2222", shortQuery: "UPDATE - orders", fullQuery: "UPDATE orders SET status = 'shipped' WHERE id = ?", executionCount: 1012, avgTime: "17ms", totalTime: "17.2s", callCount: 1012 },
+      { id: "#3344", shortQuery: "INSERT - users", fullQuery: "INSERT INTO users (email, name, created_at) VALUES (?, ?, NOW())", executionCount: 289, avgTime: "13ms", totalTime: "3.8s", callCount: 289 },
+      { id: "#5566", shortQuery: "SELECT - sessions", fullQuery: "SELECT * FROM sessions WHERE expires_at > NOW()", executionCount: 834, avgTime: "7ms", totalTime: "5.8s", callCount: 834 },
+      { id: "#7788", shortQuery: "DELETE - logs", fullQuery: "DELETE FROM logs WHERE created_at < NOW() - INTERVAL '30 days'", executionCount: 67, avgTime: "130ms", totalTime: "8.7s", callCount: 67 },
+      { id: "#9999", shortQuery: "SELECT - analytics", fullQuery: "SELECT DATE(created_at), COUNT(*) FROM orders GROUP BY DATE(created_at)", executionCount: 556, avgTime: "52ms", totalTime: "28.9s", callCount: 556 },
     ],
   },
   "7d": {
@@ -90,6 +108,12 @@ const demoDataByTime: Record<TimeFilter, DashboardData> = {
       { id: "#9012", shortQuery: "SELECT - users, orders", fullQuery: "SELECT users.*, COUNT(orders.id) as order_count FROM users LEFT JOIN orders ON users.id = orders.user_id GROUP BY users.id", executionCount: 2456, avgTime: "48ms", totalTime: "117.9s", callCount: 2456 },
       { id: "#6789", shortQuery: "UPDATE - users", fullQuery: "UPDATE users SET last_login = NOW() WHERE id = ?", executionCount: 5432, avgTime: "13ms", totalTime: "70.6s", callCount: 5432 },
       { id: "#4444", shortQuery: "SELECT AVG - orders", fullQuery: "SELECT AVG(total_amount) FROM orders WHERE created_at > '2024-01-01'", executionCount: 987, avgTime: "82ms", totalTime: "80.9s", callCount: 987 },
+      { id: "#1111", shortQuery: "SELECT - products", fullQuery: "SELECT * FROM products WHERE category_id = ?", executionCount: 5523, avgTime: "10ms", totalTime: "55.2s", callCount: 5523 },
+      { id: "#2222", shortQuery: "UPDATE - orders", fullQuery: "UPDATE orders SET status = 'shipped' WHERE id = ?", executionCount: 4012, avgTime: "18ms", totalTime: "72.2s", callCount: 4012 },
+      { id: "#3344", shortQuery: "INSERT - users", fullQuery: "INSERT INTO users (email, name, created_at) VALUES (?, ?, NOW())", executionCount: 1089, avgTime: "14ms", totalTime: "15.2s", callCount: 1089 },
+      { id: "#5566", shortQuery: "SELECT - sessions", fullQuery: "SELECT * FROM sessions WHERE expires_at > NOW()", executionCount: 3834, avgTime: "8ms", totalTime: "30.7s", callCount: 3834 },
+      { id: "#7788", shortQuery: "DELETE - logs", fullQuery: "DELETE FROM logs WHERE created_at < NOW() - INTERVAL '30 days'", executionCount: 234, avgTime: "135ms", totalTime: "31.6s", callCount: 234 },
+      { id: "#9999", shortQuery: "SELECT - analytics", fullQuery: "SELECT DATE(created_at), COUNT(*) FROM orders GROUP BY DATE(created_at)", executionCount: 2156, avgTime: "55ms", totalTime: "118.6s", callCount: 2156 },
     ],
   },
 };
@@ -123,7 +147,7 @@ export default function ExecutionStatus() {
   const [sortKey, setSortKey] = useState<SortKey | null>(null);
   const [sortDir, setSortDir] = useState<SortDir>(null);
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 5;
+  const itemsPerPage = 14;
 
   // 모달 상태 관리
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -269,7 +293,45 @@ Execution Time: 5200.789 ms`,
   };
 
   const handleExport = () => {
-    console.log("Exporting execution stats...");
+    const headers = [
+      "ID",
+      "QUERY",
+      "실행횟수",
+      "평균 시간",
+      "총 시간",
+      "호출 수"
+    ];
+    
+    const csvData = sortedStats.map((row) => [
+      row.id,
+      row.shortQuery,
+      row.executionCount,
+      row.avgTime,
+      row.totalTime,
+      row.callCount
+    ]);
+
+    const csvContent = [
+      headers.join(","),
+      ...csvData.map((row) => row.join(",")),
+    ].join("\n");
+
+    const BOM = "\uFEFF";
+    const blob = new Blob([BOM + csvContent], { type: "text/csv;charset=utf-8;" });
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+
+    const now = new Date();
+    const fileName = `execution_status_${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}${String(now.getDate()).padStart(2, "0")}_${String(now.getHours()).padStart(2, "0")}${String(now.getMinutes()).padStart(2, "0")}.csv`;
+
+    link.setAttribute("href", url);
+    link.setAttribute("download", fileName);
+    link.style.visibility = "hidden";
+
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   };
 
   return (
