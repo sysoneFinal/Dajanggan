@@ -1,10 +1,11 @@
-import { useState } from "react";
 import Chart from "../../components/chart/ChartComponent";
 import GaugeChart from "../../components/chart/GaugeChart";
 import SummaryCard from "../../components/util/SummaryCard";
 import WidgetCard from "../../components/util/WidgetCard";
 import ChartGridLayout from "../../components/layout/ChartGridLayout";
 import "../../styles/system/cpu.css";
+import apiClient from "../../api/apiClient";
+import {useQuery} from "@tanstack/react-query";
 
 // API 응답 전체 구조
 interface CPUData {
@@ -63,90 +64,6 @@ interface CPUData {
         postgresqlBackendCpu: number;
     };
 }
-
-// 더미 데이터
-const dummyData: CPUData = {
-    cpuUsage: {
-        value: 35.7,
-        description: "CPU utilization rate",
-        runningQueries: 45,
-        waitingQueries: 12,
-        idleConnections: 28,
-    },
-    cpuUsageTrend: {
-        categories: [
-            "00:00", "04:00", "08:00", "12:00", "16:00", "20:00", "24:00"
-        ],
-        data: [23, 15, 60, 78, 70, 43, 27],
-    },
-    cpuLoadTypes: {
-        categories: [
-            "02:38", "07:26", "12:14", "17:02", "21:50", "02:38"
-        ],
-        autoVacuum: [8, 6, 7, 9, 8, 7],
-        bgWriter: [10, 9, 8, 10, 11, 9],
-        checkpoint: [5, 6, 4, 5, 6, 5],
-        postgresqlBackend: [40, 42, 45, 38, 42, 40],
-    },
-    ioWaitVsLatency: {
-        normal: [
-            { x: 5, y: 15 },
-            { x: 10, y: 18 },
-            { x: 15, y: 22 },
-            { x: 8, y: 16 },
-            { x: 12, y: 20 },
-        ],
-        warning: [
-            { x: 20, y: 28 },
-            { x: 25, y: 32 },
-            { x: 22, y: 30 },
-            { x: 28, y: 38 },
-        ],
-        danger: [
-            { x: 30, y: 35 },
-            { x: 35, y: 42 },
-            { x: 32, y: 38 },
-        ],
-    },
-    backendProcessStats: {
-        types: [
-            "Client Backend",
-            "Autovacuum Worker",
-            "Background Writer",
-            "Checkpointer",
-            "WAL Writer",
-            "WAL Sender"
-        ],
-        activeCount: [35, 2, 0, 0, 0, 1],      // 활성 상태 프로세스
-        idleCount: [28, 0, 1, 1, 1, 0],        // 유휴 상태 프로세스
-        totalCount: [63, 2, 1, 1, 1, 1],       // 전체 프로세스
-        colors: ["#8E79FF", "#51DAA8", "#77B2FB", "#FFD66B", "#FEA29B", "#A78BFA"]
-    },
-    waitEventDistribution: {
-        categories: ["0:00", "2:00", "4:00", "6:00", "8:00", "10:00", "14:00", "16:00", "18:00", "20:00", "22:00"],
-        cpu: [60, 65, 55, 50, 45, 58, 62, 68, 55, 52, 48],
-        client: [5, 6, 8, 7, 10, 8, 5, 6, 9, 8, 7],
-        io: [20, 18, 22, 28, 30, 22, 20, 15, 22, 25, 30],
-        lock: [10, 8, 12, 10, 10, 8, 10, 8, 10, 12, 10],
-        other: [5, 3, 3, 5, 5, 4, 3, 3, 4, 3, 5],
-    },
-    recentStats: {
-        loadAverage: {
-            one: 2.45,
-            five: 2.12,
-            fifteen: 1.89,
-        },
-        ioWait: 18.5,
-        connections: {
-            active: 45,
-            idle: 28,
-            total: 73,
-        },
-        idleCpu: 64.3,
-        contextSwitches: 12500,
-        postgresqlBackendCpu: 41.2,
-    },
-};
 
 // Gauge 색상 결정
 const getGaugeColor = (value: number): string => {
@@ -221,15 +138,99 @@ function SummaryCardWithLink({ link, status = "info", ...props }: SummaryCardWit
         </div>
     );
 }
+/** API 요청 - apiClient 사용 */
+async function fetchCPUData() {
+    const response = await apiClient.get<CPUData>("/system/cpu");
+    return response.data;
+}
 
 // 메인 페이지
 export default function CPUPage() {
-    const [data] = useState<CPUData>(dummyData);
+    const { data, isLoading, isError, error } = useQuery({
+        queryKey: ["cpuDashboard"],
+        queryFn: fetchCPUData,
+        retry: 1,
+    });
 
-    const gaugeColor = getGaugeColor(data.cpuUsage.value);
+    // 로딩 중
+    if (isLoading) {
+        return (
+            <div className="bgwriter-page">
+                <div style={{
+                    display: 'flex',
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    height: '400px',
+                    fontSize: '18px',
+                    color: '#6B7280'
+                }}>
+                    데이터를 불러오는 중...
+                </div>
+            </div>
+        );
+    }
+
+    // 에러 발생
+    if (isError) {
+        return (
+            <div className="bgwriter-page">
+                <div style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    height: '400px',
+                    fontSize: '18px',
+                    color: '#EF4444'
+                }}>
+                    <p>데이터를 불러오는데 실패했습니다.</p>
+                    <p style={{ fontSize: '14px', color: '#6B7280', marginTop: '8px' }}>
+                        {error instanceof Error ? error.message : '알 수 없는 오류가 발생했습니다.'}
+                    </p>
+                    <button
+                        onClick={() => window.location.reload()}
+                        style={{
+                            marginTop: '16px',
+                            padding: '8px 16px',
+                            backgroundColor: '#3B82F6',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: '4px',
+                            cursor: 'pointer'
+                        }}
+                    >
+                        새로고침
+                    </button>
+                </div>
+            </div>
+        );
+    }
+
+    // 데이터가 없는 경우
+    if (!data) {
+        return (
+            <div className="bgwriter-page">
+                <div style={{
+                    display: 'flex',
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    height: '400px',
+                    fontSize: '18px',
+                    color: '#6B7280'
+                }}>
+                    데이터가 없습니다.
+                </div>
+            </div>
+        );
+    }
+
+
+    const dashboard = data;
+
+    const gaugeColor = getGaugeColor(dashboard.cpuUsage.value);
 
     // 최근 5분 평균 통계
-    const recentStats = data.recentStats;
+    const recentStats = dashboard.recentStats;
 
     // 요약 카드 데이터 (개선된 버전)
     const summaryCards = [
@@ -244,7 +245,6 @@ export default function CPUPage() {
         {
             label: "I/O Wait",
             value: `${recentStats.ioWait}%`,
-            diff: 2.3,
             desc: "디스크 대기 시간",
             status: (recentStats.ioWait > 20 ? "warning" : "info") as const,
             link: "http://localhost:5173/instance/cpu/usage",
@@ -252,21 +252,18 @@ export default function CPUPage() {
         {
             label: "Active / Idle Connections",
             value: `${recentStats.connections.active} / ${recentStats.connections.idle}`,
-            diff: 5,
             desc: "활성 / 유휴 연결",
             status: (recentStats.connections.active > 80 ? "warning" : "info") as const,
         },
         {
             label: "PostgreSQL Backend CPU",
             value: `${recentStats.postgresqlBackendCpu}%`,
-            diff: 3.2,
             desc: "PG 프로세스 CPU 사용률",
             status: (recentStats.postgresqlBackendCpu > 80 ? "warning" : "info") as const,
         },
         {
             label: "Idle CPU",
             value: `${recentStats.idleCpu}%`,
-            diff: -2.5,
             desc: "여유 리소스",
             status: (recentStats.idleCpu < 20 ? "critical" : "info") as const,
         },
@@ -302,7 +299,7 @@ export default function CPUPage() {
                         marginTop: '18px',
                     }}>
                         <GaugeChart
-                            value={data.cpuUsage.value}
+                            value={dashboard.cpuUsage.value}
                             type="semi-circle"
                             color={gaugeColor}
                             radius={100}
@@ -313,12 +310,12 @@ export default function CPUPage() {
                         <div className="cpu-gauge-details">
                             <div className="cpu-detail-item">
                                 <span className="cpu-detail-label">Running</span>
-                                <span className="cpu-detail-value">{data.cpuUsage.runningQueries}개</span>
+                                <span className="cpu-detail-value">{dashboard.cpuUsage.runningQueries}개</span>
                             </div>
                             <div className="cpu-detail-divider"></div>
                             <div className="cpu-detail-item">
                                 <span className="cpu-detail-label">Waiting</span>
-                                <span className="cpu-detail-value">{data.cpuUsage.waitingQueries}개</span>
+                                <span className="cpu-detail-value">{dashboard.cpuUsage.waitingQueries}개</span>
                             </div>
                         </div>
                     </div>
@@ -328,9 +325,9 @@ export default function CPUPage() {
                     <Chart
                         type="line"
                         series={[
-                            { name: "CPU 사용률", data: data.cpuUsageTrend.data }
+                            { name: "CPU 사용률", data: dashboard.cpuUsageTrend.data }
                         ]}
-                        categories={data.cpuUsageTrend.categories}
+                        categories={dashboard.cpuUsageTrend.categories}
                         height={250}
                         colors={["#8E79FF"]}
                         showGrid={true}
@@ -415,12 +412,12 @@ export default function CPUPage() {
                     <Chart
                         type="line"
                         series={[
-                            { name: "PostgreSQL Backend", data: data.cpuLoadTypes.postgresqlBackend },
-                            { name: "BGWriter", data: data.cpuLoadTypes.bgWriter },
-                            { name: "Auto Vacuum", data: data.cpuLoadTypes.autoVacuum },
-                            { name: "Checkpoint", data: data.cpuLoadTypes.checkpoint },
+                            { name: "PostgreSQL Backend", data: dashboard.cpuLoadTypes.postgresqlBackend },
+                            { name: "BGWriter", data: dashboard.cpuLoadTypes.bgWriter },
+                            { name: "Auto Vacuum", data: dashboard.cpuLoadTypes.autoVacuum },
+                            { name: "Checkpoint", data: dashboard.cpuLoadTypes.checkpoint },
                         ]}
-                        categories={data.cpuLoadTypes.categories}
+                        categories={dashboard.cpuLoadTypes.categories}
                         height={250}
                         xaxisOptions={{
                             title: { text: "시간", style: { fontSize: "12px", color: "#6B7280" } }
@@ -444,15 +441,15 @@ export default function CPUPage() {
                         series={[
                             {
                                 name: "정상 상태",
-                                data: data.ioWaitVsLatency.normal
+                                data: dashboard.ioWaitVsLatency.normal
                             },
                             {
                                 name: "주의 상관관계",
-                                data: data.ioWaitVsLatency.warning
+                                data: dashboard.ioWaitVsLatency.warning
                             },
                             {
                                 name: "높은 상관관계",
-                                data: data.ioWaitVsLatency.danger
+                                data: dashboard.ioWaitVsLatency.danger
                             },
                         ]}
                         height={250}
@@ -487,14 +484,14 @@ export default function CPUPage() {
                         series={[
                             {
                                 name: "Active",
-                                data: data.backendProcessStats.activeCount,
+                                data: dashboard.backendProcessStats.activeCount,
                             },
                             {
                                 name: "Idle",
-                                data: data.backendProcessStats.idleCount,
+                                data: dashboard.backendProcessStats.idleCount,
                             },
                         ]}
-                        categories={data.backendProcessStats.types}
+                        categories={dashboard.backendProcessStats.types}
                         height={250}
                         colors={["#8E79FF", "#D1D5DB"]}
                         showGrid={true}
@@ -562,11 +559,11 @@ export default function CPUPage() {
                     <Chart
                         type="column"
                         series={[
-                            { name: "CPU", data: data.waitEventDistribution.cpu },
-                            { name: "Client", data: data.waitEventDistribution.client },
-                            { name: "I/O", data: data.waitEventDistribution.io },
-                            { name: "Lock", data: data.waitEventDistribution.lock },
-                            { name: "Other", data: data.waitEventDistribution.other },
+                            { name: "CPU", data: dashboard.waitEventDistribution.cpu },
+                            { name: "Client", data: dashboard.waitEventDistribution.client },
+                            { name: "I/O", data: dashboard.waitEventDistribution.io },
+                            { name: "Lock", data: dashboard.waitEventDistribution.lock },
+                            { name: "Other", data: dashboard.waitEventDistribution.other },
                         ]}
                         categories={data.waitEventDistribution.categories}
                         height={250}
