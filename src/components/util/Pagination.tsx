@@ -12,12 +12,41 @@ const Pagination: React.FC<PaginationProps> = ({
   totalPages,
   onPageChange,
 }) => {
-  const handlePrev = () => {
-    if (currentPage > 1) onPageChange(currentPage - 1);
+  const maxVisible = 5; // 한 번에 보여줄 페이지 개수
+
+  // 현재 페이지가 속한 그룹 계산
+  const getCurrentGroup = () => {
+    return Math.ceil(currentPage / maxVisible);
   };
 
+  // 전체 그룹 개수
+  const totalGroups = Math.ceil(totalPages / maxVisible);
+
+  // 현재 그룹의 시작/끝 페이지
+  const currentGroup = getCurrentGroup();
+  const startPage = (currentGroup - 1) * maxVisible + 1;
+  const endPage = Math.min(currentGroup * maxVisible, totalPages);
+
+  // 표시할 페이지 번호 배열
+  const pageNumbers = Array.from(
+    { length: endPage - startPage + 1 },
+    (_, i) => startPage + i
+  );
+
+  // 이전 그룹으로 이동
+  const handlePrev = () => {
+    if (currentGroup > 1) {
+      const prevGroupLastPage = startPage - 1;
+      onPageChange(prevGroupLastPage);
+    }
+  };
+
+  // 다음 그룹으로 이동
   const handleNext = () => {
-    if (currentPage < totalPages) onPageChange(currentPage + 1);
+    if (currentGroup < totalGroups) {
+      const nextGroupFirstPage = endPage + 1;
+      onPageChange(nextGroupFirstPage);
+    }
   };
 
   return (
@@ -25,25 +54,25 @@ const Pagination: React.FC<PaginationProps> = ({
       <button
         className="page-btn prev"
         onClick={handlePrev}
-        disabled={currentPage === 1}
+        disabled={currentGroup === 1}
       >
         이전
       </button>
 
-      {[...Array(totalPages)].map((_, i) => (
+      {pageNumbers.map((pageNum) => (
         <button
-          key={i + 1}
-          className={`page-btn ${currentPage === i + 1 ? "active" : ""}`}
-          onClick={() => onPageChange(i + 1)}
+          key={pageNum}
+          className={`page-btn ${currentPage === pageNum ? "active" : ""}`}
+          onClick={() => onPageChange(pageNum)}
         >
-          {i + 1}
+          {pageNum}
         </button>
       ))}
 
       <button
         className="page-btn next"
         onClick={handleNext}
-        disabled={currentPage === totalPages}
+        disabled={currentGroup === totalGroups}
       >
         다음
       </button>
