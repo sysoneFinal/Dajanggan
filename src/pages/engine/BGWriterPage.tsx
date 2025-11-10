@@ -60,7 +60,7 @@ interface BGWriterData {
 
 /** API 요청 - apiClient 사용 */
 async function fetchBGWriterData() {
-    const response = await apiClient.get<BGWriterData>("/dashboard/bgwriter");
+    const response = await apiClient.get<BGWriterData>("/engine/bgwriter");
     return response.data;
 }
 
