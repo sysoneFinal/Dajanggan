@@ -14,42 +14,47 @@ const Pagination: React.FC<PaginationProps> = ({
 }) => {
   const maxVisible = 5; // 한 번에 보여줄 페이지 개수
 
+  // 현재 페이지가 속한 그룹 계산
+  const getCurrentGroup = () => {
+    return Math.ceil(currentPage / maxVisible);
+  };
+
+  // 전체 그룹 개수
+  const totalGroups = Math.ceil(totalPages / maxVisible);
+
+  // 현재 그룹의 시작/끝 페이지
+  const currentGroup = getCurrentGroup();
+  const startPage = (currentGroup - 1) * maxVisible + 1;
+  const endPage = Math.min(currentGroup * maxVisible, totalPages);
+
+  // 표시할 페이지 번호 배열
+  const pageNumbers = Array.from(
+    { length: endPage - startPage + 1 },
+    (_, i) => startPage + i
+  );
+
+  // 이전 그룹으로 이동
   const handlePrev = () => {
-    if (currentPage > 1) onPageChange(currentPage - 1);
+    if (currentGroup > 1) {
+      const prevGroupLastPage = startPage - 1;
+      onPageChange(prevGroupLastPage);
+    }
   };
 
+  // 다음 그룹으로 이동
   const handleNext = () => {
-    if (currentPage < totalPages) onPageChange(currentPage + 1);
-  };
-
-  // 표시할 페이지 번호 범위 계산
-  const getPageNumbers = (): number[] => {
-    if (totalPages <= maxVisible) {
-      // 전체 페이지가 5개 이하면 모두 표시
-      return Array.from({ length: totalPages }, (_, i) => i + 1);
+    if (currentGroup < totalGroups) {
+      const nextGroupFirstPage = endPage + 1;
+      onPageChange(nextGroupFirstPage);
     }
-
-    // 현재 페이지를 중심으로 5개 표시
-    const half = Math.floor(maxVisible / 2);
-    let start = Math.max(1, currentPage - half);
-    let end = Math.min(totalPages, start + maxVisible - 1);
-
-    // 끝에 도달했을 때 start 조정
-    if (end === totalPages) {
-      start = Math.max(1, end - maxVisible + 1);
-    }
-
-    return Array.from({ length: end - start + 1 }, (_, i) => start + i);
   };
-
-  const pageNumbers = getPageNumbers();
 
   return (
     <div className="pagination-container">
       <button
         className="page-btn prev"
         onClick={handlePrev}
-        disabled={currentPage === 1}
+        disabled={currentGroup === 1}
       >
         이전
       </button>
@@ -67,7 +72,7 @@ const Pagination: React.FC<PaginationProps> = ({
       <button
         className="page-btn next"
         onClick={handleNext}
-        disabled={currentPage === totalPages}
+        disabled={currentGroup === totalGroups}
       >
         다음
       </button>
