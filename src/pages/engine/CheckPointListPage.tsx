@@ -1,4 +1,4 @@
-import {Fragment, useMemo, useState} from "react";
+import {Fragment, useEffect, useMemo, useState} from "react";
 import {
     useReactTable,
     getCoreRowModel,
@@ -12,6 +12,7 @@ import {
 import Pagination from "../../components/util/Pagination";
 import CsvButton from "../../components/util/CsvButton";
 import MultiSelectDropdown from "../../components/util/MultiSelectDropdown";
+import apiClient from "../../api/apiClient";
 import "/src/styles/engine/checkpointlist.css";
 
 interface CheckpointData {
@@ -31,94 +32,68 @@ interface CheckpointData {
     status: "정상" | "주의" | "위험";
 }
 
-const mockData: CheckpointData[] = [
-    {
-        id: "1",
-        timestamp: "2025-10-23 11:40:45",
-        type: "timed",
-        writeTime: 2.4,
-        syncTime: 2.8,
-        totalTime: 3.0,
-        walGenerated: "1.3GB",
-        walFilesAdded: 5,
-        walFilesRemoved: 3,
-        checkpointDistance: "5분",
-        buffersWritten: 8541,
-        buffersBackend: 142,
-        avgBuffersPerSec: 2847,
-        status: "정상",
-    },
-    {
-        id: "2",
-        timestamp: "2025-10-23 12:20:45",
-        type: "requested",
-        writeTime: 2.4,
-        syncTime: 2.8,
-        totalTime: 3.0,
-        walGenerated: "1.3GB",
-        walFilesAdded: 4,
-        walFilesRemoved: 2,
-        checkpointDistance: "3분",
-        buffersWritten: 6541,
-        buffersBackend: 98,
-        avgBuffersPerSec: 2180,
-        status: "주의",
-    },
-    {
-        id: "3",
-        timestamp: "2025-10-23 14:15:25",
-        type: "timed",
-        writeTime: 1.2,
-        syncTime: 1.6,
-        totalTime: 2.0,
-        walGenerated: "2.3GB",
-        walFilesAdded: 8,
-        walFilesRemoved: 5,
-        checkpointDistance: "5분",
-        buffersWritten: 2351,
-        buffersBackend: 56,
-        avgBuffersPerSec: 1176,
-        status: "정상",
-    },
-    {
-        id: "4",
-        timestamp: "2025-10-23 15:31:25",
-        type: "requested",
-        writeTime: 4.4,
-        syncTime: 1.2,
-        totalTime: 2.0,
-        walGenerated: "2.3GB",
-        walFilesAdded: 7,
-        walFilesRemoved: 4,
-        checkpointDistance: "2분",
-        buffersWritten: 8541,
-        buffersBackend: 234,
-        avgBuffersPerSec: 4270,
-        status: "위험",
-    },
-    {
-        id: "5",
-        timestamp: "2025-10-23 16:40:45",
-        type: "timed",
-        writeTime: 2.1,
-        syncTime: 2.3,
-        totalTime: 4.4,
-        walGenerated: "1.5GB",
-        walFilesAdded: 6,
-        walFilesRemoved: 3,
-        checkpointDistance: "5분",
-        buffersWritten: 7541,
-        buffersBackend: 89,
-        avgBuffersPerSec: 1714,
-        status: "정상",
-    },
-];
+interface CheckpointListResponse {
+    data: CheckpointData[];
+    total: number;
+}
 
 export default function CheckPointListPage() {
-    const [data] = useState<CheckpointData[]>(mockData);
+    const [data, setData] = useState<CheckpointData[]>([]);
+    const [loading, setLoading] = useState<boolean>(true);
+    const [error, setError] = useState<string | null>(null);
     const [sorting, setSorting] = useState<SortingState>([]);
     const [currentPage, setCurrentPage] = useState(1);
+    const [selectedTimeRange, setSelectedTimeRange] = useState<string[]>(["최근 7일"]);
+    const [selectedStatus, setSelectedStatus] = useState<string[]>([]);
     const pageSize = 10;
+
+    // 시간 범위 매핑 (한글 -> API 파라미터)
+    const timeRangeMap: { [key: string]: string } = {
+        "최근 1시간": "1h",
+        "최근 6시간": "6h",
+        "최근 24시간": "24h",
+        "최근 7일": "7d",
+    };
+
+    // API 데이터 조회
+    const fetchData = async () => {
+        try {
+            setLoading(true);
+            setError(null);
+
+            // 시간 범위 변환
+            const timeRange = selectedTimeRange.length > 0
+                ? timeRangeMap[selectedTimeRange[0]] || "7d"
+                : "7d";
+
+            // 상태 필터 변환
+            const statusParam = selectedStatus.length > 0
+                ? selectedStatus.join(",")
+                : undefined;
+
+            // apiClient 사용하여 API 호출
+            const response = await apiClient.get<CheckpointListResponse>('/engine/checkpoint/list', {
+                params: {
+                    timeRange,
+                    status: statusParam,
+                },
+            });
+
+            setData(response.data.data || []);
+        } catch (err) {
+            console.error("BGWriter 리스트 조회 오류:", err);
+            setError(err instanceof Error ? err.message : "데이터 조회 중 오류가 발생했습니다.");
+            setData([]);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    // 초기 로드 및 필터 변경 시 데이터 조회
+    useEffect(() => {
+        fetchData();
+    }, [selectedTimeRange, selectedStatus]);
+
 
     // 컬럼 정의 - 새 컬럼 추가
     const columns = useMemo<ColumnDef<CheckpointData>[]>(

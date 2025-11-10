@@ -5,6 +5,7 @@ import "../../styles/engine/checkpoint.css";
 import GaugeChart from "../../components/chart/GaugeChart";
 import WidgetCard from "../../components/util/WidgetCard";
 import ChartGridLayout from "../../components/layout/ChartGridLayout";
+import apiClient from "../../api/apiClient";
 
 /** Checkpoint API 응답 타입 */
 interface CheckpointData {
@@ -66,93 +67,10 @@ interface CheckpointData {
     };
 }
 
-/** 더미 데이터 */
-const mockData: CheckpointData = {
-    requestRatio: {
-        value: 60.5,
-        requestedCount: 50,
-        timedCount: 125,
-    },
-    avgWriteTime: {
-        categories: [
-            "0:00", "2:00", "4:00", "6:00", "8:00", "10:00",
-            "12:00", "14:00", "16:00", "18:00", "20:00", "23:00"
-        ],
-        data: [3, 2.5, 4, 6.5, 7, 8.5, 8, 7, 5, 4, 3.5, 10],
-        average: 5.7,
-        max: 10.0,
-        min: 2.5,
-    },
-    occurrence: {
-        categories: [
-            "0:00", "2:00", "4:00", "6:00", "8:00", "10:00",
-            "12:00", "14:00", "16:00", "18:00", "20:00", "23:00"
-        ],
-        requested: [20, 15, 25, 30, 20, 10, 35, 25, 20, 15, 30, 28],
-        timed: [60, 55, 50, 45, 50, 55, 40, 48, 52, 58, 35, 62],
-        requestedTotal: 271,
-        timedTotal: 608,
-        ratio: 30.8,
-    },
-    walGeneration: {
-        categories: [
-            "0:00", "2:00", "4:00", "6:00", "8:00", "10:00",
-            "12:00", "14:00", "16:00", "18:00", "20:00", "23:00"
-        ],
-        data: [
-            8000000000, 6500000000, 10000000000, 12000000000,
-            13000000000, 11000000000, 9500000000, 8000000000,
-            7000000000, 6000000000, 9000000000, 10500000000,
-        ],
-        total: 110500000000,
-        average: 9208333333,
-        max: 13000000000,
-    },
-    processTime: {
-        categories: [
-            "0:00", "2:00", "4:00", "6:00", "8:00", "10:00",
-            "12:00", "14:00", "16:00", "18:00", "20:00", "23:00"
-        ],
-        syncTime: [400, 520, 680, 450, 520, 600, 720, 650, 580, 460, 520, 620],
-        writeTime: [800, 1200, 1600, 1000, 1100, 1300, 1450, 1350, 1200, 950, 1100, 1500],
-        avgSync: 565,
-        avgWrite: 1213,
-        avgTotal: 1778,
-    },
-    buffer: {
-        categories: [
-            "0:00", "2:00", "4:00", "6:00", "8:00", "10:00",
-            "12:00", "14:00", "16:00", "18:00", "20:00", "23:00"
-        ],
-        data: [3500, 3200, 4200, 4800, 5200, 4600, 3800, 3000, 2400, 4500, 5500, 4800],
-        average: 4133,
-        max: 5500,
-        min: 2400,
-    },
-    checkpointInterval: {
-        categories: [
-            "0:00", "2:00", "4:00", "6:00", "8:00", "10:00",
-            "12:00", "14:00", "16:00", "18:00", "20:00", "23:00"
-        ],
-        data: [8.5, 10.2, 6.5, 4.2, 3.8, 3.5, 2.8, 3.2, 4.5, 5.8, 7.2, 6.8],
-        average: 5.6,
-        max: 10.2,
-        min: 2.8,
-    },
-    recentStats: {
-        buffersWritten: 4280,
-        avgTotalProcessTime: 1.78,
-        checkpointDistance: 85,
-        checkpointInterval: 4.8,
-        avgWalGenerationSpeed: 9.2,
-    },
-};
-
-/** API 요청 */
+/** API 요청 - apiClient 사용 */
 async function fetchCheckpointData() {
-    const res = await fetch("/api/dashboard/checkpoint");
-    if (!res.ok) throw new Error("Failed to fetch checkpoint data");
-    return res.json();
+    const response = await apiClient.get<CheckpointData>("/engine/checkpoint");
+    return response.data;
 }
 
 const getCheckpointRequestGaugeStatus = (
@@ -167,36 +85,105 @@ const getCheckpointRequestGaugeStatus = (
 
 /** 메인 컴포넌트 */
 export default function CheckPointPage() {
-    const { data } = useQuery({
+    const { data, isLoading, isError, error } = useQuery({
         queryKey: ["checkpointDashboard"],
         queryFn: fetchCheckpointData,
         retry: 1,
     });
 
-    const dashboard = data || mockData;
+    // 로딩 중
+    if (isLoading) {
+        return (
+            <div className="bgwriter-page">
+                <div style={{
+                    display: 'flex',
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    height: '400px',
+                    fontSize: '18px',
+                    color: '#6B7280'
+                }}>
+                    데이터를 불러오는 중...
+                </div>
+            </div>
+        );
+    }
+
+    // 에러 발생
+    if (isError) {
+        return (
+            <div className="bgwriter-page">
+                <div style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    height: '400px',
+                    fontSize: '18px',
+                    color: '#EF4444'
+                }}>
+                    <p>데이터를 불러오는데 실패했습니다.</p>
+                    <p style={{ fontSize: '14px', color: '#6B7280', marginTop: '8px' }}>
+                        {error instanceof Error ? error.message : '알 수 없는 오류가 발생했습니다.'}
+                    </p>
+                    <button
+                        onClick={() => window.location.reload()}
+                        style={{
+                            marginTop: '16px',
+                            padding: '8px 16px',
+                            backgroundColor: '#3B82F6',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: '4px',
+                            cursor: 'pointer'
+                        }}
+                    >
+                        새로고침
+                    </button>
+                </div>
+            </div>
+        );
+    }
+
+    // 데이터가 없는 경우
+    if (!data) {
+        return (
+            <div className="bgwriter-page">
+                <div style={{
+                    display: 'flex',
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    height: '400px',
+                    fontSize: '18px',
+                    color: '#6B7280'
+                }}>
+                    데이터가 없습니다.
+                </div>
+            </div>
+        );
+    }
+    const dashboard = data;
 
     const gaugeStatus = getCheckpointRequestGaugeStatus(dashboard.requestRatio.value);
 
     const recentStats = dashboard.recentStats || {
-        buffersWritten: 4280,
-        avgTotalProcessTime: 1.78,
-        checkpointDistance: 85,
-        checkpointInterval: 4.8,
-        avgWalGenerationSpeed: 9.2,
+        buffersWritten: 0,
+        avgTotalProcessTime: 0,
+        checkpointDistance: 0,
+        checkpointInterval: 0,
+        avgWalGenerationSpeed: 0,
     };
 
     const summaryCards = [
         {
             label: "총 Checkpoint 발생",
             value: `${dashboard.occurrence.requestedTotal + dashboard.occurrence.timedTotal}회`,
-            diff: 15,
             desc: "최근 24시간 누적",
             status: "info" as const,
         },
         {
             label: "WAL 총 생성량",
             value: `${(dashboard.walGeneration.total / 1000000000).toFixed(1)}GB`,
-            diff: 1.2,
             desc: "최근 24시간 누적",
             status: dashboard.walGeneration.total > 120000000000
                 ? ("warning" as const)
@@ -205,7 +192,6 @@ export default function CheckPointPage() {
         {
             label: "평균 Checkpoint 간격",
             value: `${recentStats.checkpointInterval}분`,
-            diff: 0.3,
             desc: "최근 5분 평균",
             status: recentStats.checkpointInterval < 3
                 ? ("warning" as const)
@@ -214,7 +200,6 @@ export default function CheckPointPage() {
         {
             label: "평균 Buffer 처리량",
             value: `${dashboard.buffer.average.toLocaleString()}/s`,
-            diff: 120,
             desc: "최근 24시간 평균",
             status: dashboard.buffer.average > 5000
                 ? ("warning" as const)
@@ -223,7 +208,6 @@ export default function CheckPointPage() {
         {
             label: "Checkpoint 거리",
             value: `${recentStats.checkpointDistance}%`,
-            diff: 5,
             desc: "최근 5분 평균",
             status: recentStats.checkpointDistance > 90
                 ? ("warning" as const)
@@ -240,7 +224,6 @@ export default function CheckPointPage() {
                         key={idx}
                         label={card.label}
                         value={card.value}
-                        diff={card.diff}
                         desc={card.desc}
                         status={card.status}
                     />
