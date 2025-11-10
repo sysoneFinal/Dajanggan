@@ -133,8 +133,8 @@ export const getTotalCount = async (): Promise<AxiosResponse<ApiResponse<number>
 /**
  * 실행 시간을 밀리초에서 초로 변환
  */
-export const msToSeconds = (ms: number): string => {
-  return (ms / 1000).toFixed(1);
+export const msToSeconds = (ms: number | string): number => {
+  return Number(ms) / 1000;
 };
 
 /**
