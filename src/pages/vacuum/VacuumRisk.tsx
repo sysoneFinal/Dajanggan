@@ -57,7 +57,7 @@ const formatK = (n?: number) => {
 };
 
 const VacuumPage: React.FC<{ hours?: number }> = ({ hours = 100 }) => {
-  const { selectedDatabase } = useInstanceContext();
+  const { selectedInstance, selectedDatabase } = useInstanceContext();
   const databaseId = selectedDatabase?.databaseId ?? null;
 
   const [loading, setLoading] = useState(true);
@@ -182,6 +182,22 @@ const VacuumPage: React.FC<{ hours?: number }> = ({ hours = 100 }) => {
     () => [{ name: "Transaction vs Block", data: scatterPoints }],
     [scatterPoints]
   );
+
+  
+     // Instance나 Database가 선택되지 않은 경우
+    if (!selectedInstance || !selectedDatabase) {
+      return (
+        <div className="vd-root">
+          <div style={{ padding: '40px', textAlign: 'center', color: '#6B7280' }}>
+            <p style={{ fontSize: '18px', fontWeight: '500', marginBottom: '8px' }}>
+              Instance와 Database를 선택해주세요
+            </p>
+          </div>
+        </div>
+      );
+    }
+  
+  
 
   return (
     <div className="vd-root">
