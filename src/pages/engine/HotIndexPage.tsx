@@ -4,6 +4,7 @@ import SummaryCard from "../../components/util/SummaryCard";
 import "../../styles/engine/hotindex.css";
 import WidgetCard from "../../components/util/WidgetCard";
 import ChartGridLayout from "../../components/layout/ChartGridLayout";
+import apiClient from "../../api/apiClient";
 
 /** Hot Index API 응답 타입 */
 interface HotIndexData {
@@ -58,97 +59,15 @@ interface HotIndexData {
     };
 }
 
-/** 더미 데이터 - Top-5로 변경 */
-const mockData: HotIndexData = {
-    usageDistribution: {
-        categories: [
-            "idx_users_email: 19%",
-            "idx_orders_user_id: 18%",
-            "idx_products_category: 16%",
-            "idx_payments_order_id: 15%",
-            "idx_inventory_product_id: 14%",
-            "Others: 18%"
-        ],
-        data: [19, 18, 16, 15, 14, 18]
-    },
-    topUsage: {
-        categories: [
-            "idx_users_email",
-            "idx_orders_user_id",
-            "idx_products_category",
-            "idx_payments_order_id",
-            "idx_inventory_product_id"
-        ],
-        data: [50000, 45000, 40000, 35000, 32000],
-        total: 202000
-    },
-    inefficientIndexes: {
-        categories: [
-            "idx_old_created_date",
-            "idx_legacy_status",
-            "idx_temp_field_old",
-            "idx_unused_column",
-            "idx_duplicate_index_old"
-        ],
-        data: [2.3, 1.8, 1.5, 0.8, 0.5],
-        total: 40
-    },
-    cacheHitRatio: {
-        categories: [
-            "0:00", "2:00", "4:00", "6:00", "8:00", "10:00",
-            "12:00", "14:00", "16:00", "18:00", "20:00", "22:00"
-        ],
-        data: [92, 91, 90, 85, 86, 92, 95, 93, 90, 87, 88, 90],
-        average: 90,
-        min: 85,
-        max: 95
-    },
-    efficiency: {
-        categories: [
-            "52000", "48000", "41000", "38000", "35000",
-            "32000", "8000", "5000", "25000"
-        ],
-        indexes: [490, 450, 420, 350, 470, 280, 380, 500, 120]
-    },
-    accessTrend: {
-        categories: [
-            "00:00", "04:00", "08:00", "12:00", "16:00", "20:00", "24:00"
-        ],
-        reads: [800, 1500, 2800, 1200, 900, 1200, 1000],  // 12:00, 16:00 시간대를 낮춤
-        writes: [200, 400, 600, 1500, 1300, 400, 200],    // 12:00, 16:00 시간대를 높임 (Writes > Reads)
-        totalReads: 9400,
-        totalWrites: 4600
-    },
-    scanSpeed: {
-        categories: [
-            "00:00", "04:00", "08:00", "12:00", "16:00", "20:00", "24:00"
-        ],
-        data: [2.2, 2.0, 4.8, 6.0, 5.2, 3.5, 2.5],
-        average: 3.7,
-        max: 6.0,
-        min: 2.0
-    },
-    // 최근 5분 평균 통계
-    recentStats: {
-        cacheHitRatio: 91.5,
-        avgScanSpeed: 3.2,
-        totalReads: 520,
-        totalWrites: 145,
-        inefficientCount: 5,
-    },
-};
-
-/** API 요청 */
+/** API 요청 - apiClient 사용 */
 async function fetchHotIndexData() {
-    const res = await fetch("/api/dashboard/hotindex");
-    if (!res.ok) throw new Error("Failed to fetch hot index data");
-    return res.json();
+    const response = await apiClient.get<HotIndexData>("/dashboard/hotindex");
+    return response.data;
 }
 
 interface SummaryCardWithLinkProps {
     label: string;
     value: string | number;
-    diff?: number;
     desc?: string;
     status?: "info" | "warning" | "critical";
     link?: string;
@@ -246,35 +165,103 @@ function getWriteExceedsAnnotations(
 }
 
 export default function HotIndexPage() {
-    /** 실제 프로덕션에서는 useQuery 사용 */
-        // const { data: dashboard = mockData, isLoading, error } = useQuery({
-        //     queryKey: ["hotIndexData"],
-        //     queryFn: fetchHotIndexData,
-        //     refetchInterval: 60000,
-        // });
+    const { data, isLoading, isError, error } = useQuery({
+        queryKey: ["hotindexDashboard"],
+        queryFn: fetchHotIndexData,
+        retry: 1,
+    });
 
-    const dashboard = mockData;
+    // 로딩 중
+    if (isLoading) {
+        return (
+            <div className="bgwriter-page">
+                <div style={{
+                    display: 'flex',
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    height: '400px',
+                    fontSize: '18px',
+                    color: '#6B7280'
+                }}>
+                    데이터를 불러오는 중...
+                </div>
+            </div>
+        );
+    }
+
+    // 에러 발생
+    if (isError) {
+        return (
+            <div className="bgwriter-page">
+                <div style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    height: '400px',
+                    fontSize: '18px',
+                    color: '#EF4444'
+                }}>
+                    <p>데이터를 불러오는데 실패했습니다.</p>
+                    <p style={{ fontSize: '14px', color: '#6B7280', marginTop: '8px' }}>
+                        {error instanceof Error ? error.message : '알 수 없는 오류가 발생했습니다.'}
+                    </p>
+                    <button
+                        onClick={() => window.location.reload()}
+                        style={{
+                            marginTop: '16px',
+                            padding: '8px 16px',
+                            backgroundColor: '#3B82F6',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: '4px',
+                            cursor: 'pointer'
+                        }}
+                    >
+                        새로고침
+                    </button>
+                </div>
+            </div>
+        );
+    }
+
+    // 데이터가 없는 경우
+    if (!data) {
+        return (
+            <div className="bgwriter-page">
+                <div style={{
+                    display: 'flex',
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    height: '400px',
+                    fontSize: '18px',
+                    color: '#6B7280'
+                }}>
+                    데이터가 없습니다.
+                </div>
+            </div>
+        );
+    }
+
+    const dashboard = data;
 
     // 요약 카드 데이터 계산 (최근 5분 평균 기준)
     const summaryCards = [
         {
             label: "인덱스 스캔 효율",
             value: "89.3%",
-            diff: 1.2,
             desc: "최근 5분 평균",
             status: "warning" as const,
         },
         {
             label: "인덱스/테이블 비율",
             value: "28%",
-            diff: -0.5,
             desc: "최근 5분 평균",
             status: "info" as const,
         },
         {
             label: "미사용 인덱스",
             value: "3",
-            diff: 0,
             desc: "최근 5분 누적",
             status: "warning" as const,
             link: "http://localhost:5173/database/hotindex/detail",
@@ -282,14 +269,12 @@ export default function HotIndexPage() {
         {
             label: "Bloat 인덱스",
             value: "3개",
-            diff: 1,
             desc: "최근 5분 누적",
             status: "warning" as const,
         },
         {
             label: "대형 테이블 Seq Scan",
             value: "6.2%",
-            diff: -1.3,
             desc: "최근 5분 평균",
             status: "info" as const,
         },
@@ -304,7 +289,6 @@ export default function HotIndexPage() {
                         key={idx}
                         label={card.label}
                         value={card.value}
-                        diff={card.diff}
                         desc={card.desc}
                         status={card.status}
                         link={card.link}
