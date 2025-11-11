@@ -12,6 +12,8 @@ import {
 import Pagination from "../../components/util/Pagination";
 import CsvButton from "../../components/util/CsvButton";
 import "../../styles/system/disklist.css";
+import apiClient from "../../api/apiClient";
+import {useQuery} from "@tanstack/react-query";
 
 interface DiskIOData {
     id: string;
@@ -33,109 +35,37 @@ interface DiskIOData {
     status: "정상" | "주의" | "위험";
 }
 
-const mockData: DiskIOData[] = [
-    {
-        id: "1",
-        processType: "backend",
-        totalIO: 2085,
-        readRate: 1840,
-        writeRate: 245,
-        readMBs: 28.6,
-        writeMBs: 3.8,
-        throughputMBs: 32.4,
-        fsyncRate: 12,
-        evictionRate: 45,
-        extendRate: 8,
-        hitRatio: 96.5,
-        avgQueueDepth: 2.3,
-        avgLatency: 8.5,
-        readPercent: 64.2,
-        writePercent: 35.8,
-        status: "정상",
-    },
-    {
-        id: "2",
-        processType: "bgwriter",
-        totalIO: 156,
-        readRate: 0,
-        writeRate: 156,
-        readMBs: 0,
-        writeMBs: 2.4,
-        throughputMBs: 2.4,
-        fsyncRate: 28,
-        evictionRate: 12,
-        extendRate: 3,
-        hitRatio: 100.0,
-        avgQueueDepth: 0.8,
-        avgLatency: 12.3,
-        readPercent: 0.0,
-        writePercent: 100.0,
-        status: "정상",
-    },
-    {
-        id: "3",
-        processType: "checkpointer",
-        totalIO: 892,
-        readRate: 0,
-        writeRate: 892,
-        readMBs: 0,
-        writeMBs: 13.9,
-        throughputMBs: 13.9,
-        fsyncRate: 156,
-        evictionRate: 0,
-        extendRate: 12,
-        hitRatio: 100.0,
-        avgQueueDepth: 4.2,
-        avgLatency: 45.6,
-        readPercent: 0.0,
-        writePercent: 100.0,
-        status: "주의",
-    },
-    {
-        id: "4",
-        processType: "autovacuum",
-        totalIO: 402,
-        readRate: 324,
-        writeRate: 78,
-        readMBs: 5.0,
-        writeMBs: 1.2,
-        throughputMBs: 6.2,
-        fsyncRate: 8,
-        evictionRate: 23,
-        extendRate: 5,
-        hitRatio: 94.2,
-        avgQueueDepth: 1.6,
-        avgLatency: 15.7,
-        readPercent: 80.6,
-        writePercent: 19.4,
-        status: "정상",
-    },
-    {
-        id: "5",
-        processType: "walwriter",
-        totalIO: 567,
-        readRate: 0,
-        writeRate: 567,
-        readMBs: 0,
-        writeMBs: 8.8,
-        throughputMBs: 8.8,
-        fsyncRate: 89,
-        evictionRate: 0,
-        extendRate: 18,
-        hitRatio: 100.0,
-        avgQueueDepth: 2.1,
-        avgLatency: 18.4,
-        readPercent: 0.0,
-        writePercent: 100.0,
-        status: "정상",
-    },
-];
+interface DiskIOListResponse {
+    data: DiskIOData[];
+    total: number;
+}
+
+/** API 요청 함수 */
+async function fetchDiskIOList(timeRange: string, statusFilter: string) {
+    const params: any = { timeRange };
+    if (statusFilter) {
+        params.status = statusFilter;
+    }
+    const response = await apiClient.get<DiskIOListResponse>("/system/diskio/list", { params });
+    return response.data;
+}
 
 export default function DiskListPage() {
-    const [data] = useState<DiskIOData[]>(mockData);
+    const [timeRange, setTimeRange] = useState("7d");
+    const [statusFilter, setStatusFilter] = useState("");
     const [sorting, setSorting] = useState<SortingState>([]);
     const [currentPage, setCurrentPage] = useState(1);
     const pageSize = 10;
+
+    // React Query로 데이터 가져오기
+    const { data: apiResponse, isLoading, isError } = useQuery({
+        queryKey: ["diskioList", timeRange, statusFilter],
+        queryFn: () => fetchDiskIOList(timeRange, statusFilter),
+        retry: 1,
+        refetchInterval: 60000, // 1분마다 자동 갱신
+    });
+
+    const data = apiResponse?.data || [];
 
     const columns = useMemo<ColumnDef<DiskIOData>[]>(
         () => [
@@ -162,17 +92,17 @@ export default function DiskListPage() {
             {
                 accessorKey: "readMBs",
                 header: "읽기(MB/s)",
-                cell: (info) => info.getValue(),
+                cell: (info) => (info.getValue() as number).toFixed(2),
             },
             {
                 accessorKey: "writeMBs",
                 header: "쓰기(MB/s)",
-                cell: (info) => info.getValue(),
+                cell: (info) => (info.getValue() as number).toFixed(2),
             },
             {
                 accessorKey: "throughputMBs",
                 header: "처리량(MB/s)",
-                cell: (info) => info.getValue(),
+                cell: (info) => (info.getValue() as number).toFixed(2),
             },
             {
                 accessorKey: "fsyncRate",
@@ -192,27 +122,27 @@ export default function DiskListPage() {
             {
                 accessorKey: "hitRatio",
                 header: "Hit Ratio(%)",
-                cell: (info) => info.getValue(),
+                cell: (info) => (info.getValue() as number).toFixed(1),
             },
             {
                 accessorKey: "avgQueueDepth",
                 header: "평균 큐 깊이",
-                cell: (info) => info.getValue(),
+                cell: (info) => (info.getValue() as number).toFixed(2),
             },
             {
                 accessorKey: "avgLatency",
                 header: "평균 지연(ms)",
-                cell: (info) => info.getValue(),
+                cell: (info) => (info.getValue() as number).toFixed(2),
             },
             {
                 accessorKey: "readPercent",
                 header: "읽기(%)",
-                cell: (info) => `${info.getValue()}%`,
+                cell: (info) => `${(info.getValue() as number).toFixed(1)}%`,
             },
             {
                 accessorKey: "writePercent",
                 header: "쓰기(%)",
-                cell: (info) => `${info.getValue()}%`,
+                cell: (info) => `${(info.getValue() as number).toFixed(1)}%`,
             },
             {
                 accessorKey: "status",
@@ -321,10 +251,80 @@ export default function DiskListPage() {
         URL.revokeObjectURL(url);
     };
 
+    // 로딩 상태
+    if (isLoading) {
+        return (
+            <main className="diskio-list-page">
+                <div style={{
+                    display: 'flex',
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    height: '400px',
+                    fontSize: '18px',
+                    color: '#6B7280'
+                }}>
+                    데이터를 불러오는 중...
+                </div>
+            </main>
+        );
+    }
+
+    // 에러 상태
+    if (isError) {
+        return (
+            <main className="diskio-list-page">
+                <div style={{
+                    display: 'flex',
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    height: '400px',
+                    fontSize: '18px',
+                    color: '#EF4444'
+                }}>
+                    데이터를 불러오는데 실패했습니다.
+                </div>
+            </main>
+        );
+    }
+
     return (
         <main className="diskio-list-page">
             {/* 필터 선택 영역 */}
             <section className="diskio-list-page__filters">
+                <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                    <select
+                        value={timeRange}
+                        onChange={(e) => setTimeRange(e.target.value)}
+                        style={{
+                            padding: '8px 12px',
+                            borderRadius: '4px',
+                            border: '1px solid #D1D5DB',
+                            fontSize: '14px'
+                        }}
+                    >
+                        <option value="1h">최근 1시간</option>
+                        <option value="6h">최근 6시간</option>
+                        <option value="24h">최근 24시간</option>
+                        <option value="7d">최근 7일</option>
+                    </select>
+
+                    <select
+                        value={statusFilter}
+                        onChange={(e) => setStatusFilter(e.target.value)}
+                        style={{
+                            padding: '8px 12px',
+                            borderRadius: '4px',
+                            border: '1px solid #D1D5DB',
+                            fontSize: '14px'
+                        }}
+                    >
+                        <option value="">전체 상태</option>
+                        <option value="정상">정상</option>
+                        <option value="주의">주의</option>
+                        <option value="위험">위험</option>
+                    </select>
+                </div>
+
                 <CsvButton onClick={handleExportCSV} tooltip="CSV 파일 저장"/>
             </section>
 
