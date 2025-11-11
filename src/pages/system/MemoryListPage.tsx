@@ -1,4 +1,4 @@
-import {Fragment, useMemo, useState} from "react";
+import {Fragment, useEffect, useMemo, useState} from "react";
 import {
     useReactTable,
     getCoreRowModel,
@@ -12,24 +12,15 @@ import {
 import Pagination from "../../components/util/Pagination";
 import CsvButton from "../../components/util/CsvButton";
 import MultiSelectDropdown from "../../components/util/MultiSelectDropdown";
+import apiClient from "../../api/apiClient";
 import "../../styles/system/memorylist.css";
 
-// 전체 메모리 요약 정보 타입
-interface MemorySummary {
-    totalSharedBuffers: string;
-    usedSharedBuffers: string;
-    freeSharedBuffers: string;
-    dirtyBuffers: string;
-    dirtyPercent: number;
-    overallHitRatio: number;
-}
-
-// 데이터 타입 정의 - 컬럼 추가
+// 데이터 타입 정의
 interface MemoryData {
     id: string;
     objectName: string;
     type: "table" | "index";
-    sizeMB: number;
+    sizeMb: number;
     bufferCount: number;
     usagePercent: number;
     dirtyCount: number;
@@ -42,121 +33,70 @@ interface MemoryData {
     status: "정상" | "주의" | "위험";
 }
 
-// 전체 메모리 요약 정보 (페이지 상단 표시용)
-const memorySummary: MemorySummary = {
-    totalSharedBuffers: "16 GB",
-    usedSharedBuffers: "12.4 GB",
-    freeSharedBuffers: "3.6 GB",
-    dirtyBuffers: "1.2 GB",
-    dirtyPercent: 9.7,
-    overallHitRatio: 97.8,
-};
-
-// 임시 목 데이터 - 새 컬럼 포함
-const mockData: MemoryData[] = [
-    {
-        id: "1",
-        objectName: "orders",
-        type: "table",
-        sizeMB: 2458,
-        bufferCount: 12450,
-        usagePercent: 15.2,
-        dirtyCount: 845,
-        dirtyPercent: 6.8,
-        pinnedBuffers: 24,
-        hitPercent: 98.6,
-        accessCount: 245600,
-        evictionCount: 89,
-        avgAccessTime: 0.8,
-        status: "정상",
-    },
-    {
-        id: "2",
-        objectName: "idx_orders_user_id",
-        type: "index",
-        sizeMB: 256,
-        bufferCount: 4820,
-        usagePercent: 5.9,
-        dirtyCount: 124,
-        dirtyPercent: 2.6,
-        pinnedBuffers: 8,
-        hitPercent: 99.2,
-        accessCount: 124500,
-        evictionCount: 23,
-        avgAccessTime: 0.5,
-        status: "정상",
-    },
-    {
-        id: "3",
-        objectName: "users",
-        type: "table",
-        sizeMB: 1842,
-        bufferCount: 8540,
-        usagePercent: 10.4,
-        dirtyCount: 1240,
-        dirtyPercent: 14.5,
-        pinnedBuffers: 18,
-        hitPercent: 96.8,
-        accessCount: 189400,
-        evictionCount: 156,
-        avgAccessTime: 1.2,
-        status: "주의",
-    },
-    {
-        id: "4",
-        objectName: "inventory",
-        type: "table",
-        sizeMB: 3268,
-        bufferCount: 15680,
-        usagePercent: 19.1,
-        dirtyCount: 3450,
-        dirtyPercent: 22.0,
-        pinnedBuffers: 42,
-        hitPercent: 94.2,
-        accessCount: 312400,
-        evictionCount: 345,
-        avgAccessTime: 2.1,
-        status: "위험",
-    },
-    {
-        id: "5",
-        objectName: "idx_products_name",
-        type: "index",
-        sizeMB: 89,
-        bufferCount: 3240,
-        usagePercent: 3.9,
-        dirtyCount: 89,
-        dirtyPercent: 2.7,
-        pinnedBuffers: 5,
-        hitPercent: 97.5,
-        accessCount: 45600,
-        evictionCount: 34,
-        avgAccessTime: 0.7,
-        status: "정상",
-    },
-    {
-        id: "6",
-        objectName: "cart_items",
-        type: "table",
-        sizeMB: 456,
-        bufferCount: 5840,
-        usagePercent: 7.1,
-        dirtyCount: 980,
-        dirtyPercent: 16.6,
-        pinnedBuffers: 12,
-        hitPercent: 95.6,
-        accessCount: 124800,
-        evictionCount: 178,
-        avgAccessTime: 1.5,
-        status: "주의",
-    },
-];
+// API 응답 타입
+interface MemoryListResponse {
+    data: MemoryData[];
+    total: number;
+}
 
 export default function MemoryListPage() {
-    const [data] = useState<MemoryData[]>(mockData);
+    const [data, setData] = useState<MemoryData[]>([]);
+    const [loading, setLoading] = useState<boolean>(true);
+    const [error, setError] = useState<string | null>(null);
     const [sorting, setSorting] = useState<SortingState>([]);
     const [currentPage, setCurrentPage] = useState(1);
+    const [selectedType, setSelectedType] = useState<string[]>([]);
+    const [selectedStatus, setSelectedStatus] = useState<string[]>([]);
     const pageSize = 10;
+
+    // API 데이터 조회
+    const fetchData = async () => {
+        try {
+            setLoading(true);
+            setError(null);
+
+            // 타입 필터 변환
+            const typeParam = selectedType.length > 0
+                ? selectedType.join(",")
+                : undefined;
+
+            // 상태 필터 변환
+            const statusParam = selectedStatus.length > 0
+                ? selectedStatus.join(",")
+                : undefined;
+
+            console.log("Fetching memory list with params:", { typeParam, statusParam });
+
+            // apiClient 사용하여 API 호출
+            const response = await apiClient.get<MemoryListResponse>('/system/memory/list', {
+                params: {
+                    type: typeParam,
+                    status: statusParam,
+                },
+            });
+
+            console.log("Memory List API Response:", response);
+
+            // 응답 데이터 확인 및 설정
+            if (response && response.data) {
+                setData(response.data || []);
+            } else {
+                console.warn("No data in response");
+                setData([]);
+            }
+        } catch (err) {
+            console.error("Memory 리스트 조회 오류:", err);
+            setError(err instanceof Error ? err.message : "데이터 조회 중 오류가 발생했습니다.");
+            setData([]);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    // 초기 로드 및 필터 변경 시 데이터 조회
+    useEffect(() => {
+        fetchData();
+    }, [selectedType, selectedStatus]);
 
     const columns = useMemo<ColumnDef<MemoryData>[]>(
         () => [
@@ -174,54 +114,84 @@ export default function MemoryListPage() {
                 },
             },
             {
-                accessorKey: "sizeMB",
+                accessorKey: "sizeMb",
                 header: "크기(MB)",
-                cell: (info) => (info.getValue() as number).toLocaleString(),
+                cell: (info) => {
+                    const value = info.getValue() as number;
+                    return value ? value.toLocaleString() : "0";
+                },
             },
             {
                 accessorKey: "bufferCount",
                 header: "버퍼(개)",
-                cell: (info) => (info.getValue() as number).toLocaleString(),
+                cell: (info) => {
+                    const value = info.getValue() as number;
+                    return value ? value.toLocaleString() : "0";
+                },
             },
             {
                 accessorKey: "usagePercent",
                 header: "점유율(%)",
-                cell: (info) => (info.getValue() as number).toLocaleString(),
+                cell: (info) => {
+                    const value = info.getValue() as number;
+                    return value ? value.toLocaleString() : "0";
+                },
             },
             {
                 accessorKey: "dirtyCount",
                 header: "Dirty(개)",
-                cell: (info) => (info.getValue() as number).toLocaleString(),
+                cell: (info) => {
+                    const value = info.getValue() as number;
+                    return value ? value.toLocaleString() : "0";
+                },
             },
             {
                 accessorKey: "dirtyPercent",
                 header: "Dirty 비율(%)",
-                cell: (info) => (info.getValue() as number).toLocaleString(),
+                cell: (info) => {
+                    const value = info.getValue() as number;
+                    return value ? value.toLocaleString() : "0";
+                },
             },
             {
                 accessorKey: "pinnedBuffers",
                 header: "고정 버퍼",
-                cell: (info) => (info.getValue() as number).toLocaleString(),
+                cell: (info) => {
+                    const value = info.getValue() as number;
+                    return value ? value.toLocaleString() : "0";
+                },
             },
             {
                 accessorKey: "hitPercent",
                 header: "Hit 비율(%)",
-                cell: (info) => (info.getValue() as number).toLocaleString(),
+                cell: (info) => {
+                    const value = info.getValue() as number;
+                    return value ? value.toLocaleString() : "0";
+                },
             },
             {
                 accessorKey: "accessCount",
                 header: "접근 횟수",
-                cell: (info) => (info.getValue() as number).toLocaleString(),
+                cell: (info) => {
+                    const value = info.getValue() as number;
+                    return value ? value.toLocaleString() : "0";
+                },
             },
             {
                 accessorKey: "evictionCount",
                 header: "Eviction",
-                cell: (info) => (info.getValue() as number).toLocaleString(),
+                cell: (info) => {
+                    const value = info.getValue() as number;
+                    return value ? value.toLocaleString() : "0";
+                },
             },
             {
                 accessorKey: "avgAccessTime",
                 header: "평균 시간(ms)",
-                cell: (info) => info.getValue(),
+                cell: (info) => {
+                    const value = info.getValue() as number;
+                    return value || "0";
+                },
             },
             {
                 accessorKey: "status",
@@ -281,7 +251,7 @@ export default function MemoryListPage() {
         const csvData = data.map((row) => [
             row.objectName,
             row.type,
-            row.sizeMB,
+            row.sizeMb,
             row.bufferCount,
             row.usagePercent,
             row.dirtyCount,
@@ -333,7 +303,8 @@ export default function MemoryListPage() {
                         "table",
                         "index",
                     ]}
-                    onChange={(values) => console.log("선택된 타입:", values)}
+                    selectedValues={selectedType}
+                    onChange={(values) => setSelectedType(values)}
                 />
                 <MultiSelectDropdown
                     label="상태"
@@ -342,7 +313,8 @@ export default function MemoryListPage() {
                         "주의",
                         "위험",
                     ]}
-                    onChange={(values) => console.log("선택된 상태:", values)}
+                    selectedValues={selectedStatus}
+                    onChange={(values) => setSelectedStatus(values)}
                 />
                 <CsvButton onClick={handleExportCSV} tooltip="CSV 파일 저장"/>
             </section>
@@ -373,7 +345,27 @@ export default function MemoryListPage() {
                     ))}
                 </div>
 
-                {table.getRowModel().rows.length > 0 ? (
+                {loading ? (
+                    <div className="memory-table-empty">데이터를 불러오는 중...</div>
+                ) : error ? (
+                    <div className="memory-table-empty">
+                        <div>오류: {error}</div>
+                        <button
+                            onClick={fetchData}
+                            style={{
+                                marginTop: '16px',
+                                padding: '8px 16px',
+                                backgroundColor: '#3B82F6',
+                                color: 'white',
+                                border: 'none',
+                                borderRadius: '4px',
+                                cursor: 'pointer'
+                            }}
+                        >
+                            다시 시도
+                        </button>
+                    </div>
+                ) : table.getRowModel().rows.length > 0 ? (
                     table.getRowModel().rows.map((row) => (
                         <div key={row.id} className="memory-table-row">
                             {row.getVisibleCells().map((cell) => (
@@ -387,7 +379,12 @@ export default function MemoryListPage() {
                         </div>
                     ))
                 ) : (
-                    <div className="memory-table-empty">데이터가 없습니다.</div>
+                    <div className="memory-table-empty">
+                        <div>데이터가 없습니다.</div>
+                        <div style={{ fontSize: '14px', color: '#6B7280', marginTop: '8px' }}>
+                            데이터베이스에 수집된 메모리 데이터가 없거나, 필터 조건에 맞는 데이터가 없습니다.
+                        </div>
+                    </div>
                 )}
             </section>
 

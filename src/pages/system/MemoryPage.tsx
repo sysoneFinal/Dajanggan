@@ -5,6 +5,8 @@ import SummaryCard from "../../components/util/SummaryCard";
 import WidgetCard from "../../components/util/WidgetCard";
 import ChartGridLayout from "../../components/layout/ChartGridLayout";
 import "../../styles/system/memory.css";
+import apiClient from "../../api/apiClient";
+import {useQuery} from "@tanstack/react-query";
 
 // API 응답 전체 구조
 interface MemoryData {
@@ -63,75 +65,6 @@ interface MemoryData {
     };
 }
 
-// 더미 데이터
-const dummyData: MemoryData = {
-    memoryUtilization: {
-        value: 35.7,
-        usedBuffers: 45000,
-        totalBuffers: 126000,
-    },
-    bufferHitRatio: {
-        value: 92.8,
-        hitCount: 8500000,
-        totalCount: 9160000,
-    },
-    sharedBufferUsage: {
-        value: 78.5,
-        activeBuffers: 98910,
-        totalBuffers: 126000,
-    },
-    evictionRate: {
-        categories: [
-            "0:00", "2:00", "4:00", "6:00", "8:00", "10:00",
-            "12:00", "14:00", "16:00", "18:00", "20:00", "22:00"
-        ],
-        data: [160, 145, 130, 180, 155, 135, 165, 120, 140, 110, 125, 150],
-        average: 143,
-        max: 180,
-        min: 110,
-    },
-    fsyncRate: {
-        categories: [
-            "0:00", "2:00", "4:00", "6:00", "8:00", "10:00",
-            "12:00", "14:00", "16:00", "18:00", "20:00", "22:00"
-        ],
-        data: [30, 45, 55, 28, 35, 48, 52, 38, 42, 31, 40, 50],
-        average: 41,
-        max: 55,
-        backendFsync: 0,
-    },
-    dirtyBufferTrend: {
-        categories: [
-            "0:00", "2:00", "4:00", "6:00", "8:00", "10:00",
-            "12:00", "14:00", "16:00", "18:00", "20:00", "22:00"
-        ],
-        data: [12.5, 15.2, 18.7, 22.3, 19.8, 16.5, 14.2, 17.8, 21.5, 19.2, 16.8, 13.5],
-        average: 17.3,
-        max: 22.3,
-        min: 12.5,
-    },
-    evictionFlushRatio: {
-        categories: [
-            "0:00", "2:00", "4:00", "6:00", "8:00", "10:00",
-            "12:00", "14:00", "16:00", "18:00", "20:00", "22:00"
-        ],
-        evictions: [160, 145, 130, 180, 155, 135, 165, 120, 140, 110, 125, 150],
-        fsyncs: [30, 45, 55, 28, 35, 48, 52, 38, 42, 31, 40, 50],
-    },
-    topBufferObjects: {
-        labels: ["orders", "idx_users_email", "products", "idx_orders_date", "payments"],
-        data: [18.5, 15.2, 12.8, 10.3, 8.7],
-        types: ["table", "index", "table", "index", "table"],
-    },
-    summaryStats: {
-        dirtyBufferRatio: 17.3,
-        backendWaitTime: 0.8,
-        workMemUsage: 340,
-        tempFileUsage: 125,
-        checkpointInterval: 420, // seconds
-    },
-};
-
 // Gauge 색상 결정 (Memory Utilization)
 const getMemoryUtilizationColor = (value: number): string => {
     if (value >= 80 && value <= 95) return "#7B61FF";
@@ -145,49 +78,127 @@ const getHitRatioColor = (value: number): string => {
     if (value >= 90) return "#FFD66B";
     return "#FF928A";
 };
+/** API 요청 - apiClient 사용 */
+async function fetchMemoryData() {
+    const response = await apiClient.get<MemoryData>("/system/memory");
+    return response.data;
+}
 
 // 메인 Memory 페이지
 export default function MemoryPage() {
-    const [data] = useState<MemoryData>(dummyData);
+    const { data, isLoading, isError, error } = useQuery({
+        queryKey: ["memoryDashboard"],
+        queryFn: fetchMemoryData,
+        retry: 1,
+    });
 
-    const memoryUtilizationColor = getMemoryUtilizationColor(data.memoryUtilization.value);
-    const hitRatioColor = getHitRatioColor(data.bufferHitRatio.value);
-    const sharedBufferColor = getMemoryUtilizationColor(data.sharedBufferUsage.value);
+    // 로딩 중
+    if (isLoading) {
+        return (
+            <div className="bgwriter-page">
+                <div style={{
+                    display: 'flex',
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    height: '400px',
+                    fontSize: '18px',
+                    color: '#6B7280'
+                }}>
+                    데이터를 불러오는 중...
+                </div>
+            </div>
+        );
+    }
+
+    // 에러 발생
+    if (isError) {
+        return (
+            <div className="bgwriter-page">
+                <div style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    height: '400px',
+                    fontSize: '18px',
+                    color: '#EF4444'
+                }}>
+                    <p>데이터를 불러오는데 실패했습니다.</p>
+                    <p style={{ fontSize: '14px', color: '#6B7280', marginTop: '8px' }}>
+                        {error instanceof Error ? error.message : '알 수 없는 오류가 발생했습니다.'}
+                    </p>
+                    <button
+                        onClick={() => window.location.reload()}
+                        style={{
+                            marginTop: '16px',
+                            padding: '8px 16px',
+                            backgroundColor: '#3B82F6',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: '4px',
+                            cursor: 'pointer'
+                        }}
+                    >
+                        새로고침
+                    </button>
+                </div>
+            </div>
+        );
+    }
+
+    // 데이터가 없는 경우
+    if (!data) {
+        return (
+            <div className="bgwriter-page">
+                <div style={{
+                    display: 'flex',
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    height: '400px',
+                    fontSize: '18px',
+                    color: '#6B7280'
+                }}>
+                    데이터가 없습니다.
+                </div>
+            </div>
+        );
+    }
+
+    const dashboard = data;
+
+    const memoryUtilizationColor = getMemoryUtilizationColor(dashboard.memoryUtilization.value);
+    const hitRatioColor = getHitRatioColor(dashboard.bufferHitRatio.value);
+    const sharedBufferColor = getMemoryUtilizationColor(dashboard.sharedBufferUsage.value);
 
     // 요약 카드 데이터
     const summaryCards = [
         {
             label: "Dirty Buffer 비율",
             value: `${data.summaryStats.dirtyBufferRatio.toFixed(1)}%`,
-            diff: -1.2,
             desc: "최근 5분 평균",
             status: data.summaryStats.dirtyBufferRatio > 20 ? ("warning" as const) : ("info" as const),
         },
         {
             label: "Backend 대기 시간",
             value: `${data.summaryStats.backendWaitTime.toFixed(1)}ms`,
-            diff: -0.1,
             desc: "최근 5분 평균",
             status: data.summaryStats.backendWaitTime > 2 ? ("warning" as const) : ("info" as const),
         },
         {
             label: "작업 메모리 사용량",
             value: `${data.summaryStats.workMemUsage}MB`,
-            diff: 25,
             desc: "최근 5분 최대값",
             status: "info" as const,
         },
         {
             label: "Temp File 사용량",
             value: `${data.summaryStats.tempFileUsage}MB`,
-            diff: -15,
             desc: "최근 5분 누적",
             status: data.summaryStats.tempFileUsage > 500 ? ("warning" as const) : ("info" as const),
         },
         {
             label: "Checkpoint 발생 간격",
             value: `${Math.floor(data.summaryStats.checkpointInterval / 60)}분`,
-            diff: 0,
             desc: "마지막 Checkpoint 이후",
             status: data.summaryStats.checkpointInterval < 120 ? ("warning" as const) : ("info" as const),
         },
@@ -225,7 +236,6 @@ export default function MemoryPage() {
                         key={idx}
                         label={card.label}
                         value={card.value}
-                        diff={card.diff}
                         desc={card.desc}
                         status={card.status}
                     />
@@ -555,52 +565,73 @@ export default function MemoryPage() {
             <WidgetCard title="Top-5 버퍼 점유 객체" span={4}>
                 <Chart
                     type="bar"
-                    series={[{
-                        name: "% of Pool",
-                        data: topBufferChartData
-                    }]}
+                    series={[
+                        {
+                            name: "% of Pool",
+                            data: data.topBufferObjects.data,
+                        },
+                    ]}
                     categories={data.topBufferObjects.labels}
                     height={250}
-                    colors={["#60A5FA"]}
+                    colors={["#60A5FA", "#FBBF24"]}
                     showGrid={true}
                     showLegend={false}
                     xaxisOptions={{
                         title: { text: "객체명", style: { fontSize: "12px", color: "#6B7280" } },
+                        labels: {
+                            style: { fontSize: "11px", colors: "#6B7280" },
+                            rotate: -30,
+                            trim: true,
+                        },
                     }}
                     yaxisOptions={{
                         title: { text: "버퍼 점유율 (%)", style: { fontSize: "12px", color: "#6B7280" } },
                         labels: { formatter: (val: number) => `${val.toFixed(1)}%` },
+                        min: 0,
                     }}
-                    // tooltipFormatter={(value: number, opts: any) => {
-                    //     const type = data.topBufferObjects.types[opts.dataPointIndex];
-                    //     return `${value.toFixed(1)}% (${type === "table" ? "Table" : "Index"})`;
-                    // }}
+                    tooltipFormatter={(value: number, opts: any) => {
+                        const type = data.topBufferObjects.types[opts.dataPointIndex];
+                        const label = data.topBufferObjects.labels[opts.dataPointIndex];
+                        return `${label}: ${value.toFixed(1)}% (${type === "table" ? "Table" : "Index"})`;
+                    }}
                     customOptions={{
                         plotOptions: {
                             bar: {
                                 distributed: true,
                                 horizontal: false,
                                 borderRadius: 4,
-                                dataLabels: {
-                                    position: 'top',
-                                },
-                            }
+                                columnWidth: "55%",
+                                dataLabels: { position: "top" },
+                            },
                         },
                         dataLabels: {
                             enabled: true,
                             formatter: (val: number) => `${val.toFixed(1)}%`,
                             offsetY: -20,
                             style: {
-                                fontSize: '11px',
+                                fontSize: "11px",
                                 colors: ["#374151"],
                                 fontWeight: 600,
-                            }
+                            },
+                        },
+                        tooltip: {
+                            y: {
+                                formatter: (val: number, opts: any) => {
+                                    const type = data.topBufferObjects.types[opts.dataPointIndex];
+                                    return `${val.toFixed(1)}% (${type === "table" ? "Table" : "Index"})`;
+                                },
+                            },
+                        },
+                        xaxis: {
+                            labels: {
+                                rotate: -30,
+                                style: { fontSize: "11px" },
+                            },
                         },
                     }}
                 />
             </WidgetCard>
             </ChartGridLayout>
-
         </div>
     );
 }
