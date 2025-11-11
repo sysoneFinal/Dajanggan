@@ -10,7 +10,7 @@ type InstanceDetailDto = {
   instanceName: string;
   dbname: string;
   port: number;
-  username: string;
+  userName: string;
   sslmode?: string;
   isEnabled?: boolean;
 };
@@ -28,7 +28,7 @@ export default function EditInstancePage() {
     (async () => {
       try {
         setLoading(true);
-        const res = await apiClient.get<InstanceDetailDto>(`/api/instances/${id}`);
+        const res = await apiClient.get<InstanceDetailDto>(`/instances/${id}`);
         if (!mounted) return;
         setDetail(res.data);
         setOpen(true); // 데이터 로드 후 모달 열기
@@ -51,9 +51,8 @@ export default function EditInstancePage() {
     const payload: any = {
       host: form.host,
       instanceName: form.instance,
-      dbname: form.database,
       port: Number(form.port),
-      username: form.username,
+      userName: form.userName,
       sslmode: "require",
       isEnabled: true,
     };
@@ -61,7 +60,7 @@ export default function EditInstancePage() {
       payload.secretRef = form.password;
     }
 
-    await apiClient.put(`/api/instances/${id}`, payload);
+    await apiClient.put(`/instances/${id}`, payload);
     alert("수정 완료!");
   };
 
@@ -70,9 +69,8 @@ export default function EditInstancePage() {
   const initialValue: Partial<NewInstance> | undefined = detail ? {
     host: detail.host,
     instance: detail.instanceName,
-    database: detail.dbname,
     port: detail.port,
-    username: detail.username,
+    userName: detail.userName,
     password: "",
   } : undefined;
 

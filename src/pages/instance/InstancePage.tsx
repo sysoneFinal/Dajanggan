@@ -20,13 +20,12 @@ export interface InstanceRow {
   instanceName: string;
   host: string;
   port: number;
-  isEnabled: boolean;
+  status: string;
   version: string;
   createdAt: string;
   updatedAt: string;
   uptimeMs: number;    
-  dbname?: string;      // 추가
-  username?: string;    // 추가
+  userName?: string;  
   databases?: DatabaseSummary[];
 }
 
@@ -35,13 +34,11 @@ type InstanceDto = {
     instanceName?: string;
     host: string;
     port: number;
-    isEnabled?: boolean;
     status?: "active" | "inactive";  
     version?: string;
     updatedAt?: string;
     createdAt: string;
-    dbname?: string;      // 추가
-    username?: string;    // 추가
+    userName?: string;   
     databases?: Array<{
         name: string;
         isEnabled: boolean;
@@ -119,13 +116,12 @@ export const mapInstance = (i: InstanceDto): InstanceRow => {
     instanceName: i.instanceName ?? i.host ?? String(id ?? "-"),
     host: i.host,
     port: Number(i.port),
-    isEnabled: toBooleanStatus(i.isEnabled ?? i.status),
     version: i.version ?? "-",
+    status: i.status,
     uptimeMs: Date.now() - Date.parse(i.createdAt),
     updatedAt: i.updatedAt ?? i.createdAt ?? new Date().toISOString(),
-    createdAt: i.createdAt,
-    dbname: i.dbname,      
-    username: i.username,   
+    createdAt: i.createdAt,    
+    userName: i.userName,   
     databases: dbs,
   };
 };
@@ -159,7 +155,7 @@ const InstancePage: React.FC = () => {
     try {
       setLoading(true);
       setError(null);
-      const res = await apiClient.get("/api/instances");
+      const res = await apiClient.get("/instances");
       const list: InstanceDto[] = extractInstanceList(res.data);
       const mapped = (Array.isArray(list) ? list : [])
         .map(mapInstance)
@@ -191,7 +187,7 @@ const InstancePage: React.FC = () => {
     }
 
     try {
-      const res = await apiClient.get(`/api/instances/${key}/databases`);
+      const res = await apiClient.get(`/instances/${key}/databases`);
       const arr = Array.isArray(res.data) ? res.data : [res.data];
 
       const mappedDbs: DatabaseSummary[] = arr
@@ -257,9 +253,8 @@ const InstancePage: React.FC = () => {
     const payload: any = {
       host: form.host,
       instanceName: form.instance,
-      dbname: form.database,
       port: Number(form.port),
-      username: form.username,
+      userName: form.userName,
       sslmode: "require",
       isEnabled: true,
     };
@@ -269,7 +264,7 @@ const InstancePage: React.FC = () => {
       payload.secretRef = form.password;
     }
 
-    await apiClient.put(`/api/instances/${editTarget.instanceId}`, payload);
+    await apiClient.put(`/instances/${editTarget.instanceId}`, payload);
     alert("수정 완료!");
     await fetchInstances(); // 목록 새로고침
   };
@@ -278,9 +273,8 @@ const InstancePage: React.FC = () => {
   const editInitialValue: Partial<NewInstance> | undefined = editTarget ? {
     host: editTarget.host,
     instance: editTarget.instanceName,
-    database: editTarget.dbname, // database 정보가 row에 없으므로 빈 값
     port: editTarget.port,
-    username: editTarget.username, // username 정보가 row에 없으므로 빈 값
+    userName: editTarget.userName,
     password: "",
   } : undefined;
 
@@ -300,6 +294,7 @@ const InstancePage: React.FC = () => {
           <div>Instance</div>
           <div>Host</div>
           <div>Port</div>
+          <div>User Name</div>
           <div>Status</div>
           <div>Version</div>
           <div>가동시간</div>
@@ -312,12 +307,14 @@ const InstancePage: React.FC = () => {
               <div className="il-cell il-strong">{r.instanceName}</div>
               <div className="il-cell">{r.host}</div>
               <div className="il-cell">{r.port}</div>
-              <div className="il-cell">
-                <span className={`il-dot ${r.isEnabled ? "il-dot--indigo" : "il-dot--red"}`} />
+              <div className="il-cell">{r.userName}</div>
+              <div className="il-cell">{r.status}</div>
+              {/* <div className="il-cell">
+                <span className={`il-dot ${r.status ? "il-dot--indigo" : "il-dot--red"}`} />
                 <span className="il-status-label">
-                  {r.isEnabled ? "active" : "inactive"}
+                  {r.status ? "active" : "inactive"}
                 </span>
-              </div>
+              </div> */}
               <div className="il-cell">{r.version}</div>
               <div className="il-cell">{formatMs(r.uptimeMs)}</div>
               <div className="il-cell">{formatDateTime(r.updatedAt)}</div>
@@ -352,7 +349,7 @@ const InstancePage: React.FC = () => {
                       className="danger"
                       onClick={async() => {
                         try {
-                          await apiClient.delete(`/api/instances/${deleteTarget.instanceId}`);
+                          await apiClient.delete(`/instances/${deleteTarget.instanceId}`);
                           alert("삭제되었습니다.");
                           setDeleteTarget(null);
                           setRows(prev => prev.filter(r => r.instanceId !== deleteTarget.instanceId));
@@ -403,12 +400,11 @@ const InstancePage: React.FC = () => {
       </div>
 
       {/* 인스턴스 등록 모달 */}
-      <NewInstanceModal
+     <NewInstanceModal
         open={openNewInstance}
-        onClose={() => setOpenNewInstance(false)}
-        onSubmit={async (payload) => {
-          console.log("새 인스턴스 등록:", payload);
-          await fetchInstances();
+        onClose={() => {
+          setOpenNewInstance(false);
+          fetchInstances(); 
         }}
       />
 
