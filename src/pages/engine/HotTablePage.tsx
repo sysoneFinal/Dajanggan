@@ -5,6 +5,7 @@ import SummaryCard from "../../components/util/SummaryCard";
 import "../../styles/engine/hottable.css";
 import WidgetCard from "../../components/util/WidgetCard";
 import ChartGridLayout from "../../components/layout/ChartGridLayout";
+import apiClient from "../../api/apiClient";
 
 /** Hot Table API 응답 타입 */
 interface HotTableData {
@@ -56,76 +57,12 @@ interface HotTableData {
         totalBloat: number;
     };
 }
-
-/** 더미 데이터 */
-const mockData: HotTableData = {
-    cacheHitRatio: {
-        tableName: "orders",
-        value: 94.3,
-        bufferHits: 156000,
-        diskReads: 9400,
-        // 계산식: 94.3 = (156000 / (156000 + 9400)) * 100
-    },
-    vacuumDelayTrend: {
-        categories: [
-            "0:00", "2:00", "4:00", "6:00", "8:00", "10:00",
-            "12:00", "14:00", "16:00", "18:00", "20:00", "23:00"
-        ],
-        tables: [
-            { name: "orders", data: [2.5, 4.2, 5.8, 1.2, 3.5, 6.1, 8.3, 2.8, 4.5, 7.2, 9.5, 3.6] },
-            { name: "users", data: [1.8, 3.5, 4.2, 0.8, 2.1, 4.8, 6.5, 1.5, 3.2, 5.8, 7.2, 2.3] },
-            { name: "products", data: [1.2, 2.8, 3.5, 0.5, 1.8, 3.2, 5.1, 1.2, 2.5, 4.5, 5.8, 1.8] },
-        ],
-    },
-    deadTupleTrend: {
-        categories: [
-            "0:00", "2:00", "4:00", "6:00", "8:00", "10:00",
-            "12:00", "14:00", "16:00", "18:00", "20:00", "23:00"
-        ],
-        tables: [
-            { name: "orders", data: [600, 700, 800, 900, 1000, 1100, 1200, 1300, 1400, 1500, 1600, 1700] },
-            { name: "users", data: [500, 600, 700, 800, 900, 1000, 1100, 1200, 1300, 1400, 1500, 1600] },
-            { name: "products", data: [300, 400, 500, 600, 700, 800, 900, 1000, 1100, 1200, 1300, 1400] },
-        ],
-    },
-    totalDeadTuple: {
-        categories: [
-            "0:00", "2:00", "4:00", "6:00", "8:00", "10:00",
-            "12:00", "14:00", "16:00", "18:00", "20:00", "23:00"
-        ],
-        data: [5000, 8000, 12000, 15000, 18000, 22000, 25000, 28000, 30000, 32000, 35000, 38000],
-        total: 268000,
-        average: 22333,
-        max: 38000,
-    },
-    topQueryTables: {
-        tableNames: ["orders", "users", "products", "payments", "inventory"],
-        seqScanCounts: [150000, 120000, 100000, 80000, 60000],
-        indexScanCounts: [850000, 730000, 620000, 570000, 520000],
-    },
-    topDmlTables: {
-        tableNames: ["orders", "users", "products", "payments", "inventory"],
-        insertCounts: [50000, 30000, 25000, 40000, 20000],
-        updateCounts: [80000, 60000, 50000, 70000, 40000],
-        deleteCounts: [20000, 15000, 10000, 18000, 8000],
-    },
-    recentStats: {
-        hotUpdateRatio: 76,
-        liveDeadTupleRatio: "648:1",
-        deadTupleCount: 1850,
-        seqScanRatio: 18,
-        updateDeleteRatio: 2.3,
-        avgVacuumDelay: 8.5,
-        totalBloat: 6.4,
-    },
-};
-
-/** API 요청 */
+/** API 요청 - apiClient 사용 */
 async function fetchHotTableData() {
-    const res = await fetch("/api/dashboard/hottable");
-    if (!res.ok) throw new Error("Failed to fetch hot table data");
-    return res.json();
+    const response = await apiClient.get<HotTableData>("/dashboard/hotTable");
+    return response.data;
 }
+
 
 const getCacheGaugeStatus = (value: number): "normal" | "warning" | "critical" => {
     if (value >= 95) return "normal";
@@ -202,38 +139,106 @@ function SummaryCardWithLink({ link, status = "info", ...props }: SummaryCardWit
 
 /** 메인 컴포넌트 */
 export default function HotTablePage() {
-    const { data } = useQuery({
-        queryKey: ["hotTableDashboard"],
+    const { data, isLoading, isError, error } = useQuery({
+        queryKey: ["hottableDashboard"],
         queryFn: fetchHotTableData,
         retry: 1,
     });
+    // 로딩 중
+    if (isLoading) {
+        return (
+            <div className="bgwriter-page">
+                <div style={{
+                    display: 'flex',
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    height: '400px',
+                    fontSize: '18px',
+                    color: '#6B7280'
+                }}>
+                    데이터를 불러오는 중...
+                </div>
+            </div>
+        );
+    }
 
-    const dashboard = data || mockData;
+    // 에러 발생
+    if (isError) {
+        return (
+            <div className="bgwriter-page">
+                <div style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    height: '400px',
+                    fontSize: '18px',
+                    color: '#EF4444'
+                }}>
+                    <p>데이터를 불러오는데 실패했습니다.</p>
+                    <p style={{ fontSize: '14px', color: '#6B7280', marginTop: '8px' }}>
+                        {error instanceof Error ? error.message : '알 수 없는 오류가 발생했습니다.'}
+                    </p>
+                    <button
+                        onClick={() => window.location.reload()}
+                        style={{
+                            marginTop: '16px',
+                            padding: '8px 16px',
+                            backgroundColor: '#3B82F6',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: '4px',
+                            cursor: 'pointer'
+                        }}
+                    >
+                        새로고침
+                    </button>
+                </div>
+            </div>
+        );
+    }
+    // 데이터가 없는 경우
+    if (!data) {
+        return (
+            <div className="bgwriter-page">
+                <div style={{
+                    display: 'flex',
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    height: '400px',
+                    fontSize: '18px',
+                    color: '#6B7280'
+                }}>
+                    데이터가 없습니다.
+                </div>
+            </div>
+        );
+    }
+
+    const dashboard = data;
 
     const cacheGaugeStatus = getCacheGaugeStatus(dashboard.cacheHitRatio.value);
 
     const recentStats = dashboard.recentStats || {
-        hotUpdateRatio: 76,
-        liveDeadTupleRatio: "648:1",
-        deadTupleCount: 1850,
-        seqScanRatio: 18,
-        updateDeleteRatio: 2.3,
-        avgVacuumDelay: 8.5,
-        totalBloat: 6.4,
+        hotUpdateRatio: 0,
+        liveDeadTupleRatio: 0,
+        deadTupleCount: 0,
+        seqScanRatio: 0,
+        updateDeleteRatio: 0,
+        avgVacuumDelay: 0,
+        totalBloat: 0,
     };
 
     const summaryCards = [
         {
             label: "평균 Vacuum 지연",
             value: `${recentStats.avgVacuumDelay}시간`,
-            diff: 1.2,
             desc: "최근 5분 평균",
             status: recentStats.avgVacuumDelay > 12 ? "warning" : "info"
         },
         {
             label: "Live/Dead Tuple 비율",
             value: recentStats.liveDeadTupleRatio,
-            diff: 15,
             desc: "최근 5분 평균",
             status: "info" as const,
             link: "/dashboard/hot-table/list",
@@ -241,7 +246,6 @@ export default function HotTablePage() {
         {
             label: "Dead Tuple 수",
             value: recentStats.deadTupleCount.toLocaleString(),
-            diff: 180,
             desc: "최근 5분 누적",
             status: recentStats.deadTupleCount > 10000 ? ("warning" as const) : ("info" as const),
             link: "/dashboard/hot-table/list",
@@ -249,7 +253,6 @@ export default function HotTablePage() {
         {
             label: "Seq Scan 비율",
             value: `${recentStats.seqScanRatio}%`,
-            diff: -2.3,
             desc: "최근 5분 평균",
             status: recentStats.seqScanRatio > 30 ? ("warning" as const) : ("info" as const),
             link: "/dashboard/hot-table/list",
@@ -257,7 +260,6 @@ export default function HotTablePage() {
         {
             label: "전체 Bloat 크기",
             value: `${recentStats.totalBloat}GB`,
-            diff: 0.5,
             desc: "최근 5분 누적",
             status: recentStats.totalBloat > 10 ? "warning" : "info"
         },
@@ -272,10 +274,8 @@ export default function HotTablePage() {
                         key={idx}
                         label={card.label}
                         value={card.value}
-                        diff={card.diff}
                         desc={card.desc}
                         status={card.status}
-                        // link={card.link}
                     />
                 ))}
             </div>
