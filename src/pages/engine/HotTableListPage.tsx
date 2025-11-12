@@ -1,4 +1,4 @@
-import {Fragment, useMemo, useState} from "react";
+import {Fragment, useEffect, useMemo, useState} from "react";
 import {
     useReactTable,
     getCoreRowModel,
@@ -11,6 +11,7 @@ import {
 } from "@tanstack/react-table";
 import Pagination from "../../components/util/Pagination";
 import CsvButton from "../../components/util/CsvButton";
+import apiClient from "../../api/apiClient";
 import "/src/styles/engine/hottablelist.css";
 
 // 데이터 타입 정의
@@ -19,136 +20,35 @@ interface HotTableData {
     tableName: string;
     schemaName: string;
     size: string;
-    seqScan: number;            // Sequential Scan 횟수
-    seqTupRead: number;         // Seq Scan으로 읽은 튜플
-    idxScan: number;            // Index Scan 횟수
-    idxTupFetch: number;        // Index로 가져온 튜플
-    nTupIns: number;            // Insert 횟수
-    nTupUpd: number;            // Update 횟수
-    nTupDel: number;            // Delete 횟수
-    nTupHotUpd: number;         // HOT Update 횟수
-    nLiveTup: number;           // Live 튜플 수
-    nDeadTup: number;           // Dead 튜플 수
-    lastVacuum: string;         // 마지막 VACUUM
-    lastAutoVacuum: string;     // 마지막 Auto VACUUM
-    bloatPercent: number;       // Bloat 비율
+    seqScan: number;
+    seqTupRead: number;
+    idxScan: number;
+    idxTupFetch: number;
+    ntupIns: number;
+    ntupUpd: number;
+    ntupDel: number;
+    ntupHotUpd: number;
+    nliveTup: number;
+    ndeadTup: number;
+    lastVacuum: string;
+    lastAutoVacuum: string;
+    bloatPercent: number;
     cacheHit: number;
     status: "정상" | "주의" | "위험";
 }
 
-// 임시 목 데이터
-const mockData: HotTableData[] = [
-    {
-        id: "1",
-        tableName: "orders",
-        schemaName: "public",
-        size: "2.4 GB",
-        seqScan: 450,
-        seqTupRead: 1250000,
-        idxScan: 85400,
-        idxTupFetch: 425000,
-        nTupIns: 12500,
-        nTupUpd: 8400,
-        nTupDel: 340,
-        nTupHotUpd: 7850,
-        nLiveTup: 1240000,
-        nDeadTup: 3400,
-        lastVacuum: "2025-10-23 10:30",
-        lastAutoVacuum: "2025-10-23 13:45",
-        bloatPercent: 5.2,
-        cacheHit: 98.5,
-        status: "정상",
-    },
-    {
-        id: "2",
-        tableName: "users",
-        schemaName: "public",
-        size: "1.8 GB",
-        seqScan: 120,
-        seqTupRead: 450000,
-        idxScan: 124500,
-        idxTupFetch: 248000,
-        nTupIns: 5600,
-        nTupUpd: 12400,
-        nTupDel: 120,
-        nTupHotUpd: 11200,
-        nLiveTup: 450000,
-        nDeadTup: 1200,
-        lastVacuum: "2025-10-23 09:15",
-        lastAutoVacuum: "2025-10-23 14:20",
-        bloatPercent: 3.8,
-        cacheHit: 99.1,
-        status: "정상",
-    },
-    {
-        id: "3",
-        tableName: "products",
-        schemaName: "public",
-        size: "856 MB",
-        seqScan: 2340,
-        seqTupRead: 3400000,
-        idxScan: 45600,
-        idxTupFetch: 124000,
-        nTupIns: 890,
-        nTupUpd: 3400,
-        nTupDel: 45,
-        nTupHotUpd: 2100,
-        nLiveTup: 85000,
-        nDeadTup: 8400,
-        lastVacuum: "2025-10-22 18:30",
-        lastAutoVacuum: "2025-10-23 08:15",
-        bloatPercent: 18.4,
-        cacheHit: 94.2,
-        status: "주의",
-    },
-    {
-        id: "4",
-        tableName: "inventory",
-        schemaName: "public",
-        size: "3.2 GB",
-        seqScan: 89,
-        seqTupRead: 890000,
-        idxScan: 156000,
-        idxTupFetch: 564000,
-        nTupIns: 24500,
-        nTupUpd: 45600,
-        nTupDel: 890,
-        nTupHotUpd: 38400,
-        nLiveTup: 2340000,
-        nDeadTup: 45600,
-        lastVacuum: "2025-10-21 14:20",
-        lastAutoVacuum: "2025-10-22 22:45",
-        bloatPercent: 34.7,
-        cacheHit: 91.5,
-        status: "위험",
-    },
-    {
-        id: "5",
-        tableName: "cart_items",
-        schemaName: "public",
-        size: "456 MB",
-        seqScan: 560,
-        seqTupRead: 1240000,
-        idxScan: 34500,
-        idxTupFetch: 89000,
-        nTupIns: 45600,
-        nTupUpd: 12400,
-        nTupDel: 8900,
-        nTupHotUpd: 9800,
-        nLiveTup: 124000,
-        nDeadTup: 2300,
-        lastVacuum: "2025-10-23 11:10",
-        lastAutoVacuum: "2025-10-23 14:05",
-        bloatPercent: 7.6,
-        cacheHit: 97.8,
-        status: "정상",
-    },
-];
+interface HotTableListResponse {
+    data: HotTableData[];
+    total: number;
+}
 
 export default function HotTableListPage() {
-    const [data] = useState<HotTableData[]>(mockData);
+    const [data, setData] = useState<HotTableData[]>([]);
+    const [loading, setLoading] = useState<boolean>(true);
+    const [error, setError] = useState<string | null>(null);
     const [sorting, setSorting] = useState<SortingState>([]);
     const [currentPage, setCurrentPage] = useState(1);
+    const [selectedStatus, setSelectedStatus] = useState<string[]>([]);
     const [showHighBloatOnly, setShowHighBloatOnly] = useState(false);
     const pageSize = 10;
 
@@ -161,84 +61,121 @@ export default function HotTableListPage() {
         return result;
     }, [data, showHighBloatOnly]);
 
+    const fetchData = async () => {
+        try {
+            setLoading(true);
+            setError(null);
+
+            // 상태 필터 변환
+            const statusParam = selectedStatus.length > 0
+                ? selectedStatus.join(",")
+                : undefined;
+
+            const response = await apiClient.get<HotTableListResponse>('/engine/hottable/list', {
+                params: {
+                    databaseId: 1,  // 백엔드 필수 파라미터
+                    status: statusParam,
+                },
+            });
+
+            setData(response.data.data || []);
+        } catch (err) {
+            console.error("Hot Table 리스트 조회 오류:", err);
+            setError(err instanceof Error ? err.message : "데이터 조회 중 오류가 발생했습니다.");
+            setData([]);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    // 초기 로드 및 필터 변경 시 데이터 조회
+    useEffect(() => {
+        fetchData();
+    }, [selectedStatus]);
+
+    // 안전한 숫자 변환 헬퍼 함수
+    const safeNumber = (value: any): number => {
+        return value != null ? Number(value) : 0;
+    };
+
     // 컬럼 정의
     const columns = useMemo<ColumnDef<HotTableData>[]>(
         () => [
             {
                 accessorKey: "tableName",
-                header: "테이블 명",
-                cell: (info) => info.getValue(),
+                header: "테이블명",
+                cell: (info) => info.getValue() || '-',
             },
             {
                 accessorKey: "schemaName",
                 header: "스키마",
-                cell: (info) => info.getValue(),
+                cell: (info) => info.getValue() || '-',
             },
             {
                 accessorKey: "size",
                 header: "크기",
-                cell: (info) => info.getValue(),
+                cell: (info) => info.getValue() || '-',
             },
             {
                 accessorKey: "seqScan",
                 header: "Seq Scan",
-                cell: (info) => (info.getValue() as number).toLocaleString(),
+                cell: (info) => safeNumber(info.getValue()).toLocaleString(),
             },
             {
                 accessorKey: "idxScan",
                 header: "Idx Scan",
-                cell: (info) => (info.getValue() as number).toLocaleString(),
+                cell: (info) => safeNumber(info.getValue()).toLocaleString(),
             },
             {
-                accessorKey: "nTupIns",
+                accessorKey: "ntupIns",
                 header: "Insert",
-                cell: (info) => (info.getValue() as number).toLocaleString(),
+                cell: (info) => safeNumber(info.getValue()).toLocaleString(),
             },
             {
-                accessorKey: "nTupUpd",
+                accessorKey: "ntupUpd",
                 header: "Update",
-                cell: (info) => (info.getValue() as number).toLocaleString(),
+                cell: (info) => safeNumber(info.getValue()).toLocaleString(),
             },
             {
-                accessorKey: "nTupDel",
+                accessorKey: "ntupDel",
                 header: "Delete",
-                cell: (info) => (info.getValue() as number).toLocaleString(),
+                cell: (info) => safeNumber(info.getValue()).toLocaleString(),
             },
             {
-                accessorKey: "nTupHotUpd",
+                accessorKey: "ntupHotUpd",
                 header: "HOT Update",
-                cell: (info) => (info.getValue() as number).toLocaleString(),
+                cell: (info) => safeNumber(info.getValue()).toLocaleString(),
             },
             {
-                accessorKey: "nLiveTup",
+                accessorKey: "nliveTup",
                 header: "Live 튜플",
-                cell: (info) => (info.getValue() as number).toLocaleString(),
+                cell: (info) => safeNumber(info.getValue()).toLocaleString(),
             },
             {
-                accessorKey: "nDeadTup",
+                accessorKey: "ndeadTup",
                 header: "Dead 튜플",
-                cell: (info) => (info.getValue() as number).toLocaleString(),
+                cell: (info) => safeNumber(info.getValue()).toLocaleString(),
             },
             {
                 accessorKey: "bloatPercent",
                 header: "Bloat(%)",
                 cell: (info) => {
-                    const value = info.getValue() as number;
+                    const value = safeNumber(info.getValue());
                     let className = "bloat-normal";
                     if (value >= 30) className = "bloat-high";
                     else if (value >= 15) className = "bloat-medium";
-                    return <span className={className}>{value}%</span>;
+                    return <span className={className}>{value.toFixed(1)}%</span>;
                 },
             },
             {
                 accessorKey: "lastAutoVacuum",
                 header: "마지막 Auto VACUUM",
-                cell: (info) => info.getValue(),
+                cell: (info) => info.getValue() || '-',
             },
             {
                 accessorKey: "cacheHit",
                 header: "캐시 Hit(%)",
-                cell: (info) => (info.getValue() as number).toLocaleString(),
+                cell: (info) => safeNumber(info.getValue()).toFixed(1) + '%',
             },
             {
                 accessorKey: "status",
@@ -257,7 +194,7 @@ export default function HotTableListPage() {
                             className = "error";
                             break;
                     }
-                    return <span className={className}>{value}</span>;
+                    return <span className={className}>{value || '정상'}</span>;
                 },
             },
         ],
@@ -292,7 +229,7 @@ export default function HotTableListPage() {
     // CSV 내보내기 함수
     const handleExportCSV = () => {
         const headers = [
-            "테이블 명", "스키마", "크기", "Seq Scan", "Idx Scan",
+            "테이블명", "스키마", "크기", "Seq Scan", "Idx Scan",
             "Insert", "Update", "Delete", "HOT Update",
             "Live 튜플", "Dead 튜플", "Bloat(%)",
             "마지막 Auto VACUUM", "캐시 Hit(%)", "상태"
@@ -301,17 +238,17 @@ export default function HotTableListPage() {
             row.tableName,
             row.schemaName,
             row.size,
-            row.seqScan,
-            row.idxScan,
-            row.nTupIns,
-            row.nTupUpd,
-            row.nTupDel,
-            row.nTupHotUpd,
-            row.nLiveTup,
-            row.nDeadTup,
-            row.bloatPercent,
-            row.lastAutoVacuum,
-            row.cacheHit,
+            safeNumber(row.seqScan),
+            safeNumber(row.idxScan),
+            safeNumber(row.ntupIns),
+            safeNumber(row.ntupUpd),
+            safeNumber(row.ntupDel),
+            safeNumber(row.ntupHotUpd),
+            safeNumber(row.nliveTup),
+            safeNumber(row.ndeadTup),
+            safeNumber(row.bloatPercent).toFixed(1),
+            row.lastAutoVacuum || '-',
+            safeNumber(row.cacheHit).toFixed(1),
             row.status,
         ]);
 
@@ -343,6 +280,29 @@ export default function HotTableListPage() {
         document.body.removeChild(link);
         URL.revokeObjectURL(url);
     };
+
+    // 로딩 상태
+    if (loading) {
+        return (
+            <main className="hottable-list-page">
+                <div style={{ padding: '2rem', textAlign: 'center' }}>로딩 중...</div>
+            </main>
+        );
+    }
+
+    // 에러 상태
+    if (error) {
+        return (
+            <main className="hottable-list-page">
+                <div style={{ padding: '2rem', textAlign: 'center', color: '#EF4444' }}>
+                    <p>오류: {error}</p>
+                    <button onClick={fetchData} style={{ marginTop: '1rem', padding: '0.5rem 1rem' }}>
+                        다시 시도
+                    </button>
+                </div>
+            </main>
+        );
+    }
 
     return (
         <main className="hottable-list-page">

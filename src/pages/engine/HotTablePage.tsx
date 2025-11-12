@@ -7,62 +7,78 @@ import WidgetCard from "../../components/util/WidgetCard";
 import ChartGridLayout from "../../components/layout/ChartGridLayout";
 import apiClient from "../../api/apiClient";
 
-/** Hot Table API 응답 타입 */
+/** 백엔드 API 응답 타입 - 실제 응답 구조에 맞춤 */
 interface HotTableData {
+    topTables: {
+        topBySize: Array<{
+            schemaName: string;
+            tableName: string;
+            value: number;
+            percentage: number;
+            status: string;
+        }>;
+        topByScan: Array<{
+            schemaName: string;
+            tableName: string;
+            value: number;
+            percentage: number;
+            status: string;
+        }>;
+        topByBloat: Array<{
+            schemaName: string;
+            tableName: string;
+            value: number;
+            percentage: number;
+            status: string;
+        }>;
+    };
+    tableActivity: {
+        categories: string[];
+        seqScans: number[];
+        idxScans: number[];
+        inserts: number[];
+        updates: number[];
+        deletes: number[];
+    };
     cacheHitRatio: {
-        tableName: string;
-        value: number;
-        bufferHits: number;
-        diskReads: number;
-    };
-    vacuumDelayTrend: {
-        categories: string[];
-        tables: Array<{
-            name: string;
-            data: number[];
-        }>;
-    };
-    deadTupleTrend: {
-        categories: string[];
-        tables: Array<{
-            name: string;
-            data: number[];
-        }>;
-    };
-    totalDeadTuple: {
         categories: string[];
         data: number[];
-        total: number;
         average: number;
         max: number;
+        min: number;
     };
-    topQueryTables: {
-        tableNames: string[];
-        seqScanCounts: number[];
-        indexScanCounts: number[];
+    bloatStatus: {
+        categories: string[];
+        data: number[];
+        normalCount: number;
+        warningCount: number;
+        criticalCount: number;
     };
-    topDmlTables: {
-        tableNames: string[];
-        insertCounts: number[];
-        updateCounts: number[];
-        deleteCounts: number[];
+    vacuumStatus: {
+        categories: string[];
+        delaySeconds: number[];
+        avgDelaySeconds: number;
+        maxDelaySeconds: number;
     };
-    recentStats?: {
-        hotUpdateRatio: number;
-        liveDeadTupleRatio: string;
-        deadTupleCount: number;
-        seqScanRatio: number;
-        updateDeleteRatio: number;
-        avgVacuumDelay: number;
-        totalBloat: number;
+    recentStats: {
+        totalTables: number;
+        activeTables: number;
+        avgCacheHitRatio: number;
+        totalSeqScans: number;
+        totalIdxScans: number;
+        highBloatTables: number;
     };
-}
-/** API 요청 - apiClient 사용 */
-async function fetchHotTableData() {
-    const response = await apiClient.get<HotTableData>("/dashboard/hotTable");
-    return response.data;
 }
 
+/** API 요청 */
+async function fetchHotTableData() {
+    const response = await apiClient.get<HotTableData>("/engine/hottable", {
+        params: {
+            databaseId: 1
+        }
+    });
+    return response.data;
+}
 
 const getCacheGaugeStatus = (value: number): "normal" | "warning" | "critical" => {
     if (value >= 95) return "normal";
@@ -116,7 +132,6 @@ function SummaryCardWithLink({ link, status = "info", ...props }: SummaryCardWit
                         e.currentTarget.style.transform = "scale(1)";
                     }}
                 >
-                    {/* 외부 링크 아이콘 SVG */}
                     <svg
                         width="16"
                         height="16"
@@ -144,7 +159,7 @@ export default function HotTablePage() {
         queryFn: fetchHotTableData,
         retry: 1,
     });
-    // 로딩 중
+
     if (isLoading) {
         return (
             <div className="bgwriter-page">
@@ -162,7 +177,6 @@ export default function HotTablePage() {
         );
     }
 
-    // 에러 발생
     if (isError) {
         return (
             <div className="bgwriter-page">
@@ -197,7 +211,7 @@ export default function HotTablePage() {
             </div>
         );
     }
-    // 데이터가 없는 경우
+
     if (!data) {
         return (
             <div className="bgwriter-page">
@@ -216,52 +230,46 @@ export default function HotTablePage() {
     }
 
     const dashboard = data;
+    const cacheGaugeStatus = getCacheGaugeStatus(dashboard.cacheHitRatio.average);
 
-    const cacheGaugeStatus = getCacheGaugeStatus(dashboard.cacheHitRatio.value);
-
-    const recentStats = dashboard.recentStats || {
-        hotUpdateRatio: 0,
-        liveDeadTupleRatio: 0,
-        deadTupleCount: 0,
-        seqScanRatio: 0,
-        updateDeleteRatio: 0,
-        avgVacuumDelay: 0,
-        totalBloat: 0,
-    };
-
+    // Summary Cards 데이터
     const summaryCards = [
         {
-            label: "평균 Vacuum 지연",
-            value: `${recentStats.avgVacuumDelay}시간`,
-            desc: "최근 5분 평균",
-            status: recentStats.avgVacuumDelay > 12 ? "warning" : "info"
-        },
-        {
-            label: "Live/Dead Tuple 비율",
-            value: recentStats.liveDeadTupleRatio,
-            desc: "최근 5분 평균",
+            label: "전체 테이블",
+            value: dashboard.recentStats.totalTables,
+            desc: "Total Tables",
             status: "info" as const,
-            link: "/dashboard/hot-table/list",
         },
         {
-            label: "Dead Tuple 수",
-            value: recentStats.deadTupleCount.toLocaleString(),
-            desc: "최근 5분 누적",
-            status: recentStats.deadTupleCount > 10000 ? ("warning" as const) : ("info" as const),
-            link: "/dashboard/hot-table/list",
+            label: "활성 테이블",
+            value: dashboard.recentStats.activeTables,
+            desc: "Active Tables",
+            status: "info" as const,
         },
         {
-            label: "Seq Scan 비율",
-            value: `${recentStats.seqScanRatio}%`,
-            desc: "최근 5분 평균",
-            status: recentStats.seqScanRatio > 30 ? ("warning" as const) : ("info" as const),
-            link: "/dashboard/hot-table/list",
+            label: "평균 캐시 히트율",
+            value: `${dashboard.recentStats.avgCacheHitRatio.toFixed(1)}%`,
+            desc: "Average Cache Hit Ratio",
+            status: dashboard.recentStats.avgCacheHitRatio >= 90 ? "info" : "warning",
         },
         {
-            label: "전체 Bloat 크기",
-            value: `${recentStats.totalBloat}GB`,
-            desc: "최근 5분 누적",
-            status: recentStats.totalBloat > 10 ? "warning" : "info"
+            label: "총 Sequential Scan",
+            value: dashboard.recentStats.totalSeqScans.toLocaleString(),
+            desc: "Total Seq Scans",
+            status: "info" as const,
+        },
+        {
+            label: "총 Index Scan",
+            value: dashboard.recentStats.totalIdxScans.toLocaleString(),
+            desc: "Total Index Scans",
+            status: "info" as const,
+        },
+        {
+            label: "High Bloat 테이블",
+            value: dashboard.recentStats.highBloatTables,
+            desc: "Tables with ≥15% Bloat",
+            status: dashboard.recentStats.highBloatTables > 0 ? "warning" : "info",
+            link: "/engine/hottable/list",
         },
     ];
 
@@ -276,24 +284,26 @@ export default function HotTablePage() {
                         value={card.value}
                         desc={card.desc}
                         status={card.status}
+                        link={card.link}
                     />
                 ))}
             </div>
 
-            {/* 첫 번째 행: 3개 차트 */}
+            {/* 첫 번째 행 */}
             <ChartGridLayout>
-                <WidgetCard title={`Top Cache Hit Ratio`} span={2}>
+                {/* Cache Hit Ratio Gauge */}
+                <WidgetCard title="평균 Cache Hit Ratio" span={3}>
                     <div style={{
                         display: 'flex',
                         flexDirection: 'column',
                         alignItems: 'center',
-                        justifyContent: 'space-between',
+                        justifyContent: 'center',
                         height: '100%',
                         width: '100%',
-                        marginTop: '18px',
+                        paddingTop: '20px',
                     }}>
                         <GaugeChart
-                            value={dashboard.cacheHitRatio.value}
+                            value={dashboard.cacheHitRatio.average}
                             status={cacheGaugeStatus}
                             type="semi-circle"
                             radius={100}
@@ -301,274 +311,274 @@ export default function HotTablePage() {
                             height={200}
                             flattenRatio={0.89}
                         />
-                        <div className="cpu-gauge-details">
-                            <div className="cpu-detail-item">
-                                <span className="cpu-detail-label">Top table</span>
-                                <span className="cpu-detail-value">{(dashboard.cacheHitRatio.tableName)}</span>
+                        <div style={{
+                            display: 'flex',
+                            gap: '2rem',
+                            marginTop: '1rem',
+                            fontSize: '14px',
+                            color: '#6B7280'
+                        }}>
+                            <div>
+                                <span>최대: </span>
+                                <span style={{ fontWeight: 'bold' }}>{dashboard.cacheHitRatio.max.toFixed(1)}%</span>
                             </div>
-                            <div className="cpu-detail-divider"></div>
-                            <div className="cpu-detail-item">
-                                <span className="cpu-detail-label">Disk Reads</span>
-                                <span className="cpu-detail-value">{(dashboard.cacheHitRatio.diskReads / 1000).toFixed(1)}K</span>
+                            <div>
+                                <span>최소: </span>
+                                <span style={{ fontWeight: 'bold' }}>{dashboard.cacheHitRatio.min.toFixed(1)}%</span>
                             </div>
                         </div>
                     </div>
                 </WidgetCard>
 
-                {/* Vacuum 지연 시간 추이 - 임계치 적용 */}
-                <WidgetCard title="Top-3 Vacuum 지연 테이블 (Last 24 Hours)" span={5}>
+                {/* Table Activity */}
+                <WidgetCard title="테이블 활동 추이 (Last 24 Hours)" span={9}>
                     <Chart
                         type="line"
-                        series={dashboard.vacuumDelayTrend.tables.map((table) => ({
-                            name: table.name,
-                            data: table.data,
-                        }))}
-                        categories={dashboard.vacuumDelayTrend.categories}
-                        colors={["#8E79FF", "#FEA29B", "#77B2FB"]}
+                        series={[
+                            { name: "Seq Scan", data: dashboard.tableActivity.seqScans },
+                            { name: "Index Scan", data: dashboard.tableActivity.idxScans },
+                            { name: "Insert", data: dashboard.tableActivity.inserts },
+                            { name: "Update", data: dashboard.tableActivity.updates },
+                            { name: "Delete", data: dashboard.tableActivity.deletes },
+                        ]}
+                        categories={dashboard.tableActivity.categories}
+                        colors={["#FEA29B", "#8E79FF", "#77B2FB", "#FBBF24", "#EF4444"]}
                         height={250}
                         xaxisOptions={{
                             title: { text: "시간", style: { fontSize: "12px", color: "#6B7280" } }
                         }}
                         yaxisOptions={{
-                            title: { text: "Vacuum Delay (초)", style: { fontSize: "12px", color: "#6B7280" } }
-                        }}
-                        customOptions={{
-                            annotations: {
-                                yaxis: [
-                                    {
-                                        y: 5,
-                                        borderColor: "#60A5FA",
-                                        strokeDashArray: 4,
-                                        opacity: 0.6,
-                                        label: {
-                                            borderColor: "#60A5FA",
-                                            style: {
-                                                color: "#fff",
-                                                background: "#60A5FA",
-                                                fontSize: "11px",
-                                                fontWeight: 500,
-                                            },
-                                            text: "정상: 5초",
-                                            position: "right",
-                                        },
-                                    },
-                                    {
-                                        y: 10,
-                                        borderColor: "#FBBF24",
-                                        strokeDashArray: 4,
-                                        opacity: 0.7,
-                                        label: {
-                                            borderColor: "#FBBF24",
-                                            style: {
-                                                color: "#fff",
-                                                background: "#FBBF24",
-                                                fontSize: "11px",
-                                                fontWeight: 500,
-                                            },
-                                            text: "주의: 10초",
-                                            position: "right",
-                                        },
-                                    },
-                                ],
-                            },
-                            yaxis: {
-                                labels: {
-                                    style: {
-                                        colors: "#6B7280",
-                                        fontFamily: 'var(--font-family, "Pretendard", sans-serif)'
-                                    },
-                                    formatter: (val: number) => `${val.toFixed(1)}s`,
-                                },
-                                min: 0,
-                                max: 12,
-                            },
-                        }}
-                    />
-                </WidgetCard>
-
-                {/* 테이블별 Dead Tuple 추이 - 임계치 적용 */}
-                <WidgetCard title="Top-3 Dead Tuple 테이블 (Last 24 Hours)" span={5}>
-                    <Chart
-                        type="line"
-                        series={dashboard.deadTupleTrend.tables.map((table) => ({
-                            name: table.name,
-                            data: table.data,
-                        }))}
-                        categories={dashboard.deadTupleTrend.categories}
-                        colors={["#8E79FF", "#77B2FB", "#FEA29B"]}
-                        height={250}
-                        xaxisOptions={{
-                            title: { text: "시간", style: { fontSize: "12px", color: "#6B7280" } }
-                        }}
-                        yaxisOptions={{
-                            title: { text: "Dead Tuples", style: { fontSize: "12px", color: "#6B7280" } }
-                        }}
-                        customOptions={{
-                            annotations: {
-                                yaxis: [
-                                    {
-                                        y: 1500,
-                                        borderColor: "#60A5FA",
-                                        strokeDashArray: 4,
-                                        opacity: 0.6,
-                                        label: {
-                                            borderColor: "#60A5FA",
-                                            style: {
-                                                color: "#fff",
-                                                background: "#60A5FA",
-                                                fontSize: "11px",
-                                                fontWeight: 500,
-                                            },
-                                            text: "정상: 1.5K",
-                                            position: "right",
-                                        },
-                                    },
-                                    {
-                                        y: 3000,
-                                        borderColor: "#FBBF24",
-                                        strokeDashArray: 4,
-                                        opacity: 0.7,
-                                        label: {
-                                            borderColor: "#FBBF24",
-                                            style: {
-                                                color: "#fff",
-                                                background: "#FBBF24",
-                                                fontSize: "11px",
-                                                fontWeight: 500,
-                                            },
-                                            text: "주의: 3K",
-                                            position: "right",
-                                        },
-                                    },
-                                ],
-                            },
-                            yaxis: {
-                                labels: {
-                                    style: {
-                                        colors: "#6B7280",
-                                        fontFamily: 'var(--font-family, "Pretendard", sans-serif)'
-                                    },
-                                    formatter: (val: number) => `${(val / 1000).toFixed(1)}K`,
-                                },
-                                min: 0,
-                                max: 4000,
-                            },
+                            title: { text: "작업 횟수", style: { fontSize: "12px", color: "#6B7280" } }
                         }}
                     />
                 </WidgetCard>
             </ChartGridLayout>
 
-            {/* 두 번째 행: 3개 차트 */}
+            {/* 두 번째 행 */}
             <ChartGridLayout>
-                {/* DB 전체 Dead Tuple 추이 - 임계치 적용 */}
-                <WidgetCard title="DB 전체 Dead Tuple 추이 (Last 24 Hours)" span={4}>
+                {/* Cache Hit Ratio 추이 */}
+                <WidgetCard title="캐시 히트율 추이 (Last 24 Hours)" span={4}>
                     <Chart
                         type="line"
-                        series={[{ name: "Total Dead Tuples", data: dashboard.totalDeadTuple.data }]}
-                        categories={dashboard.totalDeadTuple.categories}
+                        series={[{ name: "Cache Hit Ratio", data: dashboard.cacheHitRatio.data }]}
+                        categories={dashboard.cacheHitRatio.categories}
                         colors={["#8E79FF"]}
                         height={250}
                         xaxisOptions={{
                             title: { text: "시간", style: { fontSize: "12px", color: "#6B7280" } }
                         }}
                         yaxisOptions={{
-                            title: { text: "Total Dead Tuples", style: { fontSize: "12px", color: "#6B7280" } }
+                            title: { text: "Cache Hit (%)", style: { fontSize: "12px", color: "#6B7280" } }
                         }}
                         customOptions={{
+                            yaxis: {
+                                min: 0,
+                                max: 100,
+                                labels: {
+                                    formatter: (val: number) => `${val.toFixed(0)}%`,
+                                },
+                            },
                             annotations: {
                                 yaxis: [
                                     {
-                                        y: 20000,
+                                        y: 90,
                                         borderColor: "#60A5FA",
                                         strokeDashArray: 4,
-                                        opacity: 0.6,
                                         label: {
-                                            borderColor: "#60A5FA",
+                                            text: "목표: 90%",
                                             style: {
                                                 color: "#fff",
                                                 background: "#60A5FA",
-                                                fontSize: "11px",
-                                                fontWeight: 500,
                                             },
-                                            text: "정상: 20K",
-                                            position: "right",
-                                        },
-                                    },
-                                    {
-                                        y: 35000,
-                                        borderColor: "#FBBF24",
-                                        strokeDashArray: 4,
-                                        opacity: 0.7,
-                                        label: {
-                                            borderColor: "#FBBF24",
-                                            style: {
-                                                color: "#fff",
-                                                background: "#FBBF24",
-                                                fontSize: "11px",
-                                                fontWeight: 500,
-                                            },
-                                            text: "주의: 35K",
-                                            position: "right",
                                         },
                                     },
                                 ],
                             },
-                            yaxis: {
-                                labels: {
-                                    style: {
-                                        colors: "#6B7280",
-                                        fontFamily: 'var(--font-family, "Pretendard", sans-serif)'
-                                    },
-                                    formatter: (val: number) => `${(val / 1000).toFixed(0)}K`,
+                        }}
+                    />
+                </WidgetCard>
+
+                {/* Bloat Status */}
+                <WidgetCard title="테이블 Bloat 상태" span={4}>
+                    <Chart
+                        type="bar"
+                        series={[{ name: "Bloat (%)", data: dashboard.bloatStatus.data }]}
+                        categories={dashboard.bloatStatus.categories}
+                        colors={["#EF4444"]}
+                        height={250}
+                        xaxisOptions={{
+                            title: { text: "테이블명", style: { fontSize: "12px", color: "#6B7280" } }
+                        }}
+                        yaxisOptions={{
+                            title: { text: "Bloat (%)", style: { fontSize: "12px", color: "#6B7280" } }
+                        }}
+                        customOptions={{
+                            plotOptions: {
+                                bar: {
+                                    distributed: true,
+                                    horizontal: false,
                                 },
-                                min: 0,
-                                max: 45000,
+                            },
+                            annotations: {
+                                yaxis: [
+                                    {
+                                        y: 15,
+                                        borderColor: "#FBBF24",
+                                        strokeDashArray: 4,
+                                        label: {
+                                            text: "주의: 15%",
+                                            style: {
+                                                color: "#fff",
+                                                background: "#FBBF24",
+                                            },
+                                        },
+                                    },
+                                    {
+                                        y: 30,
+                                        borderColor: "#EF4444",
+                                        strokeDashArray: 4,
+                                        label: {
+                                            text: "위험: 30%",
+                                            style: {
+                                                color: "#fff",
+                                                background: "#EF4444",
+                                            },
+                                        },
+                                    },
+                                ],
                             },
                         }}
                     />
                 </WidgetCard>
-                {/* Top-5 테이블 조회량 - Seq Scan / Index Scan 구분 */}
-                <WidgetCard title="Top-5 테이블 조회량 (Last 24 Hours)" span={4}>
+
+                {/* Vacuum Status */}
+                <WidgetCard title="Vacuum 지연 시간" span={4}>
                     <Chart
                         type="bar"
-                        series={[
-                            { name: "Seq Scan", data: dashboard.topQueryTables.seqScanCounts },
-                            { name: "Index Scan", data: dashboard.topQueryTables.indexScanCounts },
-                        ]}
-                        categories={dashboard.topQueryTables.tableNames}
-                        colors={["#FEA29B", "#8E79FF"]}
+                        series={[{ name: "지연 시간 (초)", data: dashboard.vacuumStatus.delaySeconds }]}
+                        categories={dashboard.vacuumStatus.categories}
+                        colors={["#F59E0B"]}
                         height={250}
                         xaxisOptions={{
                             title: { text: "테이블명", style: { fontSize: "12px", color: "#6B7280" } }
                         }}
                         yaxisOptions={{
-                            title: { text: "조회 횟수", style: { fontSize: "12px", color: "#6B7280" } }
+                            title: { text: "지연 시간 (시간)", style: { fontSize: "12px", color: "#6B7280" } }
                         }}
-                        isStacked={true}
+                        customOptions={{
+                            plotOptions: {
+                                bar: {
+                                    distributed: true,
+                                    horizontal: false,
+                                },
+                            },
+                            yaxis: {
+                                labels: {
+                                    formatter: (val: number) => `${(val / 3600).toFixed(1)}h`,
+                                },
+                            },
+                        }}
+                    />
+                </WidgetCard>
+            </ChartGridLayout>
+
+            {/* 세 번째 행 */}
+            <ChartGridLayout>
+                {/* Top Tables by Size */}
+                <WidgetCard title="Top-5 테이블 (크기)" span={4}>
+                    <Chart
+                        type="bar"
+                        series={[{
+                            name: "크기",
+                            data: dashboard.topTables.topBySize.map(t => t.value)
+                        }]}
+                        categories={dashboard.topTables.topBySize.map(t => t.tableName)}
+                        colors={["#8E79FF"]}
+                        height={250}
+                        xaxisOptions={{
+                            title: { text: "테이블명", style: { fontSize: "12px", color: "#6B7280" } }
+                        }}
+                        yaxisOptions={{
+                            title: { text: "크기", style: { fontSize: "12px", color: "#6B7280" } }
+                        }}
+                        customOptions={{
+                            plotOptions: {
+                                bar: {
+                                    distributed: true,
+                                    horizontal: false,
+                                },
+                            },
+                            yaxis: {
+                                labels: {
+                                    formatter: (val: number) => {
+                                        if (val >= 1024 * 1024 * 1024) {
+                                            return `${(val / (1024 * 1024 * 1024)).toFixed(1)}GB`;
+                                        } else if (val >= 1024 * 1024) {
+                                            return `${(val / (1024 * 1024)).toFixed(0)}MB`;
+                                        } else {
+                                            return `${(val / 1024).toFixed(0)}KB`;
+                                        }
+                                    },
+                                },
+                            },
+                        }}
                     />
                 </WidgetCard>
 
-                {/* Top-5 테이블 DML량 */}
-                <WidgetCard title="Top-5 테이블 DML량 (Last 24 Hours)" span={4}>
+                {/* Top Tables by Scan */}
+                <WidgetCard title="Top-5 테이블 (스캔)" span={4}>
                     <Chart
                         type="bar"
-                        series={[
-                            { name: "Delete", data: dashboard.topDmlTables.deleteCounts },
-                            { name: "Insert", data: dashboard.topDmlTables.insertCounts },
-                            { name: "Update", data: dashboard.topDmlTables.updateCounts },
-                        ]}
-                        categories={dashboard.topDmlTables.tableNames}
-                        colors={["#FEA29B", "#8E79FF", "#77B2FB"]}
+                        series={[{
+                            name: "스캔 횟수",
+                            data: dashboard.topTables.topByScan.map(t => t.value)
+                        }]}
+                        categories={dashboard.topTables.topByScan.map(t => t.tableName)}
+                        colors={["#77B2FB"]}
                         height={250}
                         xaxisOptions={{
                             title: { text: "테이블명", style: { fontSize: "12px", color: "#6B7280" } }
                         }}
                         yaxisOptions={{
-                            title: { text: "DML 횟수", style: { fontSize: "12px", color: "#6B7280" } }
+                            title: { text: "스캔 횟수", style: { fontSize: "12px", color: "#6B7280" } }
                         }}
-                        isStacked={true}
+                        customOptions={{
+                            plotOptions: {
+                                bar: {
+                                    distributed: true,
+                                    horizontal: false,
+                                },
+                            },
+                        }}
                     />
+                </WidgetCard>
 
+                {/* Top Tables by Bloat */}
+                <WidgetCard title="Top-5 테이블 (Bloat)" span={4}>
+                    <Chart
+                        type="bar"
+                        series={[{
+                            name: "Bloat (%)",
+                            data: dashboard.topTables.topByBloat.map(t => t.value)
+                        }]}
+                        categories={dashboard.topTables.topByBloat.map(t => t.tableName)}
+                        colors={["#FEA29B"]}
+                        height={250}
+                        xaxisOptions={{
+                            title: { text: "테이블명", style: { fontSize: "12px", color: "#6B7280" } }
+                        }}
+                        yaxisOptions={{
+                            title: { text: "Bloat (%)", style: { fontSize: "12px", color: "#6B7280" } }
+                        }}
+                        customOptions={{
+                            plotOptions: {
+                                bar: {
+                                    distributed: true,
+                                    horizontal: false,
+                                },
+                            },
+                        }}
+                    />
                 </WidgetCard>
             </ChartGridLayout>
         </div>
