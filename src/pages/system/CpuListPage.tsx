@@ -1,4 +1,4 @@
-import {Fragment, useMemo, useState} from "react";
+import {Fragment, useEffect, useMemo, useState} from "react";
 import {
     useReactTable,
     getCoreRowModel,
@@ -12,6 +12,7 @@ import {
 import Pagination from "../../components/util/Pagination";
 import CsvButton from "../../components/util/CsvButton";
 import MultiSelectDropdown from "../../components/util/MultiSelectDropdown";
+import apiClient from "../../api/apiClient";
 import "../../styles/system/cpulist.css";
 
 interface CPUData {
@@ -20,110 +21,88 @@ interface CPUData {
     totalCPU: number;
     userCPU: number;
     systemCPU: number;
+    idleCPU: number;
     ioWait: number;
+    stealCPU: number;
+    loadAvg1: number;
+    loadAvg5: number;
+    loadAvg15: number;
     activeSessions: number;
     parallelWorkers: number;
     waitingSessions: number;
     workerTime: number;
+    contextSwitches: number;
     status: "정상" | "주의" | "위험";
 }
 
-// 임시 목 데이터
-const mockData: CPUData[] = [
-    {
-        id: "1",
-        time: "14:00",
-        totalCPU: 85,
-        userCPU: 75,
-        systemCPU: 13,
-        ioWait: 8,
-        activeSessions: 45,
-        parallelWorkers: 12,
-        waitingSessions: 8,
-        workerTime: 125.3,
-        status: "위험",
-    },
-    {
-        id: "2",
-        time: "13:50",
-        totalCPU: 65,
-        userCPU: 58,
-        systemCPU: 7,
-        ioWait: 12,
-        activeSessions: 38,
-        parallelWorkers: 8,
-        waitingSessions: 15,
-        workerTime: 98.7,
-        status: "정상",
-    },
-    {
-        id: "3",
-        time: "13:40",
-        totalCPU: 45,
-        userCPU: 38,
-        systemCPU: 7,
-        ioWait: 5,
-        activeSessions: 28,
-        parallelWorkers: 5,
-        waitingSessions: 5,
-        workerTime: 67.2,
-        status: "정상",
-    },
-    {
-        id: "4",
-        time: "13:30",
-        totalCPU: 78,
-        userCPU: 68,
-        systemCPU: 10,
-        ioWait: 15,
-        activeSessions: 52,
-        parallelWorkers: 15,
-        waitingSessions: 12,
-        workerTime: 134.9,
-        status: "정상",
-    },
-    {
-        id: "5",
-        time: "13:20",
-        totalCPU: 42,
-        userCPU: 35,
-        systemCPU: 7,
-        ioWait: 6,
-        activeSessions: 25,
-        parallelWorkers: 4,
-        waitingSessions: 3,
-        workerTime: 54.6,
-        status: "정상",
-    },
-    {
-        id: "6",
-        time: "13:10",
-        totalCPU: 92,
-        userCPU: 81,
-        systemCPU: 9,
-        ioWait: 22,
-        activeSessions: 68,
-        parallelWorkers: 20,
-        waitingSessions: 19,
-        workerTime: 191.6,
-        status: "위험",
-    },
-];
+interface CPUListResponse {
+    data: CPUData[];
+    total: number;
+}
 
-export default function CPUListPage() {
-    const [data] = useState<CPUData[]>(mockData);
+export default function CpuListPage() {
+    const [data, setData] = useState<CPUData[]>([]);
+    const [loading, setLoading] = useState<boolean>(true);
+    const [error, setError] = useState<string | null>(null);
     const [sorting, setSorting] = useState<SortingState>([]);
     const [currentPage, setCurrentPage] = useState(1);
+    const [selectedTimeRange, setSelectedTimeRange] = useState<string[]>(["최근 7일"]);
+    const [selectedStatus, setSelectedStatus] = useState<string[]>([]);
     const pageSize = 10;
+
+    // 시간 범위 매핑 (한글 -> API 파라미터)
+    const timeRangeMap: { [key: string]: string } = {
+        "최근 1시간": "1h",
+        "최근 6시간": "6h",
+        "최근 24시간": "24h",
+        "최근 7일": "7d",
+    };
+
+    const fetchData = async () => {
+        try {
+            setLoading(true);
+            setError(null);
+
+            // 시간 범위 변환
+            const timeRange = selectedTimeRange.length > 0
+                ? timeRangeMap[selectedTimeRange[0]] || "7d"
+                : "7d";
+
+            // 상태 필터 변환
+            const statusParam = selectedStatus.length > 0
+                ? selectedStatus.join(",")
+                : undefined;
+
+            // apiClient 사용하여 API 호출
+            const response = await apiClient.get<CPUListResponse>('/system/cpu/list', {
+                params: {
+                    timeRange,
+                    status: statusParam,
+                },
+            });
+
+            setData(response.data.data || []);
+        } catch (err) {
+            console.error("CPU 리스트 조회 오류:", err);
+            setError(err instanceof Error ? err.message : "데이터 조회 중 오류가 발생했습니다.");
+            setData([]);
+        } finally {
+            setLoading(false);
+        }
+    };
 
     // 프로그레스 바 색상 결정 함수
     const getCPUColor = (cpu: number) => {
         if (cpu >= 80) return "#FF928A"; // 빨강 (위험)
         if (cpu >= 60) return "#FFD66B"; // 주황 (주의)
-        return "#7B61FF"; // 녹색 (정상)
+        return "#7B61FF"; // 보라 (정상)
     };
 
-    // 컬럼 정의
+    // 초기 로드 및 필터 변경 시 데이터 조회
+    useEffect(() => {
+        fetchData();
+    }, [selectedTimeRange, selectedStatus]);
+
     const columns = useMemo<ColumnDef<CPUData>[]>(
         () => [
             {
@@ -142,8 +121,33 @@ export default function CPUListPage() {
                 cell: (info) => info.getValue(),
             },
             {
+                accessorKey: "idleCPU",
+                header: "Idle CPU(%)",
+                cell: (info) => info.getValue(),
+            },
+            {
                 accessorKey: "ioWait",
                 header: "I/O Wait(%)",
+                cell: (info) => info.getValue(),
+            },
+            {
+                accessorKey: "stealCPU",
+                header: "Steal CPU(%)",
+                cell: (info) => info.getValue(),
+            },
+            {
+                accessorKey: "loadAvg1",
+                header: "Load Avg (1m)",
+                cell: (info) => info.getValue(),
+            },
+            {
+                accessorKey: "loadAvg5",
+                header: "Load Avg (5m)",
+                cell: (info) => info.getValue(),
+            },
+            {
+                accessorKey: "loadAvg15",
+                header: "Load Avg (15m)",
                 cell: (info) => info.getValue(),
             },
             {
@@ -165,6 +169,11 @@ export default function CPUListPage() {
                 accessorKey: "workerTime",
                 header: "병렬 워커 시간(ms)",
                 cell: (info) => info.getValue(),
+            },
+            {
+                accessorKey: "contextSwitches",
+                header: "Context Switch",
+                cell: (info) => (info.getValue() as number).toLocaleString(),
             },
             {
                 accessorKey: "totalCPU",
@@ -242,27 +251,28 @@ export default function CPUListPage() {
     // CSV 내보내기 함수
     const handleExportCSV = () => {
         const headers = [
-            "시간",
-            "전체 CPU(%)",
-            "User CPU(%)",
-            "System CPU(%)",
-            "I/O Wait(%)",
-            "활성 세션",
-            "병렬 워커",
-            "대기 세션",
-            "병렬 워커 시간(ms)",
-            "상태",
+            "시간", "전체 CPU(%)", "User CPU(%)", "System CPU(%)",
+            "Idle CPU(%)", "I/O Wait(%)", "Steal CPU(%)",
+            "Load Avg (1m)", "Load Avg (5m)", "Load Avg (15m)",
+            "활성 세션", "병렬 워커", "대기 세션",
+            "병렬 워커 시간(ms)", "Context Switch", "상태",
         ];
         const csvData = data.map((row) => [
             row.time,
             row.totalCPU,
             row.userCPU,
             row.systemCPU,
+            row.idleCPU,
             row.ioWait,
+            row.stealCPU,
+            row.loadAvg1,
+            row.loadAvg5,
+            row.loadAvg15,
             row.activeSessions,
             row.parallelWorkers,
             row.waitingSessions,
             row.workerTime,
+            row.contextSwitches,
             row.status,
         ]);
 
@@ -307,7 +317,16 @@ export default function CPUListPage() {
                         "최근 24시간",
                         "최근 7일",
                     ]}
-                    onChange={(values) => console.log("선택된 시간:", values)}
+                    selectedValues={selectedTimeRange}
+                    onChange={(values) => {
+                        // 시간 선택은 단일 선택만 허용 - 마지막 선택값만 유지
+                        if (values.length > 0) {
+                            const lastSelected = values[values.length - 1];
+                            setSelectedTimeRange([lastSelected]);
+                        } else {
+                            setSelectedTimeRange([]);
+                        }
+                    }}
                 />
                 <MultiSelectDropdown
                     label="상태"
@@ -316,7 +335,8 @@ export default function CPUListPage() {
                         "주의",
                         "위험",
                     ]}
-                    onChange={(values) => console.log("선택된 상태:", values)}
+                    selectedValues={selectedStatus}
+                    onChange={(values) => setSelectedStatus(values)}
                 />
                 <CsvButton onClick={handleExportCSV} tooltip="CSV 파일 저장"/>
             </section>
@@ -347,7 +367,11 @@ export default function CPUListPage() {
                     ))}
                 </div>
 
-                {table.getRowModel().rows.length > 0 ? (
+                {loading ? (
+                    <div className="cpu-table-empty">데이터를 불러오는 중...</div>
+                ) : error ? (
+                    <div className="cpu-table-empty">오류: {error}</div>
+                ) : table.getRowModel().rows.length > 0 ? (
                     table.getRowModel().rows.map((row) => (
                         <div key={row.id} className="cpu-table-row">
                             {row.getVisibleCells().map((cell) => (

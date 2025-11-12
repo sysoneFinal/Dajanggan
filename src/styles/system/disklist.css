@@ -19,23 +19,44 @@
     align-items: center;
 }
 
-/* 테이블 */
+/* 테이블 - 좌우 반응형 */
 .diskio-list-page__table {
     background: rgba(255, 255, 255, 0.6);
     border-radius: 0.7rem;
     border: 1px solid rgba(255, 255, 255, 0.7);
     box-shadow: 0 0.6rem 1.8rem rgba(0, 0, 0, 0.08);
     overflow-x: auto;
+    width: 100%;
+    -webkit-overflow-scrolling: touch;
 }
 
+/* 16개 컬럼 - 화면에 맞춰 늘어나도록 설정 */
 .diskio-table-header,
 .diskio-table-row {
     display: grid;
-    grid-template-columns: repeat(9, minmax(8rem, 1fr));
+    grid-template-columns:
+        minmax(120px, 1.4fr)  /* 프로세스 타입 */
+        minmax(110px, 1.3fr)  /* 전체 I/O */
+        minmax(100px, 1.2fr)  /* 읽기(개/s) */
+        minmax(100px, 1.2fr)  /* 쓰기(개/s) */
+        minmax(100px, 1.2fr)  /* 읽기(MB/s) */
+        minmax(100px, 1.2fr)  /* 쓰기(MB/s) */
+        minmax(110px, 1.3fr)  /* 처리량(MB/s) */
+        minmax(100px, 1.2fr)  /* Fsync */
+        minmax(110px, 1.3fr)  /* Eviction */
+        minmax(100px, 1.2fr)  /* Extend */
+        minmax(100px, 1.2fr)  /* Hit Ratio */
+        minmax(110px, 1.3fr)  /* 평균 큐 깊이 */
+        minmax(110px, 1.3fr)  /* 평균 지연 */
+        minmax(90px, 1fr)     /* 읽기(%) */
+        minmax(90px, 1fr)     /* 쓰기(%) */
+        minmax(80px, 1fr);    /* 상태 */
+    min-width: 1750px;
     text-align: center;
-    padding: 1.1rem;
+    padding: 1rem 0.8rem;
     align-items: center;
-    font-size: 1rem;
+    font-size: 0.9rem;
+    gap: 0.5rem;
 }
 
 .diskio-table-header {
@@ -49,8 +70,16 @@
     color: #2e2f33;
 }
 
+.diskio-table-row:hover {
+    background: rgba(123, 97, 255, 0.05);
+}
+
 .diskio-table-row:nth-child(even) {
     background: rgba(255, 255, 255, 0.5);
+}
+
+.diskio-table-row:nth-child(even):hover {
+    background: rgba(123, 97, 255, 0.08);
 }
 
 .diskio-table-empty {
@@ -84,10 +113,23 @@
 }
 
 /* 반응형 */
-@media (max-width: 768px) {
+@media (max-width: 1600px) {
     .diskio-table-header,
     .diskio-table-row {
-        grid-template-columns: repeat(9, minmax(6rem, 1fr));
-        font-size: 0.8rem;
+        font-size: 0.85rem;
+        padding: 0.9rem 0.7rem;
+    }
+}
+
+@media (max-width: 768px) {
+    .diskio-list-page {
+        padding: 1rem;
+    }
+
+    .diskio-table-header,
+    .diskio-table-row {
+        font-size: 0.75rem;
+        padding: 0.8rem 0.5rem;
+        min-width: 1550px;
     }
 }

@@ -14,7 +14,7 @@
 /* 필터 */
 .hottable-list-page__filters {
     display: flex;
-    justify-content: flex-end;
+    justify-content: space-between;
     gap: 0.75rem;
     align-items: center;
 }
@@ -23,23 +23,68 @@
     min-width: 200px;
 }
 
-/* 테이블 */
+.filter-list-toggles {
+    display: flex;
+    gap: 16px;
+    align-items: center;
+}
+
+.toggle-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    font-size: 14px;
+    color: #374151;
+}
+
+.toggle-label input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    cursor: pointer;
+}
+
+.toggle-label span {
+    user-select: none;
+}
+
+/* 테이블 - 좌우 반응형 */
 .hottable-list-page__table {
     background: rgba(255, 255, 255, 0.6);
     border-radius: 0.7rem;
     border: 1px solid rgba(255, 255, 255, 0.7);
     box-shadow: 0 0.6rem 1.8rem rgba(0, 0, 0, 0.08);
     overflow-x: auto;
+    width: 100%;
+    -webkit-overflow-scrolling: touch;
 }
 
+/* 15개 컬럼 - 화면에 맞춰 늘어나도록 설정 */
 .hottable-table-header,
 .hottable-table-row {
     display: grid;
-    grid-template-columns: repeat(10, minmax(8rem, 1fr));
+    grid-template-columns:
+        minmax(150px, 1.8fr)  /* 테이블 명 */
+        minmax(100px, 1.2fr)  /* 스키마 */
+        minmax(100px, 1.2fr)  /* 크기 */
+        minmax(100px, 1.2fr)  /* Seq Scan */
+        minmax(100px, 1.2fr)  /* Idx Scan */
+        minmax(100px, 1.2fr)  /* Insert */
+        minmax(100px, 1.2fr)  /* Update */
+        minmax(100px, 1.2fr)  /* Delete */
+        minmax(110px, 1.3fr)  /* HOT Update */
+        minmax(110px, 1.3fr)  /* Live 튜플 */
+        minmax(110px, 1.3fr)  /* Dead 튜플 */
+        minmax(100px, 1.2fr)  /* Bloat */
+        minmax(150px, 1.8fr)  /* 마지막 Auto VACUUM */
+        minmax(100px, 1.2fr)  /* 캐시 Hit */
+        minmax(80px, 1fr);    /* 상태 */
+    min-width: 1700px;
     text-align: center;
-    padding: 1.1rem;
+    padding: 1rem 0.8rem;
     align-items: center;
-    font-size: 1rem;
+    font-size: 0.9rem;
+    gap: 0.5rem;
 }
 
 .hottable-table-header {
@@ -53,8 +98,16 @@
     color: #2e2f33;
 }
 
+.hottable-table-row:hover {
+    background: rgba(123, 97, 255, 0.05);
+}
+
 .hottable-table-row:nth-child(even) {
     background: rgba(255, 255, 255, 0.5);
+}
+
+.hottable-table-row:nth-child(even):hover {
+    background: rgba(123, 97, 255, 0.08);
 }
 
 .hottable-table-empty {
@@ -80,40 +133,34 @@
     font-weight: 700;
 }
 
-/* 프로그레스 바 스타일 */
-.progress-cell {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    justify-content: center;
+/* Bloat 비율 색상 */
+.bloat-normal {
+    color: #10B981;
+    font-weight: 600;
 }
 
-.progress-bar-wrapper {
-    flex: 1;
-    max-width: 150px;
+.bloat-medium {
+    color: #F59E0B;
+    font-weight: 600;
 }
 
-.progress-bar-track {
-    width: 100%;
-    height: 8px;
-    background-color: #E5E7EB;
+.bloat-high {
+    color: #EF4444;
+    font-weight: 700;
+}
+
+/* 배지 스타일 */
+.badge {
+    padding: 4px 12px;
     border-radius: 4px;
-    overflow: hidden;
-    position: relative;
-}
-
-.progress-bar-fill {
-    height: 100%;
-    border-radius: 4px;
-    transition: width 0.3s ease, background-color 0.3s ease;
-}
-
-.progress-value {
-    font-size: 13px;
+    font-size: 12px;
     font-weight: 500;
-    color: #374151;
-    min-width: 45px;
-    text-align: right;
+    display: inline-block;
+}
+
+.badge-type {
+    background-color: #E0E7FF;
+    color: #3730A3;
 }
 
 /* 정렬 아이콘 */
@@ -124,14 +171,32 @@
 }
 
 /* 반응형 */
+@media (max-width: 1600px) {
+    .hottable-table-header,
+    .hottable-table-row {
+        font-size: 0.85rem;
+        padding: 0.9rem 0.7rem;
+    }
+}
+
 @media (max-width: 768px) {
+    .hottable-list-page {
+        padding: 1rem;
+    }
+
     .hottable-list-page__filters {
-        flex-wrap: wrap;
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .filter-list-toggles {
+        width: 100%;
     }
 
     .hottable-table-header,
     .hottable-table-row {
-        grid-template-columns: repeat(10, minmax(6rem, 1fr));
-        font-size: 0.8rem;
+        font-size: 0.75rem;
+        padding: 0.8rem 0.5rem;
+        min-width: 1500px;
     }
 }
