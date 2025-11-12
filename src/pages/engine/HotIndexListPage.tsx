@@ -1,4 +1,4 @@
-import {Fragment, useMemo, useState} from "react";
+import {Fragment, useEffect, useMemo, useState} from "react";
 import {
     useReactTable,
     getCoreRowModel,
@@ -12,12 +12,14 @@ import {
 import Pagination from "../../components/util/Pagination";
 import CsvButton from "../../components/util/CsvButton";
 import "/src/styles/engine/hotindexlist.css";
+import apiClient from "../../api/apiClient";
 
 // 데이터 타입 정의
 interface HotIndexData {
     id: string;
     indexName: string;
     tableName: string;
+    schemaName: string;
     indexType: string;
     size: string;
     idxScan: number;
@@ -30,137 +32,74 @@ interface HotIndexData {
     status: "정상" | "비효율" | "미사용" | "bloat";
 }
 
-const mockData: HotIndexData[] = [
-    {
-        id: "1",
-        indexName: "idx_users_email",
-        tableName: "users",
-        indexType: "btree",
-        size: "124 MB",
-        idxScan: 8540,
-        idxTupRead: 125400,
-        idxTupFetch: 124800,
-        cacheHit: 98.5,
-        bloatPercent: 5.2,
-        avgScanTime: 2.4,
-        lastUsed: "1분 전",
-        status: "정상",
-    },
-    {
-        id: "2",
-        indexName: "idx_orders_user_id",
-        tableName: "orders",
-        indexType: "btree",
-        size: "256 MB",
-        idxScan: 12450,
-        idxTupRead: 245600,
-        idxTupFetch: 243100,
-        cacheHit: 98.3,
-        bloatPercent: 8.7,
-        avgScanTime: 3.1,
-        lastUsed: "5분 전",
-        status: "정상",
-    },
-    {
-        id: "3",
-        indexName: "idx_products_name",
-        tableName: "products",
-        indexType: "btree",
-        size: "89 MB",
-        idxScan: 3240,
-        idxTupRead: 45800,
-        idxTupFetch: 28600,
-        cacheHit: 91.2,
-        bloatPercent: 12.4,
-        avgScanTime: 8.6,
-        lastUsed: "12분 전",
-        status: "비효율",
-    },
-    {
-        id: "4",
-        indexName: "idx_old_status",
-        tableName: "orders",
-        indexType: "btree",
-        size: "45 MB",
-        idxScan: 0,
-        idxTupRead: 0,
-        idxTupFetch: 0,
-        cacheHit: 0.0,
-        bloatPercent: 45.8,
-        avgScanTime: 0,
-        lastUsed: "30분 전",
-        status: "미사용",
-    },
-    {
-        id: "5",
-        indexName: "idx_inventory_sku",
-        tableName: "inventory",
-        indexType: "btree",
-        size: "156 MB",
-        idxScan: 6540,
-        idxTupRead: 98700,
-        idxTupFetch: 97200,
-        cacheHit: 98.5,
-        bloatPercent: 6.5,
-        avgScanTime: 2.8,
-        lastUsed: "2분 전",
-        status: "정상",
-    },
-    {
-        id: "6",
-        indexName: "idx_temp_hash",
-        tableName: "cart_items",
-        indexType: "hash",
-        size: "34 MB",
-        idxScan: 0,
-        idxTupRead: 0,
-        idxTupFetch: 0,
-        cacheHit: 0.0,
-        bloatPercent: 52.3,
-        avgScanTime: 0,
-        lastUsed: "15분 전",
-        status: "bloat",
-    },
-    {
-        id: "7",
-        indexName: "idx_reviews_product",
-        tableName: "reviews",
-        indexType: "btree",
-        size: "78 MB",
-        idxScan: 4560,
-        idxTupRead: 68400,
-        idxTupFetch: 67200,
-        cacheHit: 97.8,
-        bloatPercent: 32.1,
-        avgScanTime: 4.2,
-        lastUsed: "3분 전",
-        status: "bloat",
-    },
-];
+interface HotIndexListResponse {
+    data: HotIndexData[];
+    total: number;
+}
 
 export default function HotIndexListPage() {
-    const [data] = useState<HotIndexData[]>(mockData);
+    const [data, setData] = useState<HotIndexData[]>([]);
+    const [loading, setLoading] = useState<boolean>(true);
+    const [error, setError] = useState<string | null>(null);
     const [sorting, setSorting] = useState<SortingState>([]);
     const [currentPage, setCurrentPage] = useState(1);
-    const [showUnusedOnly, setShowUnusedOnly] = useState(false);
-    const [showInefficientOnly, setShowInefficientOnly] = useState(false);
-    const [showBloatOnly, setShowBloatOnly] = useState(false);  // 추가
+    const [selectedTimeRange, setSelectedTimeRange] = useState<string>("7d");
+    const [selectedStatus, setSelectedStatus] = useState<string[]>([]);
     const pageSize = 10;
 
-    // 필터링된 데이터
-    const filteredData = useMemo(() => {
-        let result = data;
-        if (showUnusedOnly) {
-            result = result.filter((row) => row.status === "미사용");
+    // 체크박스 상태 (selectedStatus와 동기화)
+    const showUnusedOnly = selectedStatus.includes("미사용");
+    const showInefficientOnly = selectedStatus.includes("비효율");
+    const showBloatOnly = selectedStatus.includes("bloat");
+
+    // API 데이터 조회
+    const fetchData = async () => {
+        try {
+            setLoading(true);
+            setError(null);
+
+            // 상태 필터 변환
+            const statusParam = selectedStatus.length > 0
+                ? selectedStatus.join(",")
+                : undefined;
+
+            // apiClient 사용하여 API 호출
+            const response = await apiClient.get<HotIndexListResponse>('/engine/hotindex/list', {
+                params: {
+                    timeRange: selectedTimeRange,
+                    status: statusParam,
+                },
+            });
+
+            setData(response.data.data || []);
+        } catch (err) {
+            console.error("HotIndex 리스트 조회 오류:", err);
+            setError(err instanceof Error ? err.message : "데이터 조회 중 오류가 발생했습니다.");
+            setData([]);
+        } finally {
+            setLoading(false);
         }
-        if (showInefficientOnly) {
-            result = result.filter((row) => row.status === "비효율");
-        }
-        if (showBloatOnly) {
-            result = result.filter((row) => row.status === "bloat");
-        }
-        return result;
-    }, [data, showUnusedOnly, showInefficientOnly, showBloatOnly]);
+    };
+
+    // 초기 로드 및 필터 변경 시 데이터 조회
+    useEffect(() => {
+        fetchData();
+    }, [selectedTimeRange, selectedStatus]);
+
+    // 필터링된 데이터 (이미 API에서 필터링됨)
+    const filteredData = useMemo(() => data, [data]);
+
+    // 체크박스 토글 핸들러
+    const handleStatusToggle = (status: string, checked: boolean) => {
+        setSelectedStatus(prev => {
+            if (checked) {
+                return [...prev, status];
+            } else {
+                return prev.filter(s => s !== status);
+            }
+        });
+        setCurrentPage(1);
+    };
 
     const columns = useMemo<ColumnDef<HotIndexData>[]>(
         () => [
@@ -205,7 +144,10 @@ export default function HotIndexListPage() {
             {
                 accessorKey: "cacheHit",
                 header: "캐시 Hit(%)",
-                cell: (info) => (info.getValue() as number).toLocaleString(),
+                cell: (info) => {
+                    const value = info.getValue() as number;
+                    return `${value.toFixed(2)}%`;
+                },
             },
             {
                 accessorKey: "bloatPercent",
@@ -215,18 +157,21 @@ export default function HotIndexListPage() {
                     let className = "bloat-normal";
                     if (value >= 30) className = "bloat-high";
                     else if (value >= 15) className = "bloat-medium";
-                    return <span className={className}>{value}%</span>;
+                    return <span className={className}>{value.toFixed(2)}%</span>;
                 },
             },
             {
                 accessorKey: "avgScanTime",
                 header: "평균 시간(ms)",
-                cell: (info) => info.getValue(),
+                cell: (info) => {
+                    const value = info.getValue() as number;
+                    return value.toFixed(2);
+                },
             },
             {
                 accessorKey: "lastUsed",
                 header: "마지막 사용",
-                cell: (info) => info.getValue(),
+                cell: (info) => info.getValue() || "N/A",
             },
             {
                 accessorKey: "status",
@@ -285,6 +230,7 @@ export default function HotIndexListPage() {
         const headers = [
             "인덱스 명",
             "테이블 명",
+            "스키마 명",
             "타입",
             "크기",
             "스캔(회/일)",
@@ -299,6 +245,7 @@ export default function HotIndexListPage() {
         const csvData = filteredData.map((row) => [
             row.indexName,
             row.tableName,
+            row.schemaName,
             row.indexType,
             row.size,
             row.idxScan,
@@ -340,6 +287,14 @@ export default function HotIndexListPage() {
         URL.revokeObjectURL(url);
     };
 
+    if (loading) {
+        return <div className="hotindex-list-page">로딩 중...</div>;
+    }
+
+    if (error) {
+        return <div className="hotindex-list-page">오류: {error}</div>;
+    }
+
     return (
         <main className="hotindex-list-page">
             {/* 필터 선택 영역 */}
@@ -349,10 +304,7 @@ export default function HotIndexListPage() {
                         <input
                             type="checkbox"
                             checked={showUnusedOnly}
-                            onChange={(e) => {
-                                setShowUnusedOnly(e.target.checked);
-                                setCurrentPage(1);
-                            }}
+                            onChange={(e) => handleStatusToggle("미사용", e.target.checked)}
                         />
                         <span>미사용 인덱스만 보기</span>
                     </label>
@@ -360,10 +312,7 @@ export default function HotIndexListPage() {
                         <input
                             type="checkbox"
                             checked={showInefficientOnly}
-                            onChange={(e) => {
-                                setShowInefficientOnly(e.target.checked);
-                                setCurrentPage(1);
-                            }}
+                            onChange={(e) => handleStatusToggle("비효율", e.target.checked)}
                         />
                         <span>비효율 인덱스만 보기</span>
                     </label>
@@ -371,10 +320,7 @@ export default function HotIndexListPage() {
                         <input
                             type="checkbox"
                             checked={showBloatOnly}
-                            onChange={(e) => {
-                                setShowBloatOnly(e.target.checked);
-                                setCurrentPage(1);
-                            }}
+                            onChange={(e) => handleStatusToggle("bloat", e.target.checked)}
                         />
                         <span>Bloat 인덱스만 보기</span>
                     </label>
