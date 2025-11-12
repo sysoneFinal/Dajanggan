@@ -1,4 +1,5 @@
 import "../../styles/session/session-detail-modal.css";
+import { formatDateTime } from "../../utils/formatDateTime";
 
 export interface SessionDetail {
   pid: number;
@@ -22,11 +23,10 @@ interface Props {
   onClose: () => void;
 }
 
-
 export default function SessionDetailModal({ session, onClose }: Props) {
   if (!session) return null;
 
-  
+  console.log('모달에서 전달 받은 값 ', session);
 
   return (
     <div className="session-detail-overlay">
@@ -77,7 +77,7 @@ export default function SessionDetailModal({ session, onClose }: Props) {
               <div className="perf-row">
                 <div>
                   <span>Query Start</span>
-                  <p className="bold">{session.startTime}</p>
+                  <p className="bold">{formatDateTime(session.startTime)}</p>
                 </div>
                 <div>
                   <span>Memory</span>

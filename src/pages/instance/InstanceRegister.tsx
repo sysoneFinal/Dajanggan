@@ -43,7 +43,7 @@ const toInstanceDto = (f: NewInstance) => ({
   instanceName: f.instance,
   dbname: f.database,
   port: Number(f.port),
-  username: f.username,
+  userName: f.username,
   secretRef: f.password,
   ssimode: "require",
   isEnabled: true,
@@ -161,12 +161,12 @@ export default function NewInstanceModal({
           if (form.password && form.password.trim()) {
             payload.secretRef = form.password;
           }
-          const res = await apiClient.put(`/api/instances/${instanceId}`, payload);
+          const res = await apiClient.put(`/instances/${instanceId}`, payload);
           alert(`수정 성공!`);
         } else {
           // 생성 모드: POST 요청
           const payload = toInstanceDto(form);
-          const res = await apiClient.post("/api/instances", payload);
+          const res = await apiClient.post("/instances", payload);
           alert(`등록 성공! ID: ${res.data?.id ?? "unknown"}`);
         }
       }

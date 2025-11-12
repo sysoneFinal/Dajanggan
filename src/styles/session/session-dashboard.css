@@ -184,7 +184,8 @@
 
 /* 메인 콘텐츠 — 좌우 배치 */
 .deadlock-content {
-  display: flex;
+  display: flex !important;
+  flex-direction: row !important;
   align-items: stretch;
   gap: 1.2rem;
   height: 100%;

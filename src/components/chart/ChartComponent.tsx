@@ -53,6 +53,7 @@ const DEFAULT_COLORS = [
 /** 공통 폰트 */
 const FONT_FAMILY = 'var(--font-family, "Pretendard", sans-serif)';
 
+
 export default function Chart({
   type,
   series,
@@ -85,6 +86,25 @@ export default function Chart({
           | "pie"
           | "scatter"
           | "boxPlot");
+        // 방어 코드 
+  const safeSeries = useMemo(() => {
+    if (!Array.isArray(series) || series.length === 0) {
+      return [{ name: 'No Data', data: [] }];
+    }
+    
+    return series.map((s: any) => ({
+      ...s,
+      data: Array.isArray(s.data) ? s.data : []
+    }));
+  }, [series]);
+
+  const safeCategories = useMemo(() => {
+    if (!Array.isArray(categories)) {
+      return [];
+    }
+    return categories;
+  }, [categories]);
+
 
   const baseOptions = useMemo<ApexCharts.ApexOptions>(() => {
     const options: ApexCharts.ApexOptions = {
@@ -128,7 +148,7 @@ export default function Chart({
         width: type === "line" || type === "area" ? 2 : 0,
       },
       xaxis: {
-        categories,
+        categories : safeCategories,
         labels: {
           style: {
             colors: "#6B7280",
@@ -230,8 +250,8 @@ export default function Chart({
       /** 파이 / 도넛 */
       case "pie":
       case "donut":
-        options.labels = categories as string[];
-        options.plotOptions = {
+      options.labels = safeCategories as string[];      
+      options.plotOptions = {
           pie: {
             donut: {
               size: "55%",
@@ -364,7 +384,7 @@ export default function Chart({
       </style>
       <ReactApexChart
         options={baseOptions}
-        series={series ?? []}
+        series={ safeSeries}
         type={normalizedType}
         height={height || 300}
       />
