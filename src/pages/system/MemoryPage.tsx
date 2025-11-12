@@ -344,7 +344,7 @@ export default function MemoryPage() {
                         </div>
                     </div>
                 </WidgetCard>
-                <WidgetCard title="버퍼 퇴거 발생 추세 (Last 24 Hours)" span={3}>
+                <WidgetCard title="버퍼 퇴거 발생 추세 (Last 24 Hours)" span={6}>
                     <Chart
                         type="line"
                         series={[{ name: "Evictions/sec", data: data.evictionRate.data }]}
@@ -431,53 +431,52 @@ export default function MemoryPage() {
                         }}
                     />
                 </WidgetCard>
-                <WidgetCard title="버퍼 플러시 발생 추세 (Last 24 Hours)" span={3}>
-                    <Chart
-                        type="line"
-                        series={[{ name: "Fsyncs/sec", data: data.fsyncRate.data }]}
-                        categories={data.fsyncRate.categories}
-                        height={250}
-                        colors={["#8E79FF"]}
-                        showGrid={true}
-                        showLegend={false}
-                        xaxisOptions={{
-                            title: { text: "시간", style: { fontSize: "12px", color: "#6B7280" } },
-                        }}
-                        yaxisOptions={{
-                            title: { text: "Fsyncs/sec", style: { fontSize: "12px", color: "#6B7280" } },
-                            labels: { formatter: (val: number) => `${val}/s` },
-                        }}
-                        tooltipFormatter={(value: number) => `${value}/s`}
-                        customOptions={{
-                            annotations: {
-                                yaxis: [
-                                    {
-                                        y: 50,
-                                        borderColor: "#FBBF24",
-                                        strokeDashArray: 4,
-                                        opacity: 0.6,
-                                        label: {
-                                            borderColor: "#FBBF24",
-                                            style: {
-                                                color: "#fff",
-                                                background: "#FBBF24",
-                                                fontSize: "11px",
-                                                fontWeight: 500,
-                                            },
-                                            text: "주의: 50/s",
-                                            position: "right",
-                                        },
-                                    },
-                                ],
-                            },
-                        }}
-                    />
-                </WidgetCard>
-
             </ChartGridLayout>
+        {/*  두번째 차트 행  */}
         <ChartGridLayout>
-
-                <WidgetCard title="Dirty Buffer 추세 (Last 24 Hours)" span={4}>
+            <WidgetCard title="버퍼 플러시 발생 추세 (Last 24 Hours)" span={6}>
+                <Chart
+                    type="line"
+                    series={[{ name: "Fsyncs/sec", data: data.fsyncRate.data }]}
+                    categories={data.fsyncRate.categories}
+                    height={250}
+                    colors={["#8E79FF"]}
+                    showGrid={true}
+                    showLegend={false}
+                    xaxisOptions={{
+                        title: { text: "시간", style: { fontSize: "12px", color: "#6B7280" } },
+                    }}
+                    yaxisOptions={{
+                        title: { text: "Fsyncs/sec", style: { fontSize: "12px", color: "#6B7280" } },
+                        labels: { formatter: (val: number) => `${val}/s` },
+                    }}
+                    tooltipFormatter={(value: number) => `${value}/s`}
+                    customOptions={{
+                        annotations: {
+                            yaxis: [
+                                {
+                                    y: 50,
+                                    borderColor: "#FBBF24",
+                                    strokeDashArray: 4,
+                                    opacity: 0.6,
+                                    label: {
+                                        borderColor: "#FBBF24",
+                                        style: {
+                                            color: "#fff",
+                                            background: "#FBBF24",
+                                            fontSize: "11px",
+                                            fontWeight: 500,
+                                        },
+                                        text: "주의: 50/s",
+                                        position: "right",
+                                    },
+                                },
+                            ],
+                        },
+                    }}
+                />
+            </WidgetCard>
+                <WidgetCard title="Dirty Buffer 추세 (Last 24 Hours)" span={6}>
                     <Chart
                         type="line"
                         series={[{ name: "Dirty Buffer %", data: data.dirtyBufferTrend.data }]}
@@ -538,31 +537,34 @@ export default function MemoryPage() {
                         }}
                     />
                 </WidgetCard>
-                <WidgetCard title="Eviction vs Flush 비교 (Last 24 Hours)" span={4}>
-                    <Chart
-                        type="line"
-                        series={[
-                            { name: "Evictions/sec", data: data.evictionFlushRatio.evictions },
-                            { name: "Fsyncs/sec", data: data.evictionFlushRatio.fsyncs }
-                        ]}
-                        categories={data.evictionFlushRatio.categories}
-                        height={250}
-                        colors={["#8E79FF", "#F59E0B"]}
-                        showGrid={true}
-                        showLegend={true}
-                        xaxisOptions={{
-                            title: { text: "시간", style: { fontSize: "12px", color: "#6B7280" } },
-                        }}
-                        yaxisOptions={{
-                            title: { text: "Events/sec", style: { fontSize: "12px", color: "#6B7280" } },
-                            labels: { formatter: (val: number) => `${val}/s` },
-                        }}
-                        tooltipFormatter={(value: number) => `${value}/s`}
-                        customOptions={{
-                        }}
-                    />
-                </WidgetCard>
-            <WidgetCard title="Top-5 버퍼 점유 객체" span={4}>
+            </ChartGridLayout>
+            {/* 3번째 행 */}
+            <ChartGridLayout>
+            <WidgetCard title="Eviction vs Flush 비교 (Last 24 Hours)" span={6}>
+                <Chart
+                    type="line"
+                    series={[
+                        { name: "Evictions/sec", data: data.evictionFlushRatio.evictions },
+                        { name: "Fsyncs/sec", data: data.evictionFlushRatio.fsyncs }
+                    ]}
+                    categories={data.evictionFlushRatio.categories}
+                    height={250}
+                    colors={["#8E79FF", "#F59E0B"]}
+                    showGrid={true}
+                    showLegend={true}
+                    xaxisOptions={{
+                        title: { text: "시간", style: { fontSize: "12px", color: "#6B7280" } },
+                    }}
+                    yaxisOptions={{
+                        title: { text: "Events/sec", style: { fontSize: "12px", color: "#6B7280" } },
+                        labels: { formatter: (val: number) => `${val}/s` },
+                    }}
+                    tooltipFormatter={(value: number) => `${value}/s`}
+                    customOptions={{
+                    }}
+                />
+            </WidgetCard>
+            <WidgetCard title="Top-5 버퍼 점유 객체" span={6}>
                 <Chart
                     type="bar"
                     series={[

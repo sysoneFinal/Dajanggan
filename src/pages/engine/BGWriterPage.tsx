@@ -377,7 +377,10 @@ export default function BGWriterPage() {
                             title: { text: "시간", style: { fontSize: "12px", color: "#6B7280" } }
                         }}
                         yaxisOptions={{
-                            title: { text: "Clean Rate", style: { fontSize: "12px", color: "#6B7280" } }
+                            title: { text: "Clean Rate", style: { fontSize: "12px", color: "#6B7280" } },
+                            labels: {
+                                formatter: (val) => Math.round(val),
+                            },
                         }}
                     />
                 </WidgetCard>
@@ -394,9 +397,11 @@ export default function BGWriterPage() {
                             title: { text: "시간", style: { fontSize: "12px", color: "#6B7280" } }
                         }}
                         yaxisOptions={{
-                            title: { text: "Maxwritten Clean (회)", style: { fontSize: "12px", color: "#6B7280" } }
+                            title: { text: "Maxwritten Clean (회)", style: { fontSize: "12px", color: "#6B7280" } },
+                            labels: {
+                                formatter: (val) => Math.round(val),
+                            },
                         }}
-
                         customOptions={{
                             annotations: {
                                 yaxis: [

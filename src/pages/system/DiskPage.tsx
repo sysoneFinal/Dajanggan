@@ -366,7 +366,7 @@ export default function DiskPage() {
 
             {/* 두 번째 행: I/O Latency + Throughput + WAL Bytes + Queue Depth */}
             <ChartGridLayout>
-                <WidgetCard title="Throughput (IOPS / 처리량 (MB/s))" span={4}>
+                <WidgetCard title="Throughput (IOPS / 처리량 (MB/s))" span={6}>
                     <Chart
                         type="line"
                         series={[
@@ -405,7 +405,7 @@ export default function DiskPage() {
                     />
                 </WidgetCard>
 
-                <WidgetCard title="WAL Bytes 추이" span={4}>
+                <WidgetCard title="WAL Bytes 추이" span={6}>
                     <Chart
                         type="line"
                         series={[
@@ -511,7 +511,12 @@ export default function DiskPage() {
                     />
                 </WidgetCard>
 
-                <WidgetCard title="Disk Queue Depth 추이" span={4}>
+
+            </ChartGridLayout>
+
+            {/* 세 번째 행: 1개 차트 */}
+            <ChartGridLayout>
+                <WidgetCard title="Disk Queue Depth 추이" span={6}>
                     <Chart
                         type="line"
                         series={[
@@ -583,11 +588,7 @@ export default function DiskPage() {
                         }}
                     />
                 </WidgetCard>
-            </ChartGridLayout>
-
-            {/* 세 번째 행: 1개 차트 */}
-            <ChartGridLayout>
-                <WidgetCard title="버퍼 교체(Evictions) 추이" span={12}>
+                <WidgetCard title="버퍼 교체(Evictions) 추이" span={6}>
                     <Chart
                         type="line"
                         series={[{ name: "Evictions/sec", data: dashboard.evictions.evictionRate }]}
