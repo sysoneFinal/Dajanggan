@@ -315,6 +315,7 @@ export default function VacuumPage() {
     () => [{ name: "latency", data: data.latency.data }],
     [data.latency.data]
   );
+  
  // Instance나 Database가 선택되지 않은 경우
   if (!selectedInstance || !selectedDatabase) {
     return (

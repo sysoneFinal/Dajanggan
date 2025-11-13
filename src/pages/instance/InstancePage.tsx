@@ -9,9 +9,9 @@ import type { NewInstance } from "./InstanceRegister";
 export interface DatabaseSummary {
   databaseName: string;
   isEnabled: boolean;
-  connections: number;
-  sizeBytes: number;
-  cacheHitRate: number;
+  connections: number | null;
+  sizeBytes: number| null;
+  cacheHitRate: number| null;
   updatedAt: string;
 }
 
@@ -43,9 +43,9 @@ type InstanceDto = {
         name: string;
         isEnabled: boolean;
         status?: "active" | "inactive";  
-        connections: number;
-        sizeBytes: number;
-        cacheHitRate: number;
+        connections: number| null;
+        sizeBytes: number| null;
+        cacheHitRate: number| null;
         updatedAt: string;
   }>;
 };
@@ -384,8 +384,6 @@ const InstancePage: React.FC = () => {
                       {db.isEnabled ? "active" : "inactive"}
                     </span> 
                     <div className="il-cell">{db.connections}</div>
-                    <div className="il-cell">{formatBytes(db.sizeBytes)}</div>
-                    <div className="il-cell">{(db.cacheHitRate * 100).toFixed(1)}%</div>
                     <div className="il-cell">{formatDateTime(db.updatedAt)}</div>
                   </div>
                 ))}

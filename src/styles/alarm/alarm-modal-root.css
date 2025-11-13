@@ -17,3 +17,18 @@
         .amr-btn--primary{background:#6366f1; color:#fff; border:none;}
 
         .amr-modal__body--detail{height: 50vh;}
+
+        
+.dropdown-menu {
+  position: absolute;
+  top: calc(100% + 0.5rem);
+  left: 0;
+  background: #ffffff;
+  border-radius: 0.75rem;
+  border: 1px solid #e5e7eb;
+  box-shadow: 0 0.625rem 1.875rem rgba(0, 0, 0, 0.15);
+  min-width: 5rem;
+  z-index: 9999;
+  overflow: hidden;
+  animation: dropdownFadeIn 0.2s ease;
+}
