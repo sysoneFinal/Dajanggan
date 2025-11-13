@@ -23,23 +23,41 @@
     min-width: 200px;
 }
 
-/* 테이블 */
+/* 테이블 - 좌우 반응형 */
 .checkpoint-list-page__table {
     background: rgba(255, 255, 255, 0.6);
     border-radius: 0.7rem;
     border: 1px solid rgba(255, 255, 255, 0.7);
     box-shadow: 0 0.6rem 1.8rem rgba(0, 0, 0, 0.08);
     overflow-x: auto;
+    width: 100%;
+    -webkit-overflow-scrolling: touch;
 }
 
+/* 13개 컬럼 - 화면에 맞춰 늘어나도록 설정 */
 .checkpoint-table-header,
 .checkpoint-table-row {
     display: grid;
-    grid-template-columns: repeat(8, minmax(8rem, 1fr));
+    grid-template-columns:
+        minmax(160px, 1.8fr)  /* 시간 - 가장 넓게 */
+        minmax(100px, 1.2fr)  /* 유형 */
+        minmax(80px, 1fr)     /* 간격 */
+        minmax(90px, 1fr)     /* Write */
+        minmax(90px, 1fr)     /* Sync */
+        minmax(100px, 1.1fr)  /* 총 시간 */
+        minmax(100px, 1.2fr)  /* WAL 생성 */
+        minmax(90px, 1fr)     /* WAL 추가 */
+        minmax(90px, 1fr)     /* WAL 제거 */
+        minmax(110px, 1.3fr)  /* 버퍼 쓰기 */
+        minmax(110px, 1.3fr)  /* Backend */
+        minmax(110px, 1.3fr)  /* 평균 */
+        minmax(80px, 1fr);    /* 상태 */
+    min-width: 1400px; /* 최소 너비 - 이것보다 좁으면 스크롤 */
     text-align: center;
-    padding: 1.1rem;
+    padding: 1rem 0.8rem;
     align-items: center;
-    font-size: 1rem;
+    font-size: 0.9rem;
+    gap: 0.5rem;
 }
 
 .checkpoint-table-header {
@@ -53,8 +71,16 @@
     color: #2e2f33;
 }
 
+.checkpoint-table-row:hover {
+    background: rgba(123, 97, 255, 0.05);
+}
+
 .checkpoint-table-row:nth-child(even) {
     background: rgba(255, 255, 255, 0.5);
+}
+
+.checkpoint-table-row:nth-child(even):hover {
+    background: rgba(123, 97, 255, 0.08);
 }
 
 .checkpoint-table-empty {
@@ -107,14 +133,27 @@
 }
 
 /* 반응형 */
+@media (max-width: 1600px) {
+    .checkpoint-table-header,
+    .checkpoint-table-row {
+        font-size: 0.85rem;
+        padding: 0.9rem 0.7rem;
+    }
+}
+
 @media (max-width: 768px) {
+    .checkpoint-list-page {
+        padding: 1rem;
+    }
+
     .checkpoint-list-page__filters {
         flex-wrap: wrap;
     }
 
     .checkpoint-table-header,
     .checkpoint-table-row {
-        grid-template-columns: repeat(8, minmax(6rem, 1fr));
-        font-size: 0.8rem;
+        font-size: 0.75rem;
+        padding: 0.8rem 0.5rem;
+        min-width: 1200px;
     }
 }

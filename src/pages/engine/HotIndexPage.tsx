@@ -4,8 +4,9 @@ import SummaryCard from "../../components/util/SummaryCard";
 import "../../styles/engine/hotindex.css";
 import WidgetCard from "../../components/util/WidgetCard";
 import ChartGridLayout from "../../components/layout/ChartGridLayout";
+import apiClient from "../../api/apiClient";
 
-/** Hot Index API 응답 타입 */
+/** Hot Index API 응답 타입 - 백엔드 응답 구조에 맞게 수정 */
 interface HotIndexData {
     usageDistribution: {
         categories: string[];
@@ -29,12 +30,13 @@ interface HotIndexData {
         max: number;
     };
     efficiency: {
-        data: Array<{
-            x: number;  // 사용 횟수
-            y: number;  // 효율성 (%)
-            name: string;  // 인덱스 이름
+        categories: string[];  // 백엔드 응답에 포함됨
+        indexes: Array<{
+            x: number;
+            y: number;
+            name: string;
         }>;
-    }
+    };
     accessTrend: {
         categories: string[];
         reads: number[];
@@ -49,7 +51,7 @@ interface HotIndexData {
         max: number;
         min: number;
     };
-    recentStats?: {
+    recentStats: {
         cacheHitRatio: number;
         avgScanSpeed: number;
         totalReads: number;
@@ -58,96 +60,16 @@ interface HotIndexData {
     };
 }
 
-/** 더미 데이터 */
-const mockData: HotIndexData = {
-    usageDistribution: {
-        categories: [
-            "idx_products_category: 15%",
-            "idx_payments_order_id: 14%",
-            "idx_orders_user_id: 18%",
-            "idx_users_email: 19%",
-            "Others: 35%"
-        ],
-        data: [15, 14, 18, 19, 34]
-    },
-    topUsage: {
-        categories: [
-            "idx_users_email",
-            "idx_orders_user_id",
-            "idx_products_category",
-            "idx_payments_order_id",
-            "idx_inventory_product_id"
-        ],
-        data: [50000, 45000, 40000, 35000, 32000],
-        total: 202000
-    },
-    inefficientIndexes: {
-        categories: [
-            "idx_old_created_date",
-            "idx_legacy_status",
-            "idx_temp_field_old",
-            "idx_unused_column",
-            "idx_duplicate_index_old"
-        ],
-        data: [2.3, 1.8, 1.5, 0.8, 0.5],
-        total: 40
-    },
-    cacheHitRatio: {
-        categories: [
-            "0:00", "2:00", "4:00", "6:00", "8:00", "10:00",
-            "12:00", "14:00", "16:00", "18:00", "20:00", "22:00"
-        ],
-        data: [92, 91, 90, 85, 86, 92, 95, 93, 90, 87, 88, 90],
-        average: 90,
-        min: 85,
-        max: 95
-    },
-    efficiency: {
-        categories: [
-            "52000", "48000", "41000", "38000", "35000",
-            "32000", "8000", "5000", "25000"
-        ],
-        indexes: [490, 450, 420, 350, 470, 280, 380, 500, 120]
-    },
-    accessTrend: {
-        categories: [
-            "00:00", "04:00", "08:00", "12:00", "16:00", "20:00", "24:00"
-        ],
-        reads: [800, 1500, 2800, 3000, 2200, 1200, 1000],
-        writes: [200, 400, 600, 1000, 800, 400, 200],
-        totalReads: 12500,
-        totalWrites: 3600
-    },
-    scanSpeed: {
-        categories: [
-            "00:00", "04:00", "08:00", "12:00", "16:00", "20:00", "24:00"
-        ],
-        data: [2.2, 2.0, 4.8, 6.0, 5.2, 3.5, 2.5],
-        average: 3.7,
-        max: 6.0,
-        min: 2.0
-    },
-    // 최근 5분 평균 통계
-    recentStats: {
-        cacheHitRatio: 91.5,
-        avgScanSpeed: 3.2,
-        totalReads: 520,
-        totalWrites: 145,
-        inefficientCount: 5,
-    },
-};
-
-/** API 요청 */
+/** API 요청 - apiClient 사용 */
 async function fetchHotIndexData() {
-    const res = await fetch("/api/dashboard/hotindex");
-    if (!res.ok) throw new Error("Failed to fetch hot index data");
-    return res.json();
+    const response = await apiClient.get<HotIndexData>("/engine/hotindex");
+    console.log("HotIndex API Response:", response.data); // 디버깅용 로그
+    return response.data;
 }
 
 interface SummaryCardWithLinkProps {
     label: string;
     value: string | number;
-    diff?: number;
     desc?: string;
     status?: "info" | "warning" | "critical";
     link?: string;
@@ -190,7 +112,6 @@ function SummaryCardWithLink({ link, status = "info", ...props }: SummaryCardWit
                         e.currentTarget.style.transform = "scale(1)";
                     }}
                 >
-                    {/* 외부 링크 아이콘 SVG */}
                     <svg
                         width="16"
                         height="16"
@@ -211,52 +132,153 @@ function SummaryCardWithLink({ link, status = "info", ...props }: SummaryCardWit
     );
 }
 
-/** 메인 컴포넌트 */
+function getWriteExceedsAnnotations(
+    categories: string[],
+    reads: number[],
+    writes: number[]
+) {
+    const annotations: any[] = [];
+
+    for (let i = 0; i < reads.length; i++) {
+        if (writes[i] > reads[i]) {
+            annotations.push({
+                x: categories[i],
+                x2: categories[i],
+                fillColor: "#FEA29B",
+                opacity: 0.15,
+                label: {
+                    borderColor: "#FEA29B",
+                    style: {
+                        fontSize: "10px",
+                        color: "#fff",
+                        background: "#FEA29B",
+                    },
+                    text: "W>R",
+                    orientation: "horizontal",
+                    position: "top",
+                },
+            });
+        }
+    }
+
+    return annotations;
+}
+
 export default function HotIndexPage() {
-    const { data } = useQuery({
-        queryKey: ["hotIndexDashboard"],
+    const { data, isLoading, isError, error } = useQuery({
+        queryKey: ["hotindexDashboard"],
         queryFn: fetchHotIndexData,
         retry: 1,
     });
 
-    const dashboard = data || mockData;
+    // 로딩 중
+    if (isLoading) {
+        return (
+            <div className="hotindex-page">
+                <div style={{
+                    display: 'flex',
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    height: '400px',
+                    fontSize: '18px',
+                    color: '#6B7280'
+                }}>
+                    데이터를 불러오는 중...
+                </div>
+            </div>
+        );
+    }
 
-    // 요약 카드 데이터 계산 (최근 5분 평균 기준)
+    // 에러 발생
+    if (isError) {
+        return (
+            <div className="hotindex-page">
+                <div style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    height: '400px',
+                    fontSize: '18px',
+                    color: '#EF4444'
+                }}>
+                    <p>데이터를 불러오는데 실패했습니다.</p>
+                    <p style={{ fontSize: '14px', color: '#6B7280', marginTop: '8px' }}>
+                        {error instanceof Error ? error.message : '알 수 없는 오류가 발생했습니다.'}
+                    </p>
+                    <button
+                        onClick={() => window.location.reload()}
+                        style={{
+                            marginTop: '16px',
+                            padding: '8px 16px',
+                            backgroundColor: '#3B82F6',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: '4px',
+                            cursor: 'pointer'
+                        }}
+                    >
+                        새로고침
+                    </button>
+                </div>
+            </div>
+        );
+    }
+
+    // 데이터가 없는 경우
+    if (!data) {
+        return (
+            <div className="hotindex-page">
+                <div style={{
+                    display: 'flex',
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    height: '400px',
+                    fontSize: '18px',
+                    color: '#6B7280'
+                }}>
+                    데이터가 없습니다.
+                </div>
+            </div>
+        );
+    }
+
+    const dashboard = data;
+
+    // 요약 카드 데이터 계산 (recentStats 활용)
     const summaryCards = [
         {
-            label: "인덱스 스캔 효율",
-            value: "89.3%",
-            diff: 1.2,
-            desc: "Index / (Index + Seq) 비율",
-            status: "warning" as const,
+            label: "평균 캐시 히트율",
+            value: dashboard.recentStats ? `${dashboard.recentStats.cacheHitRatio.toFixed(1)}%` : "N/A",
+            desc: "최근 데이터 기준",
+            status: (dashboard.recentStats?.cacheHitRatio || 0) >= 95 ? "info" :
+                (dashboard.recentStats?.cacheHitRatio || 0) >= 90 ? "warning" : "critical" as const,
         },
         {
-            label: "인덱스/테이블 비율",
-            value: "28%",
-            diff: -0.5,
-            desc: "전체 인덱스 크기 비중",
+            label: "평균 스캔 속도",
+            value: dashboard.recentStats ? `${dashboard.recentStats.avgScanSpeed.toFixed(2)}ms` : "N/A",
+            desc: "최근 데이터 기준",
+            status: (dashboard.recentStats?.avgScanSpeed || 0) <= 5 ? "info" :
+                (dashboard.recentStats?.avgScanSpeed || 0) <= 10 ? "warning" : "critical" as const,
+        },
+        {
+            label: "비효율 인덱스",
+            value: dashboard.recentStats ? dashboard.recentStats.inefficientCount : "N/A",
+            desc: "최근 데이터 기준",
+            status: (dashboard.recentStats?.inefficientCount || 0) === 0 ? "info" :
+                (dashboard.recentStats?.inefficientCount || 0) <= 3 ? "warning" : "critical" as const,
+            link: "/database/hotindex/detail",
+        },
+        {
+            label: "총 읽기",
+            value: dashboard.recentStats ? dashboard.recentStats.totalReads.toLocaleString() : "N/A",
+            desc: "최근 데이터 기준",
             status: "info" as const,
         },
         {
-            label: "미사용 인덱스",
-            value: "3",
-            diff: 0,
-            desc: "삭제 검토 필요",
-            status: "warning" as const,
-            link: "http://localhost:5173/database/hotindex/detail",
-        },
-        {
-            label: "Bloat 인덱스",
-            value: "3개",
-            diff: 1,
-            desc: "REINDEX 필요 인덱스",
-            status: "warning" as const,
-        },
-        {
-            label: "대형 테이블 Seq Scan",
-            value: "6.2%",
-            diff: -1.3,
-            desc: "1만 row 이상 테이블",
+            label: "총 쓰기",
+            value: dashboard.recentStats ? dashboard.recentStats.totalWrites.toLocaleString() : "N/A",
+            desc: "최근 데이터 기준",
             status: "info" as const,
         },
     ];
@@ -270,7 +292,6 @@ export default function HotIndexPage() {
                         key={idx}
                         label={card.label}
                         value={card.value}
-                        diff={card.diff}
                         desc={card.desc}
                         status={card.status}
                         link={card.link}
@@ -281,13 +302,13 @@ export default function HotIndexPage() {
             {/* 첫 번째 행: 3개 차트 */}
             <ChartGridLayout>
                 {/* 인덱스 사용 비중 */}
-                <WidgetCard title="인덱스 사용 비중" span={3}>
+                <WidgetCard title="인덱스 사용 분포" span={3}>
                     <Chart
                         type="pie"
                         series={dashboard.usageDistribution.data}
                         categories={dashboard.usageDistribution.categories}
-                        height={250}
-                        colors={["#8E79FF", "#77B2FB", "#51DAA8", "#FEA29B", "#6B7280"]}
+                        height={200}
+                        colors={["#8E79FF", "#FBBF24", "#FEA29B"]}
                         showLegend={true}
                         customOptions={{
                             chart: {
@@ -297,16 +318,15 @@ export default function HotIndexPage() {
                                 show: true,
                                 position: "right",
                                 horizontalAlign: "center",
-                                offsetY: 20,
-                                markers: {
-                                    radius: 12,
-                                },
+                                offsetY: 40,
+                                offsetX: 30,
+                                fontSize: 15,
                             },
                             dataLabels: {
                                 enabled: true,
                                 formatter: (_val: number, opts: any) => {
                                     const raw = opts.w.globals.series[opts.seriesIndex];
-                                    return raw === 0 ? "" : `${raw}%`;
+                                    return raw === 0 ? "" : `${raw}`;
                                 },
                             },
                             plotOptions: {
@@ -333,6 +353,54 @@ export default function HotIndexPage() {
                         categories={dashboard.accessTrend.categories}
                         height={250}
                         colors={["#8E79FF", "#FEA29B"]}
+                        customOptions={{
+                            annotations: {
+                                xaxis: getWriteExceedsAnnotations(
+                                    dashboard.accessTrend.categories,
+                                    dashboard.accessTrend.reads,
+                                    dashboard.accessTrend.writes
+                                ),
+                            },
+                            stroke: {
+                                width: 3,
+                                curve: "smooth",
+                            },
+                            markers: {
+                                size: 4,
+                                hover: { size: 6 },
+                            },
+                            tooltip: {
+                                shared: true,
+                                intersect: false,
+                                custom: ({ series, seriesIndex, dataPointIndex, w }: any) => {
+                                    const reads = series[0][dataPointIndex];
+                                    const writes = series[1][dataPointIndex];
+                                    const time = w.globals.labels[dataPointIndex];
+                                    const isWriteHigh = writes > reads;
+
+                                    return `
+                                        <div style="padding: 8px 12px; background: white; border-radius: 6px; box-shadow: 0 2px 8px rgba(0,0,0,0.15);">
+                                            <div style="font-weight: 600; margin-bottom: 6px; color: #111827;">${time}</div>
+                                            <div style="display: flex; align-items: center; margin-bottom: 4px;">
+                                                <span style="width: 10px; height: 10px; border-radius: 50%; background: #8E79FF; margin-right: 6px;"></span>
+                                                <span style="font-size: 13px;">Reads: <strong>${reads.toLocaleString()}</strong></span>
+                                            </div>
+                                            <div style="display: flex; align-items: center;">
+                                                <span style="width: 10px; height: 10px; border-radius: 50%; background: #FEA29B; margin-right: 6px;"></span>
+                                                <span style="font-size: 13px;">Writes: <strong>${writes.toLocaleString()}</strong></span>
+                                            </div>
+                                            ${isWriteHigh ? `<div style="margin-top: 8px; padding: 4px 8px; background: #FEF2F2; border-radius: 4px; font-size: 11px; color: #991B1B; font-weight: 500;">Write 부하 구간</div>` : ''}
+                                        </div>
+                                    `;
+                                },
+                            },
+                        }}
+                        xaxisOptions={{
+                            title: { text: "시간", style: { fontSize: "12px", color: "#6B7280" } },
+                        }}
+                        yaxisOptions={{
+                            title: { text: "액세스 수", style: { fontSize: "12px", color: "#6B7280" } },
+                        }}
                     />
                 </WidgetCard>
 
@@ -345,7 +413,86 @@ export default function HotIndexPage() {
                         height={250}
                         colors={["#8E79FF"]}
                         xaxisOptions={{
-                            labels: { rotate: 0, rotateAlways: false }
+                            title: { text: "시간", style: { fontSize: "12px", color: "#6B7280" } },
+                        }}
+                        yaxisOptions={{
+                            title: { text: "캐시 히트율 (%)", style: { fontSize: "12px", color: "#6B7280" } },
+                        }}
+                        customOptions={{
+                            annotations: {
+                                yaxis: [
+                                    {
+                                        y: 95,
+                                        borderColor: "#60A5FA",
+                                        strokeDashArray: 4,
+                                        opacity: 0.6,
+                                        label: {
+                                            borderColor: "#60A5FA",
+                                            style: {
+                                                color: "#fff",
+                                                background: "#60A5FA",
+                                                fontSize: "11px",
+                                                fontWeight: 500,
+                                            },
+                                            text: "정상: 95%",
+                                            position: "right",
+                                        },
+                                    },
+                                    {
+                                        y: 90,
+                                        borderColor: "#FBBF24",
+                                        strokeDashArray: 4,
+                                        opacity: 0.7,
+                                        label: {
+                                            borderColor: "#FBBF24",
+                                            style: {
+                                                color: "#fff",
+                                                background: "#FBBF24",
+                                                fontSize: "11px",
+                                                fontWeight: 500,
+                                            },
+                                            text: "주의: 90%",
+                                            position: "right",
+                                        },
+                                    },
+                                    {
+                                        y: 85,
+                                        borderColor: "#FEA29B",
+                                        strokeDashArray: 4,
+                                        opacity: 0.8,
+                                        label: {
+                                            borderColor: "#FEA29B",
+                                            style: {
+                                                color: "#fff",
+                                                background: "#FEA29B",
+                                                fontSize: "11px",
+                                                fontWeight: 600,
+                                            },
+                                            text: "경고: 85%",
+                                            position: "right",
+                                        },
+                                    },
+                                ],
+                            },
+                            yaxis: {
+                                min: 75,
+                                max: 100,
+                                labels: {
+                                    style: {
+                                        colors: "#6B7280",
+                                        fontFamily: 'var(--font-family, "Pretendard", sans-serif)'
+                                    },
+                                    formatter: (val: number) => `${val.toFixed(0)}%`,
+                                },
+                            },
+                            stroke: {
+                                width: 3,
+                                curve: "smooth",
+                            },
+                            markers: {
+                                size: 4,
+                                hover: { size: 6 },
+                            },
                         }}
                     />
                 </WidgetCard>
@@ -366,6 +513,12 @@ export default function HotIndexPage() {
                         categories={dashboard.scanSpeed.categories}
                         height={250}
                         colors={["#8E79FF"]}
+                        xaxisOptions={{
+                            title: { text: "시간", style: { fontSize: "12px", color: "#6B7280" } }
+                        }}
+                        yaxisOptions={{
+                            title: { text: "스캔 속도 (ms)", style: { fontSize: "12px", color: "#6B7280" } }
+                        }}
                         customOptions={{
                             annotations: {
                                 yaxis: [
@@ -431,7 +584,14 @@ export default function HotIndexPage() {
                                     formatter: (val: number) => `${val.toFixed(1)}ms`,
                                 },
                                 min: 0,
-                                max: 25,
+                            },
+                            stroke: {
+                                width: 3,
+                                curve: "smooth",
+                            },
+                            markers: {
+                                size: 4,
+                                hover: { size: 6 },
                             },
                         }}
                     />
@@ -442,9 +602,18 @@ export default function HotIndexPage() {
                     <Chart
                         type="scatter"
                         series={[{ name: "Indexes", data: dashboard.efficiency.indexes }]}
-                        categories={dashboard.efficiency.categories}
+                        categories={[]}
                         height={250}
                         colors={["#8E79FF"]}
+                        xaxisOptions={{
+                            title: { text: "사용 횟수", style: { fontSize: "12px", color: "#6B7280" } }
+                        }}
+                        yaxisOptions={{
+                            title: { text: "인덱스 효율성 (%)", style: { fontSize: "12px", color: "#6B7280" } },
+                            labels: {
+                                formatter: (val) => Math.round(val).toString()
+                            }
+                        }}
                     />
                 </WidgetCard>
 
@@ -456,17 +625,29 @@ export default function HotIndexPage() {
                         categories={dashboard.topUsage.categories}
                         height={250}
                         colors={["#8E79FF"]}
+                        xaxisOptions={{
+                            title: { text: "인덱스명", style: { fontSize: "12px", color: "#6B7280" } }
+                        }}
+                        yaxisOptions={{
+                            title: { text: "Index 스캔", style: { fontSize: "12px", color: "#6B7280" } }
+                        }}
                     />
                 </WidgetCard>
 
                 {/* 비효율 인덱스 Top-5 */}
-                <WidgetCard title="비효율 인덱스 Top-5" span={3}>
+                <WidgetCard title="Top-5 비효율 인덱스" span={3}>
                     <Chart
                         type="bar"
-                        series={[{ name: "Efficiency (%)", data: dashboard.inefficientIndexes.data }]}
+                        series={[{ name: "Inefficiency Score", data: dashboard.inefficientIndexes.data }]}
                         categories={dashboard.inefficientIndexes.categories}
                         height={250}
                         colors={["#FEA29B"]}
+                        xaxisOptions={{
+                            title: { text: "인덱스명", style: { fontSize: "12px", color: "#6B7280" } }
+                        }}
+                        yaxisOptions={{
+                            title: { text: "비효율성 점수", style: { fontSize: "12px", color: "#6B7280" } }
+                        }}
                     />
                 </WidgetCard>
             </ChartGridLayout>
