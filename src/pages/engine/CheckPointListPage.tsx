@@ -14,6 +14,7 @@ import CsvButton from "../../components/util/CsvButton";
 import MultiSelectDropdown from "../../components/util/MultiSelectDropdown";
 import apiClient from "../../api/apiClient";
 import "/src/styles/engine/checkpointlist.css";
+import { useInstanceContext } from "../../context/InstanceContext";
 
 interface CheckpointData {
     id: string;
@@ -38,6 +39,7 @@ interface CheckpointListResponse {
 }
 
 export default function CheckPointListPage() {
+    const { selectedInstance } = useInstanceContext();
     const [data, setData] = useState<CheckpointData[]>([]);
     const [loading, setLoading] = useState<boolean>(true);
     const [error, setError] = useState<string | null>(null);
@@ -57,6 +59,13 @@ export default function CheckPointListPage() {
 
     // API 데이터 조회
     const fetchData = async () => {
+        // 인스턴스가 선택되지 않은 경우
+        if (!selectedInstance) {
+            setData([]);
+            setLoading(false);
+            return;
+        }
+        
         try {
             setLoading(true);
             setError(null);
@@ -74,6 +83,7 @@ export default function CheckPointListPage() {
             // apiClient 사용하여 API 호출
             const response = await apiClient.get<CheckpointListResponse>('/engine/checkpoint/list', {
                 params: {
+                    instanceId: selectedInstance.instanceId,
                     timeRange,
                     status: statusParam,
                 },
@@ -92,7 +102,7 @@ export default function CheckPointListPage() {
     // 초기 로드 및 필터 변경 시 데이터 조회
     useEffect(() => {
         fetchData();
-    }, [selectedTimeRange, selectedStatus]);
+    }, [selectedTimeRange, selectedStatus, selectedInstance]);
 
 
     // 컬럼 정의 - 새 컬럼 추가
