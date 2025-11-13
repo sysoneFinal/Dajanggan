@@ -14,6 +14,7 @@ import CsvButton from "../../components/util/CsvButton";
 import MultiSelectDropdown from "../../components/util/MultiSelectDropdown";
 import apiClient from "../../api/apiClient";
 import "../../styles/system/memorylist.css";
+import { useInstanceContext } from "../../context/InstanceContext";
 
 // 데이터 타입 정의
 interface MemoryData {
@@ -40,6 +41,7 @@ interface MemoryListResponse {
 }
 
 export default function MemoryListPage() {
+    const { selectedInstance } = useInstanceContext();
     const [data, setData] = useState<MemoryData[]>([]);
     const [loading, setLoading] = useState<boolean>(true);
     const [error, setError] = useState<string | null>(null);
@@ -51,6 +53,13 @@ export default function MemoryListPage() {
 
     // API 데이터 조회
     const fetchData = async () => {
+        // 인스턴스가 선택되지 않은 경우
+        if (!selectedInstance) {
+            setData([]);
+            setLoading(false);
+            return;
+        }
+
         try {
             setLoading(true);
             setError(null);
@@ -70,6 +79,7 @@ export default function MemoryListPage() {
             // apiClient 사용하여 API 호출
             const response = await apiClient.get<MemoryListResponse>('/system/memory/list', {
                 params: {
+                    instanceId: selectedInstance.instanceId,
                     type: typeParam,
                     status: statusParam,
                 },
@@ -96,7 +106,7 @@ export default function MemoryListPage() {
     // 초기 로드 및 필터 변경 시 데이터 조회
     useEffect(() => {
         fetchData();
-    }, [selectedType, selectedStatus]);
+    }, [selectedType, selectedStatus, selectedInstance]);
 
     const columns = useMemo<ColumnDef<MemoryData>[]>(
         () => [

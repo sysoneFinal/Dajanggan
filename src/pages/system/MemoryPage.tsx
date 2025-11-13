@@ -1,4 +1,3 @@
-import { useState } from "react";
 import Chart from "../../components/chart/ChartComponent";
 import GaugeChart from "../../components/chart/GaugeChart";
 import SummaryCard from "../../components/util/SummaryCard";
@@ -7,6 +6,7 @@ import ChartGridLayout from "../../components/layout/ChartGridLayout";
 import "../../styles/system/memory.css";
 import apiClient from "../../api/apiClient";
 import {useQuery} from "@tanstack/react-query";
+import { useInstanceContext } from "../../context/InstanceContext";
 
 // API 응답 전체 구조
 interface MemoryData {
@@ -78,19 +78,42 @@ const getHitRatioColor = (value: number): string => {
     if (value >= 90) return "#FFD66B";
     return "#FF928A";
 };
-/** API 요청 - apiClient 사용 */
-async function fetchMemoryData() {
-    const response = await apiClient.get<MemoryData>("/system/memory");
+/** API 요청 - apiClient 사용 - instanceId를 쿼리 파라미터로 전달 */
+async function fetchMemoryData(instanceId: number) {
+    const response = await apiClient.get<MemoryData>("/system/memory", {
+        params: { instanceId }
+    });
     return response.data;
 }
 
 // 메인 Memory 페이지
 export default function MemoryPage() {
+    const { selectedInstance } = useInstanceContext();
+
     const { data, isLoading, isError, error } = useQuery({
-        queryKey: ["memoryDashboard"],
-        queryFn: fetchMemoryData,
+        queryKey: ["memoryDashboard", selectedInstance?.instanceId],
+        queryFn: () => fetchMemoryData(selectedInstance!.instanceId),
         retry: 1,
+        enabled: !!selectedInstance, // 인스턴스가 선택되었을 때만 실행
     });
+
+    // 인스턴스가 선택되지 않은 경우
+    if (!selectedInstance) {
+        return (
+            <div className="memory-page">
+                <div style={{
+                    display: 'flex',
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    height: '400px',
+                    fontSize: '18px',
+                    color: '#6B7280'
+                }}>
+                    인스턴스를 선택해주세요.
+                </div>
+            </div>
+        );
+    }
 
     // 로딩 중
     if (isLoading) {
@@ -432,50 +455,50 @@ export default function MemoryPage() {
                     />
                 </WidgetCard>
             </ChartGridLayout>
-        {/*  두번째 차트 행  */}
-        <ChartGridLayout>
-            <WidgetCard title="버퍼 플러시 발생 추세 (Last 24 Hours)" span={6}>
-                <Chart
-                    type="line"
-                    series={[{ name: "Fsyncs/sec", data: data.fsyncRate.data }]}
-                    categories={data.fsyncRate.categories}
-                    height={250}
-                    colors={["#8E79FF"]}
-                    showGrid={true}
-                    showLegend={false}
-                    xaxisOptions={{
-                        title: { text: "시간", style: { fontSize: "12px", color: "#6B7280" } },
-                    }}
-                    yaxisOptions={{
-                        title: { text: "Fsyncs/sec", style: { fontSize: "12px", color: "#6B7280" } },
-                        labels: { formatter: (val: number) => `${val}/s` },
-                    }}
-                    tooltipFormatter={(value: number) => `${value}/s`}
-                    customOptions={{
-                        annotations: {
-                            yaxis: [
-                                {
-                                    y: 50,
-                                    borderColor: "#FBBF24",
-                                    strokeDashArray: 4,
-                                    opacity: 0.6,
-                                    label: {
+            {/*  두번째 차트 행  */}
+            <ChartGridLayout>
+                <WidgetCard title="버퍼 플러시 발생 추세 (Last 24 Hours)" span={6}>
+                    <Chart
+                        type="line"
+                        series={[{ name: "Fsyncs/sec", data: data.fsyncRate.data }]}
+                        categories={data.fsyncRate.categories}
+                        height={250}
+                        colors={["#8E79FF"]}
+                        showGrid={true}
+                        showLegend={false}
+                        xaxisOptions={{
+                            title: { text: "시간", style: { fontSize: "12px", color: "#6B7280" } },
+                        }}
+                        yaxisOptions={{
+                            title: { text: "Fsyncs/sec", style: { fontSize: "12px", color: "#6B7280" } },
+                            labels: { formatter: (val: number) => `${val}/s` },
+                        }}
+                        tooltipFormatter={(value: number) => `${value}/s`}
+                        customOptions={{
+                            annotations: {
+                                yaxis: [
+                                    {
+                                        y: 50,
                                         borderColor: "#FBBF24",
-                                        style: {
-                                            color: "#fff",
-                                            background: "#FBBF24",
-                                            fontSize: "11px",
-                                            fontWeight: 500,
+                                        strokeDashArray: 4,
+                                        opacity: 0.6,
+                                        label: {
+                                            borderColor: "#FBBF24",
+                                            style: {
+                                                color: "#fff",
+                                                background: "#FBBF24",
+                                                fontSize: "11px",
+                                                fontWeight: 500,
+                                            },
+                                            text: "주의: 50/s",
+                                            position: "right",
                                         },
-                                        text: "주의: 50/s",
-                                        position: "right",
                                     },
-                                },
-                            ],
-                        },
-                    }}
-                />
-            </WidgetCard>
+                                ],
+                            },
+                        }}
+                    />
+                </WidgetCard>
                 <WidgetCard title="Dirty Buffer 추세 (Last 24 Hours)" span={6}>
                     <Chart
                         type="line"
@@ -540,99 +563,99 @@ export default function MemoryPage() {
             </ChartGridLayout>
             {/* 3번째 행 */}
             <ChartGridLayout>
-            <WidgetCard title="Eviction vs Flush 비교 (Last 24 Hours)" span={6}>
-                <Chart
-                    type="line"
-                    series={[
-                        { name: "Evictions/sec", data: data.evictionFlushRatio.evictions },
-                        { name: "Fsyncs/sec", data: data.evictionFlushRatio.fsyncs }
-                    ]}
-                    categories={data.evictionFlushRatio.categories}
-                    height={250}
-                    colors={["#8E79FF", "#F59E0B"]}
-                    showGrid={true}
-                    showLegend={true}
-                    xaxisOptions={{
-                        title: { text: "시간", style: { fontSize: "12px", color: "#6B7280" } },
-                    }}
-                    yaxisOptions={{
-                        title: { text: "Events/sec", style: { fontSize: "12px", color: "#6B7280" } },
-                        labels: { formatter: (val: number) => `${val}/s` },
-                    }}
-                    tooltipFormatter={(value: number) => `${value}/s`}
-                    customOptions={{
-                    }}
-                />
-            </WidgetCard>
-            <WidgetCard title="Top-5 버퍼 점유 객체" span={6}>
-                <Chart
-                    type="bar"
-                    series={[
-                        {
-                            name: "% of Pool",
-                            data: data.topBufferObjects.data,
-                        },
-                    ]}
-                    categories={data.topBufferObjects.labels}
-                    height={250}
-                    colors={["#60A5FA", "#FBBF24"]}
-                    showGrid={true}
-                    showLegend={false}
-                    xaxisOptions={{
-                        title: { text: "객체명", style: { fontSize: "12px", color: "#6B7280" } },
-                        labels: {
-                            style: { fontSize: "11px", colors: "#6B7280" },
-                            rotate: -30,
-                            trim: true,
-                        },
-                    }}
-                    yaxisOptions={{
-                        title: { text: "버퍼 점유율 (%)", style: { fontSize: "12px", color: "#6B7280" } },
-                        labels: { formatter: (val: number) => `${val.toFixed(1)}%` },
-                        min: 0,
-                    }}
-                    tooltipFormatter={(value: number, opts: any) => {
-                        const type = data.topBufferObjects.types[opts.dataPointIndex];
-                        const label = data.topBufferObjects.labels[opts.dataPointIndex];
-                        return `${label}: ${value.toFixed(1)}% (${type === "table" ? "Table" : "Index"})`;
-                    }}
-                    customOptions={{
-                        plotOptions: {
-                            bar: {
-                                distributed: true,
-                                horizontal: false,
-                                borderRadius: 4,
-                                columnWidth: "55%",
-                                dataLabels: { position: "top" },
+                <WidgetCard title="Eviction vs Flush 비교 (Last 24 Hours)" span={6}>
+                    <Chart
+                        type="line"
+                        series={[
+                            { name: "Evictions/sec", data: data.evictionFlushRatio.evictions },
+                            { name: "Fsyncs/sec", data: data.evictionFlushRatio.fsyncs }
+                        ]}
+                        categories={data.evictionFlushRatio.categories}
+                        height={250}
+                        colors={["#8E79FF", "#F59E0B"]}
+                        showGrid={true}
+                        showLegend={true}
+                        xaxisOptions={{
+                            title: { text: "시간", style: { fontSize: "12px", color: "#6B7280" } },
+                        }}
+                        yaxisOptions={{
+                            title: { text: "Events/sec", style: { fontSize: "12px", color: "#6B7280" } },
+                            labels: { formatter: (val: number) => `${val}/s` },
+                        }}
+                        tooltipFormatter={(value: number) => `${value}/s`}
+                        customOptions={{
+                        }}
+                    />
+                </WidgetCard>
+                <WidgetCard title="Top-5 버퍼 점유 객체" span={6}>
+                    <Chart
+                        type="bar"
+                        series={[
+                            {
+                                name: "% of Pool",
+                                data: data.topBufferObjects.data,
                             },
-                        },
-                        dataLabels: {
-                            enabled: true,
-                            formatter: (val: number) => `${val.toFixed(1)}%`,
-                            offsetY: -20,
-                            style: {
-                                fontSize: "11px",
-                                colors: ["#374151"],
-                                fontWeight: 600,
+                        ]}
+                        categories={data.topBufferObjects.labels}
+                        height={250}
+                        colors={["#60A5FA", "#FBBF24"]}
+                        showGrid={true}
+                        showLegend={false}
+                        xaxisOptions={{
+                            title: { text: "객체명", style: { fontSize: "12px", color: "#6B7280" } },
+                            labels: {
+                                style: { fontSize: "11px", colors: "#6B7280" },
+                                rotate: -30,
+                                trim: true,
                             },
-                        },
-                        tooltip: {
-                            y: {
-                                formatter: (val: number, opts: any) => {
-                                    const type = data.topBufferObjects.types[opts.dataPointIndex];
-                                    return `${val.toFixed(1)}% (${type === "table" ? "Table" : "Index"})`;
+                        }}
+                        yaxisOptions={{
+                            title: { text: "버퍼 점유율 (%)", style: { fontSize: "12px", color: "#6B7280" } },
+                            labels: { formatter: (val: number) => `${val.toFixed(1)}%` },
+                            min: 0,
+                        }}
+                        tooltipFormatter={(value: number, opts: any) => {
+                            const type = data.topBufferObjects.types[opts.dataPointIndex];
+                            const label = data.topBufferObjects.labels[opts.dataPointIndex];
+                            return `${label}: ${value.toFixed(1)}% (${type === "table" ? "Table" : "Index"})`;
+                        }}
+                        customOptions={{
+                            plotOptions: {
+                                bar: {
+                                    distributed: true,
+                                    horizontal: false,
+                                    borderRadius: 4,
+                                    columnWidth: "55%",
+                                    dataLabels: { position: "top" },
                                 },
                             },
-                        },
-                        xaxis: {
-                            labels: {
-                                rotate: -30,
-                                style: { fontSize: "11px" },
+                            dataLabels: {
+                                enabled: true,
+                                formatter: (val: number) => `${val.toFixed(1)}%`,
+                                offsetY: -20,
+                                style: {
+                                    fontSize: "11px",
+                                    colors: ["#374151"],
+                                    fontWeight: 600,
+                                },
                             },
-                        },
-                    }}
-                />
-            </WidgetCard>
+                            tooltip: {
+                                y: {
+                                    formatter: (val: number, opts: any) => {
+                                        const type = data.topBufferObjects.types[opts.dataPointIndex];
+                                        return `${val.toFixed(1)}% (${type === "table" ? "Table" : "Index"})`;
+                                    },
+                                },
+                            },
+                            xaxis: {
+                                labels: {
+                                    rotate: -30,
+                                    style: { fontSize: "11px" },
+                                },
+                            },
+                        }}
+                    />
+                </WidgetCard>
             </ChartGridLayout>
         </div>
     );
