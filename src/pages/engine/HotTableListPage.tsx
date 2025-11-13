@@ -13,6 +13,7 @@ import Pagination from "../../components/util/Pagination";
 import CsvButton from "../../components/util/CsvButton";
 import apiClient from "../../api/apiClient";
 import "/src/styles/engine/hottablelist.css";
+import { useInstanceContext } from "../../context/InstanceContext";
 
 // 데이터 타입 정의
 interface HotTableData {
@@ -43,6 +44,7 @@ interface HotTableListResponse {
 }
 
 export default function HotTableListPage() {
+    const { selectedInstance, selectedDatabase } = useInstanceContext();
     const [data, setData] = useState<HotTableData[]>([]);
     const [loading, setLoading] = useState<boolean>(true);
     const [error, setError] = useState<string | null>(null);
@@ -62,6 +64,20 @@ export default function HotTableListPage() {
     }, [data, showHighBloatOnly]);
 
     const fetchData = async () => {
+        // 인스턴스가 선택되지 않은 경우
+        if (!selectedInstance) {
+            setData([]);
+            setLoading(false);
+            return;
+        }
+
+        // 데이터베이스가 선택되지 않은 경우
+        if (!selectedDatabase) {
+            setData([]);
+            setLoading(false);
+            return;
+        }
+        
         try {
             setLoading(true);
             setError(null);
@@ -73,7 +89,8 @@ export default function HotTableListPage() {
 
             const response = await apiClient.get<HotTableListResponse>('/engine/hottable/list', {
                 params: {
-                    databaseId: 1,  // 백엔드 필수 파라미터
+                    instanceId: selectedInstance.instanceId,
+                    databaseId: selectedDatabase.databaseId,
                     status: statusParam,
                 },
             });
@@ -81,8 +98,9 @@ export default function HotTableListPage() {
             setData(response.data.data || []);
         } catch (err) {
             console.error("Hot Table 리스트 조회 오류:", err);
-            setError(err instanceof Error ? err.message : "데이터 조회 중 오류가 발생했습니다.");
+            // 에러 발생 시 빈 배열 유지 (UI는 정상 표시)
             setData([]);
+            setError(null); // 에러 상태를 null로 설정하여 테이블은 정상 표시
         } finally {
             setLoading(false);
         }
@@ -91,7 +109,7 @@ export default function HotTableListPage() {
     // 초기 로드 및 필터 변경 시 데이터 조회
     useEffect(() => {
         fetchData();
-    }, [selectedStatus]);
+    }, [selectedStatus, selectedInstance, selectedDatabase]);
 
     // 안전한 숫자 변환 헬퍼 함수
     const safeNumber = (value: any): number => {
@@ -286,20 +304,6 @@ export default function HotTableListPage() {
         return (
             <main className="hottable-list-page">
                 <div style={{ padding: '2rem', textAlign: 'center' }}>로딩 중...</div>
-            </main>
-        );
-    }
-
-    // 에러 상태
-    if (error) {
-        return (
-            <main className="hottable-list-page">
-                <div style={{ padding: '2rem', textAlign: 'center', color: '#EF4444' }}>
-                    <p>오류: {error}</p>
-                    <button onClick={fetchData} style={{ marginTop: '1rem', padding: '0.5rem 1rem' }}>
-                        다시 시도
-                    </button>
-                </div>
             </main>
         );
     }

@@ -13,6 +13,7 @@ import Pagination from "../../components/util/Pagination";
 import CsvButton from "../../components/util/CsvButton";
 import "/src/styles/engine/hotindexlist.css";
 import apiClient from "../../api/apiClient";
+import { useInstanceContext } from "../../context/InstanceContext";
 
 // 데이터 타입 정의
 interface HotIndexData {
@@ -38,6 +39,7 @@ interface HotIndexListResponse {
 }
 
 export default function HotIndexListPage() {
+    const { selectedInstance, selectedDatabase } = useInstanceContext();
     const [data, setData] = useState<HotIndexData[]>([]);
     const [loading, setLoading] = useState<boolean>(true);
     const [error, setError] = useState<string | null>(null);
@@ -54,6 +56,20 @@ export default function HotIndexListPage() {
 
     // API 데이터 조회
     const fetchData = async () => {
+        // 인스턴스가 선택되지 않은 경우
+        if (!selectedInstance) {
+            setData([]);
+            setLoading(false);
+            return;
+        }
+
+        // 데이터베이스가 선택되지 않은 경우
+        if (!selectedDatabase) {
+            setData([]);
+            setLoading(false);
+            return;
+        }
+        
         try {
             setLoading(true);
             setError(null);
@@ -66,6 +82,8 @@ export default function HotIndexListPage() {
             // apiClient 사용하여 API 호출
             const response = await apiClient.get<HotIndexListResponse>('/engine/hotindex/list', {
                 params: {
+                    instanceId: selectedInstance.instanceId,
+                    databaseId: selectedDatabase.databaseId,
                     timeRange: selectedTimeRange,
                     status: statusParam,
                 },
@@ -74,8 +92,9 @@ export default function HotIndexListPage() {
             setData(response.data.data || []);
         } catch (err) {
             console.error("HotIndex 리스트 조회 오류:", err);
-            setError(err instanceof Error ? err.message : "데이터 조회 중 오류가 발생했습니다.");
+            // 에러 발생 시 빈 배열 유지 (UI는 정상 표시)
             setData([]);
+            setError(null); // 에러 상태를 null로 설정하여 테이블은 정상 표시
         } finally {
             setLoading(false);
         }
@@ -84,7 +103,7 @@ export default function HotIndexListPage() {
     // 초기 로드 및 필터 변경 시 데이터 조회
     useEffect(() => {
         fetchData();
-    }, [selectedTimeRange, selectedStatus]);
+    }, [selectedTimeRange, selectedStatus, selectedInstance, selectedDatabase]);
 
     // 필터링된 데이터 (이미 API에서 필터링됨)
     const filteredData = useMemo(() => data, [data]);
@@ -289,10 +308,6 @@ export default function HotIndexListPage() {
 
     if (loading) {
         return <div className="hotindex-list-page">로딩 중...</div>;
-    }
-
-    if (error) {
-        return <div className="hotindex-list-page">오류: {error}</div>;
     }
 
     return (

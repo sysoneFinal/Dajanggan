@@ -5,6 +5,7 @@ import "../../styles/engine/hotindex.css";
 import WidgetCard from "../../components/util/WidgetCard";
 import ChartGridLayout from "../../components/layout/ChartGridLayout";
 import apiClient from "../../api/apiClient";
+import { useInstanceContext } from "../../context/InstanceContext";
 
 /** Hot Index API 응답 타입 - 백엔드 응답 구조에 맞게 수정 */
 interface HotIndexData {
@@ -60,11 +61,21 @@ interface HotIndexData {
     };
 }
 
-/** API 요청 - apiClient 사용 */
-async function fetchHotIndexData() {
-    const response = await apiClient.get<HotIndexData>("/engine/hotindex");
-    console.log("HotIndex API Response:", response.data); // 디버깅용 로그
-    return response.data;
+/** API 요청 - instanceId와 databaseId를 쿼리 파라미터로 전달 */
+async function fetchHotIndexData(instanceId: number, databaseId?: number) {
+    try {
+        const params: any = { instanceId };
+        if (databaseId) {
+            params.databaseId = databaseId;
+        }
+        const response = await apiClient.get<HotIndexData>("/engine/hotindex", { params });
+        console.log("HotIndex API Response:", response.data); // 디버깅용 로그
+        return response.data;
+    } catch (error) {
+        console.error("HotIndex API Error:", error);
+        // 에러가 발생해도 빈 데이터 반환
+        return null;
+    }
 }
 
 interface SummaryCardWithLinkProps {
@@ -165,11 +176,50 @@ function getWriteExceedsAnnotations(
 }
 
 export default function HotIndexPage() {
+    const { selectedInstance, selectedDatabase } = useInstanceContext();
+    
     const { data, isLoading, isError, error } = useQuery({
-        queryKey: ["hotindexDashboard"],
-        queryFn: fetchHotIndexData,
-        retry: 1,
+        queryKey: ["hotindexDashboard", selectedInstance?.instanceId, selectedDatabase?.databaseId],
+        queryFn: () => fetchHotIndexData(selectedInstance!.instanceId, selectedDatabase?.databaseId),
+        retry: false, // 재시도 비활성화
+        enabled: !!selectedInstance && !!selectedDatabase, // 인스턴스와 데이터베이스가 모두 선택되었을 때만 실행
     });
+
+    // 인스턴스가 선택되지 않은 경우
+    if (!selectedInstance) {
+        return (
+            <div className="hotindex-page">
+                <div style={{
+                    display: 'flex',
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    height: '400px',
+                    fontSize: '18px',
+                    color: '#6B7280'
+                }}>
+                    인스턴스를 선택해주세요.
+                </div>
+            </div>
+        );
+    }
+
+    // 데이터베이스가 선택되지 않은 경우
+    if (!selectedDatabase) {
+        return (
+            <div className="hotindex-page">
+                <div style={{
+                    display: 'flex',
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    height: '400px',
+                    fontSize: '18px',
+                    color: '#6B7280'
+                }}>
+                    데이터베이스를 선택해주세요.
+                </div>
+            </div>
+        );
+    }
 
     // 로딩 중
     if (isLoading) {
@@ -225,61 +275,97 @@ export default function HotIndexPage() {
         );
     }
 
-    // 데이터가 없는 경우
-    if (!data) {
-        return (
-            <div className="hotindex-page">
-                <div style={{
-                    display: 'flex',
-                    justifyContent: 'center',
-                    alignItems: 'center',
-                    height: '400px',
-                    fontSize: '18px',
-                    color: '#6B7280'
-                }}>
-                    데이터가 없습니다.
-                </div>
-            </div>
-        );
-    }
-
-    const dashboard = data;
+    // 데이터가 없을 때 기본값 제공
+    const dashboard = data || {
+        usageDistribution: {
+            categories: [],
+            data: []
+        },
+        topUsage: {
+            categories: [],
+            data: [],
+            total: 0
+        },
+        inefficientIndexes: {
+            categories: [],
+            data: [],
+            total: 0
+        },
+        cacheHitRatio: {
+            categories: [],
+            data: [],
+            average: 0,
+            min: 0,
+            max: 0
+        },
+        efficiency: {
+            categories: [],
+            indexes: []
+        },
+        accessTrend: {
+            categories: [],
+            reads: [],
+            writes: [],
+            totalReads: 0,
+            totalWrites: 0
+        },
+        scanSpeed: {
+            categories: [],
+            data: [],
+            average: 0,
+            max: 0,
+            min: 0
+        },
+        recentStats: {
+            cacheHitRatio: 0,
+            avgScanSpeed: 0,
+            totalReads: 0,
+            totalWrites: 0,
+            inefficientCount: 0
+        }
+    };
 
     // 요약 카드 데이터 계산 (recentStats 활용)
-    const summaryCards = [
+    const summaryCards: Array<{
+        label: string;
+        value: string | number;
+        desc?: string;
+        status?: "info" | "warning" | "critical";
+        link?: string;
+    }> = [
         {
             label: "평균 캐시 히트율",
             value: dashboard.recentStats ? `${dashboard.recentStats.cacheHitRatio.toFixed(1)}%` : "N/A",
             desc: "최근 데이터 기준",
             status: (dashboard.recentStats?.cacheHitRatio || 0) >= 95 ? "info" :
-                (dashboard.recentStats?.cacheHitRatio || 0) >= 90 ? "warning" : "critical" as const,
+                (dashboard.recentStats?.cacheHitRatio || 0) >= 90 ? "warning" : "critical",
         },
         {
             label: "평균 스캔 속도",
             value: dashboard.recentStats ? `${dashboard.recentStats.avgScanSpeed.toFixed(2)}ms` : "N/A",
             desc: "최근 데이터 기준",
             status: (dashboard.recentStats?.avgScanSpeed || 0) <= 5 ? "info" :
-                (dashboard.recentStats?.avgScanSpeed || 0) <= 10 ? "warning" : "critical" as const,
+                (dashboard.recentStats?.avgScanSpeed || 0) <= 10 ? "warning" : "critical",
         },
         {
             label: "비효율 인덱스",
             value: dashboard.recentStats ? dashboard.recentStats.inefficientCount : "N/A",
             desc: "최근 데이터 기준",
             status: (dashboard.recentStats?.inefficientCount || 0) === 0 ? "info" :
-                (dashboard.recentStats?.inefficientCount || 0) <= 3 ? "warning" : "critical" as const,
+                (dashboard.recentStats?.inefficientCount || 0) <= 3 ? "warning" : "critical",
             link: "/database/hotindex/detail",
         },
         {
             label: "총 읽기",
             value: dashboard.recentStats ? dashboard.recentStats.totalReads.toLocaleString() : "N/A",
             desc: "최근 데이터 기준",
-            status: "info" as const,
+            status: "info",
         },
         {
             label: "총 쓰기",
             value: dashboard.recentStats ? dashboard.recentStats.totalWrites.toLocaleString() : "N/A",
             desc: "최근 데이터 기준",
-            status: "info" as const,
+            status: "info",
         },
     ];
 
@@ -320,7 +406,7 @@ export default function HotIndexPage() {
                                 horizontalAlign: "center",
                                 offsetY: 40,
                                 offsetX: 30,
-                                fontSize: 15,
+                                fontSize: "15px",
                             },
                             dataLabels: {
                                 enabled: true,
@@ -372,7 +458,7 @@ export default function HotIndexPage() {
                             tooltip: {
                                 shared: true,
                                 intersect: false,
-                                custom: ({ series, seriesIndex, dataPointIndex, w }: any) => {
+                                custom: ({ series, dataPointIndex, w }: any) => {
                                     const reads = series[0][dataPointIndex];
                                     const writes = series[1][dataPointIndex];
                                     const time = w.globals.labels[dataPointIndex];

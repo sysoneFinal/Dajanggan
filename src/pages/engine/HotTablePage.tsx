@@ -6,6 +6,7 @@ import "../../styles/engine/hottable.css";
 import WidgetCard from "../../components/util/WidgetCard";
 import ChartGridLayout from "../../components/layout/ChartGridLayout";
 import apiClient from "../../api/apiClient";
+import { useInstanceContext } from "../../context/InstanceContext";
 
 /** 백엔드 API 응답 타입 - 실제 응답 구조에 맞춤 */
 interface HotTableData {
@@ -70,18 +71,24 @@ interface HotTableData {
     };
 }
 
-/** API 요청 */
-async function fetchHotTableData() {
-    const response = await apiClient.get<HotTableData>("/engine/hottable", {
-        params: {
-            databaseId: 1
+/** API 요청 - instanceId와 databaseId를 쿼리 파라미터로 전달 */
+async function fetchHotTableData(instanceId: number, databaseId?: number) {
+    try {
+        const params: any = { instanceId };
+        if (databaseId) {
+            params.databaseId = databaseId;
         }
-    });
-    return response.data;
+        const response = await apiClient.get<HotTableData>("/engine/hottable", { params });
+        return response.data;
+    } catch (error) {
+        console.error("HotTable API Error:", error);
+        // 에러가 발생해도 빈 데이터 반환
+        return null;
+    }
 }
 
-const getCacheGaugeStatus = (value: number): "normal" | "warning" | "critical" => {
-    if (value >= 95) return "normal";
+const getCacheGaugeStatus = (value: number): "info" | "warning" | "critical" => {
+    if (value >= 95) return "info";
     if (value >= 85) return "warning";
     return "critical";
 };
@@ -154,15 +161,54 @@ function SummaryCardWithLink({ link, status = "info", ...props }: SummaryCardWit
 
 /** 메인 컴포넌트 */
 export default function HotTablePage() {
+    const { selectedInstance, selectedDatabase } = useInstanceContext();
+    
     const { data, isLoading, isError, error } = useQuery({
-        queryKey: ["hottableDashboard"],
-        queryFn: fetchHotTableData,
-        retry: 1,
+        queryKey: ["hottableDashboard", selectedInstance?.instanceId, selectedDatabase?.databaseId],
+        queryFn: () => fetchHotTableData(selectedInstance!.instanceId, selectedDatabase?.databaseId),
+        retry: false, // 재시도 비활성화
+        enabled: !!selectedInstance && !!selectedDatabase, // 인스턴스와 데이터베이스가 모두 선택되었을 때만 실행
     });
+
+    // 인스턴스가 선택되지 않은 경우
+    if (!selectedInstance) {
+        return (
+            <div className="hottable-page">
+                <div style={{
+                    display: 'flex',
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    height: '400px',
+                    fontSize: '18px',
+                    color: '#6B7280'
+                }}>
+                    인스턴스를 선택해주세요.
+                </div>
+            </div>
+        );
+    }
+
+    // 데이터베이스가 선택되지 않은 경우
+    if (!selectedDatabase) {
+        return (
+            <div className="hottable-page">
+                <div style={{
+                    display: 'flex',
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    height: '400px',
+                    fontSize: '18px',
+                    color: '#6B7280'
+                }}>
+                    데이터베이스를 선택해주세요.
+                </div>
+            </div>
+        );
+    }
 
     if (isLoading) {
         return (
-            <div className="bgwriter-page">
+            <div className="hottable-page">
                 <div style={{
                     display: 'flex',
                     justifyContent: 'center',
@@ -179,7 +225,7 @@ export default function HotTablePage() {
 
     if (isError) {
         return (
-            <div className="bgwriter-page">
+            <div className="hottable-page">
                 <div style={{
                     display: 'flex',
                     flexDirection: 'column',
@@ -212,39 +258,71 @@ export default function HotTablePage() {
         );
     }
 
-    if (!data) {
-        return (
-            <div className="bgwriter-page">
-                <div style={{
-                    display: 'flex',
-                    justifyContent: 'center',
-                    alignItems: 'center',
-                    height: '400px',
-                    fontSize: '18px',
-                    color: '#6B7280'
-                }}>
-                    데이터가 없습니다.
-                </div>
-            </div>
-        );
-    }
-
-    const dashboard = data;
+    // 데이터가 없을 때 기본값 제공
+    const dashboard = data || {
+        topTables: {
+            topBySize: [],
+            topByScan: [],
+            topByBloat: []
+        },
+        tableActivity: {
+            categories: [],
+            seqScans: [],
+            idxScans: [],
+            inserts: [],
+            updates: [],
+            deletes: []
+        },
+        cacheHitRatio: {
+            categories: [],
+            data: [],
+            average: 0,
+            max: 0,
+            min: 0
+        },
+        bloatStatus: {
+            categories: [],
+            data: [],
+            normalCount: 0,
+            warningCount: 0,
+            criticalCount: 0
+        },
+        vacuumStatus: {
+            categories: [],
+            delaySeconds: [],
+            avgDelaySeconds: 0,
+            maxDelaySeconds: 0
+        },
+        recentStats: {
+            totalTables: 0,
+            activeTables: 0,
+            avgCacheHitRatio: 0,
+            totalSeqScans: 0,
+            totalIdxScans: 0,
+            highBloatTables: 0
+        }
+    };
     const cacheGaugeStatus = getCacheGaugeStatus(dashboard.cacheHitRatio.average);
 
     // Summary Cards 데이터
-    const summaryCards = [
+    const summaryCards: Array<{
+        label: string;
+        value: string | number;
+        desc?: string;
+        status?: "info" | "warning" | "critical";
+        link?: string;
+    }> = [
         {
             label: "전체 테이블",
             value: dashboard.recentStats.totalTables,
             desc: "Total Tables",
-            status: "info" as const,
+            status: "info",
         },
         {
             label: "활성 테이블",
             value: dashboard.recentStats.activeTables,
             desc: "Active Tables",
-            status: "info" as const,
+            status: "info",
         },
         {
             label: "평균 캐시 히트율",
@@ -256,13 +334,13 @@ export default function HotTablePage() {
             label: "총 Sequential Scan",
             value: dashboard.recentStats.totalSeqScans.toLocaleString(),
             desc: "Total Seq Scans",
-            status: "info" as const,
+            status: "info",
         },
         {
             label: "총 Index Scan",
             value: dashboard.recentStats.totalIdxScans.toLocaleString(),
             desc: "Total Index Scans",
-            status: "info" as const,
+            status: "info",
         },
         {
             label: "High Bloat 테이블",

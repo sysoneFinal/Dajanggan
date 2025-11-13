@@ -1,4 +1,3 @@
-import { useState } from "react";
 import Chart from "../../components/chart/ChartComponent";
 import GaugeChart from "../../components/chart/GaugeChart";
 import SummaryCard from "../../components/util/SummaryCard";
@@ -7,6 +6,7 @@ import ChartGridLayout from "../../components/layout/ChartGridLayout";
 import "../../styles/system/disk.css";
 import apiClient from "../../api/apiClient";
 import {useQuery} from "@tanstack/react-query";
+import { useInstanceContext } from "../../context/InstanceContext";
 
 // API 응답 전체 구조
 interface DiskIOData {
@@ -59,27 +59,47 @@ interface DiskIOData {
 }
 
 const getDiskUtilizationColor = (value: number): string => {
-    // 0~70%: 정상, 70~85%: 주의, 85% 이상: 경고
-    if (value < 70) return "#8E79FF";   // normal
-    if (value < 85) return "#FFD66B";   // warning
-    return "#FEA29B";                   // critical
+    if (value < 70) return "#8E79FF";
+    if (value < 85) return "#FFD66B";
+    return "#FEA29B";
 };
 
-/** API 요청 - apiClient 사용 */
-async function fetchDiskIOData() {
-    const response = await apiClient.get<DiskIOData>("/system/diskio");
+/** API 요청 - apiClient 사용 - instanceId 추가 */
+async function fetchDiskIOData(instanceId: number) {
+    const response = await apiClient.get<DiskIOData>("/system/diskio", {
+        params: { instanceId }
+    });
     return response.data;
 }
 
 // 메인 컴포넌트
 export default function DiskPage() {
+    const { selectedInstance } = useInstanceContext();
+
     const { data, isLoading, isError, error } = useQuery({
-        queryKey: ["diskioDashboard"],
-        queryFn: fetchDiskIOData,
+        queryKey: ["diskioDashboard", selectedInstance?.instanceId],
+        queryFn: () => fetchDiskIOData(selectedInstance!.instanceId),
         retry: 1,
-        refetchInterval: 60000, // 1분마다 자동 갱신
+        enabled: !!selectedInstance,
     });
 
+    // 인스턴스가 선택되지 않은 경우
+    if (!selectedInstance) {
+        return (
+            <div className="disk-page">
+                <div style={{
+                    display: 'flex',
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    height: '400px',
+                    fontSize: '18px',
+                    color: '#6B7280'
+                }}>
+                    인스턴스를 선택해주세요.
+                </div>
+            </div>
+        );
+    }
 
     // 로딩 중
     if (isLoading) {
@@ -154,7 +174,6 @@ export default function DiskPage() {
     }
 
     const dashboard = data;
-
     const DiskUtilizationColor = getDiskUtilizationColor(dashboard.diskUsage.value);
 
     const recentStats = dashboard.recentStats || {
@@ -225,15 +244,15 @@ export default function DiskPage() {
                         width: '100%',
                         marginTop: '18px',
                     }}>
-                    <GaugeChart
-                        value={dashboard.diskUsage.value}
-                        color={DiskUtilizationColor}
-                        type="semi-circle"
-                        radius={100}
-                        strokeWidth={20}
-                        height={200}
-                        flattenRatio={0.89}
-                    />
+                        <GaugeChart
+                            value={dashboard.diskUsage.value}
+                            color={DiskUtilizationColor}
+                            type="semi-circle"
+                            radius={100}
+                            strokeWidth={20}
+                            height={200}
+                            flattenRatio={0.89}
+                        />
                         <div className="cpu-gauge-details">
                             <div className="cpu-detail-item">
                                 <span className="cpu-detail-label">IOPS Read</span>
@@ -260,7 +279,6 @@ export default function DiskPage() {
                         colors={["#8E79FF", "#60A5FA", "#FBBF24", "#34D399", "#F87171"]}
                         showLegend={true}
                         showGrid={true}
-                        // isStacked={true}
                         xaxisOptions={{
                             title: { text: "시간", style: { fontSize: "12px", color: "#6B7280" } },
                         }}
@@ -364,7 +382,7 @@ export default function DiskPage() {
                 </WidgetCard>
             </ChartGridLayout>
 
-            {/* 두 번째 행: I/O Latency + Throughput + WAL Bytes + Queue Depth */}
+            {/* 두 번째 행 */}
             <ChartGridLayout>
                 <WidgetCard title="Throughput (IOPS / 처리량 (MB/s))" span={6}>
                     <Chart
@@ -503,18 +521,15 @@ export default function DiskPage() {
                                 min: 0,
                                 max: (() => {
                                     const maxValue = Math.max(...dashboard.walBytes.walBytes);
-                                    // 최대값의 120%로 설정하여 여유 공간 확보
                                     return Math.ceil(maxValue * 1.2);
                                 })(),
                             },
                         }}
                     />
                 </WidgetCard>
-
-
             </ChartGridLayout>
 
-            {/* 세 번째 행: 1개 차트 */}
+            {/* 세 번째 행 */}
             <ChartGridLayout>
                 <WidgetCard title="Disk Queue Depth 추이" span={6}>
                     <Chart

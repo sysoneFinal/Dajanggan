@@ -6,6 +6,7 @@ import ChartGridLayout from "../../components/layout/ChartGridLayout";
 import "../../styles/system/cpu.css";
 import apiClient from "../../api/apiClient";
 import {useQuery} from "@tanstack/react-query";
+import { useInstanceContext } from "../../context/InstanceContext";
 
 // API 응답 전체 구조
 interface CPUData {
@@ -67,9 +68,9 @@ interface CPUData {
 
 // Gauge 색상 결정
 const getGaugeColor = (value: number): string => {
-    if (value < 70) return "#8E79FF"; // 보라색 (정상)
-    if (value < 90) return "#FFD66B"; // 주황색 (주의)
-    return "#FEA29B"; // 빨간색 (위험)
+    if (value < 70) return "#8E79FF";
+    if (value < 90) return "#FFD66B";
+    return "#FEA29B";
 };
 
 interface SummaryCardWithLinkProps {
@@ -118,7 +119,6 @@ function SummaryCardWithLink({ link, status = "info", ...props }: SummaryCardWit
                         e.currentTarget.style.transform = "scale(1)";
                     }}
                 >
-                    {/* 외부 링크 아이콘 SVG */}
                     <svg
                         width="16"
                         height="16"
@@ -138,19 +138,43 @@ function SummaryCardWithLink({ link, status = "info", ...props }: SummaryCardWit
         </div>
     );
 }
-/** API 요청 - apiClient 사용 */
-async function fetchCPUData() {
-    const response = await apiClient.get<CPUData>("/system/cpu");
+
+/** API 요청 - instanceId를 쿼리 파라미터로 전달 */
+async function fetchCPUData(instanceId: number) {
+    const response = await apiClient.get<CPUData>("/system/cpu", {
+        params: { instanceId }
+    });
     return response.data;
 }
 
 // 메인 페이지
 export default function CPUPage() {
+    const { selectedInstance } = useInstanceContext();
+
     const { data, isLoading, isError, error } = useQuery({
-        queryKey: ["cpuDashboard"],
-        queryFn: fetchCPUData,
+        queryKey: ["cpuDashboard", selectedInstance?.instanceId],
+        queryFn: () => fetchCPUData(selectedInstance!.instanceId),
         retry: 1,
+        enabled: !!selectedInstance,
     });
+
+    // 인스턴스가 선택되지 않은 경우
+    if (!selectedInstance) {
+        return (
+            <div className="cpu-page">
+                <div style={{
+                    display: 'flex',
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    height: '400px',
+                    fontSize: '18px',
+                    color: '#6B7280'
+                }}>
+                    인스턴스를 선택해주세요.
+                </div>
+            </div>
+        );
+    }
 
     // 로딩 중
     if (isLoading) {
@@ -224,48 +248,48 @@ export default function CPUPage() {
         );
     }
 
-
     const dashboard = data;
-
     const gaugeColor = getGaugeColor(dashboard.cpuUsage.value);
-
-    // 최근 5분 평균 통계
     const recentStats = dashboard.recentStats;
 
-    // 요약 카드 데이터 (개선된 버전)
-    const summaryCards = [
+    const summaryCards: Array<{
+        label: string;
+        value: string | number;
+        desc: string;
+        status: "info" | "warning" | "critical";
+        link?: string;
+    }> = [
         {
             label: "Load Average (1m/5m/15m)",
             value: `${recentStats.loadAverage.one} / ${recentStats.loadAverage.five} / ${recentStats.loadAverage.fifteen}`,
-            // diff: recentStats.loadAverage.one - recentStats.loadAverage.five,
             desc: "시스템 부하 평균",
-            status: (recentStats.loadAverage.one > 4 ? "warning" : "info") as const,
+            status: recentStats.loadAverage.one > 4 ? "warning" : "info",
             link: "http://localhost:5173/instance/cpu/usage",
         },
         {
             label: "I/O Wait",
             value: `${recentStats.ioWait}%`,
             desc: "디스크 대기 시간",
-            status: (recentStats.ioWait > 20 ? "warning" : "info") as const,
+            status: recentStats.ioWait > 20 ? "warning" : "info",
             link: "http://localhost:5173/instance/cpu/usage",
         },
         {
             label: "Active / Idle Connections",
             value: `${recentStats.connections.active} / ${recentStats.connections.idle}`,
             desc: "활성 / 유휴 연결",
-            status: (recentStats.connections.active > 80 ? "warning" : "info") as const,
+            status: recentStats.connections.active > 80 ? "warning" : "info",
         },
         {
             label: "PostgreSQL Backend CPU",
             value: `${recentStats.postgresqlBackendCpu}%`,
             desc: "PG 프로세스 CPU 사용률",
-            status: (recentStats.postgresqlBackendCpu > 80 ? "warning" : "info") as const,
+            status: recentStats.postgresqlBackendCpu > 80 ? "warning" : "info",
         },
         {
             label: "Idle CPU",
             value: `${recentStats.idleCpu}%`,
             desc: "여유 리소스",
-            status: (recentStats.idleCpu < 20 ? "critical" : "info") as const,
+            status: recentStats.idleCpu < 20 ? "critical" : "info",
         },
     ];
 
@@ -280,7 +304,6 @@ export default function CPUPage() {
                         value={card.value}
                         desc={card.desc}
                         status={card.status}
-                        // link={card.link}
                     />
                 ))}
             </div>
@@ -320,8 +343,6 @@ export default function CPUPage() {
                     </div>
                 </WidgetCard>
 
-
-
                 <WidgetCard title="CPU 부하 유형별 분석" span={10}>
                     <Chart
                         type="line"
@@ -350,7 +371,7 @@ export default function CPUPage() {
                 </WidgetCard>
             </ChartGridLayout>
 
-            {/* 두 번째 행: 3개 차트 */}
+            {/* 나머지 차트들... */}
             <ChartGridLayout>
                 <WidgetCard title="CPU 사용률 추이 (Last 24 Hours)" span={6}>
                     <Chart
@@ -480,126 +501,125 @@ export default function CPUPage() {
                         tooltipFormatter={(value: number) => `${value}`}
                     />
                 </WidgetCard>
-
             </ChartGridLayout>
+
             <ChartGridLayout>
-            <WidgetCard title="Backend 프로세스 타입별 분포" span={6}>
-                <Chart
-                    type="bar"
-                    series={[
-                        {
-                            name: "Active",
-                            data: dashboard.backendProcessStats.activeCount,
-                        },
-                        {
-                            name: "Idle",
-                            data: dashboard.backendProcessStats.idleCount,
-                        },
-                    ]}
-                    categories={dashboard.backendProcessStats.types}
-                    height={250}
-                    colors={["#8E79FF", "#D1D5DB"]}
-                    showGrid={true}
-                    showLegend={true}
-                    isStacked={true}
-                    xaxisOptions={{
-                        title: { text: "프로세스 수", style: { fontSize: "12px", color: "#6B7280" } },
-                    }}
-                    yaxisOptions={{
-                        title: { text: "Backend Type", style: { fontSize: "12px", color: "#6B7280" } },
-                    }}
-                    customOptions={{
-                        chart: {
-                            stacked: true,
-                        },
-                        plotOptions: {
-                            bar: {
-                                horizontal: true,
-                                barHeight: "70%",
+                <WidgetCard title="Backend 프로세스 타입별 분포" span={6}>
+                    <Chart
+                        type="bar"
+                        series={[
+                            {
+                                name: "Active",
+                                data: dashboard.backendProcessStats.activeCount,
                             },
-                        },
-                        dataLabels: {
-                            enabled: true,
-                            formatter: function(val: number, opts: any) {
-                                const seriesIndex = opts.seriesIndex;
-                                const dataPointIndex = opts.dataPointIndex;
-                                const total = data.backendProcessStats.totalCount[dataPointIndex];
-                                const value = val as number;
+                            {
+                                name: "Idle",
+                                data: dashboard.backendProcessStats.idleCount,
+                            },
+                        ]}
+                        categories={dashboard.backendProcessStats.types}
+                        height={250}
+                        colors={["#8E79FF", "#D1D5DB"]}
+                        showGrid={true}
+                        showLegend={true}
+                        isStacked={true}
+                        xaxisOptions={{
+                            title: { text: "프로세스 수", style: { fontSize: "12px", color: "#6B7280" } },
+                        }}
+                        yaxisOptions={{
+                            title: { text: "Backend Type", style: { fontSize: "12px", color: "#6B7280" } },
+                        }}
+                        customOptions={{
+                            chart: {
+                                stacked: true,
+                            },
+                            plotOptions: {
+                                bar: {
+                                    horizontal: true,
+                                    barHeight: "70%",
+                                },
+                            },
+                            dataLabels: {
+                                enabled: true,
+                                formatter: function(val: number, opts: any) {
+                                    const seriesIndex = opts.seriesIndex;
+                                    const dataPointIndex = opts.dataPointIndex;
+                                    const total = data.backendProcessStats.totalCount[dataPointIndex];
+                                    const value = val as number;
 
-                                // Active는 개수와 비율, Idle은 개수만
-                                if (seriesIndex === 0) {
-                                    const percentage = ((value / total) * 100).toFixed(0);
-                                    return `${value} (${percentage}%)`;
+                                    if (seriesIndex === 0) {
+                                        const percentage = ((value / total) * 100).toFixed(0);
+                                        return `${value} (${percentage}%)`;
+                                    }
+                                    return value > 0 ? `${value}` : '';
+                                },
+                                style: {
+                                    fontSize: "11px",
+                                    colors: ["#fff"],
+                                    fontWeight: 600,
+                                },
+                            },
+                            legend: {
+                                position: "top",
+                                horizontalAlign: "right",
+                                fontSize: "12px",
+                                fontFamily: 'var(--font-family, "Pretendard", sans-serif)',
+                                markers: {
+                                    width: 12,
+                                    height: 12,
+                                    radius: 3,
+                                },
+                            },
+                        }}
+                        tooltipFormatter={(value: number, opts: any) => {
+                            const dataPointIndex = opts.dataPointIndex;
+                            const total = data.backendProcessStats.totalCount[dataPointIndex];
+                            const percentage = ((value / total) * 100).toFixed(1);
+                            return `${value}개 (${percentage}%)`;
+                        }}
+                    />
+                </WidgetCard>
+
+                <WidgetCard title="대기 유형별 비중 변화 (100%)" span={6}>
+                    <Chart
+                        type="column"
+                        series={[
+                            { name: "CPU", data: dashboard.waitEventDistribution.cpu },
+                            { name: "Client", data: dashboard.waitEventDistribution.client },
+                            { name: "I/O", data: dashboard.waitEventDistribution.io },
+                            { name: "Lock", data: dashboard.waitEventDistribution.lock },
+                            { name: "Other", data: dashboard.waitEventDistribution.other },
+                        ]}
+                        categories={data.waitEventDistribution.categories}
+                        height={250}
+                        colors={["#8E79FF", "#51DAA8", "#77B2FB", "#FEA29B", "#6B7280"]}
+                        showGrid={true}
+                        showLegend={true}
+                        isStacked={true}
+                        xaxisOptions={{
+                            title: { text: "시간", style: { fontSize: "12px", color: "#6B7280" } },
+                        }}
+                        yaxisOptions={{
+                            title: { text: "비중 (%)", style: { fontSize: "12px", color: "#6B7280" } },
+                            labels: { formatter: (val: number) => `${val}%` },
+                            min: 0,
+                            max: 100,
+                        }}
+                        customOptions={{
+                            chart: {
+                                stacked: true,
+                                stackType: "100%"
+                            },
+                            plotOptions: {
+                                bar: {
+                                    horizontal: false,
+                                    columnWidth: "70%"
                                 }
-                                return value > 0 ? `${value}` : '';
-                            },
-                            style: {
-                                fontSize: "11px",
-                                colors: ["#fff"],
-                                fontWeight: 600,
-                            },
-                        },
-                        legend: {
-                            position: "top",
-                            horizontalAlign: "right",
-                            fontSize: "12px",
-                            fontFamily: 'var(--font-family, "Pretendard", sans-serif)',
-                            markers: {
-                                width: 12,
-                                height: 12,
-                                radius: 3,
-                            },
-                        },
-                    }}
-                    tooltipFormatter={(value: number, opts: any) => {
-                        const dataPointIndex = opts.dataPointIndex;
-                        const total = data.backendProcessStats.totalCount[dataPointIndex];
-                        const percentage = ((value / total) * 100).toFixed(1);
-                        return `${value}개 (${percentage}%)`;
-                    }}
-                />
-            </WidgetCard>
-
-            <WidgetCard title="대기 유형별 비중 변화 (100%)" span={6}>
-                <Chart
-                    type="column"
-                    series={[
-                        { name: "CPU", data: dashboard.waitEventDistribution.cpu },
-                        { name: "Client", data: dashboard.waitEventDistribution.client },
-                        { name: "I/O", data: dashboard.waitEventDistribution.io },
-                        { name: "Lock", data: dashboard.waitEventDistribution.lock },
-                        { name: "Other", data: dashboard.waitEventDistribution.other },
-                    ]}
-                    categories={data.waitEventDistribution.categories}
-                    height={250}
-                    colors={["#8E79FF", "#51DAA8", "#77B2FB", "#FEA29B", "#6B7280"]}
-                    showGrid={true}
-                    showLegend={true}
-                    isStacked={true}
-                    xaxisOptions={{
-                        title: { text: "시간", style: { fontSize: "12px", color: "#6B7280" } },
-                    }}
-                    yaxisOptions={{
-                        title: { text: "비중 (%)", style: { fontSize: "12px", color: "#6B7280" } },
-                        labels: { formatter: (val: number) => `${val}%` },
-                        min: 0,
-                        max: 100,
-                    }}
-                    customOptions={{
-                        chart: {
-                            stacked: true,
-                            stackType: "100%"
-                        },
-                        plotOptions: {
-                            bar: {
-                                horizontal: false,
-                                columnWidth: "70%"
                             }
-                        }
-                    }}
-                    tooltipFormatter={(value: number) => `${value}%`}
-                />
-            </WidgetCard>
+                        }}
+                        tooltipFormatter={(value: number) => `${value}%`}
+                    />
+                </WidgetCard>
             </ChartGridLayout>
         </div>
     );
