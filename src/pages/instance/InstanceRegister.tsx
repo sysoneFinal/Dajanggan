@@ -143,7 +143,6 @@ export default function NewInstanceModal({
             instanceName: form.instance,
             port: Number(form.port),
             userName: form.userName,
-            sslmode: "require",
             isEnabled: true,
           };
           if (form.password && form.password.trim()) {
