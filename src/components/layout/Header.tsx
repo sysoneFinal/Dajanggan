@@ -8,6 +8,7 @@ import AlertDetailModal, { type AlertDetailData } from "../../pages/alarm/AlarmD
 import type { Instance } from "../../types/instance";
 import type { Database } from "../../types/database";
 
+
 interface HeaderProps {
   breadcrumb: string[];
 }
@@ -24,21 +25,21 @@ const Header = ({ breadcrumb }: HeaderProps) => {
     databases,
     selectedDatabase,
     setSelectedDatabase,
+    refreshInterval,     
+    setRefreshInterval    
   } = useInstanceContext();
 
   /** === Local state === */
-  const [refreshInterval, setRefreshInterval] = useState("5m");
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
   const [selectedAlert, setSelectedAlert] = useState<AlertDetailData | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const [dropdownPos, setDropdownPos] = useState({ top: 0, left: 0, width: 0 });
 
-  /** === handleSelect: 선택 시 context 업데이트 (localStorage는 InstanceContext에서 관리) === */
+  /** === handleSelect: 선택 시 context 업데이트 === */
   const handleSelect = (target: string, value: any) => {
     if (target === "instance") {
       const instance = instances.find(i => i.instanceName === value);
       setSelectedInstance(instance ?? null);
-      // InstanceContext의 useEffect에서 자동으로 database 초기화 처리
     }
 
     if (target === "database") {
@@ -46,7 +47,10 @@ const Header = ({ breadcrumb }: HeaderProps) => {
       setSelectedDatabase(db ?? null);
     }
 
-    if (target === "interval") setRefreshInterval(value);
+    if (target === "interval") {
+      setRefreshInterval(value); // Context의 setter 사용
+    }
+    
     setOpenDropdown(null);
   };
 
@@ -68,7 +72,7 @@ const Header = ({ breadcrumb }: HeaderProps) => {
     target: string,
     disabled?: boolean
   ) => {
-    const safeList = Array.isArray(list) ? list.filter((item) => item != null) : [];
+    const safeList = Array.isArray(list) ? list : [];
 
     const dropdown = (
       <div

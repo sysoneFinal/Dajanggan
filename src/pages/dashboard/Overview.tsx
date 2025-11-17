@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Responsive, WidthProvider, type Layout } from "react-grid-layout";
+import { useQuery } from "@tanstack/react-query";
 import "react-grid-layout/css/styles.css";
 import "react-resizable/css/styles.css";
 import "../../styles/dashboard/Layout.css";
@@ -10,6 +11,7 @@ import defaultThemes from "../../theme/Theme.json";
 import type { DashboardLayout } from "../../types/dashboard";
 import { useDashboard } from "../../context/DashboardContext";
 import { useInstanceContext } from "../../context/InstanceContext";
+import { intervalToMs } from "../../utils/time";
 
 const ResponsiveGridLayout = WidthProvider(Responsive);
 
@@ -22,45 +24,69 @@ const normalizeLayout = (layout: Layout[]) =>
 
 export default function OverviewPage() {
   const { isEditing, setIsEditing, layout, setLayout, themeId, setThemeId } = useDashboard();
-  const { selectedInstance } = useInstanceContext();
+  const { selectedInstance, refreshInterval } = useInstanceContext();
   const [isDragOver, setIsDragOver] = useState(false);
 
-  /** === 대시보드 조회 === */
+  // 새로고침 주기를 밀리초로 변환
+  const refreshMs = intervalToMs(refreshInterval);
+
+  // 콘솔로 새로고침 주기 확인
+  console.log('🔄 새로고침 설정:', {
+    refreshInterval,
+    refreshMs,
+    enabled: !!selectedInstance?.instanceId
+  });
+
+  /** === 대시보드 조회 (React Query로 자동 새로고침) === */
+  const { data: dashboardData, isLoading, error: queryError, dataUpdatedAt } = useQuery({
+    queryKey: ['overview-dashboard', selectedInstance?.instanceId],
+    queryFn: async () => {
+      console.log('📡 API 호출 시작:', new Date().toLocaleTimeString());
+      
+      if (!selectedInstance?.instanceId) return null;
+      
+      const res = await apiClient.get("/overview", {
+        params: { instanceId: selectedInstance.instanceId },
+      });
+      
+      console.log('✅ API 호출 완료:', new Date().toLocaleTimeString(), res.data);
+      return res.data;
+    },
+    refetchInterval: refreshMs, // 헤더에서 선택한 주기로 자동 갱신
+    enabled: !!selectedInstance?.instanceId,
+  });
+
+  // 데이터가 업데이트될 때마다 로그
   useEffect(() => {
-    if (!selectedInstance?.instanceId) return;
+    if (dataUpdatedAt) {
+      console.log('🔁 데이터 갱신됨:', new Date(dataUpdatedAt).toLocaleTimeString());
+    }
+  }, [dataUpdatedAt]);
 
-    const fetchDashboard = async () => {
-      try {
-        const res = await apiClient.get("/overview", {
-          params: { instanceId: selectedInstance.instanceId },
-        });
+  /** === 대시보드 데이터가 로드되면 레이아웃 업데이트 === */
+  useEffect(() => {
+    if (!dashboardData?.widgets) return;
 
-        const dashboard = res.data;
+    console.log('대시보드 데이터 조회 ----->>>', dashboardData);
+    
+    const normalizedLayout = dashboardData.widgets.map((item: any) => ({
+      i: item.id,
+      x: item.layout.x ?? 0,
+      y: item.layout.y ?? 0,
+      w: item.layout.w ?? 8,
+      h: item.layout.h ?? 6,
+      title: item.title,
+      type: item.chartType,
+      metricType: Array.isArray(item.metrics)
+        ? item.metrics[0]
+        : item.metrics,
+      databases: item.databases ?? [],
+      data: item.data ?? [],
+      error: item.error ?? null,
+    }));
 
-        console.log('대시보드 레이아읏 데이터 조회 ----->>>', dashboard);
-        
-        const normalizedLayout = dashboard.userLayout.widgets.map((item: any) => ({
-          i: item.id,
-          x: item.layout.x ?? 0,
-          y: item.layout.y ?? 0,
-          w: item.layout.w ?? 8,
-          h: item.layout.h ?? 6,
-          title: item.title,
-          type: item.chartType,
-          metricType: Array.isArray(item.metrics)
-          ? item.metrics[0]
-          : item.metrics, // 하위호환용 안전 처리
-          databases: item.databases ?? [],
-        }));
-
-        setLayout(normalizedLayout);
-      } catch (err) {
-        console.error("대시보드 조회 실패:", err);
-      }
-    };
-
-    fetchDashboard();
-  }, [selectedInstance?.instanceId]);
+    setLayout(normalizedLayout);
+  }, [dashboardData, setLayout]);
 
   /** === 테마 변경 === */
   const handleThemeChange = (id: string) => {
@@ -183,6 +209,8 @@ export default function OverviewPage() {
                 <div key={item.i} className="grid-item">
                   <WidgetRenderer
                     metric={item.metricType}
+                    data={item.data}
+                    error={item.error}
                     isEditable={isEditing && themeId === "custom"}
                     onDelete={() => handleDeleteWidget(item.i)}
                   />

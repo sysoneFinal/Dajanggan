@@ -8,9 +8,8 @@ import apiClient from "../../api/apiClient";
 export type NewInstance = {
   host: string;
   instance: string;
-  database: string;
   port: number | string;
-  username: string;
+  userName: string;
   password: string;
 };
 
@@ -29,9 +28,8 @@ type Props = {
 const fieldLabel = {
   host: "Host",
   instance: "Instance",
-  database: "Database",
   port: "Port",
-  username: "Username",
+  userName: "Username",
   password: "Password",
 } as const;
 
@@ -41,16 +39,9 @@ const requiredMsg = (k: keyof typeof fieldLabel) => `${fieldLabel[k]} 값이 필
 const toInstanceDto = (f: NewInstance) => ({
   host: f.host,
   instanceName: f.instance,
-  dbname: f.database,
   port: Number(f.port),
-  userName: f.username,
+  userName: f.userName,
   secretRef: f.password,
-  ssimode: "require",
-  isEnabled: true,
-  slackEnabled: false,
-  slackChannel: undefined,
-  slackMention: undefined,
-  slackWebhookUrl: undefined
 });
 
 export default function NewInstanceModal({
@@ -65,9 +56,8 @@ export default function NewInstanceModal({
   const [form, setForm] = useState<NewInstance>({
     host: initialValue?.host ?? "",
     instance: initialValue?.instance ?? "",
-    database: initialValue?.database ?? "",
     port: initialValue?.port ?? "",
-    username: initialValue?.username ?? "",
+    userName: initialValue?.userName ?? "",
     password: initialValue?.password ?? "",
   });
 
@@ -83,9 +73,8 @@ export default function NewInstanceModal({
       setForm({
         host: initialValue.host ?? "",
         instance: initialValue.instance ?? "",
-        database: initialValue.database ?? "",
         port: initialValue.port ?? "",
-        username: initialValue.username ?? "",
+        userName: initialValue.userName ?? "",
         password: initialValue.password ?? "",
       });
     }
@@ -109,10 +98,9 @@ export default function NewInstanceModal({
     const next: Partial<Record<keyof NewInstance, string>> = {};
     if (!form.host.trim()) next.host = requiredMsg("host");
     if (!form.instance.trim()) next.instance = requiredMsg("instance");
-    if (!form.database.trim()) next.database = requiredMsg("database");
     if (!form.port || Number(form.port) < 1 || Number(form.port) > 65535)
       next.port = "1~65535 사이 정수를 입력하세요.";
-    if (!form.username.trim()) next.username = requiredMsg("username");
+    if (!form.userName.trim()) next.userName = requiredMsg("userName");
     // 편집 모드에서는 비밀번호가 비어있어도 OK (변경하지 않는 경우)
     if (mode === 'create' && !form.password) {
       next.password = requiredMsg("password");
@@ -122,10 +110,9 @@ export default function NewInstanceModal({
   };
 
   const connectionString = useMemo(() => {
-    const user = encodeURIComponent(form.username);
+    const user = encodeURIComponent(form.userName);
     const host = form.host || "";
-    const db = form.database || "";
-    return `postgresql://${user}:@${host}:${form.port}/${db}`;
+    return `postgresql://${user}:@${host}:${form.port}`;
   }, [form]);
 
   const handleChange = (key: keyof NewInstance, value: string) => {
@@ -151,9 +138,8 @@ export default function NewInstanceModal({
           const payload: any = {
             host: form.host,
             instanceName: form.instance,
-            dbname: form.database,
             port: Number(form.port),
-            username: form.username,
+            userName: form.userName,
             ssimode: "require",
             isEnabled: true,
           };
@@ -163,6 +149,7 @@ export default function NewInstanceModal({
           }
           const res = await apiClient.put(`/instances/${instanceId}`, payload);
           alert(`수정 성공!`);
+        
         } else {
           // 생성 모드: POST 요청
           const payload = toInstanceDto(form);
@@ -248,14 +235,6 @@ export default function NewInstanceModal({
                 />
               </Field>
 
-              <Field label="Database" error={errors.database}>
-                <input
-                  className={inputCls(!!errors.database)}
-                  value={form.database}
-                  onChange={(e) => handleChange("database", e.target.value)}
-                />
-              </Field>
-
               <Field label="Port" error={errors.port}>
                 <input
                   className={inputCls(!!errors.port)}
@@ -266,11 +245,11 @@ export default function NewInstanceModal({
                 />
               </Field>
 
-              <Field label="Username" error={errors.username}>
+              <Field label="Username" error={errors.userName}>
                 <input
-                  className={inputCls(!!errors.username)}
-                  value={form.username}
-                  onChange={(e) => handleChange("username", e.target.value)}
+                  className={inputCls(!!errors.userName)}
+                  value={form.userName}
+                  onChange={(e) => handleChange("userName", e.target.value)}
                 />
               </Field>
 
@@ -281,7 +260,7 @@ export default function NewInstanceModal({
                 <input
                   type="password"
                   className={inputCls(!!errors.password)}
-                  placeholder={mode === 'edit' ? '변경하지 않으려면 비워두세요' : ''}
+                  placeholder={mode == 'edit'? "":""}
                   value={form.password}
                   onChange={(e) => handleChange("password", e.target.value)}
                 />

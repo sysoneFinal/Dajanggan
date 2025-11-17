@@ -5,9 +5,12 @@ import "../../styles/engine/checkpoint.css";
 import GaugeChart from "../../components/chart/GaugeChart";
 import WidgetCard from "../../components/util/WidgetCard";
 import ChartGridLayout from "../../components/layout/ChartGridLayout";
+import {useSearchParams} from "react-router-dom";
+import apiClient from "../../../src/api/apiClient";
 
 /** Checkpoint API 응답 타입 */
 interface CheckpointData {
+    instance?: number;
     requestRatio: {
         value: number;
         requestedCount: number;
@@ -51,91 +54,34 @@ interface CheckpointData {
         min: number;
     };
     recentStats?: {
-        buffersWritten: number;
-        avgTotalProcessTime: number;
-        checkpointDistance: number;
-        checkpointInterval: number;
-        avgWalGenerationSpeed: number;
+        buffersWritten: { current: number; diff: number };
+        avgTotalProcessTime: { current: number; diff: number };
+        checkpointDistance: { current: number; diff: number };
+        checkpointInterval: { current: number; diff: number };
+        avgWalGenerationSpeed: { current: number; diff: number };
     };
 }
+/** 백엔드 API 응답 타입 */
+interface CheckpointApiResponse {
+    data: CheckpointData;
+    timestamp: string;
+    success: boolean;
+}
 
-/** 더미 데이터 */
-const mockData: CheckpointData = {
-    requestRatio: {
-        value: 60.5,
-        requestedCount: 50,
-        timedCount: 125,
-    },
-    avgWriteTime: {
-        categories: [
-            "0:00", "2:00", "4:00", "6:00", "8:00", "10:00",
-            "12:00", "14:00", "16:00", "18:00", "20:00", "23:00"
-        ],
-        data: [3, 2.5, 4, 6.5, 7, 8.5, 8, 7, 5, 4, 3.5, 10],
-        average: 5.7,
-        max: 10.0,
-        min: 2.5,
-    },
-    occurrence: {
-        categories: [
-            "0:00", "2:00", "4:00", "6:00", "8:00", "10:00",
-            "12:00", "14:00", "16:00", "18:00", "20:00", "23:00"
-        ],
-        requested: [20, 15, 25, 30, 20, 10, 35, 25, 20, 15, 30, 28],
-        timed: [60, 55, 50, 45, 50, 55, 40, 48, 52, 58, 35, 62],
-        requestedTotal: 271,
-        timedTotal: 608,
-        ratio: 30.8,
-    },
-    walGeneration: {
-        categories: [
-            "0:00", "2:00", "4:00", "6:00", "8:00", "10:00",
-            "12:00", "14:00", "16:00", "18:00", "20:00", "23:00"
-        ],
-        data: [
-            8000000000, 6500000000, 10000000000, 12000000000,
-            13000000000, 11000000000, 9500000000, 8000000000,
-            7000000000, 6000000000, 9000000000, 10500000000,
-        ],
-        total: 110500000000,
-        average: 9208333333,
-        max: 13000000000,
-    },
-    processTime: {
-        categories: [
-            "0:00", "2:00", "4:00", "6:00", "8:00", "10:00",
-            "12:00", "14:00", "16:00", "18:00", "20:00", "23:00"
-        ],
-        syncTime: [400, 520, 680, 450, 520, 600, 720, 650, 580, 460, 520, 620],
-        writeTime: [800, 1200, 1600, 1000, 1100, 1300, 1450, 1350, 1200, 950, 1100, 1500],
-        avgSync: 565,
-        avgWrite: 1213,
-        avgTotal: 1778,
-    },
-    buffer: {
-        categories: [
-            "0:00", "2:00", "4:00", "6:00", "8:00", "10:00",
-            "12:00", "14:00", "16:00", "18:00", "20:00", "23:00"
-        ],
-        data: [3500, 3200, 4200, 4800, 5200, 4600, 3800, 3000, 2400, 4500, 5500, 4800],
-        average: 4133,
-        max: 5500,
-        min: 2400,
-    },
-    recentStats: {
-        buffersWritten: 4280,
-        avgTotalProcessTime: 1.78,
-        checkpointDistance: 85,
-        checkpointInterval: 4.8,
-        avgWalGenerationSpeed: 9.2,
-    },
-};
+/** API 요청 함수 - 백엔드 엔드포인트와 연결 */
+async function fetchCheckpointData(instanceId: number): Promise<CheckpointData> {
+    const response = await apiClient.get<CheckpointApiResponse>(
+        `/api/engine/checkpoint/dashboard`,
+        {
+            params: { instanceId }
+        }
+    );
 
-/** API 요청 */
-async function fetchCheckpointData() {
-    const res = await fetch("/api/dashboard/checkpoint");
-    if (!res.ok) throw new Error("Failed to fetch checkpoint data");
-    return res.json();
+    if (!response.data.success) {
+        throw new Error("Failed to fetch checkpoint data");
+    }
+
+    return response.data.data;
 }
 
 const getCheckpointRequestGaugeStatus = (
@@ -150,59 +96,81 @@ const getCheckpointRequestGaugeStatus = (
 
 /** 메인 컴포넌트 */
 export default function CheckPointPage() {
-    const { data } = useQuery({
-        queryKey: ["checkpointDashboard"],
-        queryFn: fetchCheckpointData,
+    const [searchParams] = useSearchParams();
+    const instanceId = Number(searchParams.get("instanceId")) || 1;
+
+    const { data, isLoading, error } = useQuery({
+        queryKey: ["checkpointDashboard", instanceId],
+        queryFn: () => fetchCheckpointData(instanceId),
         retry: 1,
+        refetchInterval: 5000, // 30초마다 자동 갱신
     });
 
-    const dashboard = data || mockData;
+    if (isLoading) {
+        return (
+            <div className="loading-container">
+                <p>Loading checkpoint data...</p>
+            </div>
+        );
+    }
 
+    if (error) {
+        return (
+            <div className="error-container">
+                <p>Error loading checkpoint data: {error.message}</p>
+            </div>
+        );
+    }
+
+    const dashboard = data!;
     const gaugeStatus = getCheckpointRequestGaugeStatus(dashboard.requestRatio.value);
 
+    // recentStats가 없을 경우 기본값 설정
     const recentStats = dashboard.recentStats || {
-        buffersWritten: 4280,
-        avgTotalProcessTime: 1.78,
-        checkpointDistance: 85,
-        checkpointInterval: 4.8,
-        avgWalGenerationSpeed: 9.2,
+        buffersWritten: { current: 0, diff: 0 },
+        avgTotalProcessTime: { current: 0, diff: 0 },
+        checkpointDistance: { current: 0, diff: 0 },
+        checkpointInterval: { current: 0, diff: 0 },
+        avgWalGenerationSpeed: { current: 0, diff: 0 },
     };
 
     const summaryCards = [
         {
             label: "기록된 버퍼",
-            value: recentStats.buffersWritten.toLocaleString(),
-            diff: 180,
-            desc: "최근 5분 누적",
-            status: "info" as const,
+            value: `${recentStats.buffersWritten.current.toFixed(0)} buffers`,
+            diff: recentStats.buffersWritten.diff,
+            desc: "최근 5분 평균",
+            status: recentStats.buffersWritten.diff > 10 ? "success" : "normal" as const,
         },
         {
             label: "평균 처리 시간",
-            value: `${recentStats.avgTotalProcessTime}s`,
-            diff: -0.12,
-            desc: "최근 5분 평균 (Sync+Write)",
-            status: "info" as const,
-        },
-        {
-            label: "체크포인트 거리",
-            value: `${recentStats.checkpointDistance}%`,
-            diff: 5,
+            value: `${recentStats.avgTotalProcessTime.current.toFixed(2)}초`,
+            diff: recentStats.avgTotalProcessTime.diff,
             desc: "최근 5분 평균",
-            status: "info" as const,
+            status: recentStats.avgTotalProcessTime.diff > 0 ? "warning" : "success" as const,
         },
         {
-            label: "Checkpoint 간격",
-            value: `${recentStats.checkpointInterval}분`,
-            diff: 0.3,
-            desc: "최근 5분 평균 간격",
-            status: "info" as const,
+            label: "Checkpoint 거리",
+            value: `${recentStats.checkpointDistance.current.toFixed(0)}%`,
+            diff: recentStats.checkpointDistance.diff,
+            desc: "max_wal_size 기준",
+            status:
+                recentStats.checkpointDistance.current > 80 ? "warning" :
+                    recentStats.checkpointDistance.current > 60 ? "normal" : "success" as const,
+        },
+        {
+            label: "평균 Checkpoint 간격",
+            value: `${recentStats.checkpointInterval.current.toFixed(1)}분`,
+            diff: recentStats.checkpointInterval.diff,
+            desc: "최근 5분",
+            status: recentStats.checkpointInterval.current < 3 ? "warning" : "success" as const,
         },
         {
             label: "평균 WAL 생성 속도",
-            value: `${recentStats.avgWalGenerationSpeed}GB/h`,
-            diff: 0.8,
+            value: `${recentStats.avgWalGenerationSpeed.current.toFixed(1)}GB/h`,
+            diff: recentStats.avgWalGenerationSpeed.diff,
             desc: "최근 5분 평균",
-            status: "info" as const,
+            status: recentStats.avgWalGenerationSpeed.current > 12 ? "warning" : "normal" as const,
         },
     ];
 

@@ -22,20 +22,11 @@ export default function WidgetCard({
       className={`widget-card ${className}`}
       style={{
         gridColumn: `span ${span}`,
-        display: "flex",
-        flexDirection: "column",
-        height: "100%", // 부모 grid item 높이 전체 채움
       }}
     >
       {title && <h6 className="widget-title">{title}</h6>}
       <div
         className="widget-content"
-        style={{
-          flex: 1, // 내부 차트가 남은 공간 전체 차지
-          overflow: "hidden",
-          display: "flex",
-          flexDirection: "column",
-        }}
       >
         {children}
       </div>

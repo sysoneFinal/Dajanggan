@@ -143,57 +143,59 @@ const saveLayoutInternal = async (layoutToSave: DashboardLayout[]) => {
   }
 
   const widgets = layoutToSave.map((item) => {
-    const keys = Array.isArray(item.metricType)
-      ? item.metricType
-      : [item.metricType];
+  // 1. metricType에서 메트릭 이름들 추출
+  const metricNames = Array.isArray(item.metricType)
+    ? item.metricType
+    : [item.metricType];
+  
+  // 예: ["total_sessions", "active_sessions"]
 
-    const metrics = keys
-      .map((key: string) => {
-        const foundKey = Object.keys(metricMap).find((k) =>
-          k.endsWith(`.${key}`)
-        );
-        const metric = foundKey ? metricMap[foundKey] : null;
-        if (!metric) {
-          console.warn(`metricMap에서 '${key}' 매칭 실패`);
-        }
-        return metric;
-      })
-      .filter((m): m is NonNullable<typeof m> => !!m);
+  // 2. metricMap에서 메타정보 찾기
+  const metricInfos = metricNames
+    .map((name: string) => {
+      const fullKey = Object.keys(metricMap).find((k) =>
+        k.endsWith(`.${name}`)
+      );
+      // fullKey 예: "SESSION.total_sessions"
+      
+      return fullKey ? metricMap[fullKey] : null;
+    })
+    .filter(Boolean);
 
-    let dbs = [];
-    if (item.databases?.length) {
-      dbs = item.databases.map((db) => ({
-        id: db.id,
-        name: db.name,
-      }));
-    } else if (selectedDatabase) {
-      dbs = [
-        {
-          id: selectedDatabase.databaseId,
-          name: selectedDatabase.databaseName,
-        },
-      ];
-    }
+  // 3. databases 설정
+  let dbs = [];
+  if (item.databases?.length) {
+    dbs = item.databases.map((db) => ({ id: db.id, name: db.name }));
+  } else if (selectedDatabase) {
+    dbs = [{
+      id: selectedDatabase.databaseId,
+      name: selectedDatabase.databaseName,
+    }];
+  }
 
-    return {
-      id: item.i,
-      title: item.title ?? metrics[0]?.title ?? "Untitled Widget",
-      databases: dbs,
-      metrics: metrics.map((m) => `${m.category}.${m.column}`),
-      chartType: item.type || "line",
-      layout: {
-        x: item.x,
-        y: item.y,
-        w: item.w,
-        h: item.h,
-      },
-      options: {
-        unit: metrics.map((m) => m.unit ?? "").join(" / "),
-        category: metrics.map((m) => m.category ?? "").join(", "),
-        description: metrics.map((m) => m.description ?? "").join(" & "),
-      },
-    };
-  });
+  // 4. 위젯 객체 생성
+  return {
+    id: item.i,
+    title: item.title ?? metricInfos[0]?.title ?? "Untitled Widget",
+    databases: dbs,
+    
+    // ✅ metrics: 메트릭 이름만 (카테고리 없이)
+    metrics: metricNames,  // ["total_sessions"]
+    
+    chartType: item.type || "line",
+    layout: {
+      x: item.x,
+      y: item.y,
+      w: item.w,
+      h: item.h,
+    },
+    options: {
+      unit: metricInfos.map((m) => m.unit ?? "").join(" / "),
+      category: metricInfos.map((m) => m.category ?? "").join(", "),
+      description: metricInfos.map((m) => m.description ?? "").join(" & "),
+    },
+  };
+});
 
   const dashboardJson = { widgets };
 

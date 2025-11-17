@@ -17,4 +17,10 @@ export interface DashboardLayout extends Layout {
   }[];
 
   instanceId?: number | null;
+
+    /** 실제 메트릭 데이터 */
+  data?: Array<Record<string, any>>;
+
+  /** 에러 메시지 */
+  error?: string | null;
 }

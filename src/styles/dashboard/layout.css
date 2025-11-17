@@ -65,13 +65,14 @@
 .grid-item {
   position: relative;
   border-radius: 12px;
-  display: flex;
+  display: flex !important;
   flex-direction: column;
   justify-content: flex-start;
   background: #fff;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
   overflow: hidden;
   transition: all 0.2s ease;
+  height: 100%;
 }
 .widget-delete-btn {
   position: absolute;

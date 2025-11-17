@@ -128,6 +128,11 @@ const { metricMap } = useDashboard();
     e.dataTransfer.setData("application/json", JSON.stringify(payload));
   };
 
+  const metricOptions = Object.entries(metricMap).map(([key, value]) => ({
+  value: key,  // "SESSION.total_sessions"
+  label: value.title  // "활성 세션 수"
+}));
+
   /* 
    * 렌더링
    * */
@@ -198,6 +203,7 @@ const { metricMap } = useDashboard();
             multi={false}
             width="80%"
             noShadow
+            searchable={true}
           />
         </div>
       </section>

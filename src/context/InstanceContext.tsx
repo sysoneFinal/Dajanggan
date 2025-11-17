@@ -14,6 +14,9 @@ interface InstanceContextType {
 
   refreshInstances: () => Promise<void>;
   refreshDatabases: (instanceId: number) => Promise<void>;
+
+  refreshInterval: string; 
+  setRefreshInterval: (interval: string) => void;
 }
 
 const InstanceContext = createContext<InstanceContextType | undefined>(undefined);
@@ -23,6 +26,7 @@ export const InstanceProvider = ({ children }: { children: React.ReactNode }) =>
   const [databases, setDatabases] = useState<Database[]>([]);
   const [selectedInstance, setSelectedInstance] = useState<Instance | null>(null);
   const [selectedDatabase, setSelectedDatabase] = useState<Database | null>(null);
+  const [refreshInterval, setRefreshInterval] = useState<string>("1m"); 
   const prevInstanceIdRef = useRef<number | null>(null);
   const isInitialLoadRef = useRef(true);
 
@@ -55,6 +59,7 @@ export const InstanceProvider = ({ children }: { children: React.ReactNode }) =>
 
     const savedInstance = localStorage.getItem("selectedInstance");
     const savedDatabase = localStorage.getItem("selectedDatabase");
+    const savedRefreshInterval = localStorage.getItem("refreshInterval");
 
     if (savedInstance) {
       const parsedInstance = JSON.parse(savedInstance);
@@ -66,6 +71,10 @@ export const InstanceProvider = ({ children }: { children: React.ReactNode }) =>
     if (savedDatabase) {
       const parsedDatabase = JSON.parse(savedDatabase);
       setSelectedDatabase(parsedDatabase);
+    }
+
+    if (savedRefreshInterval) {
+      setRefreshInterval(savedRefreshInterval); 
     }
 
     // 초기 로드 완료 표시
@@ -82,7 +91,6 @@ export const InstanceProvider = ({ children }: { children: React.ReactNode }) =>
       fetchDatabases(currentInstanceId);
 
       // 실제로 다른 인스턴스로 변경된 경우에만 데이터베이스 초기화
-      // 초기 로드가 아니고, 이전 인스턴스 ID와 다른 경우에만 초기화
       if (!isInitialLoadRef.current && prevInstanceId !== null && prevInstanceId !== currentInstanceId) {
         setSelectedDatabase(null);
         localStorage.removeItem("selectedDatabase");
@@ -97,13 +105,11 @@ export const InstanceProvider = ({ children }: { children: React.ReactNode }) =>
     }
   }, [selectedInstance, fetchDatabases]);
 
-  /** 데이터베이스 목록 로드 후 자동 선택 (저장된 DB가 없고 목록이 있으면 첫 번째 선택) */
+  /** 데이터베이스 목록 로드 후 자동 선택 */
   useEffect(() => {
-    // 데이터베이스 목록이 있고, 선택된 데이터베이스가 없을 때만 실행
     if (databases.length > 0 && !selectedDatabase && selectedInstance) {
       const savedDatabase = localStorage.getItem("selectedDatabase");
       
-      // 저장된 데이터베이스가 없으면 첫 번째 데이터베이스 자동 선택
       if (!savedDatabase) {
         const firstDatabase = databases[0];
         setSelectedDatabase(firstDatabase);
@@ -120,6 +126,11 @@ export const InstanceProvider = ({ children }: { children: React.ReactNode }) =>
     }
   }, [selectedDatabase]);
 
+  /** refreshInterval 변경 시 로컬 저장 */
+  useEffect(() => {
+    localStorage.setItem("refreshInterval", refreshInterval); // ✅ 문자열로 저장
+  }, [refreshInterval]);
+
   return (
     <InstanceContext.Provider
       value={{
@@ -131,6 +142,8 @@ export const InstanceProvider = ({ children }: { children: React.ReactNode }) =>
         setSelectedDatabase,
         refreshInstances: fetchInstances,
         refreshDatabases: fetchDatabases,
+        refreshInterval,
+        setRefreshInterval,
       }}
     >
       {children}
@@ -138,10 +151,10 @@ export const InstanceProvider = ({ children }: { children: React.ReactNode }) =>
   );
 };
 
-/**  Hook: Context 접근용 */
+/** Hook: Context 접근용 */
 export const useInstanceContext = () => {
   const ctx = useContext(InstanceContext);
   if (!ctx)
-    throw new Error(" instance context 에러 발생");
+    throw new Error("useInstanceContext must be used within InstanceProvider");
   return ctx;
 };

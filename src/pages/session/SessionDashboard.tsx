@@ -26,7 +26,7 @@ const transformApiData = (apiData: any) => {
     return {
       summary: [
         { label: "Active Sessions", value: 0, desc: "최근 5분 평균 기준", status: "info" as const },
-        { label: "Idle In Transaction", value: 0,  desc: "최근 5분 평균 기준", status: "info" as const },
+        { label: "Idle In Transaction", value: 0, desc: "최근 5분 평균 기준", status: "info" as const },
         { label: "Waiting Sessions", value: 0, desc: "최근 5분 평균 기준", status: "info" as const },
         { label: "Avg Transaction Time", value: "0s", desc: "최근 5분 평균 기준", status: "info" as const },
         { label: "DeadLocks", value: 0, desc: "최근 10분 이내 발생", status: "info" as const },
@@ -95,104 +95,78 @@ const transformApiData = (apiData: any) => {
     series: [
       {
         name: "Active",
-        data: sessionStateTrend.length > 0
-          ? sessionStateTrend.map((item: any) => item.activeCount || 0)
-          : [],
+        data: sessionStateTrend.map((item: any) => item.activeSessions || 0),
       },
       {
         name: "Idle",
-        data: sessionStateTrend.length > 0
-          ? sessionStateTrend.map((item: any) => item.idleCount || 0)
-          : [],
+        data: sessionStateTrend.map((item: any) => item.idleSessions || 0),
       },
       {
         name: "Waiting",
-        data: sessionStateTrend.length > 0
-          ? sessionStateTrend.map((item: any) => item.waitingCount || 0)
-          : [],
+        data: sessionStateTrend.map((item: any) => item.waitingSessions || 0),
       },
     ],
-    categories: sessionStateTrend.length > 0
-      ? sessionStateTrend.map((item: any) => 
-          item.collectedAt ? formatTime(item.collectedAt) : ""
-        )
-      : [],
+    categories: sessionStateTrend.map((item: any) => 
+      item.collectedAt ? formatTime(item.collectedAt) : ""
+    ),
   };
 
   const waitEvent = {
     series: [
       {
         name: "Lock",
-        data: waitEventTrend.length > 0
-          ? waitEventTrend.map((item: any) => item.lockCount || 0)
-          : [],
+        data: waitEventTrend.map((item: any) => item.lockWaitCount || 0),
       },
       {
         name: "I/O",
-        data: waitEventTrend.length > 0
-          ? waitEventTrend.map((item: any) => item.ioCount || 0)
-          : [],
+        data: waitEventTrend.map((item: any) => item.ioWaitCount || 0),
       },
       {
         name: "Client",
-        data: waitEventTrend.length > 0
-          ? waitEventTrend.map((item: any) => item.clientCount || 0)
-          : [],
+        data: waitEventTrend.map((item: any) => item.clientWaitCount || 0),
       },
       {
         name: "LWLock",
-        data: waitEventTrend.length > 0
-          ? waitEventTrend.map((item: any) => item.lwlockCount || 0)
-          : [],
+        data: waitEventTrend.map((item: any) => item.lwlockWaitCount || 0),
       },
     ],
-    categories: waitEventTrend.length > 0
-      ? waitEventTrend.map((item: any) => 
-          item.collectedAt ? formatTime(item.collectedAt) : ""
-        )
-      : [],
+    categories: waitEventTrend.map((item: any) => 
+      item.collectedAt ? formatTime(item.collectedAt) : ""
+    ),
   };
 
   const txDuration = {
-    data: avgTxDurationTrend.length > 0
-      ? avgTxDurationTrend.map((item: any) => (item.avgTxDuration || 0) / 1000)
-      : [],
+    data: avgTxDurationTrend.map((item: any) => 
+      (item.avgTxDurationSec || 0) / 1000
+    ),
   };
 
   const lockWait = {
-    data: avgLockWaitTrend.length > 0
-      ? avgLockWaitTrend.map((item: any) => (item.avgLockWait || 0) / 1000)
-      : [],
+    data: avgLockWaitTrend.map((item: any) => 
+      (item.avgLockWaitSec || 0) / 1000
+    ),
   };
 
   const topUsers = {
-    data: topUserSessions?.topUser1
-      ? [
-          topUserSessions.topUser1Sessions || 0,
-          topUserSessions.topUser2Sessions || 0,
-          topUserSessions.topUser3Sessions || 0,
-          topUserSessions.topUser4Sessions || 0,
-        ].filter((v) => v > 0)
-      : [],
-    categories: topUserSessions?.topUser1
-      ? [
-          topUserSessions.topUser1 || "",
-          topUserSessions.topUser2 || "",
-          topUserSessions.topUser3 || "",
-          topUserSessions.topUser4 || "",
-        ].filter((v) => v !== "")
-      : [],
+    data: [
+      topUserSessions.topUser1Sessions,
+      topUserSessions.topUser2Sessions,
+      topUserSessions.topUser3Sessions,
+      topUserSessions.topUser4Sessions,
+    ].filter((v) => v != null && v > 0),
+    categories: [
+      topUserSessions.topUser1,
+      topUserSessions.topUser2,
+      topUserSessions.topUser3,
+      topUserSessions.topUser4,
+    ].filter((v) => v != null && v !== ""),
   };
 
   const deadlockTrend = {
-    data: deadLockTrend.length > 0
-      ? deadLockTrend.map((item: any) => item.deadlockCount || 0)
-      : [],
-    categories: deadLockTrend.length > 0
-      ? deadLockTrend.map((item: any) => 
-          item.collectedAt ? formatTime(item.collectedAt) : ""
-        )
-      : [],
+    data: deadLockTrend.map((item: any) => item.deadlockCount || 0),
+    categories: deadLockTrend.map((item: any) => 
+      item.collectedAt ? formatTime(item.collectedAt) : ""
+    ),
   };
 
   const charts = {
@@ -216,11 +190,9 @@ const transformApiData = (apiData: any) => {
     current: usedConnections,
   };
 
-  const connectionTrend = connectionUsageTrend.length > 0
-    ? connectionUsageTrend.map((item: any) => item.connectionCount || 0)
-    : [];
+  const connectionTrend = connectionUsageTrend.map((item: any) => item.usedConnections || 0);
 
-  const recentDeadlocks = apiData.deadLockList || [];
+  const recentDeadlocks = apiData.recentDeadlocks || [];
 
   return {
     summary,
@@ -342,7 +314,7 @@ export default function SessionDashboard() {
       <ChartGridLayout>
         <WidgetCard title="Session State Trend" span={4}>
           <Chart
-            type="area"
+            type="line"
             series={Array.isArray(sessionTrend.series) ? sessionTrend.series : []}
             categories={Array.isArray(sessionTrend.categories) ? sessionTrend.categories : []}
           />
@@ -441,42 +413,51 @@ export default function SessionDashboard() {
               />
             </div>
 
-            <div className="recent-deadlocks-mini">
-              <h6>Recent DeadLocks</h6>
-              {isLoadingDeadlock && <div className="loading-indicator">Loading...</div>}
-              <ul>
-                {(dashboard.recentDeadlocks || []).map((d :any, idx:any) => (
-                  <li
-                    key={idx}
-                    onClick={() => handleDeadlockClick(d)}
-                    style={{ cursor: 'pointer' }}
-                  >
-                    <div className="deadlock-info">
-                      <span className="time">{formatDateTime(d.collectedAt)}</span>
-                      <div className="tags">
-                        <span className="tag user">
-                          <i className="ri-user-3-line"></i> {d.username}
-                        </span>
-                        <span className="tag table">
-                          <i className="ri-database-2-line"></i> {d.tableName}
-                        </span>
-                      </div>
-                    </div>
+          <div className="recent-deadlocks-mini">
+            <h6>Recent DeadLocks</h6>
 
-                    <div className="deadlock-body">
-                      <span className="msg">
-                        {d.query.length > maxQueryLen
-                          ? d.query.slice(0, maxQueryLen) + "…"
-                          : d.query}
+            {isLoadingDeadlock && (
+              <div className="loading-indicator">Loading...</div>
+            )}
+
+            {/* 데드락 없을 때 표시 */}
+            {!isLoadingDeadlock && (!dashboard.recentDeadlocks || dashboard.recentDeadlocks.length === 0) && (
+              <div className="no-data">최근 데드락이 없습니다.</div>
+            )}
+
+            <ul>
+              {(dashboard.recentDeadlocks || []).map((d, idx) => (
+                <li
+                  key={idx}
+                  onClick={() => handleDeadlockClick(d)}
+                  style={{ cursor: 'pointer' }}
+                >
+                  <div className="deadlock-info">
+                    <span className="time">{formatDateTime(d.collectedAt)}</span>
+                    <div className="tags">
+                      <span className="tag user">
+                        <i className="ri-user-3-line"></i> {d.username}
                       </span>
-                      <span className="dur">
-                        {(d.lockDurationMs / 1000).toFixed(1)}s
+                      <span className="tag table">
+                        <i className="ri-database-2-line"></i> {d.tableName}
                       </span>
                     </div>
-                  </li>
-                ))}
-              </ul>
-            </div>
+                  </div>
+
+                  <div className="deadlock-body">
+                    <span className="msg">
+                      {d.query.length > maxQueryLen
+                        ? d.query.slice(0, maxQueryLen) + "…"
+                        : d.query}
+                    </span>
+                    <span className="dur">
+                      {(d.lockDurationMs / 1000).toFixed(1)}s
+                    </span>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </div>
           </div>
         </WidgetCard>
       </ChartGridLayout>

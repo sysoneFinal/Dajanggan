@@ -306,6 +306,14 @@
   opacity: 0.7;
 }
 
+.no-data{
+  padding: 10px 0;
+  color: #999;
+  font-size: 14px;
+  text-align: center;
+  margin : auto 0;
+}
+
 
 /* 태블릿 (화면 너비 1024px 이하) */
 @media (max-width: 1024px) {
