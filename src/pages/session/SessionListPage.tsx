@@ -1,14 +1,15 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import {
   useReactTable,
   getCoreRowModel,
   getSortedRowModel,
-  getFilteredRowModel,
   getPaginationRowModel,
   flexRender,
   type ColumnDef,
   type SortingState,
 } from "@tanstack/react-table";
+import apiClient from "../../api/apiClient";
+import { useInstanceContext } from "../../context/InstanceContext";
 
 import "../../styles/session/sessionActivityList.css";
 import Pagination from "../../components/util/Pagination";
@@ -17,8 +18,10 @@ import MultiSelectDropdown from "../../components/util/MultiSelectDropdown";
 import SummaryCard from "../../components/util/SummaryCard";
 import SessionDetailModal from "../../components/session/SessionDetailModal";
 import type { SessionDetail } from "../../components/session/SessionDetailModal";
+import { formatRuntime } from "../../utils/formatRunTime";
 
 interface Session {
+  databaseId : number;
   pid: number;
   user: string;
   db: string;
@@ -29,79 +32,139 @@ interface Session {
   runtime: string;
   query: string;
 }
-export const mockSessionDetailIdle = {
-  pid: 13288,
-  user: "taeyong",
-  db: "inventory_db",
-  client: "192.168.1.72",
-  state: "idle",
-  cpu: "50%",
-  memory: "4.3MB",
-  waitType: "-",
-  waitEvent: "-",
-  blockingPid: "-",
-  startTime: "2025-11-03 09:11:53",
-  duration: "1h 42m 10s",
-  query: "select user_id, username, address, phone_number, order_id, merchandise_name, quantity from orders where user_id = 10;",
-  guides: [
-    "유휴 상태",
-    "장시간 유지되는 Idle 세션은 커넥션 누수 여부를 확인하세요.",
-    "필요 시 연결 관리 정책(Connection Pool Timeout)을 조정하세요."
-  ]
-};
 
 const SessionActivityList = () => {
-  /** ===== 더미 세션 데이터 ===== */
-  const [sessions] = useState<Session[]>(
-    Array.from({ length: 22 }).map((_, i) => ({
-      pid: 1300 + i,
-      user: i % 2 === 0 ? "sammy" : "doyoung",
-      db: i % 2 === 0 ? "post1_db" : "analytics_db",
-      type: i % 2 === 0 ? "vacuum" : "select",
-      state: i % 3 === 0 ? "waiting" : i % 4 === 0 ? "idle" : "active",
-      waitType: i % 2 === 0 ? "Lock" : "IO",
-      waitEvent: i % 2 === 0 ? "transactionid" : "buffer_io",
-      runtime: `${5 + i}m ${i * 2}s`,
-      query:
-        i % 2 === 0
-          ? "SELECT user_id, username, address, status FROM users WHERE id = 10;"
-          : "DELETE FROM orders WHERE id = 5;",
-    }))
-  );
+  const { selectedInstance } = useInstanceContext();
 
-  /** ===== 필터 상태 ===== */
-  const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
-  const [selectedStates, setSelectedStates] = useState<string[]>([]);
+  /** 상태 관리 */
   const [selectedDBs, setSelectedDBs] = useState<string[]>([]);
-  const [filtered, setFiltered] = useState<Session[]>(sessions);
+  const [selectedStates, setSelectedStates] = useState<string[]>([]);
+  const [selectedWaitTypes, setSelectedWaitTypes] = useState<string[]>([]);
+  const [selectedQueryTypes, setSelectedQueryTypes] = useState<string[]>([]);
+  const [page, setPage] = useState(1);
+  const [sorting, setSorting] = useState<SortingState>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [sessions, setSessions] = useState<Session[]>([]);
+  const [totalCount, setTotalCount] = useState(0);
 
-  /** ===== 필터링 ===== */
+  // 요약카드 상태
+  const [summary, setSummary] = useState({
+    activeCount: 0,
+    waitingCount: 0,
+    idleCount: 0,
+    totalCount: 0,
+  });
+
+  // 필터 옵션 상태
+  const [dbOptions, setDbOptions] = useState<string[]>([]);
+  const [stateOptions, setStateOptions] = useState<string[]>([]);
+  const [waitEventTypeOptions, setWaitEventTypeOptions] = useState<string[]>([]);
+  const [queryTypeOptions, setQueryTypeOptions] = useState<string[]>([]);
+
+  const pageSize = 14;
+  const totalPages = Math.ceil(totalCount / pageSize);
+
+  /** 필터 옵션 조회 */
   useEffect(() => {
-    let filteredData = [...sessions];
-    if (selectedUsers.length > 0)
-      filteredData = filteredData.filter((s) => selectedUsers.includes(s.user));
-    if (selectedStates.length > 0)
-      filteredData = filteredData.filter((s) => selectedStates.includes(s.state));
-    if (selectedDBs.length > 0)
-      filteredData = filteredData.filter((s) => selectedDBs.includes(s.db));
-    setFiltered(filteredData);
-  }, [selectedUsers, selectedStates, selectedDBs, sessions]);
+    if (!selectedInstance?.instanceId) return;
 
-  /** ===== 요약 카드 계산 ===== */
-  const summaryData = useMemo(() => {
-    const active = filtered.filter((s) => s.state === "active").length;
-    const waiting = filtered.filter((s) => s.state === "waiting").length;
-    const idle = filtered.filter((s) => s.state === "idle").length;
-    const total = filtered.length;
-    return [
-      { label: "Active Sessions", value: active, diff: 0, desc: "현재 활성 세션 수", status: "info" },
-      { label: "Waiting Sessions", value: waiting, diff: 0, desc: "대기 상태 세션 수", status: "warning" },
-      { label: "Idle Sessions", value: idle, diff: 0, desc: "대기 중인 유휴 세션 수", status: "info" },
-      { label: "Total Sessions", value: total, diff: 0, desc: "전체 세션 수", status: "critical" },
-    ];
-  }, [filtered]);
+    const fetchFilterOptions = async () => {
+      try {
+        const res = await apiClient.get("/session/active/filter-options", {
+          params: { instanceId: selectedInstance.instanceId },
+        });
+        setDbOptions(res.data.databases || []);
+        setStateOptions(res.data.states || []);
+        setWaitEventTypeOptions(res.data.waitEventTypes || []);
+        setQueryTypeOptions(res.data.queryTypes || []);
+      } catch (err) {
+        console.error("필터 옵션 조회 실패:", err);
+      }
+    };
 
-  /** ===== React Table 컬럼 정의 ===== */
+    fetchFilterOptions();
+  }, [selectedInstance?.instanceId]);
+
+  /** 세션 리스트 조회 */
+  useEffect(() => {
+    if (!selectedInstance?.instanceId) return;
+
+    const fetchSessions = async () => {
+      setIsLoading(true);
+      try {
+        const params: any = {
+          instanceId: selectedInstance.instanceId,
+          page,
+          size: pageSize,
+        };
+
+        if (selectedDBs.length) params.dbNames = selectedDBs.join(",");
+        if (selectedStates.length) params.states = selectedStates.join(",");
+        if (selectedWaitTypes.length) params.waitEventTypes = selectedWaitTypes.join(",");
+        if (selectedQueryTypes.length) params.queryTypes = selectedQueryTypes.join(",");
+
+        const res = await apiClient.get("/session/active/list", { params });
+
+        console.log('세션 리스트 데이터 ',res.data);
+
+        const mapped = res.data.data.map((s: any) => ({
+          databaseId: s.databaseId,
+          pid: s.pid,
+          user: s.username,
+          db: s.databasename,
+          type: s.queryType,
+          state: s.state,
+          waitType: s.waitEventType,
+          waitEvent: s.waitEvent,
+          runtime: s.queryAgeSec,
+          query: s.query,
+        }));
+
+        setSessions(mapped);
+        setTotalCount(res.data.totalCount ?? mapped.length);
+      } catch (err) {
+        console.error("세션 리스트 조회 실패:", err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchSessions();
+  }, [
+    selectedInstance?.instanceId,
+    selectedDBs.join(","),
+    selectedStates.join(","),
+    selectedWaitTypes.join(","),
+    selectedQueryTypes.join(","),
+    page,
+  ]);
+
+  /** 요약 카드 데이터 조회 */
+  useEffect(() => {
+    if (!selectedInstance?.instanceId) return;
+
+    const fetchSummary = async () => {
+      try {
+        const res = await apiClient.get("/session/active/summary", {
+          params: { instanceId: selectedInstance.instanceId },
+        });
+        setSummary({
+          activeCount: res.data.activeCount ?? 0,
+          waitingCount: res.data.waitingCount ?? 0,
+          idleCount: res.data.idleCount ?? 0,
+          totalCount: res.data.totalCount ?? 0,
+        });
+      } catch (err) {
+        console.error("요약 카드 조회 실패:", err);
+      }
+    };
+
+    fetchSummary();
+    const interval = setInterval(fetchSummary, 60 * 1000);
+    return () => clearInterval(interval);
+  }, [selectedInstance?.instanceId]);
+
+  /** 테이블 컬럼 정의 */
   const columns = useMemo<ColumnDef<Session>[]>(
     () => [
       { accessorKey: "pid", header: "PID" },
@@ -119,56 +182,89 @@ const SessionActivityList = () => {
       },
       { accessorKey: "waitType", header: "대기유형" },
       { accessorKey: "waitEvent", header: "대기이벤트" },
-      { accessorKey: "runtime", header: "실행시간" },
+      { accessorKey: "runtime", header: "실행시간",
+        cell: (info) => formatRuntime(Number(info.getValue()))
+      },
       {
         accessorKey: "query",
         header: "쿼리",
-        cell: (info) => (
-          <div className="query-text">{String(info.getValue())}</div>
-        ),
-      },
+        cell: (info) => {
+          const query = String(info.getValue() ?? "");
+          const shortQuery =
+            query.length > 120
+              ? query.substring(0, 120).trimEnd() + "..."
+              : query;
+
+          return (
+            <div
+              className="query-text"
+              style={{
+                whiteSpace: "nowrap",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                maxWidth: "600px",
+              }}
+            >
+              {shortQuery}
+            </div>
+          );
+        },
+      }
     ],
     []
   );
 
-  /** ===== React Table 세팅 ===== */
-  const [sorting, setSorting] = useState<SortingState>([]);
+  /** 테이블 구성 */
   const table = useReactTable({
-    data: filtered,
+    data: sessions,
     columns,
     state: { sorting },
     onSortingChange: setSorting,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
-    getFilteredRowModel: getFilteredRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
+    manualPagination: true,
+    pageCount: totalPages,
   });
 
-  /** ===== 모달 ===== */
+  /** 모달 */
   const [selectedSession, setSelectedSession] = useState<SessionDetail | null>(null);
-  const handleRowClick = (session: Session) => {
-    const detail: SessionDetail = {
-      pid: session.pid,
-      user: session.user,
-      db: session.db,
-      waitType: session.waitType,
-      waitEvent: session.waitEvent,
-      duration: session.runtime,
-      state: session.state,
-      cpu: "34%",
-      memory: "12MB",
-      query: session.query,
-      startTime: "2025-10-24 11:03:12",
-    };
-    setSelectedSession(detail);
+  const handleRowClick = async (session: Session) => {
+    try {
+      // 세션 상세 정보 조회 API 호출
+      const res = await apiClient.get("/session/active/detail", {
+        params: {
+          databaseId: session.databaseId, // 또는 적절한 databaseId
+          pid: session.pid,
+        },
+      });
+
+      const detail: SessionDetail = {
+        pid: res.data.pid,
+        user: res.data.username,
+        db: res.data.databasename,
+        waitType: res.data.waitEventType,
+        waitEvent: res.data.waitEvent,
+        duration: res.data.queryAgeSec,
+        state: res.data.state,
+        cpu: res.data.cpuUsage || "-",
+        memory: res.data.memoryUsageMb || "-",
+        query: res.data.query,
+        startTime: res.data.queryStart,
+        client: res.data.clientAddr,
+        blockingPid: res.data.blockingPid,
+        guides: res.data.guides || [],
+      };
+      setSelectedSession(detail);
+    } catch (err) {
+      console.error("세션 상세 정보 조회 실패:", err);
+    }
   };
 
-  /** ===== CSV 내보내기 ===== */
+  /** CSV 내보내기 */
   const handleExportCSV = () => {
     const headers = table.getAllColumns().map((col) => col.columnDef.header);
-    const rows = table.getRowModel().rows.map((r) =>
-      r.getVisibleCells().map((c) => c.getValue()).join(",")
-    );
+    const rows = sessions.map((row) => Object.values(row).join(","));
     const csv = [headers.join(","), ...rows].join("\n");
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
     const link = document.createElement("a");
@@ -177,38 +273,85 @@ const SessionActivityList = () => {
     link.click();
   };
 
+  /** 필터 핸들러 */
+  const handleDBChange = useCallback((v: string[] | string) => {
+    setSelectedDBs(Array.isArray(v) ? v : [v]);
+    setPage(1);
+  }, []);
+
+  const handleStateChange = useCallback((v: string[] | string) => {
+    setSelectedStates(Array.isArray(v) ? v : [v]);
+    setPage(1);
+  }, []);
+
+  const handleWaitTypeChange = useCallback((v: string[] | string) => {
+    setSelectedWaitTypes(Array.isArray(v) ? v : [v]);
+    setPage(1);
+  }, []);
+
+  const handleQueryTypeChange = useCallback((v: string[] | string) => {
+    setSelectedQueryTypes(Array.isArray(v) ? v : [v]);
+    setPage(1);
+  }, []);
+
+  /** 로딩 상태 */
+  if (isLoading) return <div className="loading">세션 정보 불러오는 중...</div>;
+
   return (
     <main className="session-section">
       {/* 상단 요약 카드 */}
       <section className="session-summary">
-        {summaryData.map((card, idx) => (
-          <SummaryCard
-            key={idx}
-            label={card.label}
-            value={card.value}
-            diff={card.diff}
-            desc={card.desc}
-            status={card.status}
-          />
-        ))}
+        <SummaryCard
+          label="Active Sessions"
+          value={summary.activeCount}
+          desc="현재 활성 세션 수"
+          status="info"
+        />
+        <SummaryCard
+          label="Waiting Sessions"
+          value={summary.waitingCount}
+          desc="대기 상태 세션 수"
+          status="warning"
+        />
+        <SummaryCard
+          label="Idle Sessions"
+          value={summary.idleCount}
+          desc="대기 중인 유휴 세션 수"
+          status="info"
+        />
+        <SummaryCard
+          label="Total Sessions"
+          value={summary.totalCount}
+          desc="전체 세션 수"
+          status="critical"
+        />
       </section>
 
       {/* 필터 영역 */}
       <section className="session-filters">
         <MultiSelectDropdown
           label="DB 선택"
-          options={[...new Set(sessions.map((s) => s.db))]}
-          onChange={setSelectedDBs}
+          options={dbOptions}
+          value={selectedDBs}
+          onChange={handleDBChange}
         />
         <MultiSelectDropdown
           label="상태 선택"
-          options={[...new Set(sessions.map((s) => s.state))]}
-          onChange={setSelectedStates}
+          options={stateOptions}
+          value={selectedStates}
+          onChange={handleStateChange}
         />
         <MultiSelectDropdown
           label="대기 유형"
-          options={[...new Set(sessions.map((s) => s.waitType))]}
-          onChange={setSelectedUsers}
+          options={waitEventTypeOptions}
+          value={selectedWaitTypes}
+          onChange={handleWaitTypeChange}
+        />
+        <MultiSelectDropdown
+          label="쿼리 유형"
+          options={queryTypeOptions}
+          value={selectedQueryTypes}
+          onChange={handleQueryTypeChange}
         />
         <CsvButton tooltip="CSV 파일 저장" onClick={handleExportCSV} />
       </section>
@@ -235,7 +378,7 @@ const SessionActivityList = () => {
           ))}
         </div>
 
-        {table.getRowModel().rows.length > 0 ? (
+        {sessions.length > 0 ? (
           table.getRowModel().rows.map((row) => (
             <div
               key={row.id}
@@ -255,18 +398,18 @@ const SessionActivityList = () => {
       </section>
 
       {/* 페이지네이션 */}
-      {table.getPageCount() > 1 && (
+      {totalPages > 1 && (
         <Pagination
-          currentPage={table.getState().pagination.pageIndex + 1}
-          totalPages={table.getPageCount()}
-          onPageChange={(page) => table.setPageIndex(page - 1)}
+          currentPage={page}
+          totalPages={totalPages}
+          onPageChange={(newPage) => setPage(newPage)}
         />
       )}
 
       {/* 세션 상세 모달 */}
       {selectedSession && (
         <SessionDetailModal
-          session={mockSessionDetailIdle}
+          session={selectedSession}
           onClose={() => setSelectedSession(null)}
         />
       )}

@@ -1,4 +1,4 @@
-import React, {
+import {
   createContext,
   useContext,
   useState,
@@ -11,7 +11,10 @@ import type { DashboardLayout } from "../types/dashboard";
 import defaultThemes from "../theme/Theme.json";
 import apiClient from "../api/apiClient";
 import { useInstanceContext } from "./InstanceContext";
-import { metricDefinition } from "../utils/flattenMetrics";
+
+interface DashboardProviderProps {
+  children: ReactNode;
+}
 
 interface DashboardContextType {
   isEditing: boolean;
@@ -23,144 +26,243 @@ interface DashboardContextType {
   handleStartEdit: () => void;
   handleSaveEdit: () => Promise<void>;
   handleCancelEdit: () => void;
+  metricMap: Record<string, any>;
+  setMetricMap: Dispatch<SetStateAction<Record<string, any>>>;
+  saveDefaultLayout: () => Promise<void>; 
 }
 
 const DashboardContext = createContext<DashboardContextType | null>(null);
 
-export const DashboardProvider = ({ children }: { children: ReactNode }) => {
+export const DashboardProvider = ({ children }: DashboardProviderProps) => {
   const { selectedInstance, selectedDatabase } = useInstanceContext();
 
-  /** 최초 로드: localStorage → 없으면 defaultThemes */
-  const [layout, setLayout] = useState<DashboardLayout[]>(() => {
-    try {
-      const saved = localStorage.getItem("dashboardState");
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed.layout)) return parsed.layout;
+  /**  metricMap 초기화  */
+  const [metricMap, setMetricMap] = useState<Record<string, any>>({});
+
+  const getStorageKey = () =>
+    selectedInstance
+      ? `dashboardState_${selectedInstance.instanceId}`
+      : "dashboardState_default";
+
+  const [layout, setLayout] = useState<DashboardLayout[]>([]);
+  const [themeId, setThemeId] = useState("default");
+  const [isEditing, setIsEditing] = useState(false);
+  const [backupLayout, setBackupLayout] = useState<DashboardLayout[] | null>(null);
+
+  /** metricMap 로드 (인스턴스 변경 시마다) */
+  useEffect(() => {
+    if (!selectedInstance?.instanceId) return;
+
+    const cacheKey = `metricMapCache_${selectedInstance.instanceId}`;
+    const cached = localStorage.getItem(cacheKey);
+
+    // 캐시가 있으면 즉시 로드
+    if (cached) {
+      try {
+        const parsed = JSON.parse(cached);
+        setMetricMap(parsed);
+        return;
+      } catch (err) {
+        console.warn("metricMap 캐시 파싱 실패:", err);
       }
-    } catch {
-      console.warn("대시보드 로컬 데이터 복원 실패");
     }
 
-    return (defaultThemes.default.layout ?? []).map((item: any) => ({
+    // 캐시가 없으면 API 호출
+    const fetchMetricMap = async () => {
+      try {
+        const res = await apiClient.get(`/metric/list`, {
+          params: { instanceId: selectedInstance.instanceId },
+        });
+
+        const parsed = res.data.reduce((acc: Record<string, any>, item: any) => {
+          const key = `${item.category}.${item.name}`;
+          acc[key] = {
+            title: item.description,
+            unit: item.unit,
+            source: item.tableName,
+            column: item.columnName,
+            category: item.category,
+            level: item.level,
+            available_charts: item.availableChart.map((c: string) => c.toLowerCase()),
+            default_chart: item.defaultChartType?.toLowerCase(),
+            description: item.description,
+          };
+          return acc;
+        }, {});
+
+        setMetricMap(parsed);
+        localStorage.setItem(cacheKey, JSON.stringify(parsed));
+        console.log(`metricMap API 로드 및 캐시 저장 (${Object.keys(parsed).length}개)`);
+      } catch (err) {
+        console.error("metricMap 로드 실패:", err);
+      }
+    };
+
+    fetchMetricMap();
+  }, [selectedInstance?.instanceId]);
+
+  /**  로컬 대시보드 복원  */
+  useEffect(() => {
+    const key = getStorageKey();
+
+    try {
+      const saved = localStorage.getItem(key);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed.layout)) {
+          setLayout(parsed.layout);
+          setThemeId(parsed.themeId ?? "default");
+          console.log(`[Dashboard] ${key} 로드 완료`);
+          return;
+        }
+      }
+    } catch (err) {
+      console.warn("대시보드 복원 실패:", err);
+    }
+
+    const defaultLayout = (defaultThemes.default.layout ?? []).map((item: any) => ({
       ...item,
       title: item.title ?? "Untitled Widget",
       databases: item.databases ?? [],
     }));
-  });
+    setLayout(defaultLayout);
+    setThemeId("default");
+    console.log(`[Dashboard] ${key} 기본 테마로 초기화`);
+  }, [selectedInstance?.instanceId]);
 
-  const [themeId, setThemeId] = useState(() => {
-    try {
-      const saved = localStorage.getItem("dashboardState");
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        return parsed.themeId ?? "default";
-      }
-    } catch {}
-    return "default";
-  });
 
-  const [isEditing, setIsEditing] = useState(false);
-  const [backupLayout, setBackupLayout] = useState<DashboardLayout[] | null>(null);
-
-  /** 편집 시작 */
   const handleStartEdit = () => {
     setBackupLayout(layout);
     setIsEditing(true);
   };
 
-  /**  저장 - localStorage도 여기서만 업데이트 */
-  const handleSaveEdit = async () => {
+/** 공통 저장 로직 */
+const saveLayoutInternal = async (layoutToSave: DashboardLayout[]) => {
+  if (!selectedInstance) {
+    throw new Error("인스턴스가 선택되지 않음");
+  }
+
+  const widgets = layoutToSave.map((item) => {
+  // 1. metricType에서 메트릭 이름들 추출
+  const metricNames = Array.isArray(item.metricType)
+    ? item.metricType
+    : [item.metricType];
+  
+  // 예: ["total_sessions", "active_sessions"]
+
+  // 2. metricMap에서 메타정보 찾기
+  const metricInfos = metricNames
+    .map((name: string) => {
+      const fullKey = Object.keys(metricMap).find((k) =>
+        k.endsWith(`.${name}`)
+      );
+      // fullKey 예: "SESSION.total_sessions"
+      
+      return fullKey ? metricMap[fullKey] : null;
+    })
+    .filter(Boolean);
+
+  // 3. databases 설정
+  let dbs = [];
+  if (item.databases?.length) {
+    dbs = item.databases.map((db) => ({ id: db.id, name: db.name }));
+  } else if (selectedDatabase) {
+    dbs = [{
+      id: selectedDatabase.databaseId,
+      name: selectedDatabase.databaseName,
+    }];
+  }
+
+  // 4. 위젯 객체 생성
+  return {
+    id: item.i,
+    title: item.title ?? metricInfos[0]?.title ?? "Untitled Widget",
+    databases: dbs,
+    
+    // ✅ metrics: 메트릭 이름만 (카테고리 없이)
+    metrics: metricNames,  // ["total_sessions"]
+    
+    chartType: item.type || "line",
+    layout: {
+      x: item.x,
+      y: item.y,
+      w: item.w,
+      h: item.h,
+    },
+    options: {
+      unit: metricInfos.map((m) => m.unit ?? "").join(" / "),
+      category: metricInfos.map((m) => m.category ?? "").join(", "),
+      description: metricInfos.map((m) => m.description ?? "").join(" & "),
+    },
+  };
+});
+
+  const dashboardJson = { widgets };
+
+  await apiClient.post("/overview/save", {
+    instanceId: selectedInstance.instanceId,
+    userLayout: dashboardJson,
+  });
+
+  const key = getStorageKey();
+  localStorage.setItem(
+    key,
+    JSON.stringify({ layout: layoutToSave, themeId, isEditing: false })
+  );
+};
+
+/** 사용자가 수정 후 저장 */
+const handleSaveEdit = async () => {
   try {
     if (!selectedInstance) {
       alert("인스턴스를 먼저 선택해주세요.");
       return;
     }
 
-    console.log("저장 직전 전체 데이터:", JSON.stringify(layout, null, 2));
-
-    const widgets = layout.map((item) => {
-      const keys = Array.isArray(item.metricType)
-        ? item.metricType
-        : [item.metricType];
-
-      const metrics = keys
-        .map((key: string) => metricDefinition[key])
-        .filter((m): m is NonNullable<typeof m> => !!m);
-
-      //  databases 처리 
-      let dbs = [];
-      
-      if (item.databases && Array.isArray(item.databases) && item.databases.length > 0) {
-        // 이미 databases가 있는 경우
-        dbs = item.databases.map((db) => ({
-          id: db.id,
-          name: db.name,
-        }));
-        console.log(`Widget ${item.i}: databases 존재 (${dbs.length}개)`);
-      } else if (selectedDatabase) {
-        // databases가 없지만 selectedDatabase가 있는 경우
-        dbs = [{
-          id: selectedDatabase.databaseId,
-          name: selectedDatabase.databaseName,
-        }];
-        console.log(`Widget ${item.i}: selectedDatabase 사용`);
-      } else {
-        // 둘 다 없는 경우
-        console.warn(`Widget ${item.i}: databases 정보 없음!`);
-      }
-
-      const widget = {
-        id: item.i,
-        title: item.title ?? metrics[0]?.title ?? "Untitled Widget",
-        databases: dbs,
-        metrics: keys,
-        chartType: item.type || 'line', // 기본값 설정
-        layout: {
-          x: item.x,
-          y: item.y,
-          w: item.w,
-          h: item.h,
-        },
-        options: {
-          unit: metrics.map((m) => m.unit ?? "").join(" / "),
-          category: metrics.map((m) => m.category ?? "").join(", "),
-          description: metrics.map((m) => m.description ?? "").join(" & "),
-        },
-      };
-
-      console.log(`Widget ${item.i} 변환 결과:`, widget);
-      return widget;
-    });
-
-    const dashboardJson = { widgets };
-
-    console.log("서버 전송 데이터:", {
-      instanceId: selectedInstance.instanceId,
-      dashboardJson: JSON.stringify(dashboardJson, null, 2),
-    });
-
-    await apiClient.post("/overview/save", {
-      instanceId: selectedInstance.instanceId,
-      userLayout: dashboardJson,
-    });
-
-    // 저장 성공 후 localStorage 업데이트
-    localStorage.setItem(
-      "dashboardState",
-      JSON.stringify({ layout, themeId, isEditing: false })
-    );
+    await saveLayoutInternal(layout);
 
     setIsEditing(false);
     setBackupLayout(null);
-    alert("대시보드가 성공적으로 저장되었습니다!");
+    alert("대시보드가 저장되었습니다!");
   } catch (error) {
     console.error("대시보드 저장 실패:", error);
-    alert("저장 중 오류가 발생했습니다.");
+    alert("저장 중 오류 발생");
   }
 };
 
-  /** 취소 (백업 복원) */
+/** 디폴트 레이아웃 저장 */
+const saveDefaultLayout = async () => {
+  try {
+    if (!selectedInstance) {
+      console.warn("인스턴스가 선택되지 않음");
+      return;
+    }
+
+    const defaultLayout = (defaultThemes.default.layout ?? []).map((item: any) => ({
+      i: item.id,
+      x: item.x,
+      y: item.y,
+      w: item.w,
+      h: item.h,
+      title: item.title ?? "Untitled Widget",
+      type: item.type || "line",
+      metricType: item.metricType,
+      databases: [],
+    }));
+
+    // 공통 저장 로직 재사용
+    await saveLayoutInternal(defaultLayout);
+    
+    // 상태 업데이트
+    setLayout(defaultLayout);
+
+    console.log("디폴트 레이아웃 저장 완료");
+  } catch (error) {
+    console.error("디폴트 레이아웃 저장 실패:", error);
+    throw error;
+  }
+};
+
   const handleCancelEdit = () => {
     if (backupLayout) setLayout(backupLayout);
     setIsEditing(false);
@@ -179,14 +281,18 @@ export const DashboardProvider = ({ children }: { children: ReactNode }) => {
         handleStartEdit,
         handleSaveEdit,
         handleCancelEdit,
+        metricMap,
+        setMetricMap,
+        saveDefaultLayout,
       }}
     >
       {children}
     </DashboardContext.Provider>
   );
 };
+
 export const useDashboard = () => {
   const ctx = useContext(DashboardContext);
-  if (!ctx) throw new Error("useDashboard must be used within DashboardProvider");
+  if (!ctx) throw new Error("useDashboard 에러 발생");
   return ctx;
 };

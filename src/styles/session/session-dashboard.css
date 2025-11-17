@@ -184,7 +184,8 @@
 
 /* 메인 콘텐츠 — 좌우 배치 */
 .deadlock-content {
-  display: flex;
+  display: flex !important;
+  flex-direction: row !important;
   align-items: stretch;
   gap: 1.2rem;
   height: 100%;
@@ -303,6 +304,14 @@
   font-size: 0.8rem;
   margin-right: 3px;
   opacity: 0.7;
+}
+
+.no-data{
+  padding: 10px 0;
+  color: #999;
+  font-size: 14px;
+  text-align: center;
+  margin : auto 0;
 }
 
 

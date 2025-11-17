@@ -33,14 +33,9 @@
   font-size: 0.8rem;
   color: #6b7280;
   margin: 0;
+  text-align: right;
 }
 
-.summary-bottom {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-top: 0.4rem;
-}
 
 /* 트렌드 표시 */
 .trend {

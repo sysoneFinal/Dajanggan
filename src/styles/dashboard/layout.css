@@ -42,21 +42,37 @@
 }
 
 /* React Grid Layout */
-.layout-inner {
-  width: 100% !important;
+.layout-inner,
+.react-grid-layout {
+  position: relative !important;
+  min-height: 80vh;
+  overflow: visible !important;
 }
+
+/* 위젯이 튀는 현상 방지 */
+.dashboard-wrapper {
+  position: relative;
+  overflow: visible !important;
+}
+
+
+.grid-item {
+  transition: transform 0.25s ease, width 0.25s ease, height 0.25s ease;
+}
+
 
 /* 카드 */
 .grid-item {
   position: relative;
   border-radius: 12px;
-  display: flex;
+  display: flex !important;
   flex-direction: column;
   justify-content: flex-start;
   background: #fff;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
   overflow: hidden;
   transition: all 0.2s ease;
+  height: 100%;
 }
 .widget-delete-btn {
   position: absolute;

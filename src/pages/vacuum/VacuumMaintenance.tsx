@@ -366,28 +366,24 @@ export default function VacuumPage() {
         <SummaryCard
           label="평균 지연시간"
           value={Number(data.Kpi.avgDelay.toFixed(2))}
-          diff={3}
           desc="seconds • 24h"
         />
 
         <SummaryCard
           label="Average Duration"
           value={Number(data.Kpi.avgDuration.toFixed(2))}
-          diff={3}
           desc="seconds • 24h"
         />
 
         <SummaryCard
-          label="Total Dead Tuples Processed"
+          label="Dead Tuples 처리량"
           value={Number(data.Kpi.totalDeadTuple.toFixed(2))}
-          diff={3}
           desc="M • 24h"
         />
 
         <SummaryCard
           label="Auto Vacuum Worker 활동률"
           value={Math.round(data.Kpi.autovacuumWorker)}
-          diff={3}
           desc="%"
         />
       </div>
@@ -441,7 +437,7 @@ export default function VacuumPage() {
           />
         </WidgetCard>
 
-        <WidgetCard title="Latency Trend(24h)" span={4}>
+        <WidgetCard title="지연 시간 추이(24h)" span={4}>
           <Chart
             type="line"
             series={latencySeries}
@@ -475,10 +471,10 @@ export default function VacuumPage() {
               <tr>
                 <th>TABLE</th>
                 <th>PROGRESS</th>
-                <th>PHASE</th>
+                <th>작업 단계</th>
                 <th>DEAD TUPLES</th>
                 <th>TRIGGER</th>
-                <th>ELAPSED</th>
+                <th>경과 시간</th>
               </tr>
             </thead>
             <tbody>

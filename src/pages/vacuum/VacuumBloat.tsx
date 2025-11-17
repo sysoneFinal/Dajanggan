@@ -261,7 +261,7 @@ const VacuumBloatPage: React.FC = () => {
       <div className="vd-main-layout">
         {/* 좌측: Xmin Horizon Monitor */}
         <div className="vd-left-large">
-          <WidgetCard title="Xmin Horizon Monitor (last 7d)" height="clamp(320px, 38.8vh, 520px)">
+          <WidgetCard title="Xmin Horizon 모니터링 (last 7d)" height="clamp(320px, 38.8vh, 520px)">
             {xminSeries.length > 0 ? (
               <Chart
                 type="line"
@@ -357,7 +357,7 @@ const VacuumBloatPage: React.FC = () => {
           {/* KPI 카드 */}
           <div className="vd-kpi-row">
             <SummaryCard
-              label="Est. Table Bloat"
+              label="Table Bloat 예상치"
               value={resp.kpi.tableBloat}
               diff={0}
             />
@@ -367,7 +367,7 @@ const VacuumBloatPage: React.FC = () => {
               diff={0}
             />
             <SummaryCard
-              label="Bloat Growth"
+              label="Bloat 증가량"
               value={resp.kpi.bloatGrowth}
               diff={0}
               desc="30d"
@@ -377,7 +377,7 @@ const VacuumBloatPage: React.FC = () => {
           {/* 차트 행 */}
           <div className="vd-chart-row">
             {/* Bloat Trend */}
-            <WidgetCard title="Total Bloat Trend (Last 30 Days)">
+            <WidgetCard title="전체 Bloat 추이  (Last 30 Days)">
               {bloatTrendSeries.length > 0 && resp.bloatTrend.labels.length > 0 ? (
                 <Chart
                   type="line"
@@ -430,7 +430,7 @@ const VacuumBloatPage: React.FC = () => {
             </WidgetCard>
 
             {/* Bloat Distribution */}
-            <WidgetCard title="Bloat Distribution by Percentage (24h)">
+            <WidgetCard title="Bloat 비율별 분포 (24h)">
               {bloatDistSeries.length > 0 && resp.bloatDistribution.labels.length > 0 ? (
                 <Chart
                   type="bar"

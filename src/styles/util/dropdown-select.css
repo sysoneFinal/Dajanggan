@@ -150,7 +150,43 @@
   color: #4338ca;
 }
 
+/* 검색 input */
+.dropdown-search {
+  padding: 0.5rem;
+  border-bottom: 1px solid #e5e7eb;
+  position: sticky;
+  top: 0;
+  background: white;
+  z-index: 1;
+}
 
+.search-input {
+  width: 100%;
+  padding: 0.5rem;
+  border: 1px solid #d1d5db;
+  border-radius: 0.375rem;
+  font-size: 0.875rem;
+  outline: none;
+}
+
+.search-input:focus {
+  border-color: #5255e9;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+/* 옵션 리스트 스크롤 */
+.dropdown-options-list {
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+/* 검색 결과 없음 */
+.no-results {
+  padding: 1rem;
+  text-align: center;
+  color: #9ca3af;
+  font-size: 0.875rem;
+}
 
 /* === 스크롤바 === */
 .dropdown-menu.multi::-webkit-scrollbar {
