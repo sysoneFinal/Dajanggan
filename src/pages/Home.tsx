@@ -1,8 +1,10 @@
 import styled from "@emotion/styled";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import InstanceSelector from "../components/dashboard/InstanceSelector";
 import { useInstanceContext } from "../context/InstanceContext";
 import type { Instance } from "../types/instance";
+import NewInstanceModal from "./instance/InstanceRegister";
 
 const Wrapper = styled.div`
   display: flex;
@@ -16,13 +18,9 @@ const Wrapper = styled.div`
 
 export default function Home() {
   const navigate = useNavigate();
-  const {
-    instances,              // 전역 Context에서 인스턴스 목록 받기
-    setSelectedInstance,    // 선택된 인스턴스 설정
-    refreshInstances,       // 필요시 새로고침 가능
-  } = useInstanceContext();
+  const { instances, setSelectedInstance } = useInstanceContext();
+  const [modalOpen, setModalOpen] = useState(false);
 
-  /** 인스턴스 선택 시 */
   const handleSelect = (instance: Instance) => {
     setSelectedInstance(instance);
     navigate(`/overview?instanceId=${instance.instanceId}`);
@@ -30,14 +28,17 @@ export default function Home() {
 
   return (
     <Wrapper>
-      <InstanceSelector
-        instances={instances}
-        onSelect={handleSelect}
+      <InstanceSelector 
+        instances={instances} 
+        onSelect={handleSelect} 
+        onAdd={() => setModalOpen(true)} 
       />
-      {instances.length === 0 && (
-        <p style={{ marginTop: "1rem", color: "#aaa" }}>
-          등록된 인스턴스가 없습니다.
-        </p>
+
+      {modalOpen && (
+        <NewInstanceModal
+          open={modalOpen}
+          onClose={() => setModalOpen(false)}
+        />
       )}
     </Wrapper>
   );

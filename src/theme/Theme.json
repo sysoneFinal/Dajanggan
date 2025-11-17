@@ -1,18 +1,18 @@
 {
-  "default": {
-    "id": "default_7_layout",
-    "name": "기본 (7개 카드형)",
-    "description": "처음 진입 시 표시되는 기본형 대시보드 (CPU, Memory, TPS 등 핵심 지표 포함)",
-    "layout": [
-      { "i": "a", "id": "cpu_memory_usage", "metricType": ["cpu_usage", "memory_usage"], "title": "CPU / Memory Usage", "type": "line", "x": 0, "y": 0, "w": 8, "h": 6 },
-      { "i": "b", "id": "disk_io", "metricType": "disk_io", "title": "Disk I/O Activity", "type": "line", "x": 8, "y": 0, "w": 8, "h": 6 },
-      { "i": "c", "id": "tps_total", "metricType": "tps_total", "title": "Transactions per Second (TPS)", "type": "line", "x": 16, "y": 0, "w": 8, "h": 6 },
-      { "i": "d", "id": "cache_hit_ratio", "metricType": "cache_hit_ratio", "title": "Cache Hit Ratio (%)", "type": "bar", "x": 0, "y": 6, "w": 16, "h": 6 },
-      { "i": "e", "id": "dead_tuples_percent", "metricType": "dead_tuples_percent", "title": "Dead Tuple Ratio (%)", "type": "bar", "x": 0, "y": 12, "w": 8, "h": 6 },
-      { "i": "f", "id": "wait_event_ratio", "metricType": ["lock_wait", "io_wait", "lwlock"], "title": "Wait Event Ratio", "type": "bar", "x": 8, "y": 12, "w": 16, "h": 6 },
-      { "i": "g", "id": "active_sessions", "metricType": "active_sessions", "title": "Active Sessions", "type": "line", "x": 16, "y": 6, "w": 8, "h": 6 }
-    ]
-  },
+"default": {
+  "id": "default_7_layout",
+  "name": "기본 (7개 카드형)",
+  "description": "처음 진입 시 표시되는 기본형 대시보드 (CPU, Memory, TPS 등 핵심 지표 포함)",
+  "layout": [
+    { "i": "a", "id": "cpu_usage", "metricType": "CPU.avg_user_cpu", "title": "CPU Usage (%)", "type": "line", "x": 0, "y": 0, "w": 8, "h": 6 },
+    { "i": "b", "id": "memory_usage", "metricType": "MEMORY.used_memory", "title": "Memory Usage (MB)", "type": "line", "x": 8, "y": 0, "w": 8, "h": 6 },
+    { "i": "c", "id": "disk_io", "metricType": "DISK.avg_io_time", "title": "Disk I/O Activity", "type": "line", "x": 16, "y": 0, "w": 8, "h": 6 },
+    { "i": "d", "id": "tps_total", "metricType": "TPS.total_tps", "title": "Transactions per Second (TPS)", "type": "line", "x": 0, "y": 6, "w": 16, "h": 6 },
+    { "i": "e", "id": "cache_hit_ratio", "metricType": "MEMORY.cache_hit_ratio", "title": "Cache Hit Ratio (%)", "type": "bar", "x": 0, "y": 12, "w": 8, "h": 6 },
+    { "i": "f", "id": "dead_tuples_percent", "metricType": "VACUUM.dead_tuples_percent", "title": "Dead Tuple Ratio (%)", "type": "bar", "x": 8, "y": 12, "w": 8, "h": 6 },
+    { "i": "g", "id": "active_sessions", "metricType": "SESSION.active_sessions", "title": "Active Sessions", "type": "line", "x": 16, "y": 6, "w": 8, "h": 6 }
+  ]
+},
 
   "themes": [
     {

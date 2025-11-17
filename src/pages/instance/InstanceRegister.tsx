@@ -138,6 +138,7 @@ export default function NewInstanceModal({
         await onSubmit(form);
       } else {
         if (mode === 'edit' && instanceId) {
+          // 편집 모드
           const payload: any = {
             host: form.host,
             instanceName: form.instance,

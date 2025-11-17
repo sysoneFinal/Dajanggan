@@ -1,22 +1,25 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import {
   useReactTable,
   getCoreRowModel,
   getSortedRowModel,
-  getFilteredRowModel,
   getPaginationRowModel,
   flexRender,
   type ColumnDef,
   type SortingState,
 } from "@tanstack/react-table";
+import apiClient from "../../api/apiClient";
+import { useInstanceContext } from "../../context/InstanceContext";
 
 import "../../styles/event/event-log.css";
 import Pagination from "../../components/util/Pagination";
 import CsvButton from "../../components/util/CsvButton";
 import MultiSelectDropdown from "../../components/util/MultiSelectDropdown";
 import SummaryCard from "../../components/util/SummaryCard";
+import { formatDateTime } from "../../utils/formatDateTime";
 
 interface EventLog {
+  eventId: number;
   time: string;
   instance: string;
   db: string;
@@ -30,70 +33,134 @@ interface EventLog {
 }
 
 const EventLogPage = () => {
-  /** ===== 더미 데이터 ===== */
-  const [eventLogs] = useState<EventLog[]>([
-    {
-      time: "2025-10-16 13:21:05",
-      instance: "inst-01",
-      db: "orders_db",
-      category: "Session",
-      eventType: "Deadlock",
-      resource: "Lock",
-      user: "sammy",
-      level: "WARN",
-      duration: "10.3s",
-      message: "트랜잭션 간 교착 발생",
-    },
-    {
-      time: "2025-10-16 13:22:11",
-      instance: "inst-02",
-      db: "sales",
-      category: "Query",
-      eventType: "SlowQuery",
-      resource: "I/O",
-      user: "db_user",
-      level: "INFO",
-      duration: "8.5s",
-      message: "쿼리 실행 지연 감지",
-    },
-    {
-      time: "2025-10-16 13:23:27",
-      instance: "inst-03",
-      db: "inventory",
-      category: "System",
-      eventType: "BufferIO",
-      resource: "Memory",
-      user: "system",
-      level: "ERROR",
-      duration: "20.9s",
-      message: "버퍼 캐시 과부하 탐지",
-    },
-  ]);
+  const { selectedInstance } = useInstanceContext();
 
-  /**  요약 카드 데이터  */
-  const summaryData = [
-    { label: "전체 이벤트", value: 10, diff: 3, desc: "최근 15분 기준", status: "info" },
-    { label: "정상 이벤트", value: 5, diff: 3, desc: "최근 15분 평균 기준", status: "info" },
-    { label: "경고 발생", value: 2, diff: 0, desc: "최근 15분 평균 기준", status: "warning" },
-    { label: "위험 발생", value: 3, diff: 1, desc: "최근 15분 평균 기준", status: "critical" },
-  ];
-
-  /**  필터 상태  */
+  /** 상태 관리 */
   const [selectedDBs, setSelectedDBs] = useState<string[]>([]);
   const [selectedLevels, setSelectedLevels] = useState<string[]>([]);
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
-  const [filtered, setFiltered] = useState<EventLog[]>(eventLogs);
+  const [selectedTime, setSelectedTime] = useState<string>("오늘");
+  const [page, setPage] = useState(1);
+  const [sorting, setSorting] = useState<SortingState>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [eventLogs, setEventLogs] = useState<EventLog[]>([]);
+  const [totalCount, setTotalCount] = useState(0);
 
+  // 요약카드 상태
+  const [summary, setSummary] = useState({
+    infoCount: 0,
+    warnCount: 0,
+    errorCount: 0,
+    totalCount: 0,
+  });
+
+  // 필터 옵션 상태
+  const [dbOptions, setDbOptions] = useState<string[]>([]);
+  const [categoryOptions, setCategoryOptions] = useState<string[]>([]);
+  const [levelOptions, setLevelOptions] = useState<string[]>([]);
+
+  const pageSize = 14;
+  const totalPages = Math.ceil(totalCount / pageSize);
+
+  /** 필터 옵션 조회 */
   useEffect(() => {
-    let filteredData = [...eventLogs];
-    if (selectedDBs.length > 0) filteredData = filteredData.filter((e) => selectedDBs.includes(e.db));
-    if (selectedLevels.length > 0) filteredData = filteredData.filter((e) => selectedLevels.includes(e.level));
-    if (selectedCategories.length > 0)
-      filteredData = filteredData.filter((e) => selectedCategories.includes(e.category));
-    setFiltered(filteredData);
-  }, [selectedDBs, selectedLevels, selectedCategories, eventLogs]);
+    if (!selectedInstance?.instanceId) return;
 
-  /**  테이블 컬럼 정의  */
+    const fetchFilterOptions = async () => {
+      try {
+        const res = await apiClient.get("/event/filter-options", {
+          params: { instanceId: selectedInstance.instanceId },
+        });
+        setDbOptions(res.data.databases || []);
+        setCategoryOptions(res.data.categories || []);
+        setLevelOptions(res.data.levels || []);
+      } catch (err) {
+        console.error("필터 옵션 조회 실패:", err);
+      }
+    };
+
+    fetchFilterOptions();
+  }, [selectedInstance?.instanceId]);
+
+  /** 이벤트 로그 조회 */
+  useEffect(() => {
+    if (!selectedInstance?.instanceId) return;
+
+    const fetchEventLogs = async () => {
+      setIsLoading(true);
+      try {
+        const params: any = {
+          instanceId: selectedInstance.instanceId,
+          page,
+          size: pageSize,
+          selectedTime,
+        };
+
+        if (selectedDBs.length) params.dbNames = selectedDBs.join(",");
+        if (selectedCategories.length) params.category = selectedCategories.join(",");
+        if (selectedLevels.length) params.level = selectedLevels.join(",");
+
+        const res = await apiClient.get("/event/list", { params });
+
+        const mapped = res.data.data.map((e: any) => ({
+          eventId: e.eventId,
+          time: formatDateTime(e.detectedAt),
+          instance: e.instanceName,
+          db: e.databaseName,
+          category: e.category,
+          eventType: e.eventType,
+          resource: e.resourceType,
+          user: e.userName,
+          level: e.level,
+          duration: e.duration,
+          message: e.description,
+        }));
+
+        setEventLogs(mapped);
+        setTotalCount(res.data.totalCount ?? mapped.length);
+      } catch (err) {
+        console.error("이벤트 로그 조회 실패:", err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchEventLogs();
+  }, [
+    selectedInstance?.instanceId,
+    selectedDBs.join(","),
+    selectedLevels.join(","),
+    selectedCategories.join(","),
+    selectedTime,
+    page,
+  ]);
+
+  /** 요약 카드 데이터 조회 */
+  useEffect(() => {
+    if (!selectedInstance?.instanceId) return;
+
+    const fetchSummary = async () => {
+      try {
+        const res = await apiClient.get("/event/summary", {
+          params: { instanceId: selectedInstance.instanceId },
+        });
+        setSummary({
+          infoCount: res.data.infoCount ?? 0,
+          warnCount: res.data.warnCount ?? 0,
+          errorCount: res.data.errorCount ?? 0,
+          totalCount: res.data.total_count ?? 0,
+        });
+      } catch (err) {
+        console.error("요약 카드 조회 실패:", err);
+      }
+    };
+
+    fetchSummary();
+    const interval = setInterval(fetchSummary, 60 * 1000);
+    return () => clearInterval(interval);
+  }, [selectedInstance?.instanceId]);
+
+  /** 테이블 컬럼 정의 */
   const columns = useMemo<ColumnDef<EventLog>[]>(
     () => [
       { accessorKey: "time", header: "발생시각" },
@@ -102,42 +169,63 @@ const EventLogPage = () => {
       { accessorKey: "category", header: "구분" },
       { accessorKey: "eventType", header: "이벤트 유형" },
       { accessorKey: "resource", header: "자원유형" },
-      { accessorKey: "user", header: "User" },
+      { accessorKey: "user", header: "사용자명" },
       {
         accessorKey: "level",
         header: "Level",
-        cell: (info) => (
-          <span className={String(info.getValue()).toLowerCase()}>
-            {String(info.getValue())}
-          </span>
-        ),
+        cell: (info) => {
+          const level = String(info.getValue() || "").toUpperCase();
+          return <span className={level.toLowerCase()}>{level}</span>;
+        },
       },
-      { accessorKey: "duration", header: "지속시간" },
-      { accessorKey: "message", header: "내용" },
+          // 초단위 추가 
+      {
+        accessorKey: "duration",
+        header: "지속시간",
+        cell: (info) => {
+          const value = info.getValue();
+          return value !== null && value !== undefined ? `${value}s` : "-";
+        },
+      },
+        // 메세지는 툴팁 적용 
+      {
+        accessorKey: "message",
+        header: "내용",
+        cell: (info) => {
+          const msg = String(info.getValue() ?? "");
+          const shortMsg =
+            msg.length > 120
+              ? msg.substring(0, 120).replace(/\s+$/, "") + "..."
+              : msg;
+          return (
+            <div className="tooltip-container">
+              <span className="message-cell">{shortMsg}</span>
+              <span className="tooltip-box">{msg}</span>
+            </div>
+          );
+        },
+      },
     ],
     []
   );
 
-  /** ===== react-table 구성 ===== */
-  const [sorting, setSorting] = useState<SortingState>([]);
+  /** 테이블 구성 */
   const table = useReactTable({
-    data: filtered,
+    data: eventLogs,
     columns,
     state: { sorting },
     onSortingChange: setSorting,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
-    getFilteredRowModel: getFilteredRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
-    enableMultiSort: false, 
+    manualPagination: true,
+    pageCount: totalPages,
   });
 
-  /**  CSV 내보내기  */
+  /** CSV 내보내기 */
   const handleExportCSV = () => {
     const headers = table.getAllColumns().map((col) => col.columnDef.header);
-    const rows = table.getRowModel().rows.map((r) =>
-      r.getVisibleCells().map((c) => c.getValue()).join(",")
-    );
+    const rows = eventLogs.map((row) => Object.values(row).join(","));
     const csv = [headers.join(","), ...rows].join("\n");
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
     const link = document.createElement("a");
@@ -146,67 +234,62 @@ const EventLogPage = () => {
     link.click();
   };
 
+  /** 필터 핸들러 */
+  const handleDBChange = useCallback((v: string[] | string) => {
+    setSelectedDBs(Array.isArray(v) ? v : [v]);
+    setPage(1);
+  }, []);
+
+  const handleCategoryChange = useCallback((v: string[] | string) => {
+    setSelectedCategories(Array.isArray(v) ? v : [v]);
+    setPage(1);
+  }, []);
+
+  const handleLevelChange = useCallback((v: string[] | string) => {
+    setSelectedLevels(Array.isArray(v) ? v : [v]);
+    setPage(1);
+  }, []);
+
+  const handleTimeChange = useCallback((v: string[] | string) => {
+    setSelectedTime(Array.isArray(v) ? v[0] : v);
+    setPage(1);
+  }, []);
+
+  /** 로딩 상태 */
+  if (isLoading) return <div className="loading">이벤트 로그 불러오는 중...</div>;
+
   return (
     <main className="event-log">
-      {/*  상단 요약 카드  */}
+      {/* 요약 카드 */}
       <section className="event-log__summary">
-        {summaryData.map((card, idx) => (
-          <SummaryCard
-            key={idx}
-            label={card.label}
-            value={card.value}
-            diff={card.diff}
-            desc={card.desc}
-            status={card.status}
-          />
-        ))}
+        <SummaryCard label="전체 이벤트" value={summary.totalCount} desc="최근 15분 내" status="info" />
+        <SummaryCard label="정상" value={summary.infoCount} desc="최근 15분 내" status="info" />
+        <SummaryCard label="경고 발생" value={summary.warnCount} desc="최근 15분 내" status="warning" />
+        <SummaryCard label="위험 발생" value={summary.errorCount} desc="최근 15분 내" status="critical" />
       </section>
 
-      {/*  필터 영역  */}
+      {/* 필터 */}
       <section className="event-log__filters">
-        <MultiSelectDropdown
-          label="Database 선택"
-          options={[...new Set(eventLogs.map((e) => e.db))]}
-          onChange={setSelectedDBs}
-        />
-        <MultiSelectDropdown
-          label="구분"
-          options={[...new Set(eventLogs.map((e) => e.category))]}
-          onChange={setSelectedCategories}
-        />
-        <MultiSelectDropdown
-          label="레벨"
-          options={[...new Set(eventLogs.map((e) => e.level))]}
-          onChange={setSelectedLevels}
-        />
+        <MultiSelectDropdown label="Database 선택" options={dbOptions} value={selectedDBs} onChange={handleDBChange} />
+        <MultiSelectDropdown label="구분" options={categoryOptions} value={selectedCategories} onChange={handleCategoryChange} />
+        <MultiSelectDropdown label="레벨" options={levelOptions} value={selectedLevels} onChange={handleLevelChange} />
         <MultiSelectDropdown
           label="시간 선택"
-          options={[
-            "최근 1시간 이내",
-            "최근 3시간 이내",
-            "최근 6시간 이내",
-            "최근 12시간 이내",
-            "오늘",
-          ]}
-          onChange={() => {}}
+          options={["최근 15분", "최근 30분", "최근 1시간", "최근 3시간", "최근 6시간", "최근 12시간", "오늘"]}
+          value={selectedTime}
+          onChange={handleTimeChange}
+          multi={false}
         />
         <CsvButton tooltip="CSV 파일 저장" onClick={handleExportCSV} />
       </section>
 
-      {/*  테이블  */}
+      {/* 테이블 */}
       <section className="event-log__table">
-        {/* 헤더 */}
         <div className="e-table-header">
           {table.getHeaderGroups().map((headerGroup) => (
             <React.Fragment key={headerGroup.id}>
               {headerGroup.headers.map((header) => (
-                <div
-                  key={header.id}
-                  onClick={header.column.getToggleSortingHandler?.()}
-                  style={{
-                    cursor: header.column.getCanSort() ? "pointer" : "default",
-                  }}
-                >
+                <div key={header.id} onClick={header.column.getToggleSortingHandler?.()}>
                   {flexRender(header.column.columnDef.header, header.getContext())}
                   {{
                     asc: " ▲",
@@ -218,14 +301,11 @@ const EventLogPage = () => {
           ))}
         </div>
 
-        {/* 행 */}
-        {table.getRowModel().rows.length > 0 ? (
+        {eventLogs.length > 0 ? (
           table.getRowModel().rows.map((row) => (
             <div key={row.id} className="e-table-row">
               {row.getVisibleCells().map((cell) => (
-                <div key={cell.id}>
-                  {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                </div>
+                <div key={cell.id}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</div>
               ))}
             </div>
           ))
@@ -234,13 +314,9 @@ const EventLogPage = () => {
         )}
       </section>
 
-      {/*  페이지네이션  */}
-      {table.getPageCount() > 1 && (
-        <Pagination
-          currentPage={table.getState().pagination.pageIndex + 1}
-          totalPages={table.getPageCount()}
-          onPageChange={(page) => table.setPageIndex(page - 1)}
-        />
+      {/* 페이지네이션 */}
+      {totalPages > 1 && (
+        <Pagination currentPage={page} totalPages={totalPages} onPageChange={(newPage) => setPage(newPage)} />
       )}
     </main>
   );
