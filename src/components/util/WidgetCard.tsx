@@ -4,18 +4,32 @@ interface WidgetCardProps {
   title?: string;
   span?: number;
   children: React.ReactNode;
-  height?: number | string;
   className?: string;
 }
 
-export default function WidgetCard({ title, children,  span, height = 320 , className= "",}: WidgetCardProps) {
+/**
+ * WidgetCard
+ * - 내부 콘텐츠(차트)가 부모 높이에 맞춰 자동 리사이즈됨
+ */
+export default function WidgetCard({
+  title,
+  children,
+  span = 1,
+  className = "",
+}: WidgetCardProps) {
   return (
     <div
-      className={`widget-card ${className}`} 
-      style={{ height : height === "auto"? "auto": height, gridColumn: `span ${span}` }}
+      className={`widget-card ${className}`}
+      style={{
+        gridColumn: `span ${span}`,
+      }}
     >
       {title && <h6 className="widget-title">{title}</h6>}
-      <div className="widget-content">{children}</div>
+      <div
+        className="widget-content"
+      >
+        {children}
+      </div>
     </div>
   );
 }

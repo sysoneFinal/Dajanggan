@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useRef, useEffect, useState } from "react";
 import ReactApexChart from "react-apexcharts";
 
 /** 지원 차트 타입 */
@@ -26,6 +26,7 @@ interface ChartProps {
   showToolbar?: boolean;
   isStacked?: boolean;
   xaxisOptions?: ApexXAxis;
+  xAxisTickAmount?: number;
   yaxisOptions?: ApexYAxis | ApexYAxis[];
   tooltipFormatter?: (value: number) => string;
   showDonutTotal?: boolean;
@@ -53,6 +54,7 @@ const DEFAULT_COLORS = [
 /** 공통 폰트 */
 const FONT_FAMILY = 'var(--font-family, "Pretendard", sans-serif)';
 
+
 export default function Chart({
   type,
   series,
@@ -66,6 +68,7 @@ export default function Chart({
   showToolbar = false,
   isStacked = false,
   xaxisOptions,
+  xAxisTickAmount = 6, 
   yaxisOptions,
   tooltipFormatter,
   showDonutTotal = true,
@@ -74,6 +77,61 @@ export default function Chart({
   donutTitle = "",
   titleOptions
 }: ChartProps) {
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  // width/height가 퍼센트 문자열인지 확인
+  const isPercentHeight = typeof height === 'string' && height.includes('%');
+  const isPercentWidth = typeof width === 'string' && width.includes('%');
+
+  const [calculatedHeight, setCalculatedHeight] = useState<number | string>(
+    isPercentHeight ? 300 : height
+  );
+  const [calculatedWidth, setCalculatedWidth] = useState<number | string>(
+    isPercentWidth ? 400 : width
+  );
+
+  useEffect(() => {
+    // 퍼센트 값이 아니면 아무 작업도 하지 않음
+    if (!isPercentHeight && !isPercentWidth) return;
+    if (!containerRef.current) return;
+
+    const updateSize = () => {
+      const parentElement = containerRef.current?.parentElement;
+      if (!parentElement) return;
+
+      if (isPercentHeight) {
+        const parentHeight = parentElement.clientHeight;
+        if (parentHeight && parentHeight > 0) {
+          setCalculatedHeight(parentHeight);
+        }
+      }
+
+      if (isPercentWidth) {
+        const parentWidth = parentElement.clientWidth;
+        if (parentWidth && parentWidth > 0) {
+          setCalculatedWidth(parentWidth);
+        }
+      }
+    };
+
+    // 초기 렌더링 후 약간의 지연을 두고 실행
+    const timer = setTimeout(updateSize, 10);
+
+    window.addEventListener('resize', updateSize);
+
+    // ResizeObserver로 부모 크기 변경 감지
+    const resizeObserver = new ResizeObserver(updateSize);
+    if (containerRef.current.parentElement) {
+      resizeObserver.observe(containerRef.current.parentElement);
+    }
+
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener('resize', updateSize);
+      resizeObserver.disconnect();
+    };
+  }, [isPercentHeight, isPercentWidth]);
+
   const normalizedType =
     type === "column"
       ? "bar"
@@ -85,6 +143,25 @@ export default function Chart({
           | "pie"
           | "scatter"
           | "boxPlot");
+        // 방어 코드 
+  const safeSeries = useMemo(() => {
+    if (!Array.isArray(series) || series.length === 0) {
+      return [{ name: 'No Data', data: [] }];
+    }
+    
+    return series.map((s: any) => ({
+      ...s,
+      data: Array.isArray(s.data) ? s.data : []
+    }));
+  }, [series]);
+
+  const safeCategories = useMemo(() => {
+    if (!Array.isArray(categories)) {
+      return [];
+    }
+    return categories;
+  }, [categories]);
+
 
   const baseOptions = useMemo<ApexCharts.ApexOptions>(() => {
     const options: ApexCharts.ApexOptions = {
@@ -128,14 +205,20 @@ export default function Chart({
         width: type === "line" || type === "area" ? 2 : 0,
       },
       xaxis: {
-        categories,
+        categories: safeCategories,
         labels: {
           style: {
             colors: "#6B7280",
             fontFamily: FONT_FAMILY,
             fontSize: "11px",
           },
+          rotate: -45,  // 라벨 회전
+          rotateAlways: false,
+          hideOverlappingLabels: true,  // 겹치는 라벨 숨기기
+          trim: true,
+          maxHeight: 80,
         },
+        tickAmount: xAxisTickAmount,
         axisBorder: { color: "#D1D5DB" },
         axisTicks: { color: "#D1D5DB" },
         ...xaxisOptions,
@@ -187,25 +270,64 @@ export default function Chart({
 
     /** 타입별 세부 설정 */
     switch (type) {
-
-      /** 바 : 가로 컬럼 : 세로  */
-      case "bar":
-      case "column":
-        options.plotOptions = {
-          bar: {
-            horizontal: type === "bar",
-            borderRadius: 4,
-            columnWidth: "60%",
-            dataLabels: {
-              total: {
-                enabled: isStacked,
-                style: { fontSize: "13px", fontWeight: 600 },
-              },
-            },
-          },
-        };
-        break;
-
+case "bar":
+case "column":
+  options.plotOptions = {
+    bar: {
+      horizontal: type === "bar",
+      borderRadius: 4,
+      columnWidth: "60%",
+      dataLabels: {
+        total: {
+          enabled: isStacked,
+          style: { fontSize: "13px", fontWeight: 600 },
+        },
+      },
+    },
+  };
+  
+  // 줌 기능 추가
+  options.chart = {
+    ...options.chart,
+    zoom: {
+      enabled: true,
+      type: 'x',
+      autoScaleYaxis: true,
+    },
+    toolbar: {
+      show: true,
+      tools: {
+        download: true,
+        selection: true,
+        zoom: true,
+        zoomin: true,
+        zoomout: true,
+        pan: true,
+        reset: true,
+      },
+      autoSelected: 'zoom'
+    }
+  };
+  
+  // x축 라벨 개선
+  options.xaxis = {
+    ...options.xaxis,
+    labels: {
+      ...options.xaxis?.labels,
+      hideOverlappingLabels: true,
+      rotate: -45,
+      rotateAlways: false,
+      trim: true,
+    }
+  };
+  
+  // 막대 위 숫자 끄기 (빽빽할 때)
+  options.dataLabels = {
+    ...options.dataLabels,
+    enabled: false,
+  };
+  
+  break;
       /** 채워진 선 차트 */
       case "area":
         options.stroke = { curve: "smooth", width: 2 };
@@ -230,8 +352,8 @@ export default function Chart({
       /** 파이 / 도넛 */
       case "pie":
       case "donut":
-        options.labels = categories as string[];
-        options.plotOptions = {
+      options.labels = safeCategories as string[];      
+      options.plotOptions = {
           pie: {
             donut: {
               size: "55%",
@@ -288,7 +410,7 @@ export default function Chart({
           offsetY: 10,
           textAnchor: "middle",
           distributed: true,
-          formatter: (val: number, opts: any) => {
+          formatter: (_val: number, opts: any) => {
             const label = opts.w.globals.labels[opts.seriesIndex];
             const rawValue = opts.w.globals.series[opts.seriesIndex];
             return rawValue === 0 ? "" : `${label} ${rawValue}`;
@@ -366,6 +488,7 @@ export default function Chart({
     showToolbar,
     tooltipFormatter,
     xaxisOptions,
+    xAxisTickAmount,
     yaxisOptions,
     customOptions,
     isStacked,
@@ -375,8 +498,22 @@ export default function Chart({
     titleOptions,
   ]);
 
+  // 최종적으로 사용할 width/height 결정
+  const finalWidth = isPercentWidth ? calculatedWidth : width;
+  const finalHeight = isPercentHeight ? calculatedHeight : height;
+
   return (
-    <div style={{ width, height, ...style }}>
+    <div
+      ref={containerRef}
+      style={{
+        width: isPercentWidth ? width : 'auto',
+        height: isPercentHeight ? height : 'auto',
+        display: 'flex',
+        flexDirection: 'column',
+        flex: isPercentHeight || isPercentWidth ? 1 : 'none',
+        ...style
+      }}
+    >
       <style>
         {`
           @keyframes fadeBlink {
@@ -386,12 +523,15 @@ export default function Chart({
           }
         `}
       </style>
-      <ReactApexChart
-        options={baseOptions}
-        series={series ?? []}
-        type={normalizedType}
-        height={height || 300}
-      />
+      {(finalHeight && finalWidth) && (
+        <ReactApexChart
+          options={baseOptions}
+          series={safeSeries}
+          type={normalizedType}
+          width={finalWidth}
+          height={finalHeight}
+        />
+      )}
     </div>
   );
 }

@@ -8,8 +8,15 @@
   backdrop-filter: blur(12px);
   width: 100%;
   min-height: 0;
+  /* 기본적으로 auto 높이 */
+}
+
+/* react-grid-layout 안에서만 100% 높이 적용 */
+.grid-item .widget-card {
   height: 100%;
 }
+
+
 
 .widget-title {
   font-size: 0.9rem;
@@ -25,9 +32,21 @@
   flex-direction: column;
   align-items: stretch;
   justify-content: flex-start;
-  overflow: hidden; 
-  min-height: 0;   
+  overflow: hidden;
+  min-height: 0;
 }
+
+.widget-content > div {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+/* react-grid-layout 안의 위젯만 height 100% 적용 */
+.grid-item .widget-content {
+  height: 100%;
+}
+
 
 
 .widget-card.no-style {
