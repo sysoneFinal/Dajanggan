@@ -14,6 +14,7 @@ import CsvButton from "../../components/util/CsvButton";
 import MultiSelectDropdown from "../../components/util/MultiSelectDropdown";
 import apiClient from "../../api/apiClient";
 import "/src/styles/engine/bgwriterlist.css";
+import { useInstanceContext } from "../../context/InstanceContext";
 
 interface BGWriterData {
     id: string;
@@ -35,6 +36,7 @@ interface BGWriterListResponse {
 }
 
 export default function BGWriterListPage() {
+    const { selectedInstance } = useInstanceContext();
     const [data, setData] = useState<BGWriterData[]>([]);
     const [loading, setLoading] = useState<boolean>(true);
     const [error, setError] = useState<string | null>(null);
@@ -54,6 +56,13 @@ export default function BGWriterListPage() {
 
     // API 데이터 조회
     const fetchData = async () => {
+        // 인스턴스가 선택되지 않은 경우
+        if (!selectedInstance) {
+            setData([]);
+            setLoading(false);
+            return;
+        }
+        
         try {
             setLoading(true);
             setError(null);
@@ -71,6 +80,7 @@ export default function BGWriterListPage() {
             // apiClient 사용하여 API 호출
             const response = await apiClient.get<BGWriterListResponse>('/engine/bgwriter/list', {
                 params: {
+                    instanceId: selectedInstance.instanceId,
                     timeRange,
                     status: statusParam,
                 },
@@ -89,7 +99,7 @@ export default function BGWriterListPage() {
     // 초기 로드 및 필터 변경 시 데이터 조회
     useEffect(() => {
         fetchData();
-    }, [selectedTimeRange, selectedStatus]);
+    }, [selectedTimeRange, selectedStatus, selectedInstance]);
 
     // 프로그레스 바 색상 결정 함수
     const getProgressColor = (ratio: number) => {

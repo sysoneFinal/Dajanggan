@@ -6,6 +6,7 @@ import GaugeChart from "../../components/chart/GaugeChart";
 import WidgetCard from "../../components/util/WidgetCard";
 import ChartGridLayout from "../../components/layout/ChartGridLayout";
 import apiClient from "../../api/apiClient";
+import { useInstanceContext } from "../../context/InstanceContext";
 
 /** Checkpoint API 응답 타입 */
 interface CheckpointData {
@@ -67,9 +68,11 @@ interface CheckpointData {
     };
 }
 
-/** API 요청 - apiClient 사용 */
-async function fetchCheckpointData() {
-    const response = await apiClient.get<CheckpointData>("/engine/checkpoint");
+/** API 요청 - apiClient 사용 - instanceId를 쿼리 파라미터로 전달 */
+async function fetchCheckpointData(instanceId: number) {
+    const response = await apiClient.get<CheckpointData>("/engine/checkpoint", {
+        params: { instanceId }
+    });
     return response.data;
 }
 
@@ -85,11 +88,32 @@ const getCheckpointRequestGaugeStatus = (
 
 /** 메인 컴포넌트 */
 export default function CheckPointPage() {
+    const { selectedInstance } = useInstanceContext();
+    
     const { data, isLoading, isError, error } = useQuery({
-        queryKey: ["checkpointDashboard"],
-        queryFn: fetchCheckpointData,
+        queryKey: ["checkpointDashboard", selectedInstance?.instanceId],
+        queryFn: () => fetchCheckpointData(selectedInstance!.instanceId),
         retry: 1,
+        enabled: !!selectedInstance, // 인스턴스가 선택되었을 때만 실행
     });
+
+    // 인스턴스가 선택되지 않은 경우
+    if (!selectedInstance) {
+        return (
+            <div className="checkpoint-page">
+                <div style={{
+                    display: 'flex',
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    height: '400px',
+                    fontSize: '18px',
+                    color: '#6B7280'
+                }}>
+                    인스턴스를 선택해주세요.
+                </div>
+            </div>
+        );
+    }
 
     // 로딩 중
     if (isLoading) {

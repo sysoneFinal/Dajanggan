@@ -6,6 +6,7 @@ import "../../styles/engine/bgwriter.css";
 import WidgetCard from "../../components/util/WidgetCard";
 import ChartGridLayout from "../../components/layout/ChartGridLayout";
 import apiClient from "../../api/apiClient";
+import { useInstanceContext } from "../../context/InstanceContext";
 
 /** BGWriter API 응답 타입 */
 interface BGWriterData {
@@ -58,9 +59,11 @@ interface BGWriterData {
     };
 }
 
-/** API 요청 - apiClient 사용 */
-async function fetchBGWriterData() {
-    const response = await apiClient.get<BGWriterData>("/engine/bgwriter");
+/** API 요청 - apiClient 사용 - instanceId를 쿼리 파라미터로 전달 */
+async function fetchBGWriterData(instanceId: number) {
+    const response = await apiClient.get<BGWriterData>("/engine/bgwriter", {
+        params: { instanceId }
+    });
     return response.data;
 }
 
@@ -80,11 +83,32 @@ const getBackendFlushGaugeStatus = (
 
 /** 메인 컴포넌트 */
 export default function BGWriterPage() {
+    const { selectedInstance } = useInstanceContext();
+    
     const { data, isLoading, isError, error } = useQuery({
-        queryKey: ["bgwriterDashboard"],
-        queryFn: fetchBGWriterData,
+        queryKey: ["bgwriterDashboard", selectedInstance?.instanceId],
+        queryFn: () => fetchBGWriterData(selectedInstance!.instanceId),
         retry: 1,
+        enabled: !!selectedInstance, // 인스턴스가 선택되었을 때만 실행
     });
+
+    // 인스턴스가 선택되지 않은 경우
+    if (!selectedInstance) {
+        return (
+            <div className="bgwriter-page">
+                <div style={{
+                    display: 'flex',
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    height: '400px',
+                    fontSize: '18px',
+                    color: '#6B7280'
+                }}>
+                    인스턴스를 선택해주세요.
+                </div>
+            </div>
+        );
+    }
 
     // 로딩 중
     if (isLoading) {

@@ -14,6 +14,7 @@ import CsvButton from "../../components/util/CsvButton";
 import "../../styles/system/disklist.css";
 import apiClient from "../../api/apiClient";
 import {useQuery} from "@tanstack/react-query";
+import { useInstanceContext } from "../../context/InstanceContext";
 
 interface DiskIOData {
     id: string;
@@ -40,9 +41,9 @@ interface DiskIOListResponse {
     total: number;
 }
 
-/** API 요청 함수 */
-async function fetchDiskIOList(timeRange: string, statusFilter: string) {
-    const params: any = { timeRange };
+/** API 요청 함수 - instanceId를 쿼리 파라미터로 전달 */
+async function fetchDiskIOList(instanceId: number, timeRange: string, statusFilter: string) {
+    const params: any = { instanceId, timeRange };
     if (statusFilter) {
         params.status = statusFilter;
     }
@@ -51,6 +52,7 @@ async function fetchDiskIOList(timeRange: string, statusFilter: string) {
 }
 
 export default function DiskListPage() {
+    const { selectedInstance } = useInstanceContext();
     const [timeRange, setTimeRange] = useState("7d");
     const [statusFilter, setStatusFilter] = useState("");
     const [sorting, setSorting] = useState<SortingState>([]);
@@ -59,10 +61,11 @@ export default function DiskListPage() {
 
     // React Query로 데이터 가져오기
     const { data: apiResponse, isLoading, isError } = useQuery({
-        queryKey: ["diskioList", timeRange, statusFilter],
-        queryFn: () => fetchDiskIOList(timeRange, statusFilter),
+        queryKey: ["diskioList", selectedInstance?.instanceId, timeRange, statusFilter],
+        queryFn: () => fetchDiskIOList(selectedInstance!.instanceId, timeRange, statusFilter),
         retry: 1,
         refetchInterval: 60000, // 1분마다 자동 갱신
+        enabled: !!selectedInstance, // 인스턴스가 선택되었을 때만 실행
     });
 
     const data = apiResponse?.data || [];
