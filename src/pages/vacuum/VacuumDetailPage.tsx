@@ -126,29 +126,29 @@ export default function VacuumDetailPage({ tableName: propTableName }: Props) {
 
   // 데이터 그룹핑
   const performanceMetrics = data ? {
-    "Time Elapsed": data.summary["Time Elapsed"],
-    "CPU Time": data.summary["CPU Time"],
-    "Avg Read Rate": data.summary["Avg Read Rate"],
-    "Avg Write Rate": data.summary["Avg Write Rate"],
+    "경과 시간": data.summary["Time Elapsed"],
+    "CPU 사용 시간": data.summary["CPU Time"],
+    "평균 읽기 속도": data.summary["Avg Read Rate"],
+    "평균 쓰기 속도": data.summary["Avg Write Rate"],
   } : {};
 
   const dataIO = data ? {
-    "Data Read from Cache": data.summary["Data Read from Cache"],
-    "Data Read from Disk": data.summary["Data Read from Disk"],
-    "Data Flushed to Disk": data.summary["Data Flushed to Disk"],
+    "캐시 읽기량": data.summary["Data Read from Cache"],
+    "디스크 읽기량": data.summary["Data Read from Disk"],
+    "디스크 쓰기량": data.summary["Data Flushed to Disk"],
   } : {};
 
   const tuples = data ? {
-    "Tuples Deleted": data.summary["Tuples Deleted"],
-    "Tuples Remaining": data.summary["Tuples Remaining"],
-    "Tuples Dead But Not Removable": data.summary["Tuples Dead But Not Removable"],
-    "Max Dead Tuples / Phase": data.summary["Max Dead Tuples / Phase"],
+    "삭제된 Tuples": data.summary["Tuples Deleted"],
+    "남은 Tuples": data.summary["Tuples Remaining"],
+    "삭제 불가 Dead Tuples": data.summary["Tuples Dead But Not Removable"],
+    "단계별 최대 Dead Tuples": data.summary["Max Dead Tuples / Phase"],
   } : {};
 
   const pages = data ? {
-    "Pages Remaining": data.summary["Pages Remaining"],
+    "남은 Pages": data.summary["Pages Remaining"],
     "Pages Skipped Frozen": data.summary["Pages Skipped Frozen"],
-    "Pages Removed": data.summary["Pages Removed"],
+    "제거된 Pages": data.summary["Pages Removed"],
     "Pages Skipped Due To Pin": data.summary["Pages Skipped Due To Pin"],
   } : {};
 
