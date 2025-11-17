@@ -1,74 +1,44 @@
-import React from "react";
 import WidgetCard from "../../components/util/WidgetCard";
 import Chart from "../../components/chart/ChartComponent";
-import rawMetrics from "../../components/chart/Metrics.json";
 import type { ChartType } from "../../components/chart/ChartComponent";
-
-/** Metrics.json 항목의 실 구조에 맞춘 타입(핵심 필드만) */
-type MetricFromJson = {
-  title: string;
-  unit?: string;
-  source?: string;
-  column?: string;
-  category?: string;
-  level?: string;
-  available_charts?: string[];
-  default_chart?: string;
-};
-
-type FlatMeta = Record<string, MetricFromJson>;
-
-/** Array 형태의 Metrics.json을 평탄화 */
-function flattenMetrics(json: any): FlatMeta {
-  const arr = Array.isArray(json) ? json : [json];
-  const out: FlatMeta = {};
-
-  for (const group of arr) {
-    Object.keys(group).forEach((category) => {
-      const metricsInCategory = group[category];
-      if (!metricsInCategory || typeof metricsInCategory !== "object") return;
-
-      Object.entries(metricsInCategory).forEach(([metricKey, meta]) => {
-        if (!meta || typeof meta !== "object") return;
-        out[metricKey] = {
-          ...(meta as MetricFromJson),
-          category,
-        };
-      });
-    });
-  }
-  return out;
-}
-
-const meta: FlatMeta = flattenMetrics(rawMetrics);
+import { useDashboard } from "../../context/DashboardContext";
 
 interface WidgetRendererProps {
   metric?: string | string[] | null;
-  /** 커스텀 모드에서만 삭제버튼 활성화 */
+  data?: Array<Record<string, any>>;  // 실제 메트릭 데이터
+  error?: string | null;  // 에러 메시지
   isEditable?: boolean;
   onDelete?: () => void;
 }
 
-/** Metrics의 default_chart/available_charts를 ChartComponent 타입으로 정규화 */
 function normalizeChartType(s?: string): ChartType {
   if (!s) return "line";
   const v = s.toLowerCase();
   if (v === "stacked-bar") return "bar";
-  if (["line", "area", "bar", "column", "pie", "donut", "scatter", "radialbar"].includes(v)) {
+  if (["line", "area", "bar", "column", "pie", "donut", "scatter", "radialbar"].includes(v))
     return v as ChartType;
-  }
   return "line";
 }
 
-/** 더미 데이터(테스트용): metricKey에 따라 결정되는 일관된 값 */
-function generateDummySeries(metricKey: string, len: number): number[] {
-  const seed = metricKey.split("").reduce((a, c) => a + c.charCodeAt(0), 0);
-  return Array.from({ length: len }, (_, i) =>
-    Math.max(1, Math.round((Math.sin(i + seed) + 1) * 10 + (seed % 5)))
-  );
+function formatTimestamp(ts: string): string {
+  // "2025-11-15T00:10:00" -> "00:10"
+  try {
+    const date = new Date(ts);
+    return date.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
+  } catch {
+    return ts;
+  }
 }
 
-export default function WidgetRenderer({ metric, isEditable, onDelete }: WidgetRendererProps) {
+export default function WidgetRenderer({ 
+  metric, 
+  data = [], 
+  error = null, 
+  isEditable, 
+  onDelete 
+}: WidgetRendererProps) {
+  const { metricMap } = useDashboard();
+
   const renderDeleteButton = () =>
     isEditable && onDelete && (
       <button
@@ -82,7 +52,19 @@ export default function WidgetRenderer({ metric, isEditable, onDelete }: WidgetR
       </button>
     );
 
-  // metric이 없을 때 (Empty 카드)
+  // 에러가 있는 경우
+  if (error) {
+    return (
+      <WidgetCard title="Error">
+        {renderDeleteButton()}
+        <div style={{ textAlign: "center", color: "#EF4444" }}>
+          <p>⚠️ 데이터 조회 실패</p>
+          <p style={{ fontSize: "0.875rem", marginTop: "0.5rem" }}>{error}</p>
+        </div>
+      </WidgetCard>
+    );
+  }
+
   if (!metric) {
     return (
       <WidgetCard title="Empty">
@@ -93,9 +75,8 @@ export default function WidgetRenderer({ metric, isEditable, onDelete }: WidgetR
   }
 
   const metricList = Array.isArray(metric) ? metric : [metric];
-  const validMetrics = metricList.filter((m) => !!meta[m]);
+  const validMetrics = metricList.filter((m) => !!metricMap[m]);
 
-  // 매핑 실패 시
   if (validMetrics.length === 0) {
     return (
       <WidgetCard title="Empty">
@@ -105,35 +86,64 @@ export default function WidgetRenderer({ metric, isEditable, onDelete }: WidgetR
     );
   }
 
-  const categories = ["10:00", "10:05", "10:10", "10:15", "10:20", "10:25"];
-  const dataLen = categories.length;
+  // 실제 데이터가 없는 경우
+  if (!data || data.length === 0) {
+    const first = metricMap[validMetrics[0]];
+    return (
+      <WidgetCard title={first?.title ?? validMetrics[0]}>
+        {renderDeleteButton()}
+        <div style={{ textAlign: "center", color: "#9CA3AF", paddingTop: "2rem" }}>
+          <p>📊 데이터 없음</p>
+          <p style={{ fontSize: "0.875rem", marginTop: "0.5rem" }}>
+            최근 15분간 수집된 데이터가 없습니다.
+          </p>
+        </div>
+      </WidgetCard>
+    );
+  }
 
-  const first = meta[validMetrics[0]];
+  // 실제 데이터로 차트 렌더링
+  const first = metricMap[validMetrics[0]];
   const preferred = first.default_chart ?? first.available_charts?.[0] ?? "line";
   const chartType: ChartType = validMetrics.length > 1 ? "line" : normalizeChartType(preferred);
   const isStacked = (first.default_chart ?? first.available_charts?.[0]) === "stacked-bar";
 
-  const chartSeries = validMetrics.map((m) => ({
-    name: meta[m]?.title ?? m,
-    data: generateDummySeries(m, dataLen),
-  }));
+  // timestamp를 카테고리로 변환
+  const categories = data.map((row) => formatTimestamp(row.timestamp));
+
+  // 각 메트릭별로 시리즈 생성
+  const chartSeries = validMetrics.map((m) => {
+    const metricInfo = metricMap[m];
+    // 메트릭명에서 실제 컬럼명 추출 (SESSION.total_sessions -> total_sessions)
+    const columnName = m.includes('.') ? m.split('.').pop() : m;
+    
+    return {
+      name: metricInfo?.title ?? m,
+      data: data.map((row) => {
+        const value = row[columnName!];
+        return value != null ? Number(value) : 0;
+      }),
+    };
+  });
 
   const chartTitle =
     validMetrics.length > 1
-      ? validMetrics.map((m) => meta[m]?.title ?? m).join(" / ")
+      ? validMetrics.map((m) => metricMap[m]?.title ?? m).join(" / ")
       : first.title ?? validMetrics[0];
 
   return (
     <WidgetCard title={chartTitle}>
       {renderDeleteButton()}
-      <Chart
-        type={chartType}
-        series={chartSeries}
-        categories={categories}
-        height={220}
-        showLegend={validMetrics.length > 1}
-        isStacked={isStacked}
-      />
+      <div style={{ flex: 1, display: "flex", flexDirection: "column", minHeight: 0 }}>
+        <Chart
+          type={chartType}
+          series={chartSeries}
+          categories={categories}
+          showLegend={validMetrics.length > 1}
+          isStacked={isStacked}
+          height="100%"
+        />
+      </div>
     </WidgetCard>
   );
 }

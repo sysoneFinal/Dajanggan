@@ -1,132 +1,89 @@
-// src/pages/alarm/AlarmRuleDetailModal.tsx
-import React, { useEffect, useRef } from "react";
-import "/src/styles/alarm/alarm-rule-detail.css";
+import React, { useEffect, useRef, useState } from "react";
+import "/src/styles/alarm/alarm-rule.css";
 import "/src/styles/alarm/alarm-modal-root.css";
-import AlarmRuleEditModal from "./AlarmRuleEditModal";
+import apiClient from "../../api/apiClient";
 
+export type Metric = "dead_tuples" | "bloat_pct" | "vacuum_backlog" | "wal_lag";
+export type Aggregation = "latest_avg" | "avg_5m" | "avg_15m" | "p95_15m";
 
-type Metric = "dead_tuples" | "bloat_pct" | "vacuum_backlog" | "wal_lag";
-type Aggregation = "latest_avg" | "avg_5m" | "avg_15m" | "p95_15m";
-type Section = "vacuum" | "bloat" | "wal" | "session";
-
-interface RuleThreshold {
+export interface RuleThreshold {
   threshold: number;
   minDurationMin: number;
   occurCount: number;
   windowMin: number;
 }
 
-export interface SavedAlertRule {
-  id: number;
-  enabled: boolean;
-  tardgetInstance: string;
-  tardgetDatabase: string;
-  section: Section;
-  metric: Metric;
-  aggregation: Aggregation;
-  updatedAt?: string;
-  levels: {
-    notice: RuleThreshold;
-    wardning: RuleThreshold;
-    critical: RuleThreshold;
-  };
-}
-
-/** 데모 데이터 (id로 조회 가능하도록) */
-const DEMO_RULES: SavedAlertRule[] = [
-  {
-    id: 1,
-    enabled: true,
-    tardgetInstance: "prod-pg01",
-    tardgetDatabase: "orders",
-    section: "vacuum",
-    metric: "dead_tuples",
-    aggregation: "avg_5m",
-    updatedAt: "2025-11-02 15:20",
-    levels: {
-      notice: { threshold: 10000, minDurationMin: 5, occurCount: 1, windowMin: 10 },
-      wardning: { threshold: 50000, minDurationMin: 10, occurCount: 2, windowMin: 15 },
-      critical: { threshold: 100000, minDurationMin: 15, occurCount: 3, windowMin: 20 },
-    },
-  },
-  {
-    id: 2,
-    enabled: false,
-    tardgetInstance: "staging-pg",
-    tardgetDatabase: "sessions",
-    section: "bloat",
-    metric: "bloat_pct",
-    aggregation: "avg_15m",
-    updatedAt: "2025-10-25 09:40",
-    levels: {
-      notice: { threshold: 10, minDurationMin: 10, occurCount: 1, windowMin: 15 },
-      wardning: { threshold: 20, minDurationMin: 20, occurCount: 2, windowMin: 25 },
-      critical: { threshold: 30, minDurationMin: 30, occurCount: 3, windowMin: 30 },
-    },
-  },
-  {
-    id: 3,
-    enabled: true,
-    tardgetInstance: "prod-pg02",
-    tardgetDatabase: "analytics",
-    section: "wal",
-    metric: "wal_lag",
-    aggregation: "latest_avg",
-    updatedAt: "2025-11-01 13:00",
-    levels: {
-      notice: { threshold: 100, minDurationMin: 5, occurCount: 1, windowMin: 10 },
-      wardning: { threshold: 200, minDurationMin: 10, occurCount: 2, windowMin: 15 },
-      critical: { threshold: 500, minDurationMin: 15, occurCount: 3, windowMin: 20 },
-    },
-  },
-];
-
-const SECTION_LABEL: Record<Section, string> = {
-  vacuum: "Vacuum",
-  bloat: "Bloat",
-  wal: "WAL",
-  session: "Session",
-};
-
-const METRIC_LABEL: Record<Metric, string> = {
-  dead_tuples: "Dead tuples",
-  bloat_pct: "Bloat %",
-  vacuum_backlog: "Vacuum backlog",
-  wal_lag: "WAL lag",
-};
-
-const AGG_LABEL: Record<Aggregation, string> = {
-  latest_avg: "최근값 평균",
-  avg_5m: "5분 평균",
-  avg_15m: "15분 평균",
-  p95_15m: "p95(15m)",
-};
-
-function fmt(n: number) {
-  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
-  if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
-  return String(n);
-}
-
-interface AlarmRuleDetailModalProps {
-  open: boolean;
-  onClose: () => void;
-  ruleId?: number;
-  rule?: SavedAlertRule;
-  onEdit?: (rule: SavedAlertRule) => void;
-}
-
 export default function AlarmRuleDetailModal({
   open,
   onClose,
   ruleId,
-  rule: ruleProp,
   onEdit,
-}: AlarmRuleDetailModalProps) {
+}: {
+  open: boolean;
+  onClose: () => void;
+  ruleId?: number;
+  onEdit?: (ruleId: number) => void;
+}) {
+  const [loading, setLoading] = useState(false);
+  const [enabled, setEnabled] = useState<boolean>(true);
+  const [instanceName, setInstanceName] = useState<string>("");
+  const [databaseName, setDatabaseName] = useState<string>("");
+  const [metric, setMetric] = useState<Metric>("dead_tuples");
+  const [aggregation, setAggregation] = useState<Aggregation>("latest_avg");
+  const [levels, setLevels] = useState<{
+    notice: RuleThreshold;
+    warning: RuleThreshold;
+    critical: RuleThreshold;
+  }>({
+    notice: { threshold: 0, minDurationMin: 0, occurCount: 0, windowMin: 0 },
+    warning: { threshold: 0, minDurationMin: 0, occurCount: 0, windowMin: 0 },
+    critical: { threshold: 0, minDurationMin: 0, occurCount: 0, windowMin: 0 },
+  });
+
   const overlayRef = useRef<HTMLDivElement>(null);
 
-  // rule 우선순위: prop으로 전달된 rule → ruleId로 찾은 rule
-  const rule = ruleProp ?? (ruleId ? DEMO_RULES.find((r) => r.id === ruleId) : undefined);
+  // 규칙 상세 조회
+  useEffect(() => {
+    if (!open || !ruleId) return;
+
+    const ac = new AbortController();
+    
+    (async () => {
+      try {
+        setLoading(true);
+
+        const res = await apiClient.get(`/alarms/rules/${ruleId}`, {
+          signal: ac.signal
+        });
+
+        const detail = res.data;
+        
+        setEnabled(detail.enabled ?? true);
+        setInstanceName(detail.instanceName || "Unknown");
+        setDatabaseName(detail.databaseName || "Unknown");
+        setMetric(detail.metricType as Metric);
+        setAggregation(detail.aggregationType as Aggregation);
+        
+        // levels 매핑
+        if (detail.levels) {
+          setLevels({
+            notice: detail.levels.notice || { threshold: 0, minDurationMin: 0, occurCount: 0, windowMin: 0 },
+            warning: detail.levels.warning || { threshold: 0, minDurationMin: 0, occurCount: 0, windowMin: 0 },
+            critical: detail.levels.critical || { threshold: 0, minDurationMin: 0, occurCount: 0, windowMin: 0 },
+          });
+        }
+      } catch (e: any) {
+        if (e?.name !== "CanceledError") {
+          console.error('Failed to fetch rule:', e);
+          alert("규칙 조회에 실패했습니다.");
+        }
+      } finally {
+        setLoading(false);
+      }
+    })();
+
+    return () => ac.abort();
+  }, [open, ruleId]);
 
   useEffect(() => {
     if (!open) return;
@@ -143,38 +100,32 @@ export default function AlarmRuleDetailModal({
   };
 
   const handleEdit = () => {
-    if (rule && onEdit) {
-      onEdit(rule);
-      onClose();
+    if (onEdit && ruleId) {
+      onEdit(ruleId);
     }
   };
 
-  if (!open) return null;
+  const getMetricLabel = (metric: Metric) => {
+    const labels: Record<Metric, string> = {
+      dead_tuples: "Dead Tuples",
+      bloat_pct: "Bloat %",
+      vacuum_backlog: "Vacuum Backlog",
+      wal_lag: "WAL Lag"
+    };
+    return labels[metric];
+  };
 
-  if (!rule) {
-    return (
-      <div
-        ref={overlayRef}
-        onMouseDown={handleOutside}
-        className="amr-overlay"
-        aria-modal="true"
-        role="dialog"
-      >
-        <div className="amr-modal" onMouseDown={(e) => e.stopPropagation()} style={{ maxWidth: 900 }}>
-          <header className="amr-modal__header">
-            <div className="amr-modal__title">알림 규칙 상세</div>
-          </header>
-        <div className="amr-modal__body" style={{ height: "20vh", maxHeight: "20vh", overflowY: "auto", padding: "16px" }}>
-            <div className="ard-empty">
-              규칙을 찾을 수 없습니다.
-              <br />
-              올바른 규칙 ID를 전달해주세요.
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  const getAggregationLabel = (agg: Aggregation) => {
+    const labels: Record<Aggregation, string> = {
+      latest_avg: "Latest Average",
+      avg_5m: "Avg (5m)",
+      avg_15m: "Avg (15m)",
+      p95_15m: "P95 (15m)"
+    };
+    return labels[agg];
+  };
+
+  if (!open) return null;
 
   return (
     <div
@@ -183,90 +134,109 @@ export default function AlarmRuleDetailModal({
       className="amr-overlay"
       aria-modal="true"
       role="dialog"
+      aria-labelledby="alarm-rule-detail-title"
     >
-      <div className="amr-modal" onMouseDown={(e) => e.stopPropagation()} style={{ maxWidth: 900 }}>
+      <div className="amr-modal" onMouseDown={(e) => e.stopPropagation()} style={{ maxWidth: 800 }}>
         <header className="amr-modal__header">
-          <div className="amr-modal__title">알림 규칙 상세</div>
+          <div id="alarm-rule-detail-title" className="amr-modal__title">알림 규칙 상세</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <span className={`al-badge ${enabled ? "al-badge--ok" : "al-badge--warn"}`}>
+              {enabled ? "활성화" : "비활성화"}
+            </span>
+          </div>
         </header>
 
-        <div className="amr-modal__body" style={{ height: "50vh", maxHeight: "50vh", overflowY: "auto", padding: "16px" }}>
-          {/* 규칙 헤더 정보 */}
-          <div className="ard-rule-header" style={{ marginBottom: "24px" }}>
-            <div className="ard-rule-title">
-              <h3 style={{ margin: 0, fontSize: "20px", fontWeight: 600 }}>
-                {SECTION_LABEL[rule.section]} · {METRIC_LABEL[rule.metric]}{" "}
-                <span className="ard-dim">({AGG_LABEL[rule.aggregation]})</span>
-              </h3>
-              <div className="ard-sub" style={{ marginTop: "8px", fontSize: "14px", color: "#6b7280" }}>
-                <span className="ard-kicker">인스턴스</span> {rule.tardgetInstance}
-                <span className="ard-sep">•</span>
-                <span className="ard-kicker">데이터베이스</span> {rule.tardgetDatabase}
-                {rule.updatedAt && (
-                  <>
-                    <span className="ard-sep">•</span>
-                    <span className="ard-kicker">업데이트</span> {rule.updatedAt}
-                  </>
-                )}
-              </div>
+        <div className="amr-modal__body" style={{ maxHeight: '70vh', overflowY: 'auto' }}>
+          {loading ? (
+            <div style={{ textAlign: 'center', color: '#9CA3AF', padding: '40px' }}>
+              로딩 중...
             </div>
-            <div className="ard-badges" style={{ marginTop: "12px" }}>
-              <span
-                className={`ard-chip ${rule.enabled ? "ard-chip--on" : "ard-chip--off"}`}
-              >
-                {rule.enabled ? "ENABLED" : "DISABLED"}
-              </span>
-            </div>
-          </div>
+          ) : (
+            <>
+              <div className="ar-grid">
+                <div>
+                  <div className="ar-kicker">대상 인스턴스</div>
+                  <div className="ar-select" style={{ backgroundColor: '#F9FAFB', padding: '10px 12px', border: '1px solid #E5E7EB', borderRadius: '6px' }}>
+                    {instanceName}
+                  </div>
+                </div>
+                <div>
+                  <div className="ar-kicker">대상 데이터베이스</div>
+                  <div className="ar-select" style={{ backgroundColor: '#F9FAFB', padding: '10px 12px', border: '1px solid #E5E7EB', borderRadius: '6px' }}>
+                    {databaseName}
+                  </div>
+                </div>
 
-          {/* 임계값 표 */}
-          <div className="ard-tablewrap">
-            <table className="ard-table">
-              <thead>
-                <tr>
-                  <th></th>
-                  <th>주의</th>
-                  <th>경고</th>
-                  <th>위험</th>
-                </tr>
-              </thead>
-              <tbody>
-               
-                <tr className="ard-row">
-                  <td className="ard-td-strong">알람 레벨</td>
-                  <td>{fmt(rule.levels.notice.threshold)}</td>
-                  <td>{fmt(rule.levels.wardning.threshold)}</td>
-                  <td>{fmt(rule.levels.critical.threshold)}</td>
-                </tr>
-                <tr className="ard-row">
-                  <td className="ard-td-strong">지속 시간(분)</td>
-                  <td>{rule.levels.notice.minDurationMin}</td>
-                  <td>{rule.levels.wardning.minDurationMin}</td>
-                  <td>{rule.levels.critical.minDurationMin}</td>
-                </tr>
-                <tr className="ard-row">
-                  <td className="ard-td-strong">발생 횟수</td>
-                  <td>{rule.levels.notice.occurCount}</td>
-                  <td>{rule.levels.wardning.occurCount}</td>
-                  <td>{rule.levels.critical.occurCount}</td>
-                </tr>
-                <tr className="ard-row">
-                  <td className="ard-td-strong">윈도우(분)</td>
-                  <td>{rule.levels.notice.windowMin}</td>
-                  <td>{rule.levels.wardning.windowMin}</td>
-                  <td>{rule.levels.critical.windowMin}</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
+                <div>
+                  <div className="ar-kicker">지표</div>
+                  <div className="ar-select" style={{ backgroundColor: '#F9FAFB', padding: '10px 12px', border: '1px solid #E5E7EB', borderRadius: '6px' }}>
+                    {getMetricLabel(metric)}
+                  </div>
+                </div>
+
+                <div>
+                  <div className="ar-kicker">집계</div>
+                  <div className="ar-select" style={{ backgroundColor: '#F9FAFB', padding: '10px 12px', border: '1px solid #E5E7EB', borderRadius: '6px' }}>
+                    {getAggregationLabel(aggregation)}
+                  </div>
+                </div>
+              </div>
+
+              <div className="ar-tablewrap" style={{ marginTop: '24px' }}>
+                <table className="ar-table">
+                  <thead>
+                    <tr>
+                      <th></th>
+                      <th>주의</th>
+                      <th>경고</th>
+                      <th>위험</th>
+                      <th></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr className="ar-row">
+                      <td className="ar-td-strong">임계치</td>
+                      <td>{levels.notice.threshold.toLocaleString()}</td>
+                      <td>{levels.warning.threshold.toLocaleString()}</td>
+                      <td>{levels.critical.threshold.toLocaleString()}</td>
+                      <td className="ar-right"></td>
+                    </tr>
+
+                    <tr className="ar-row">
+                      <td className="ar-td-strong">지속 시간</td>
+                      <td>{levels.notice.minDurationMin}</td>
+                      <td>{levels.warning.minDurationMin}</td>
+                      <td>{levels.critical.minDurationMin}</td>
+                      <td className="ar-right">분</td>
+                    </tr>
+
+                    <tr className="ar-row">
+                      <td className="ar-td-strong">발생 횟수</td>
+                      <td>{levels.notice.occurCount}</td>
+                      <td>{levels.warning.occurCount}</td>
+                      <td>{levels.critical.occurCount}</td>
+                      <td className="ar-right">회</td>
+                    </tr>
+
+                    <tr className="ar-row">
+                      <td className="ar-td-strong">윈도우</td>
+                      <td>{levels.notice.windowMin}</td>
+                      <td>{levels.warning.windowMin}</td>
+                      <td>{levels.critical.windowMin}</td>
+                      <td className="ar-right">분</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </>
+          )}
         </div>
 
         <footer className="amr-modal__footer">
-          <button className="amr-btn" onClick={handleEdit}>
-            수정
-          </button>
-          <button className="amr-btn amr-btn--primary" onClick={onClose}>
-            확인
-          </button>
+          <button className="amr-btn" onClick={onClose}>닫기</button>
+          {onEdit && ruleId && (
+            <button className="amr-btn amr-btn--primary" onClick={handleEdit}>수정</button>
+          )}
         </footer>
       </div>
     </div>

@@ -56,8 +56,8 @@ const formatK = (n?: number) => {
   return `${v}`;
 };
 
-const VacuumPage: React.FC<{ hours?: number }> = ({ hours = 100 }) => {
-  const { selectedDatabase } = useInstanceContext();
+const VacuumPage: React.FC<{ hours?: number }> = ({ hours = 24 }) => {
+  const { selectedInstance, selectedDatabase } = useInstanceContext();
   const databaseId = selectedDatabase?.databaseId ?? null;
 
   const [loading, setLoading] = useState(true);
@@ -183,6 +183,22 @@ const VacuumPage: React.FC<{ hours?: number }> = ({ hours = 100 }) => {
     [scatterPoints]
   );
 
+  
+     // Instance나 Database가 선택되지 않은 경우
+    if (!selectedInstance || !selectedDatabase) {
+      return (
+        <div className="vd-root">
+          <div style={{ padding: '40px', textAlign: 'center', color: '#6B7280' }}>
+            <p style={{ fontSize: '18px', fontWeight: '500', marginBottom: '8px' }}>
+              Instance와 Database를 선택해주세요
+            </p>
+          </div>
+        </div>
+      );
+    }
+  
+  
+
   return (
     <div className="vd-root">
       {loading && <div className="il-banner il-banner--muted">로딩 중…</div>}
@@ -192,7 +208,7 @@ const VacuumPage: React.FC<{ hours?: number }> = ({ hours = 100 }) => {
         <>
           <ChartGridLayout>
             {/* Blockers per Hour */}
-            <WidgetCard title={`Blockers per Hour (${hours}h)`} span={4}>
+            <WidgetCard title={`시간당 차단 발생 건수 (${hours}h)`} span={4}>
               <Chart
                 type="line"
                 series={blockersSeries}
@@ -202,7 +218,7 @@ const VacuumPage: React.FC<{ hours?: number }> = ({ hours = 100 }) => {
             </WidgetCard>
 
             {/* Transaction Age vs Block Duration (scatter) */}
-            <WidgetCard title="Transaction Age vs Block Duration" span={4}>
+            <WidgetCard title="트랜잭션 경과 시간 vs 차단 지속 시간" span={4}>
               <Chart
                 type="scatter"
                 series={txScatterSeries}
@@ -298,7 +314,7 @@ const VacuumPage: React.FC<{ hours?: number }> = ({ hours = 100 }) => {
             {/* Vacuum Blockers */}
             <section className="vd-card">
               <header className="vd-card__header">
-                <h3>Vacuum Blockers / Inaccessible Tables</h3>
+                <h3>Vacuum Blockers / 접근 불가 테이블</h3>
               </header>
               <div className="vd-tablewrap">
                 <table className="vd-table2">

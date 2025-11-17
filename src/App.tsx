@@ -24,11 +24,15 @@ function App() {
   const noLayoutRoutes = ["/"];
   const hideLayout = noLayoutRoutes.includes(location.pathname);
 
-  const [breadcrumb, setBreadcrumb] = useState(["Database", "Session", "Dashboard"]);
+  const [breadcrumb, setBreadcrumb] = useState([
+    "Database",
+    "Session",
+    "Dashboard",
+  ]);
 
   return (
     <QueryClientProvider client={queryClient}>
-      <InstanceProvider>    
+      <InstanceProvider>
         <DashboardProvider>
           <div className="app-background">
             {hideLayout ? (
@@ -38,7 +42,6 @@ function App() {
                 <Sidebar onChangeBreadcrumb={setBreadcrumb} />
 
                 <div className="app-content">
-                  {/* Header와 OverviewPage 둘 다 같은 context를 공유함 */}
                   <Header breadcrumb={breadcrumb} />
                   <AppRoutes />
                 </div>

@@ -44,23 +44,40 @@
     user-select: none;
 }
 
-/* 테이블 */
+/* 테이블 - 좌우 반응형 */
 .hotindex-list-page__table {
     background: rgba(255, 255, 255, 0.6);
     border-radius: 0.7rem;
     border: 1px solid rgba(255, 255, 255, 0.7);
     box-shadow: 0 0.6rem 1.8rem rgba(0, 0, 0, 0.08);
     overflow-x: auto;
+    width: 100%;
+    -webkit-overflow-scrolling: touch;
 }
 
+/* 12개 컬럼 - 화면에 맞춰 늘어나도록 설정 */
 .hotindex-table-header,
 .hotindex-table-row {
     display: grid;
-    grid-template-columns: repeat(8, minmax(8rem, 1fr));
+    grid-template-columns:
+        minmax(150px, 1.8fr)  /* 인덱스 명 */
+        minmax(120px, 1.5fr)  /* 테이블 명 */
+        minmax(90px, 1fr)     /* 타입 */
+        minmax(100px, 1.2fr)  /* 크기 */
+        minmax(100px, 1.2fr)  /* 스캔 */
+        minmax(110px, 1.3fr)  /* 읽은 튜플 */
+        minmax(110px, 1.3fr)  /* 가져온 튜플 */
+        minmax(100px, 1.2fr)  /* 캐시 Hit */
+        minmax(100px, 1.2fr)  /* Bloat */
+        minmax(110px, 1.3fr)  /* 평균 시간 */
+        minmax(110px, 1.3fr)  /* 마지막 사용 */
+        minmax(80px, 1fr);    /* 상태 */
+    min-width: 1350px;
     text-align: center;
-    padding: 1.1rem;
+    padding: 1rem 0.8rem;
     align-items: center;
-    font-size: 1rem;
+    font-size: 0.9rem;
+    gap: 0.5rem;
 }
 
 .hotindex-table-header {
@@ -74,8 +91,16 @@
     color: #2e2f33;
 }
 
+.hotindex-table-row:hover {
+    background: rgba(123, 97, 255, 0.05);
+}
+
 .hotindex-table-row:nth-child(even) {
     background: rgba(255, 255, 255, 0.5);
+}
+
+.hotindex-table-row:nth-child(even):hover {
+    background: rgba(123, 97, 255, 0.08);
 }
 
 .hotindex-table-empty {
@@ -101,40 +126,39 @@
     font-weight: 700;
 }
 
-/* 프로그레스 바 스타일 */
-.progress-cell {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    justify-content: center;
+.bloat {
+    color: #F97316;
+    font-weight: 700;
 }
 
-.progress-bar-wrapper {
-    flex: 1;
-    max-width: 150px;
+/* Bloat 비율 색상 */
+.bloat-normal {
+    color: #10B981;
+    font-weight: 600;
 }
 
-.progress-bar-track {
-    width: 100%;
-    height: 8px;
-    background-color: #E5E7EB;
+.bloat-medium {
+    color: #F59E0B;
+    font-weight: 600;
+}
+
+.bloat-high {
+    color: #EF4444;
+    font-weight: 700;
+}
+
+/* 배지 스타일 */
+.badge {
+    padding: 4px 12px;
     border-radius: 4px;
-    overflow: hidden;
-    position: relative;
-}
-
-.progress-bar-fill {
-    height: 100%;
-    border-radius: 4px;
-    transition: width 0.3s ease, background-color 0.3s ease;
-}
-
-.progress-value {
-    font-size: 13px;
+    font-size: 12px;
     font-weight: 500;
-    color: #374151;
-    min-width: 45px;
-    text-align: right;
+    display: inline-block;
+}
+
+.badge-type {
+    background-color: #E0E7FF;
+    color: #3730A3;
 }
 
 /* 정렬 아이콘 */
@@ -145,7 +169,19 @@
 }
 
 /* 반응형 */
+@media (max-width: 1600px) {
+    .hotindex-table-header,
+    .hotindex-table-row {
+        font-size: 0.85rem;
+        padding: 0.9rem 0.7rem;
+    }
+}
+
 @media (max-width: 768px) {
+    .hotindex-list-page {
+        padding: 1rem;
+    }
+
     .hotindex-list-page__filters {
         flex-direction: column;
         align-items: flex-start;
@@ -159,7 +195,8 @@
 
     .hotindex-table-header,
     .hotindex-table-row {
-        grid-template-columns: repeat(8, minmax(6rem, 1fr));
-        font-size: 0.8rem;
+        font-size: 0.75rem;
+        padding: 0.8rem 0.5rem;
+        min-width: 1150px;
     }
 }

@@ -173,23 +173,13 @@ const VacuumBloatPage: React.FC = () => {
 
   // ====== 렌더링 ======
   
-  // Instance 미선택
-  if (!selectedInstance) {
+  // Instance나 Database가 선택되지 않은 경우
+  if (!selectedInstance || !selectedDatabase) {
     return (
       <div className="vd-root">
-        <div style={{
-          padding: '40px',
-          textAlign: 'center',
-          color: '#6B7280',
-          backgroundColor: '#F9FAFB',
-          borderRadius: '8px',
-          margin: '16px'
-        }}>
+        <div style={{ padding: '40px', textAlign: 'center', color: '#6B7280' }}>
           <p style={{ fontSize: '18px', fontWeight: '500', marginBottom: '8px' }}>
-            Instance를 선택해주세요
-          </p>
-          <p style={{ fontSize: '14px', color: '#9CA3AF' }}>
-            상단 헤더에서 Instance를 선택하면 대시보드 데이터가 표시됩니다.
+            Instance와 Database를 선택해주세요
           </p>
         </div>
       </div>
@@ -271,7 +261,7 @@ const VacuumBloatPage: React.FC = () => {
       <div className="vd-main-layout">
         {/* 좌측: Xmin Horizon Monitor */}
         <div className="vd-left-large">
-          <WidgetCard title="Xmin Horizon Monitor (last 7d)" height="clamp(320px, 38.8vh, 520px)">
+          <WidgetCard title="Xmin Horizon 모니터링 (last 7d)" height="clamp(320px, 38.8vh, 520px)">
             {xminSeries.length > 0 ? (
               <Chart
                 type="line"
@@ -367,7 +357,7 @@ const VacuumBloatPage: React.FC = () => {
           {/* KPI 카드 */}
           <div className="vd-kpi-row">
             <SummaryCard
-              label="Est. Table Bloat"
+              label="Table Bloat 예상치"
               value={resp.kpi.tableBloat}
               diff={0}
             />
@@ -377,7 +367,7 @@ const VacuumBloatPage: React.FC = () => {
               diff={0}
             />
             <SummaryCard
-              label="Bloat Growth"
+              label="Bloat 증가량"
               value={resp.kpi.bloatGrowth}
               diff={0}
               desc="30d"
@@ -387,7 +377,7 @@ const VacuumBloatPage: React.FC = () => {
           {/* 차트 행 */}
           <div className="vd-chart-row">
             {/* Bloat Trend */}
-            <WidgetCard title="Total Bloat Trend (Last 30 Days)">
+            <WidgetCard title="전체 Bloat 추이  (Last 30 Days)">
               {bloatTrendSeries.length > 0 && resp.bloatTrend.labels.length > 0 ? (
                 <Chart
                   type="line"
@@ -440,7 +430,7 @@ const VacuumBloatPage: React.FC = () => {
             </WidgetCard>
 
             {/* Bloat Distribution */}
-            <WidgetCard title="Bloat Distribution by Percentage (24h)">
+            <WidgetCard title="Bloat 비율별 분포 (24h)">
               {bloatDistSeries.length > 0 && resp.bloatDistribution.labels.length > 0 ? (
                 <Chart
                   type="bar"

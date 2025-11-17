@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import "../../styles/session/deadlock-modal.css";
 import Clock from "../../assets/icon/clock.svg"
+import { formatDateTime } from "../../utils/formatDateTime";
 
 export type DeadlockDetail = {
   detectedAt: string;
@@ -32,6 +33,8 @@ export default function DeadlockModal({ open, onClose, detail }: Props) {
   const dialogRef = useRef<HTMLDivElement>(null);
   const closeBtnRef = useRef<HTMLButtonElement>(null);
 
+  console.log('모달에 넘어온 데이터', detail);
+
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
@@ -60,7 +63,7 @@ export default function DeadlockModal({ open, onClose, detail }: Props) {
         {/* Header */}
         <header className="deadlock-header">
           <h2 className="deadlock-title">Deadlock Detected</h2>
-          <div className="deadlock-timestamp">{detail.detectedAt}</div>
+          <div className="deadlock-timestamp">{formatDateTime(detail.detectedAt)}</div>
         </header>
 
         {/* DB 정보  */}
@@ -124,7 +127,7 @@ export default function DeadlockModal({ open, onClose, detail }: Props) {
           <div className="deadlock-impact-sub">
             <span className="deadlock-ended">
               <span className="deadlock-dot" aria-hidden="true"></span>
-              {detail.endedInfo}
+            종료된 세션 : {detail.endedInfo}
             </span>
             <span className="deadlock-repeats">
               <img src={Clock} alt="시계" />

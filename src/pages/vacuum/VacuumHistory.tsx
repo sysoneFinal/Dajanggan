@@ -1,5 +1,6 @@
 import { Fragment, useMemo, useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+
 import {
   useReactTable,
   getCoreRowModel,
@@ -276,9 +277,12 @@ export default function VacuumHistoryTable() {
   /* ---------- 이벤트 핸들러 ---------- */
   const handlePageChange = (page: number) => setCurrentPage(page);
 
-  const handleRowClick = (row: VacuumHistoryRow) => {
-    navigate("/database/vacuum/history-detail", { state: { historyData: row } });
+ const handleRowClick = (row: VacuumHistoryRow) => {
+  const options = {
+    state: { tableName: row.table }
   };
+  navigate("/database/vacuum/detail", options);
+};
 
   const handleExportCSV = () => {
     const headers = [
@@ -328,6 +332,21 @@ export default function VacuumHistoryTable() {
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
   };
+
+  
+   // Instance나 Database가 선택되지 않은 경우
+  if (!selectedInstance || !selectedDatabase) {
+    return (
+      <div className="vd-root">
+        <div style={{ padding: '40px', textAlign: 'center', color: '#6B7280' }}>
+          <p style={{ fontSize: '18px', fontWeight: '500', marginBottom: '8px' }}>
+            Instance와 Database를 선택해주세요
+          </p>
+        </div>
+      </div>
+    );
+  }
+
 
   /* ---------- 상태별 렌더 ---------- */
   if (!selectedInstance) {

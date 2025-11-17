@@ -53,7 +53,6 @@ export default function EditInstancePage() {
       instanceName: form.instance,
       port: Number(form.port),
       userName: form.userName,
-      sslmode: "require",
       isEnabled: true,
     };
     if (form.password?.trim()) {

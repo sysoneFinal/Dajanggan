@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import "/src/styles/alarm/alarm-rule.css";
 import "/src/styles/alarm/alarm-modal-root.css";
+import { useInstanceContext } from "../../context/InstanceContext";
 
 export type Metric = "dead_tuples" | "bloat_pct" | "vacuum_backlog" | "wal_lag";
 export type Aggregation = "latest_avg" | "avg_5m" | "avg_15m" | "p95_15m";
@@ -14,73 +15,68 @@ export interface RuleThreshold {
 
 export interface AlarmRulePayload {
   enabled: boolean;
-  targetInstance: string;
-  targetDatabase: string;
-  metric: Metric;
-  aggregation: Aggregation;
+  instanceId: number;
+  databaseId: number;
+  metricType: Metric;
+  aggregationType: Aggregation;
   levels: {
     notice: RuleThreshold;
-    warn: RuleThreshold;
-    danger: RuleThreshold;
+    warn: RuleThreshold;   // 프론트 내부 키
+    danger: RuleThreshold; // 프론트 내부 키
   };
 }
 
 type Mode = "create" | "edit";
 
+// ===== 서버(JSONB)로 보낼 페이로드 타입 =====
+export interface ServerCreatePayload {
+  instanceId: number | null;
+  databaseId: number | null;
+  metricType: Metric;
+  aggregationType: Aggregation;
+  operator: "gt" | "gte" | "lt" | "lte" | "eq";
+  enabled: boolean;
+  levels: {
+    notice: RuleThreshold;
+    warning: RuleThreshold;   // ★ 서버는 warning/critical
+    critical: RuleThreshold;
+  };
+}
+
 export default function AlarmRuleModal({
   open,
   onClose,
   mode = "create",
-  initialData,
   onSubmit = async () => {},
-  onDelete,
-  lockMetricInstanceOnEdit = true,
 }: {
   open: boolean;
   onClose: () => void;
   mode?: Mode;
-  initialData?: Partial<AlarmRulePayload>;
   onSubmit?: (payload: AlarmRulePayload) => void | Promise<void>;
-  onDelete?: () => void | Promise<void>;
-  lockMetricInstanceOnEdit?: boolean;
 }) {
+  const { selectedInstance, selectedDatabase } = useInstanceContext();
+
   const defaultLevels: AlarmRulePayload["levels"] = {
     notice: { threshold: 100_000, minDurationMin: 1, occurCount: 2, windowMin: 15 },
-    warn: { threshold: 500_000, minDurationMin: 5, occurCount: 2, windowMin: 15 },
+    warn:   { threshold: 500_000, minDurationMin: 5, occurCount: 2, windowMin: 15 },
     danger: { threshold: 1_000_000, minDurationMin: 10, occurCount: 1, windowMin: 10 },
   };
 
-  const [enabled, setEnabled] = useState<boolean>(initialData?.enabled ?? true);
-  const [instance, setInstance] = useState<string>(initialData?.targetInstance ?? "postgres");
-  const [database, setDatabase] = useState<string>(initialData?.targetDatabase ?? "session");
-  const [metric, setMetric] = useState<Metric>(initialData?.metric ?? "dead_tuples");
-  const [aggregation, setAggregation] = useState<Aggregation>(initialData?.aggregation ?? "latest_avg");
-  const [levels, setLevels] = useState<AlarmRulePayload["levels"]>(initialData?.levels ?? defaultLevels);
+  const [enabled, setEnabled] = useState<boolean>(true);
+  const [metric, setMetric] = useState<Metric>("dead_tuples");
+  const [aggregation, setAggregation] = useState<Aggregation>("latest_avg");
+  const [levels, setLevels] = useState<AlarmRulePayload["levels"]>(defaultLevels);
 
   const overlayRef = useRef<HTMLDivElement>(null);
   const firstFieldRef = useRef<HTMLSelectElement>(null);
 
   useEffect(() => {
     if (!open) return;
-    
-    // 모달이 열릴 때 초기 데이터로 리셋
-    if (initialData) {
-      if (typeof initialData.enabled === "boolean") setEnabled(initialData.enabled);
-      if (initialData.targetInstance) setInstance(initialData.targetInstance);
-      if (initialData.targetDatabase) setDatabase(initialData.targetDatabase);
-      if (initialData.metric) setMetric(initialData.metric);
-      if (initialData.aggregation) setAggregation(initialData.aggregation);
-      if (initialData.levels) setLevels(initialData.levels);
-    }
-
-    // 포커스 및 ESC 키 핸들링
     firstFieldRef.current?.focus();
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-    };
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [open, initialData, onClose]);
+  }, [open, onClose]);
 
   const handleOutside = (e: React.MouseEvent) => {
     if (e.target === overlayRef.current) onClose();
@@ -95,26 +91,42 @@ export default function AlarmRuleModal({
     setLevels(prev => ({ ...prev, [key]: { ...prev[key], [field]: num(value) } }));
   };
 
+  // 프론트 상태 → 서버(JSONB) 페이로드 매핑
+  const toServerJSONB = (p: AlarmRulePayload): ServerCreatePayload => ({
+    instanceId: p.instanceId || null,
+    databaseId: p.databaseId || null,
+    metricType: p.metricType,
+    aggregationType: p.aggregationType,
+    operator: "gt",
+    enabled: p.enabled,
+    levels: {
+      notice:   p.levels.notice,
+      warning:  p.levels.warn,     // warn -> warning
+      critical: p.levels.danger,   // danger -> critical
+    },
+  });
+
   const payload: AlarmRulePayload = useMemo(
     () => ({
       enabled,
-      targetInstance: instance,
-      targetDatabase: database,
-      metric,
-      aggregation,
+      instanceId: selectedInstance?.instanceId || 0,
+      databaseId: selectedDatabase?.databaseId || 0,
+      metricType: metric,
+      aggregationType: aggregation,
       levels,
     }),
-    [enabled, instance, database, metric, aggregation, levels]
+    [enabled, selectedInstance, selectedDatabase, metric, aggregation, levels]
   );
 
   const handleSave = async () => {
+    if (!selectedInstance) { alert("인스턴스를 선택해주세요."); return; }
+    
     await onSubmit(payload);
     onClose();
   };
 
   const title = mode === "create" ? "알림 규칙 생성" : "알림 규칙 수정";
   const saveLabel = mode === "create" ? "규칙 생성" : "규칙 수정";
-  const lockKeys = mode === "edit" && lockMetricInstanceOnEdit;
 
   if (!open) return null;
 
@@ -128,7 +140,7 @@ export default function AlarmRuleModal({
       aria-labelledby="alarm-rule-modal-title"
     >
       <div className="amr-modal" onMouseDown={(e) => e.stopPropagation()} style={{ maxWidth: 800 }}>
-         <header className="amr-modal__header">
+        <header className="amr-modal__header">
           <div id="alarm-rule-modal-title" className="amr-modal__title">{title}</div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             <button
@@ -144,46 +156,19 @@ export default function AlarmRuleModal({
         </header>
 
         <div className="amr-modal__body" style={{ maxHeight: '70vh', overflowY: 'auto' }}>
-     
-
-          {/* Selectors */}
           <div className="ar-grid">
             <div>
               <div className="ar-kicker">대상 인스턴스</div>
-              <select
-                ref={firstFieldRef}
-                className="ar-select"
-                value={instance}
-                onChange={(e) => setInstance(e.target.value)}
-                disabled={lockKeys}
-              >
-                <option value="postgres">postgres</option>
-                <option value="prod-pg01">prod-pg01</option>
-                <option value="staging-pg">staging-pg</option>
-              </select>
+              <input className="ar-select" value={selectedInstance?.instanceName || "선택 필요"} disabled style={{ backgroundColor: '#F3F4F6', cursor: 'not-allowed' }}/>
             </div>
             <div>
               <div className="ar-kicker">대상 데이터베이스</div>
-              <select
-                className="ar-select"
-                value={database}
-                onChange={(e) => setDatabase(e.target.value)}
-                disabled={lockKeys}
-              >
-                <option value="session">session</option>
-                <option value="orders">orders</option>
-                <option value="payments">payments</option>
-              </select>
+              <input className="ar-select" value={selectedDatabase?.databaseName || "전체"} disabled style={{ backgroundColor: '#F3F4F6', cursor: 'not-allowed' }}/>
             </div>
 
             <div>
               <div className="ar-kicker">지표</div>
-              <select
-                className="ar-select"
-                value={metric}
-                onChange={(e) => setMetric(e.target.value as Metric)}
-                disabled={lockKeys}
-              >
+              <select ref={firstFieldRef} className="ar-select" value={metric} onChange={(e) => setMetric(e.target.value as Metric)}>
                 <option value="dead_tuples">Dead Tuples</option>
                 <option value="bloat_pct">Bloat %</option>
                 <option value="vacuum_backlog">Vacuum Backlog</option>
@@ -193,11 +178,7 @@ export default function AlarmRuleModal({
 
             <div>
               <div className="ar-kicker">집계</div>
-              <select
-                className="ar-select"
-                value={aggregation}
-                onChange={(e) => setAggregation(e.target.value as Aggregation)}
-              >
+              <select className="ar-select" value={aggregation} onChange={(e) => setAggregation(e.target.value as Aggregation)}>
                 <option value="latest_avg">Latest Average</option>
                 <option value="avg_5m">Avg (5m)</option>
                 <option value="avg_15m">Avg (15m)</option>
@@ -206,7 +187,6 @@ export default function AlarmRuleModal({
             </div>
           </div>
 
-          {/* Threshold Table */}
           <div className="ar-tablewrap" style={{ marginTop: '24px' }}>
             <table className="ar-table">
               <thead>
@@ -220,7 +200,7 @@ export default function AlarmRuleModal({
               </thead>
               <tbody>
                 <tr className="ar-row">
-                  <td className="ar-td-strong">알람 레벨</td>
+                  <td className="ar-td-strong">임계치</td>
                   <td><input className="ar-input" type="number" min={0} step={1}
                         value={levels.notice.threshold}
                         onChange={(e) => updateLevel("notice", "threshold", e.target.value)} /></td>
@@ -280,11 +260,6 @@ export default function AlarmRuleModal({
         </div>
 
         <footer className="amr-modal__footer">
-          {mode === "edit" && onDelete && (
-            <button className="amr-btn" onClick={onDelete} style={{ marginRight: "auto", color: "#dc2626" }}>
-              삭제
-            </button>
-          )}
           <button className="amr-btn" onClick={onClose}>취소</button>
           <button className="amr-btn amr-btn--primary" onClick={handleSave}>{saveLabel}</button>
         </footer>

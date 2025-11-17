@@ -4,9 +4,10 @@ import "../../styles/layout/header.css";
 import { createPortal } from "react-dom";
 import { useDashboard } from "../../context/DashboardContext";
 import { useInstanceContext } from "../../context/InstanceContext";
-import AlertDetailModal, { type AlertDetailData } from "../../pages/alarm/AlarmDetailModal";
+import AlertDetailModal, { type AlertDetailData } from "../../pages/alarm/AlarmFeedModal";
 import type { Instance } from "../../types/instance";
 import type { Database } from "../../types/database";
+
 
 interface HeaderProps {
   breadcrumb: string[];
@@ -24,14 +25,34 @@ const Header = ({ breadcrumb }: HeaderProps) => {
     databases,
     selectedDatabase,
     setSelectedDatabase,
+    refreshInterval,     
+    setRefreshInterval    
   } = useInstanceContext();
 
   /** === Local state === */
-  const [refreshInterval, setRefreshInterval] = useState("5m");
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
   const [selectedAlert, setSelectedAlert] = useState<AlertDetailData | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const [dropdownPos, setDropdownPos] = useState({ top: 0, left: 0, width: 0 });
+
+  /** === handleSelect: 선택 시 context 업데이트 === */
+  const handleSelect = (target: string, value: any) => {
+    if (target === "instance") {
+      const instance = instances.find(i => i.instanceName === value);
+      setSelectedInstance(instance ?? null);
+    }
+
+    if (target === "database") {
+      const db = databases.find(d => d.databaseName === value);
+      setSelectedDatabase(db ?? null);
+    }
+
+    if (target === "interval") {
+      setRefreshInterval(value); // Context의 setter 사용
+    }
+    
+    setOpenDropdown(null);
+  };
 
   /** === 드롭다운 외부 클릭 감지 === */
   useEffect(() => {
@@ -44,21 +65,6 @@ const Header = ({ breadcrumb }: HeaderProps) => {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  /** === 드롭다운 선택 === */
-  const handleSelect = (target: string, value: any) => {
-    if (target === "instance") {
-      const instance = instances.find((i) => i.instanceName === value);
-      setSelectedInstance(instance ?? null);
-      setSelectedDatabase(null);
-    }
-    if (target === "database") {
-      const db = databases.find((d) => d.databaseName === value);
-      setSelectedDatabase(db ?? null);
-    }
-    if (target === "interval") setRefreshInterval(value);
-    setOpenDropdown(null);
-  };
-
   /** === 공통 드롭다운 렌더링 === */
   const renderDropdown = (
     list: string[] | Instance[] | Database[] | null | undefined,
@@ -66,7 +72,7 @@ const Header = ({ breadcrumb }: HeaderProps) => {
     target: string,
     disabled?: boolean
   ) => {
-    const safeList = Array.isArray(list) ? list.filter((item) => item != null) : [];
+    const safeList = Array.isArray(list) ? list : [];
 
     const dropdown = (
       <div
@@ -88,11 +94,9 @@ const Header = ({ breadcrumb }: HeaderProps) => {
             name = item;
             id = item;
           } else if ("instanceName" in item) {
-            // Instance
             name = item.instanceName ?? "";
             id = item.instanceId?.toString() ?? `instance-${index}`;
           } else if ("databaseName" in item) {
-            // Database
             name = item.databaseName ?? "";
             id = item.databaseId?.toString() ?? `db-${index}`;
           }
@@ -100,7 +104,13 @@ const Header = ({ breadcrumb }: HeaderProps) => {
           return (
             <button
               key={id}
-              className={`dropdown-item ${name === selectedValue ? "active" : ""}`}
+              className={`dropdown-item ${
+                (target === "instance" && selectedInstance?.instanceName === name) ||
+                (target === "database" && selectedDatabase?.databaseName === name) ||
+                (target === "interval" && refreshInterval === name)
+                  ? "active"
+                  : ""
+              }`}
               onClick={() => handleSelect(target, name)}
             >
               {name || "(no name)"}
@@ -127,7 +137,11 @@ const Header = ({ breadcrumb }: HeaderProps) => {
           disabled={disabled}
         >
           <span className="header-btn-text">
-            {selectedValue ?? `Select ${target}`}
+            {target === "instance"
+              ? selectedInstance?.instanceName ?? `Select ${target}`
+              : target === "database"
+              ? selectedDatabase?.databaseName ?? `Select ${target}`
+              : refreshInterval}
           </span>
           <span className="dropdown-arrow">▼</span>
         </button>
@@ -154,16 +168,13 @@ const Header = ({ breadcrumb }: HeaderProps) => {
 
   return (
     <header className="header">
-      {/* === Breadcrumb === */}
       <div className="header-title-wrapper">
         <div className="breadcrumb">
           {breadcrumb.length > 0
             ? breadcrumb.map((b, i) => (
                 <span
                   key={i}
-                  className={`breadcrumb-item ${
-                    i === breadcrumb.length - 1 ? "active" : ""
-                  }`}
+                  className={`breadcrumb-item ${i === breadcrumb.length - 1 ? "active" : ""}`}
                 >
                   {b}
                   {i < breadcrumb.length - 1 && (
@@ -175,60 +186,38 @@ const Header = ({ breadcrumb }: HeaderProps) => {
         </div>
       </div>
 
-      {/* === Controls === */}
       <div className="header-controls">
-        {/* Instance */}
-        {renderDropdown(
-          instances,
-          selectedInstance?.instanceName ?? null,
-          "instance"
-        )}
-
-        {/* Database */}
+        {renderDropdown(instances, selectedInstance?.instanceName ?? null, "instance")}
         {renderDropdown(
           databases,
           selectedDatabase?.databaseName ?? null,
           "database",
           !selectedInstance
         )}
-
-        {/* Refresh interval */}
         {renderDropdown(["1m", "5m", "10m", "30m"], refreshInterval, "interval")}
 
-        {/* === Edit / Save === */}
         <div className="header-controls">
           {isEditing ? (
             <>
               <button className="header-btn header-btn-save" onClick={handleSaveEdit}>
                 Save
               </button>
-              <button
-                className="header-btn header-btn-cancel"
-                onClick={handleCancelEdit}
-              >
+              <button className="header-btn header-btn-cancel" onClick={handleCancelEdit}>
                 Cancel
               </button>
             </>
           ) : (
-            <button
-              className="header-btn header-btn-edit"
-              onClick={() => setIsEditing(true)}
-            >
+            <button className="header-btn header-btn-edit" onClick={() => setIsEditing(true)}>
               <span className="header-btn-text">Edit Dashboard</span>
             </button>
           )}
         </div>
 
-        {/* === Notification === */}
-        <button
-          className="header-notification-btn"
-          onClick={() => setSelectedAlert(demoAlert)}
-        >
+        <button className="header-notification-btn" onClick={() => setSelectedAlert(demoAlert)}>
           🔔
         </button>
       </div>
 
-      {/* === Alert Modal === */}
       {selectedAlert && (
         <AlertDetailModal
           open={true}
