@@ -25,7 +25,7 @@ import "/src/styles/query/query-overview.css";
  * - 쿼리 모니터링 및 시스템 리소스 현황
  * - Top-N 쿼리 및 슬로우 쿼리 모니터링
  * 
- * @author 이해든
+ * @author 이해든 
  */
 
 /* ---------- 타입 ---------- */
@@ -318,6 +318,52 @@ export default function QueryOverview() {
         setTopQueries([]);
         setSlowQueries([]);
         setSlowQueriesTop5([]);
+        
+        // 리소스 사용률 초기화
+        console.log("🔄 리소스 사용률 초기화 중... (0%, 0%, 0%)");
+        setResourceUsage({
+          cpu: 0,
+          memory: 0,
+          disk: 0,
+        });
+        
+        // 요약 메트릭 초기화
+        setSummaryMetrics([
+          {
+            label: "현재 TPS",
+            value: "0",
+            status: "info",
+            diff: 0,
+            desc: "데이터 없음"
+          },
+          {
+            label: "현재 QPS",
+            value: "0",
+            status: "info",
+            diff: 0,
+            desc: "데이터 없음"
+          },
+          {
+            label: "활성 세션 수",
+            value: 0,
+            status: "info",
+            diff: 0,
+            desc: "데이터 없음"
+          },
+          {
+            label: "평균 응답 시간",
+            value: "0ms",
+            status: "info",
+            diff: 0,
+            desc: "데이터 없음"
+          },
+        ]);
+        
+        // TPS/QPS 차트 초기화
+        setTpsQpsData({
+          tps: Array(12).fill(0),
+          qps: Array(12).fill(0),
+        });
 
         // 1. 전체 쿼리 메트릭 데이터 가져오기
         console.log("\n📥 Step 1: 전체 쿼리 메트릭 데이터 조회 중...");
@@ -333,9 +379,21 @@ export default function QueryOverview() {
           console.log(`  ✅ 최근 5분 데이터: ${last5MinData.length}개`);
           
           // 📌 폴백: 최근 5분 데이터가 없으면 전체 데이터 사용
+          let isRecent5Min = true;
+          let hasAnyData = true;
+          
           if (last5MinData.length === 0) {
-            console.log(`  ⚠️ 최근 5분 데이터 없음 → 전체 데이터(${allMetrics.length}개) 사용`);
-            last5MinData = allMetrics;
+            console.log(`  ⚠️ 최근 5분 데이터 없음`);
+            isRecent5Min = false;
+            
+            if (allMetrics.length === 0) {
+              console.log(`  ⚠️ 전체 데이터도 없음 → 빈 상태로 표시`);
+              hasAnyData = false;
+              last5MinData = [];
+            } else {
+              console.log(`  → 전체 데이터(${allMetrics.length}개) 사용`);
+              last5MinData = allMetrics;
+            }
           }
           
           // 📊 요약 카드 메트릭 계산
@@ -344,11 +402,11 @@ export default function QueryOverview() {
             ? last5MinData.reduce((sum, m) => sum + m.executionTimeMs, 0) / last5MinData.length 
             : 0;
           
-          // TPS/QPS 계산: 데이터가 최근 5분이면 300초로 나누고, 아니면 60초로 나눔
-          const isRecent5Min = last5MinData !== allMetrics;
+          // TPS/QPS 계산: 데이터가 있을 때만 계산
           const timeWindow = isRecent5Min ? 300 : 60; // 5분 or 1분
-          const currentTPS = totalExecutionCount > 0 ? Math.max(1, Math.floor(totalExecutionCount / timeWindow)) : 0;
-          const currentQPS = last5MinData.length > 0 ? Math.max(1, Math.floor(last5MinData.length / timeWindow)) : 0;
+          const currentTPS = hasAnyData && totalExecutionCount > 0 ? Math.floor(totalExecutionCount / timeWindow) : 0;
+          const totalQueries = last5MinData.reduce((sum, m) => sum + (m.executionCount || 0), 0);
+          const currentQPS = hasAnyData && totalQueries > 0 ? Math.floor(totalQueries / timeWindow) : 0;
           
           console.log("\n📈 요약 메트릭 계산 완료:");
           console.log(`  - 시간 윈도우: ${isRecent5Min ? '최근 5분' : '전체 데이터 (1분 기준 환산)'}`);
@@ -362,43 +420,51 @@ export default function QueryOverview() {
               label: "현재 TPS",
               value: currentTPS.toLocaleString(),
               status: currentTPS > 1000 ? "warning" : "info",
-              diff: parseFloat((Math.random() * 20 - 10).toFixed(1)),
-              desc: isRecent5Min ? "최근 5분 평균 기준" : "전체 데이터 기반 (1분 환산)"
+              diff: hasAnyData ? parseFloat((Math.random() * 20 - 10).toFixed(1)) : 0,
+              desc: hasAnyData 
+                ? (isRecent5Min ? "최근 5분 평균 기준" : "전체 데이터 기반 (1분 환산)")
+                : "데이터 없음"
             },
             {
               label: "현재 QPS",
               value: currentQPS.toLocaleString(),
               status: currentQPS > 5000 ? "critical" : currentQPS > 3000 ? "warning" : "info",
-              diff: parseFloat((Math.random() * 20 - 10).toFixed(1)),
-              desc: isRecent5Min ? "최근 5분 평균 기준" : "전체 데이터 기반 (1분 환산)"
+              diff: hasAnyData ? parseFloat((Math.random() * 20 - 10).toFixed(1)) : 0,
+              desc: hasAnyData
+                ? (isRecent5Min ? "최근 5분 평균 기준" : "전체 데이터 기반 (1분 환산)")
+                : "데이터 없음"
             },
             {
               label: "활성 세션 수",
               value: last5MinData.length,
               status: last5MinData.length > 200 ? "critical" : last5MinData.length > 150 ? "warning" : "info",
-              diff: parseFloat((Math.random() * 10 - 5).toFixed(1)),
-              desc: isRecent5Min ? "최근 5분 평균 기준" : "전체 데이터 기반"
+              diff: hasAnyData ? parseFloat((Math.random() * 10 - 5).toFixed(1)) : 0,
+              desc: hasAnyData
+                ? (isRecent5Min ? "최근 5분 평균 기준" : "전체 데이터 기반")
+                : "데이터 없음"
             },
             {
               label: "평균 응답 시간",
               value: `${Math.round(avgExecutionTime)}ms`,
               status: avgExecutionTime > 100 ? "critical" : avgExecutionTime > 50 ? "warning" : "info",
-              diff: parseFloat((Math.random() * 10 - 5).toFixed(1)),
-              desc: isRecent5Min ? "최근 5분 평균 기준" : "전체 데이터 기반"
+              diff: hasAnyData ? parseFloat((Math.random() * 10 - 5).toFixed(1)) : 0,
+              desc: hasAnyData
+                ? (isRecent5Min ? "최근 5분 평균 기준" : "전체 데이터 기반")
+                : "데이터 없음"
             },
           ]);
 
           // 📈 TPS/QPS 차트 데이터 생성
-          // 실제 값이 0이면 최소 1로 설정하여 그래프가 보이도록 함
-          const baseTps = currentTPS > 0 ? currentTPS : 1;
-          const baseQps = currentQPS > 0 ? currentQPS : 1;
+          // 데이터가 없으면 모두 0으로 표시
+          const baseTps = hasAnyData ? (currentTPS > 0 ? currentTPS : 0) : 0;
+          const baseQps = hasAnyData ? (currentQPS > 0 ? currentQPS : 0) : 0;
           
-          const newTpsData = Array(12).fill(0).map(() => 
-            Math.max(1, Math.floor(baseTps * (0.8 + Math.random() * 0.4)))
-          );
-          const newQpsData = Array(12).fill(0).map(() => 
-            Math.max(1, Math.floor(baseQps * (0.8 + Math.random() * 0.4)))
-          );
+          const newTpsData = hasAnyData 
+            ? Array(12).fill(0).map(() => Math.max(0, Math.floor(baseTps * (0.8 + Math.random() * 0.4))))
+            : Array(12).fill(0);
+          const newQpsData = hasAnyData
+            ? Array(12).fill(0).map(() => Math.max(0, Math.floor(baseQps * (0.8 + Math.random() * 0.4))))
+            : Array(12).fill(0);
           
           console.log("\n📊 TPS/QPS 차트 데이터 생성:");
           console.log(`  - Base TPS: ${baseTps}, Base QPS: ${baseQps}`);
@@ -411,25 +477,30 @@ export default function QueryOverview() {
           });
 
           // ✅ 리소스 사용률 계산 (최근 5분 데이터 기반)
-          const avgCpu = last5MinData.length > 0 
+          const avgCpu = hasAnyData && last5MinData.length > 0 
             ? last5MinData.reduce((sum, m) => sum + (m.cpuUsagePercent || 0), 0) / last5MinData.length 
             : 0;
-          const avgMemory = last5MinData.length > 0
+          const avgMemory = hasAnyData && last5MinData.length > 0
             ? last5MinData.reduce((sum, m) => sum + (m.memoryUsageMb || 0), 0) / last5MinData.length 
             : 0;
           const maxMemory = 16384;
           const memoryPercent = (avgMemory / maxMemory) * 100;
           
-          console.log("\n🖥️ 리소스 사용률 계산 (최근 5분 기준):");
+          console.log("\n🖥️ 리소스 사용률 계산:");
+          console.log(`  - 데이터 존재 여부: ${hasAnyData ? 'YES' : 'NO'}`);
           console.log(`  - CPU: ${Math.min(100, Math.round(avgCpu))}%`);
           console.log(`  - Memory: ${Math.min(100, Math.round(memoryPercent))}%`);
-          console.log(`  - Disk: ${Math.min(100, Math.round(60 + Math.random() * 20))}%`);
+          console.log(`  - Disk: ${hasAnyData ? Math.min(100, Math.round(60 + Math.random() * 20)) : 0}%`);
           
-          setResourceUsage({
+          const newResourceUsage = {
             cpu: Math.min(100, Math.round(avgCpu)),
             memory: Math.min(100, Math.round(memoryPercent)),
-            disk: Math.min(100, Math.round(60 + Math.random() * 20)),
-          });
+            disk: hasAnyData ? Math.min(100, Math.round(60 + Math.random() * 20)) : 0,
+          };
+          
+          console.log(`  - 🔄 setResourceUsage 호출 중... CPU=${newResourceUsage.cpu}%, Memory=${newResourceUsage.memory}%, Disk=${newResourceUsage.disk}%`);
+          setResourceUsage(newResourceUsage);
+          console.log(`  - ✅ setResourceUsage 호출 완료`);
         }
 
         // 2. Top Query 데이터 가져오기
@@ -569,23 +640,10 @@ export default function QueryOverview() {
     return () => ac.abort();
   }, [resourceType]);
 
-  // 🔄 리소스 사용률 실시간 업데이트 (애니메이션)
+  // 🔄 리소스 사용률 마운트 플래그 설정
   useEffect(() => {
-    if (!isResourceMounted) {
-      setIsResourceMounted(true);
-      return;
-    }
-
-    const interval = setInterval(() => {
-      setResourceUsage((prev) => ({
-        cpu: Math.max(30, Math.min(90, prev.cpu + (Math.random() - 0.5) * 3)),
-        memory: Math.max(70, Math.min(95, prev.memory + (Math.random() - 0.5) * 2)),
-        disk: Math.max(60, Math.min(75, prev.disk + (Math.random() - 0.5) * 2.5)),
-      }));
-    }, 2000);
-
-    return () => clearInterval(interval);
-  }, [isResourceMounted]);
+    setIsResourceMounted(true);
+  }, []);
 
   // 🔄 TPS/QPS 데이터 실시간 업데이트 (1시간마다 실제 API 호출)
   useEffect(() => {
@@ -611,8 +669,8 @@ export default function QueryOverview() {
           const timeWindow = isRecent5Min ? 300 : 60;
           
           const newTps = totalExecutionCount > 0 ? Math.max(1, Math.floor(totalExecutionCount / timeWindow)) : 1;
-          const newQps = dataToUse.length > 0 ? Math.max(1, Math.floor(dataToUse.length / timeWindow)) : 1;
-          
+          const totalQueries2 = dataToUse.reduce((sum, m) => sum + (m.executionCount || 0), 0);
+          const newQps = totalQueries2 > 0 ? Math.max(1, Math.floor(totalQueries2 / timeWindow)) : 1;
           console.log(`✅ 새로운 TPS/QPS 계산: TPS=${newTps}, QPS=${newQps}`);
           
           // 그래프 데이터 슬라이딩 업데이트 (맨 앞 제거, 맨 뒤 추가)
@@ -782,8 +840,10 @@ Execution Time: 3500 ms`,
         <div className="il-empty">데이터베이스를 선택해주세요.</div>
       )}
 
-      {/* 최근 5분 데이터 없음 경고 */}
-      {!loading && databaseId && summaryMetrics[0].desc.includes("전체") && (
+      {/* 최근 5분 데이터 없음 경고 - 전체 데이터는 있을 때만 표시 */}
+      {!loading && databaseId && 
+       summaryMetrics[0].desc.includes("전체") && 
+       !summaryMetrics[0].desc.includes("데이터 없음") && (
         <div className="il-banner il-banner--warning" style={{ marginBottom: '1rem' }}>
           ⚠️ 최근 5분 내 수집된 데이터가 없습니다. 전체 데이터를 기반으로 표시하고 있습니다.
         </div>
@@ -911,49 +971,62 @@ Execution Time: 3500 ms`,
         </WidgetCard>
 
         <WidgetCard title="리소스 사용률" span={3} height={350}>
-          <div className="qo-resource-wrapper">
-            <div className="qo-resource-item">
-              <div className="qo-resource-label">CPU</div>
-              <div className="qo-resource-bar-container">
-                <div 
-                  className="qo-resource-bar"
-                  style={{ 
-                    width: isResourceMounted ? `${resourceUsage.cpu}%` : '0%',
-                    backgroundColor: getResourceColor("CPU", resourceUsage.cpu)
-                  }}
-                ></div>
-              </div>
-              <div className="qo-resource-value">{Math.round(resourceUsage.cpu)}%</div>
+          {!databaseId ? (
+            <div style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              justifyContent: 'center', 
+              height: '100%',
+              color: '#999',
+              fontSize: '14px'
+            }}>
+              데이터베이스를 선택해주세요
             </div>
+          ) : (
+            <div className="qo-resource-wrapper">
+              <div className="qo-resource-item">
+                <div className="qo-resource-label">CPU</div>
+                <div className="qo-resource-bar-container">
+                  <div 
+                    className="qo-resource-bar"
+                    style={{ 
+                      width: isResourceMounted ? `${resourceUsage.cpu}%` : '0%',
+                      backgroundColor: getResourceColor("CPU", resourceUsage.cpu)
+                    }}
+                  ></div>
+                </div>
+                <div className="qo-resource-value">{Math.round(resourceUsage.cpu)}%</div>
+              </div>
 
-            <div className="qo-resource-item">
-              <div className="qo-resource-label">Memory</div>
-              <div className="qo-resource-bar-container">
-                <div 
-                  className="qo-resource-bar"
-                  style={{ 
-                    width: isResourceMounted ? `${resourceUsage.memory}%` : '0%',
-                    backgroundColor: getResourceColor("Memory", resourceUsage.memory)
-                  }}
-                ></div>
+              <div className="qo-resource-item">
+                <div className="qo-resource-label">Memory</div>
+                <div className="qo-resource-bar-container">
+                  <div 
+                    className="qo-resource-bar"
+                    style={{ 
+                      width: isResourceMounted ? `${resourceUsage.memory}%` : '0%',
+                      backgroundColor: getResourceColor("Memory", resourceUsage.memory)
+                    }}
+                  ></div>
+                </div>
+                <div className="qo-resource-value">{Math.round(resourceUsage.memory)}%</div>
               </div>
-              <div className="qo-resource-value">{Math.round(resourceUsage.memory)}%</div>
-            </div>
 
-            <div className="qo-resource-item">
-              <div className="qo-resource-label">Disk I/O</div>
-              <div className="qo-resource-bar-container">
-                <div 
-                  className="qo-resource-bar"
-                  style={{ 
-                    width: isResourceMounted ? `${resourceUsage.disk}%` : '0%',
-                    backgroundColor: getResourceColor("Disk I/O", resourceUsage.disk)
-                  }}
-                ></div>
+              <div className="qo-resource-item">
+                <div className="qo-resource-label">Disk I/O</div>
+                <div className="qo-resource-bar-container">
+                  <div 
+                    className="qo-resource-bar"
+                    style={{ 
+                      width: isResourceMounted ? `${resourceUsage.disk}%` : '0%',
+                      backgroundColor: getResourceColor("Disk I/O", resourceUsage.disk)
+                    }}
+                  ></div>
+                </div>
+                <div className="qo-resource-value">{Math.round(resourceUsage.disk)}%</div>
               </div>
-              <div className="qo-resource-value">{Math.round(resourceUsage.disk)}%</div>
             </div>
-          </div>
+          )}
         </WidgetCard>
       </ChartGridLayout>
 

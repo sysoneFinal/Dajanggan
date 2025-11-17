@@ -8,6 +8,12 @@ import type { AxiosResponse } from 'axios';
  * @author 이해든
  */
 
+export const getRecentQueryMetrics = (databaseId: number, minutes: number = 5) => {
+  return apiClient.get('/api/query-metrics/recent', {
+    params: { databaseId, minutes }
+  });
+};
+
 /* ---------- 타입 정의 ---------- */
 export interface QueryMetricsRawDto {
   queryMetricId: number;
@@ -42,6 +48,24 @@ export interface ApiResponse<T> {
   totalCount?: number;
   thresholdMs?: number;
   limit?: number;
+}
+
+/**
+ * EXPLAIN ANALYZE 요청 DTO
+ */
+export interface ExplainAnalyzeRequest {
+  databaseId: number;
+  query: string;
+}
+
+/**
+ * EXPLAIN ANALYZE 응답 DTO
+ */
+export interface ExplainAnalyzeResult {
+  explainPlan: string;
+  executionMode: string;
+  executionTimeMs: number | null;
+  planningTimeMs: number | null;
 }
 
 /* ---------- API 함수들 ---------- */
@@ -126,6 +150,20 @@ export const getTopByMemoryUsage = async (limit: number = 10): Promise<AxiosResp
  */
 export const getTotalCount = async (): Promise<AxiosResponse<ApiResponse<number>>> => {
   return apiClient.get('/query-metrics/count');
+};
+
+/**
+ * EXPLAIN ANALYZE 실행
+ * POST /query-metrics/explain-analyze
+ */
+export const postExplainAnalyze = async (
+  databaseId: number, 
+  query: string
+): Promise<AxiosResponse<ApiResponse<ExplainAnalyzeResult>>> => {
+  return apiClient.post('/query-metrics/explain-analyze', {
+    databaseId,
+    query
+  });
 };
 
 /* ---------- Helper 함수들 ---------- */

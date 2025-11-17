@@ -3,7 +3,7 @@ import "../../styles/query/query-modal.css";
 
 export type QueryDetail = {
   queryId: string;
-  status: "안전 모드" | "실제 실행";
+  status: "안전 모드" | "실제 실행" | string; // 
   avgExecutionTime: string;
   totalCalls: number;
   memoryUsage: string;

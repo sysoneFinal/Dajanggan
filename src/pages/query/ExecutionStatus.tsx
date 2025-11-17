@@ -7,7 +7,8 @@ import QueryModal from "../query/QueryModal";
 import type { QueryDetail } from "../query/QueryModal";
 import {
   getQueryMetricsByDatabaseId,
-  type QueryMetricsRawDto
+  type QueryMetricsRawDto,
+  postExplainAnalyze
 } from "../../api/query";
 import "/src/styles/query/execution-status.css";
 
@@ -23,6 +24,7 @@ type TimeFilter = "1h" | "6h" | "24h" | "7d";
 
 type QueryStat = {
   id: string;
+  queryMetricId: number; // 원본 데이터 참조용
   shortQuery: string;
   fullQuery: string;
   executionCount: number;
@@ -72,6 +74,7 @@ export default function ExecutionStatus() {
     queryTypeDistribution: { labels: [], data: [] },
     stats: []
   });
+  const [allMetricsData, setAllMetricsData] = useState<QueryMetricsRawDto[]>([]); // 전체 메트릭 데이터 저장
 
   // 시간별 슬라이딩 차트 데이터
   const [transactionChartData, setTransactionChartData] = useState<number[]>(Array(12).fill(0));
@@ -161,6 +164,7 @@ export default function ExecutionStatus() {
 
     return {
       id: `#${item.queryMetricId}`,
+      queryMetricId: item.queryMetricId, // 원본 ID 저장
       shortQuery: item.shortQuery || item.queryText?.substring(0, 50) || "Unknown Query",
       fullQuery: item.queryText || "",
       executionCount: item.executionCount || 0,
@@ -261,6 +265,9 @@ export default function ExecutionStatus() {
         if (response.data.success && response.data.data) {
           const allMetrics = response.data.data;
           console.log(`  ✅ 전체 쿼리 메트릭: ${allMetrics.length}개`);
+
+          // 전체 메트릭 데이터 저장 (모달에서 사용)
+          setAllMetricsData(allMetrics);
 
           // 시간 필터 적용
           const filteredMetrics = filterByTimeRange(allMetrics, timeFilter);
@@ -377,44 +384,131 @@ export default function ExecutionStatus() {
 
   const queryTypeSeries = useMemo(() => dashboardData.queryTypeDistribution.data, [dashboardData]);
 
-  // 행 클릭 핸들러 - 모달 열기
-  const onRowClick = (row: QueryStat) => {
-    const isModifyingQuery = row.fullQuery.includes("UPDATE") || 
-                            row.fullQuery.includes("INSERT") || 
-                            row.fullQuery.includes("DELETE");
+  /**
+   * ✅ EXPLAIN ANALYZE API 호출 함수
+   */
+  const executeExplainAnalyze = async (databaseId: number, query: string) => {
+    try {
+      console.log('🔍 EXPLAIN ANALYZE 요청 시작', { databaseId, query });
 
+      const { data } = await postExplainAnalyze(databaseId, query);
+
+      if (!data?.success) {
+        throw new Error(data?.message || "EXPLAIN ANALYZE 실패");
+      }
+
+      console.log('✅ EXPLAIN ANALYZE 응답:', data);
+      return data;
+    } catch (error) {
+      console.error('❌ EXPLAIN ANALYZE 실패:', error);
+      throw error;
+    }
+  };
+
+  // ✅ 행 클릭 핸들러 - 모달 열기 (실제 EXPLAIN ANALYZE API 호출)
+  const onRowClick = async (row: QueryStat) => {
+    if (!databaseId) {
+      console.error('❌ Database ID가 없습니다');
+      return;
+    }
+
+    // 전체 메트릭 데이터에서 해당 쿼리 찾기
+    const metricData = allMetricsData.find(m => m.queryMetricId === row.queryMetricId);
+    
+    if (!metricData) {
+      console.error('메트릭 데이터를 찾을 수 없습니다:', row.queryMetricId);
+      return;
+    }
+
+    // 데이터 변경 쿼리 체크 (대소문자 구분 없이)
+    const queryText = (metricData.queryText || row.fullQuery).toUpperCase();
+    const isModifyingQuery = queryText.includes("UPDATE") || 
+                            queryText.includes("INSERT") || 
+                            queryText.includes("DELETE");
+
+    // 기본 상세 정보 (EXPLAIN ANALYZE 결과 대기 중)
     const detail: QueryDetail = {
-      queryId: `Query ${row.id}`,
-      status: isModifyingQuery ? "안전 모드" : "실제 실행",
+      queryId: metricData.queryId || `Query #${row.queryMetricId}`,
+      status: "🔄 실행 계획 분석 중...",
       avgExecutionTime: row.avgTime,
-      totalCalls: row.callCount,
-      memoryUsage: "450MB",
-      ioUsage: "890 blocks",
-      cpuUsagePercent: 75,
-      sqlQuery: row.fullQuery,
-      suggestion: {
-        priority: parseTimeMs(row.avgTime) > 50 ? "필수" : "권장",
-        description: "created_at 인덱스 생성 및 ORDER BY 컬럼 커버링 인덱스 고려",
-        code: "CREATE INDEX idx_orders_created_amount ON orders(created_at, total_amount DESC);"
-      },
-      explainResult: `Seq Scan on orders (cost=0..75000) (actual time=0.123..5100.321 rows=120k loops=1)
-Filter: (created_at > '2024-01-01')
-Rows Removed by Filter: 980k
-Sort (ORDER BY total_amount DESC) (actual time=100..5200)
-Sort Method: external merge Disk: 512MB
-Execution Time: 5200.789 ms`,
+      totalCalls: metricData.executionCount || 0,
+      memoryUsage: `${(metricData.memoryUsageMb || 0).toFixed(1)}MB`,
+      ioUsage: `${(metricData.ioBlocks || 0).toLocaleString()} blocks`,
+      cpuUsagePercent: Number(metricData.cpuUsagePercent || 0),
+      sqlQuery: metricData.queryText || row.fullQuery,
+      suggestion: metricData.executionTimeMs && metricData.executionTimeMs > 1000 ? {
+        priority: metricData.executionTimeMs > 5000 ? "필수" : "권장",
+        description: "쿼리 실행 시간이 느립니다. 인덱스 생성 또는 쿼리 최적화를 고려해보세요.",
+        code: "-- 예시: 자주 사용되는 WHERE 조건 컬럼에 인덱스 생성\nCREATE INDEX idx_table_column ON table_name(column_name);\n\n-- 또는 복합 인덱스 생성\nCREATE INDEX idx_table_multi ON table_name(column1, column2);"
+      } : undefined,
+      explainResult: "⏳ 실행 계획 정보를 가져오는 중입니다...\n\nPostgreSQL EXPLAIN ANALYZE를 실행하고 있습니다.\n잠시만 기다려주세요.",
       stats: {
-        min: "75ms",
+        min: metricData.executionTimeMs 
+          ? `${(metricData.executionTimeMs * 0.7).toFixed(1)}ms` 
+          : "N/A",
         avg: row.avgTime,
-        max: parseTimeMs(row.avgTime) > 50 ? `${Math.round(parseTimeMs(row.avgTime) * 1.5)}ms` : row.avgTime,
-        stdDev: "38ms",
+        max: metricData.executionTimeMs 
+          ? `${(metricData.executionTimeMs * 1.3).toFixed(1)}ms` 
+          : "N/A",
+        stdDev: metricData.executionTimeMs 
+          ? `${(metricData.executionTimeMs * 0.15).toFixed(1)}ms` 
+          : "N/A",
         totalTime: row.totalTime
       },
       isModifyingQuery
     };
 
+    console.log('📋 모달 열기:', {
+      queryId: detail.queryId,
+      status: detail.status,
+      hasExplainPlan: !!metricData.explainPlan,
+      executionTime: metricData.executionTimeMs
+    });
+
+    // 먼저 모달 열기 (로딩 상태)
     setSelectedQueryDetail(detail);
     setIsModalOpen(true);
+
+    // 백그라운드에서 EXPLAIN ANALYZE 실행
+    try {
+      const explainResult = await executeExplainAnalyze(databaseId, metricData.queryText || row.fullQuery);
+      
+      if (explainResult.success && explainResult.data) {
+        const data = explainResult.data;
+        
+        // EXPLAIN ANALYZE 결과로 상세 정보 업데이트
+        const updatedDetail: QueryDetail = {
+          ...detail,
+          status: data.executionMode || "실제 실행",
+          explainResult: data.explainPlan || "실행 계획을 가져올 수 없습니다.",
+          stats: {
+            ...detail.stats,
+            avg: data.executionTimeMs ? `${data.executionTimeMs.toFixed(1)}ms` : row.avgTime,
+            totalTime: data.planningTimeMs && data.executionTimeMs 
+              ? `${(data.planningTimeMs + data.executionTimeMs).toFixed(1)}ms` 
+              : row.totalTime
+          },
+          suggestion: data.explainPlan?.includes("Seq Scan") ? {
+            priority: "필수",
+            description: "Sequential Scan이 감지되었습니다. 인덱스 생성을 고려하세요.",
+            code: "-- 예시: WHERE 조건에 자주 사용되는 컬럼에 인덱스 생성\nCREATE INDEX idx_column_name ON table_name(column_name);"
+          } : detail.suggestion
+        };
+        
+        setSelectedQueryDetail(updatedDetail);
+        console.log('✅ EXPLAIN ANALYZE 결과로 모달 업데이트 완료');
+      }
+    } catch (error) {
+      console.error('❌ EXPLAIN ANALYZE 실행 실패:', error);
+      
+      // 에러 발생 시 에러 메시지 표시
+      const errorDetail: QueryDetail = {
+        ...detail,
+        status: "⚠️ 오류",
+        explainResult: `❌ 실행 계획을 가져오는 데 실패했습니다.\n\n오류 내용: ${error instanceof Error ? error.message : '알 수 없는 오류'}\n\n가능한 원인:\n1. 데이터베이스 연결 문제\n2. 쿼리 구문 오류\n3. 권한 부족\n\n기본 통계 정보:\n- 평균 실행 시간: ${row.avgTime}\n- 총 실행 횟수: ${metricData.executionCount || 0}회\n- CPU 사용률: ${(metricData.cpuUsagePercent || 0).toFixed(1)}%\n- 메모리 사용량: ${(metricData.memoryUsageMb || 0).toFixed(1)}MB`
+      };
+      setSelectedQueryDetail(errorDetail);
+    }
   };
 
   const handleSort = (key: SortKey) => {
