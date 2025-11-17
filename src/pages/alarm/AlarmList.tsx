@@ -1,61 +1,125 @@
-// src/pages/alarms/AlarmRuleList.tsx
-import { Fragment, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import {
-    useReactTable,
-    getCoreRowModel,
-    getSortedRowModel,
-    getFilteredRowModel,
-    getPaginationRowModel,
-    flexRender,
-    type ColumnDef,
-    type SortingState,
+  useReactTable,
+  getCoreRowModel,
+  getSortedRowModel,
+  getFilteredRowModel,
+  getPaginationRowModel,
+  flexRender,
+  type ColumnDef,
+  type SortingState,
 } from "@tanstack/react-table";
 import Pagination from "../../components/util/Pagination";
 import CsvButton from "../../components/util/CsvButton";
-import MultiSelectDropdown from "../../components/util/MultiSelectDropdown";
 import SlackSettingsModal from "./SlackSetting";
 import AlarmRuleModal from "./AlarmRuleModal";
 import AlarmRuleEditModal from "./AlarmRuleEditModal";
 import AlarmRuleDetailModal from "../alarm/AlarmRuleDetailModal";
-import type { Metric, Aggregation, RuleThreshold, AlarmRulePayload } from "./AlarmRuleModal";
+import type { Metric, Aggregation, AlarmRulePayload } from "./AlarmRuleModal";
 import "/src/styles/alarm/alarm-list.css";
+import apiClient from "../../api/apiClient";
+import { useInstanceContext } from "../../context/InstanceContext";
+
+/* ============================== */
+/*  서버 전송용 타입 & 매핑 함수   */
+/* ============================== */
+
+type RuleThreshold = {
+  threshold: number;
+  minDurationMin: number;
+  occurCount: number;
+  windowMin: number;
+};
+
+type ServerCreatePayload = {
+  instanceId: number | null;
+  databaseId: number | null;
+  metricType: Metric;
+  aggregationType: Aggregation;
+  operator: "gt" | "gte" | "lt" | "lte" | "eq";
+  enabled: boolean;
+  levels: {
+    notice: RuleThreshold;
+    warning: RuleThreshold;
+    critical: RuleThreshold;
+  };
+};
+
+type ServerUpdatePayload = {
+  alarmRuleId?: number; // 서버가 path param으로 받으면 생략 가능
+  aggregationType: Aggregation;
+  enabled: boolean;
+  levels: {
+    notice: RuleThreshold;
+    warning: RuleThreshold;
+    critical: RuleThreshold;
+  };
+};
+
+/** FE 생성 페이로드(내부 키: warn/danger) -> 서버 JSONB 페이로드(키: warning/critical) */
+function toServerCreateJSONB(p: AlarmRulePayload): ServerCreatePayload {
+  return {
+    instanceId: p.instanceId,
+    databaseId: p.databaseId,
+    metricType: p.metricType,
+    aggregationType: p.aggregationType,
+    operator: "gt",
+    enabled: p.enabled,
+    levels: {
+      notice: p.levels.notice,
+      warning: p.levels.warn,      // warn -> warning
+      critical: p.levels.danger,   // danger -> critical
+    },
+  };
+}
+
+/** 편집 페이로드를 유연하게 서버 JSONB로 정규화
+ *  - EditModal에서 이미 서버형을 줄 수도 있고( warning/critical ),
+ *  - 프론트형(warn/danger)일 수도 있어서 둘 다 처리
+ */
+function toServerUpdateJSONB(p: any): ServerUpdatePayload {
+  const lv = p.levels || {};
+  const hasServerKeys = lv.warning && lv.critical;
+  const hasClientKeys = lv.warn && lv.danger;
+
+  return {
+    alarmRuleId: p.alarmRuleId,
+    aggregationType: p.aggregationType,
+    enabled: p.enabled,
+    levels: hasServerKeys
+      ? {
+          notice: lv.notice,
+          warning: lv.warning,
+          critical: lv.critical,
+        }
+      : hasClientKeys
+      ? {
+          notice: lv.notice,
+          warning: lv.warn,
+          critical: lv.danger,
+        }
+      : lv, // 마지막 fallback (이미 서버 포맷이라고 가정)
+  };
+}
+
+/* ============================== */
 
 type AlarmRuleRow = {
   id: number;
-  instance: string;
-  database: string;
+  instanceId: number;
+  databaseId: number;
+  instanceName: string;
+  databaseName: string;
   section: string;
-  metric: "vacuum" | "Long Transactions / Blockers" | "Dead tuple";
+  metricType: string;
   enabled: boolean;
 };
 
-const base: AlarmRuleRow[] = [
-  { id: 1, instance: "orders",   database: "page",    section: "vacuum", metric: "vacuum", enabled: false },
-  { id: 2, instance: "sessions", database: "orders",  section: "vacuum", metric: "vacuum", enabled: true  },
-  { id: 3, instance: "orders",   database: "sessions", section: "vacuum", metric: "vacuum", enabled: true  },
-  { id: 4, instance: "sessions", database: "orders",  section: "Hot index", metric: "Long Transactions / Blockers", enabled: true },
-  { id: 5, instance: "orders",   database: "sessions", section: "Hot index", metric: "Long Transactions / Blockers", enabled: true },
-  { id: 6, instance: "sessions", database: "page",    section: "Hot index", metric: "Long Transactions / Blockers", enabled: true },
-  { id: 7, instance: "orders",   database: "orders", section: "Hot table",  metric: "Dead tuple", enabled: true },
-  { id: 8, instance: "sessions", database: "sessions", section: "Session", metric: "Dead tuple", enabled: true },
-  { id: 9, instance: "orders",   database: "sessions", section: "Session", metric: "Dead tuple", enabled: true },
-  { id:10, instance: "sessions", database: "page",     section: "Session", metric: "Dead tuple", enabled: true },
-];
-
-const demoRows: AlarmRuleRow[] = Array.from({ length: 33 }, (_, i) => {
-  const b = base[i % base.length];
-  return { ...b, id: i + 1 };
-});
-
-// 기본 레벨 정의
-const defaultLevels: AlarmRulePayload["levels"] = {
-  notice: { threshold: 100_000, minDurationMin: 1, occurCount: 2, windowMin: 15 },
-  warn: { threshold: 500_000, minDurationMin: 5, occurCount: 2, windowMin: 15 },
-  danger: { threshold: 1_000_000, minDurationMin: 10, occurCount: 1, windowMin: 10 },
-};
-
-export default function AlarmRuleList({ rows = demoRows }: { rows?: AlarmRuleRow[] }) {
-  const [data] = useState<AlarmRuleRow[]>(rows);
+export default function AlarmRuleList() {
+  const { selectedInstance, selectedDatabase } = useInstanceContext();
+  const [data, setData] = useState<AlarmRuleRow[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [sorting, setSorting] = useState<SortingState>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 15;
@@ -63,35 +127,83 @@ export default function AlarmRuleList({ rows = demoRows }: { rows?: AlarmRuleRow
   const [openAlarmRule, setOpenAlarmRule] = useState(false);
   const [openEdit, setOpenEdit] = useState(false);
   const [openDetail, setOpenDetail] = useState(false);
-  const [editingRule, setEditingRule] = useState<AlarmRuleRow | null>(null);
+  const [editingRuleId, setEditingRuleId] = useState<number | null>(null);
   const [detailRuleId, setDetailRuleId] = useState<number | null>(null);
 
-  // 수정 버튼 클릭
+  // 알림 규칙 목록 조회
+  useEffect(() => {
+    if (!selectedInstance) {
+      setData([]);
+      return;
+    }
+
+    const ac = new AbortController();
+
+    (async () => {
+      try {
+        setLoading(true);
+        setError(null);
+
+        const params: any = {
+          instanceId: selectedInstance.instanceId,
+        };
+        if (selectedDatabase) params.databaseId = selectedDatabase.databaseId;
+
+        const res = await apiClient.get("/alarms/rules", { params, signal: ac.signal });
+
+        const rules: AlarmRuleRow[] =
+          res.data.rules?.map((rule: any) => ({
+            id: rule.alarmRuleId,
+            instanceId: rule.instanceId,
+            databaseId: rule.databaseId,
+            instanceName: rule.instanceName || "Unknown",
+            databaseName: rule.databaseName || "Unknown",
+            section: rule.section || "N/A",
+            metricType: rule.metricType,
+            enabled: rule.enabled ?? false,
+          })) || [];
+
+        setData(rules);
+      } catch (e: any) {
+        if (e?.name !== "CanceledError") {
+          console.error("Failed to fetch alarm rules:", e);
+          setError(e?.response?.data?.message ?? "알림 규칙 조회 실패");
+        }
+      } finally {
+        setLoading(false);
+      }
+    })();
+
+    return () => ac.abort();
+  }, [selectedInstance, selectedDatabase]);
+
   const onEdit = (id: number) => {
-    const rule = data.find(r => r.id === id);
-    if (rule) {
-      setEditingRule(rule);
-      setOpenEdit(true);
+    setEditingRuleId(id);
+    setOpenEdit(true);
+  };
+
+  const onDelete = async (id: number) => {
+    if (!confirm("이 규칙을 삭제하시겠습니까?")) return;
+
+    try {
+      await apiClient.delete(`/alarms/rules/${id}`);
+      setData((prev) => prev.filter((r) => r.id !== id));
+      alert("규칙이 삭제되었습니다.");
+    } catch (e: any) {
+      console.error("Failed to delete rule:", e);
+      alert("규칙 삭제에 실패했습니다.");
     }
   };
 
-  // 삭제 버튼 클릭
-  const onDelete = (id: number) => {
-    if (confirm("이 규칙을 삭제하시겠습니까?")) {
-      console.log("delete id:", id);
-    }
-  };
-
-  // 컬럼 정의
   const columns = useMemo<ColumnDef<AlarmRuleRow>[]>(
     () => [
       {
-        accessorKey: "instance",
+        accessorKey: "instanceName",
         header: "인스턴스",
         cell: (info) => <span className="al-td-strong">{info.getValue() as string}</span>,
       },
       {
-        accessorKey: "database",
+        accessorKey: "databaseName",
         header: "데이터베이스",
         cell: (info) => info.getValue(),
       },
@@ -101,7 +213,7 @@ export default function AlarmRuleList({ rows = demoRows }: { rows?: AlarmRuleRow
         cell: (info) => info.getValue(),
       },
       {
-        accessorKey: "metric",
+        accessorKey: "metricType",
         header: "지표",
         cell: (info) => info.getValue(),
       },
@@ -121,9 +233,9 @@ export default function AlarmRuleList({ rows = demoRows }: { rows?: AlarmRuleRow
         id: "edit",
         header: "수정",
         cell: (info) => (
-          <button 
-            className="al-iconbtn" 
-            title="수정" 
+          <button
+            className="al-iconbtn"
+            title="수정"
             onClick={(e) => {
               e.stopPropagation();
               onEdit(info.row.original.id);
@@ -139,9 +251,9 @@ export default function AlarmRuleList({ rows = demoRows }: { rows?: AlarmRuleRow
         id: "delete",
         header: "삭제",
         cell: (info) => (
-          <button 
-            className="al-iconbtn" 
-            title="삭제" 
+          <button
+            className="al-iconbtn"
+            title="삭제"
             onClick={(e) => {
               e.stopPropagation();
               onDelete(info.row.original.id);
@@ -154,10 +266,9 @@ export default function AlarmRuleList({ rows = demoRows }: { rows?: AlarmRuleRow
         ),
       },
     ],
-    [data]
+    []
   );
 
-  // 테이블 인스턴스 생성
   const table = useReactTable({
     data,
     columns,
@@ -187,34 +298,23 @@ export default function AlarmRuleList({ rows = demoRows }: { rows?: AlarmRuleRow
     setOpenDetail(true);
   };
 
-
-  const handleEditFromDetail = (rule: any) => {
-    // 상세 모달에서 수정 버튼 클릭 시
+  const handleEditFromDetail = (ruleId: number) => {
     setOpenDetail(false);
-    
-    // AlarmRuleRow를 찾아서 editingRule로 설정
-    const alarmRule = data.find(r => r.id === rule.id);
-    if (alarmRule) {
-      setEditingRule(alarmRule);
-      setOpenEdit(true);
-    }
+    setEditingRuleId(ruleId);
+    setOpenEdit(true);
   };
 
-  // CSV 내보내기 함수
   const handleExportCSV = () => {
     const headers = ["인스턴스", "데이터베이스", "구분", "지표", "활성화 상태"];
     const csvData = data.map((row) => [
-      row.instance,
-      row.database,
+      row.instanceName,
+      row.databaseName,
       row.section,
-      row.metric,
+      row.metricType,
       row.enabled ? "활성화" : "비활성화",
     ]);
 
-    const csvContent = [
-      headers.join(","),
-      ...csvData.map((row) => row.join(",")),
-    ].join("\n");
+    const csvContent = [headers.join(","), ...csvData.map((row) => row.join(","))].join("\n");
 
     const BOM = "\uFEFF";
     const blob = new Blob([BOM + csvContent], { type: "text/csv;charset=utf-8;" });
@@ -222,7 +322,13 @@ export default function AlarmRuleList({ rows = demoRows }: { rows?: AlarmRuleRow
     const url = URL.createObjectURL(blob);
 
     const now = new Date();
-    const fileName = `alarm_rules_${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}${String(now.getDate()).padStart(2, "0")}_${String(now.getHours()).padStart(2, "0")}${String(now.getMinutes()).padStart(2, "0")}.csv`;
+    const fileName = `alarm_rules_${now.getFullYear()}${String(now.getMonth() + 1).padStart(
+      2,
+      "0"
+    )}${String(now.getDate()).padStart(2, "0")}_${String(now.getHours()).padStart(
+      2,
+      "0"
+    )}${String(now.getMinutes()).padStart(2, "0")}.csv`;
 
     link.setAttribute("href", url);
     link.setAttribute("download", fileName);
@@ -233,6 +339,116 @@ export default function AlarmRuleList({ rows = demoRows }: { rows?: AlarmRuleRow
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
   };
+
+  /* ====== 여기서부터 JSONB 매핑 적용 ====== */
+
+  // 생성
+  const handleCreateRule = async (payload: AlarmRulePayload) => {
+    try {
+   
+      const serverPayload = toServerCreateJSONB(payload);
+    
+ 
+      await apiClient.post("/alarms/rules", serverPayload);
+
+      // 목록 새로고침
+      const res = await apiClient.get("/alarms/rules", {
+        params: {
+          instanceId: selectedInstance?.instanceId,
+          databaseId: selectedDatabase?.databaseId,
+        },
+      });
+
+      const rules: AlarmRuleRow[] =
+        res.data.rules?.map((rule: any) => ({
+          id: rule.alarmRuleId,
+          instanceId: rule.instanceId,
+          databaseId: rule.databaseId,
+          instanceName: rule.instanceName || "Unknown",
+          databaseName: rule.databaseName || "Unknown",
+          section: rule.section || "N/A",
+          metricType: rule.metricType,
+          enabled: rule.enabled ?? false,
+        })) || [];
+
+      setData(rules);
+      alert("알림 규칙이 생성되었습니다.");
+    } catch (e: any) {
+      console.error("Failed to create rule:", e);
+      alert("알림 규칙 생성에 실패했습니다.");
+    }
+  };
+
+  // 수정
+  const handleUpdateRule = async (payload: any) => {
+    if (!editingRuleId) return;
+
+    try {
+      // payload는 EditModal에서 온 값(프론트형 또는 서버형) → 서버 JSONB로 정규화
+      const serverPayload = toServerUpdateJSONB(payload);
+
+      // 서버가 path param + body 조합을 받는다고 가정
+      await apiClient.put(`/alarms/rules/${editingRuleId}`, serverPayload);
+
+      // 목록 새로고침
+      const res = await apiClient.get("/alarms/rules", {
+        params: {
+          instanceId: selectedInstance?.instanceId,
+          databaseId: selectedDatabase?.databaseId,
+        },
+      });
+
+      const rules: AlarmRuleRow[] =
+        res.data.rules?.map((rule: any) => ({
+          id: rule.alarmRuleId,
+          instanceId: rule.instanceId,
+          databaseId: rule.databaseId,
+          instanceName: rule.instanceName || "Unknown",
+          databaseName: rule.databaseName || "Unknown",
+          section: rule.section || "N/A",
+          metricType: rule.metricType,
+          enabled: rule.enabled ?? false,
+        })) || [];
+
+      setData(rules);
+      setOpenEdit(false);
+      setEditingRuleId(null);
+      alert("알림 규칙이 수정되었습니다.");
+    } catch (e: any) {
+      console.error("Failed to update rule:", e);
+      console.error("Error response:", e?.response?.data);
+      alert(`알림 규칙 수정에 실패했습니다: ${e?.response?.data?.message || e.message}`);
+    }
+  };
+
+  const handleDeleteFromEdit = async () => {
+    if (!editingRuleId) return;
+
+    if (!confirm("이 규칙을 삭제하시겠습니까?")) return;
+
+    try {
+      await apiClient.delete(`/alarms/rules/${editingRuleId}`);
+      setData((prev) => prev.filter((r) => r.id !== editingRuleId));
+      alert("규칙이 삭제되었습니다.");
+    } catch (e: any) {
+      console.error("Failed to delete rule:", e);
+      alert("규칙 삭제에 실패했습니다.");
+    }
+  };
+
+  /* ======================================= */
+
+  if (!selectedInstance) {
+    return (
+      <main className="alarm-page">
+        <div style={{ padding: "40px", textAlign: "center", color: "#6B7280" }}>
+          <p style={{ fontSize: "18px", fontWeight: "500", marginBottom: "8px" }}>
+            Instance를 선택해주세요
+          </p>
+        </div>
+      </main>
+    );
+  }
 
   return (
     <main className="alarm-page">
@@ -246,91 +462,68 @@ export default function AlarmRuleList({ rows = demoRows }: { rows?: AlarmRuleRow
           </button>
         </div>
         <div className="alarm-page__filters">
-          <MultiSelectDropdown 
-            label="인스턴스"
-            options={["orders", "sessions"]}
-            onChange={(values) => console.log("선택된 인스턴스:", values)}
-          />
-          <MultiSelectDropdown
-            label="데이터베이스"
-            options={["orders", "sessions"]}
-            onChange={(values) => console.log("선택된 데이터베이스:", values)}
-          />
-          <MultiSelectDropdown
-            label="구분"
-            options={["page", "sessions"]}
-            onChange={(values) => console.log("선택된 구분:", values)}
-          />
-          <MultiSelectDropdown
-            label="지표"
-            options={["vacuum", "Hot table", "Hot index"]}
-            onChange={(values) => console.log("선택된 지표:", values)}
-          />
-          <MultiSelectDropdown
-            label="상태"
-            options={["활성화", "비활성화"]}
-            onChange={(values) => console.log("선택된 상태:", values)}
-          />
           <CsvButton onClick={handleExportCSV} tooltip="CSV 파일 저장" />
         </div>
       </section>
 
-      {/* 알림 규칙 테이블 */}
       <section className="alarm-page__table">
-        <div className="alarm-table-header">
-          {table.getHeaderGroups().map((headerGroup) => (
-            <Fragment key={headerGroup.id}>
-              {headerGroup.headers.map((header) => (
-                <div
-                  key={header.id}
-                  onClick={header.column.getToggleSortingHandler()}
-                  style={{ cursor: header.column.getCanSort() ? "pointer" : "default" }}
-                >
-                  {flexRender(
-                    header.column.columnDef.header,
-                    header.getContext()
-                  )}
-                  {header.column.getIsSorted() && (
-                    <span className="sort-icon">
-                      {header.column.getIsSorted() === "asc" ? " ▲" : " ▼"}
-                    </span>
-                  )}
-                </div>
-              ))}
-            </Fragment>
-          ))}
-        </div>
-
-        {table.getRowModel().rows.length > 0 ? (
-          table.getRowModel().rows.map((row) => (
-            <div
-              key={row.id}
-              className="alarm-table-row alarm-table-row--hover"
-              onClick={() => handleRowClick(row.original.id)}
-              style={{ cursor: "pointer" }}
-            >
-              {row.getVisibleCells().map((cell) => (
-                <div key={cell.id}>
-                  {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                </div>
+        {loading ? (
+          <div style={{ padding: "40px", textAlign: "center", color: "#9CA3AF" }}>
+            로딩 중...
+          </div>
+        ) : error ? (
+          <div style={{ padding: "24px", backgroundColor: "#FEE2E2", color: "#991B1B", borderRadius: "8px" }}>
+            {error}
+          </div>
+        ) : (
+          <>
+            <div className="alarm-table-header">
+              {table.getHeaderGroups().map((headerGroup) => (
+                <Fragment key={headerGroup.id}>
+                  {headerGroup.headers.map((header) => (
+                    <div
+                      key={header.id}
+                      onClick={header.column.getToggleSortingHandler()}
+                      style={{ cursor: header.column.getCanSort() ? "pointer" : "default" }}
+                    >
+                      {flexRender(header.column.columnDef.header, header.getContext())}
+                      {header.column.getIsSorted() && (
+                        <span className="sort-icon">
+                          {header.column.getIsSorted() === "asc" ? " ▲" : " ▼"}
+                        </span>
+                      )}
+                    </div>
+                  ))}
+                </Fragment>
               ))}
             </div>
-          ))
-        ) : (
-          <div className="alarm-table-empty">데이터가 없습니다.</div>
+
+            {table.getRowModel().rows.length > 0 ? (
+              table.getRowModel().rows.map((row) => (
+                <div
+                  key={row.id}
+                  className="alarm-table-row alarm-table-row--hover"
+                  onClick={() => handleRowClick(row.original.id)}
+                  style={{ cursor: "pointer" }}
+                >
+                  {row.getVisibleCells().map((cell) => (
+                    <div key={cell.id}>
+                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                    </div>
+                  ))}
+                </div>
+              ))
+            ) : (
+              <div className="alarm-table-empty">데이터가 없습니다.</div>
+            )}
+          </>
         )}
       </section>
 
-      {/* 페이지네이션 */}
       {totalPages > 1 && (
-        <Pagination
-          currentPage={currentPage}
-          totalPages={totalPages}
-          onPageChange={handlePageChange}
-        />
+        <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={handlePageChange} />
       )}
 
-      {/* Slack 설정 모달 */}
       <SlackSettingsModal
         open={openSlack}
         onClose={() => setOpenSlack(false)}
@@ -338,40 +531,24 @@ export default function AlarmRuleList({ rows = demoRows }: { rows?: AlarmRuleRow
         initialValue={{ instance: "postgres", enabled: true }}
       />
 
-      {/* 알림 규칙 생성 모달 */}
       <AlarmRuleModal
         open={openAlarmRule}
         onClose={() => setOpenAlarmRule(false)}
         mode="create"
-        onSubmit={(payload) => {
-          console.log("생성:", payload);
-          // API 호출 후 목록 갱신
-        }}
+        onSubmit={handleCreateRule}
       />
 
-      {/* 알림 규칙 수정 모달 */}
       <AlarmRuleEditModal
         open={openEdit}
-        onClose={() => setOpenEdit(false)}
-        initialData={editingRule ? {
-          enabled: editingRule.enabled,
-          targetInstance: editingRule.instance,
-          targetDatabase: editingRule.database,
-          metric: "dead_tuples" as Metric,
-          aggregation: "latest_avg" as Aggregation,
-          levels: defaultLevels,
-        } : undefined}
-        onSubmit={(payload) => {
-          console.log("수정:", payload);
-          // API 호출 후 목록 갱신
+        onClose={() => {
+          setOpenEdit(false);
+          setEditingRuleId(null);
         }}
-        onDelete={() => {
-          console.log("삭제:", editingRule?.id);
-          // API 호출 후 목록 갱신
-        }}
+        ruleId={editingRuleId ?? undefined}
+        onSubmit={handleUpdateRule}
+        onDelete={handleDeleteFromEdit}
       />
 
-      {/* 알림 규칙 상세 모달 */}
       <AlarmRuleDetailModal
         open={openDetail}
         onClose={() => setOpenDetail(false)}

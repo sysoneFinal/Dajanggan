@@ -23,23 +23,44 @@
     min-width: 200px;
 }
 
-/* 테이블 */
+/* 테이블 - 좌우 반응형 */
 .cpu-list-page__table {
     background: rgba(255, 255, 255, 0.6);
     border-radius: 0.7rem;
     border: 1px solid rgba(255, 255, 255, 0.7);
     box-shadow: 0 0.6rem 1.8rem rgba(0, 0, 0, 0.08);
     overflow-x: auto;
+    width: 100%;
+    -webkit-overflow-scrolling: touch;
 }
 
+/* 16개 컬럼 - 화면에 맞춰 늘어나도록 설정 */
 .cpu-table-header,
 .cpu-table-row {
     display: grid;
-    grid-template-columns: repeat(10, minmax(8rem, 1fr));
+    grid-template-columns:
+        minmax(100px, 1.2fr)  /* 시간 */
+        minmax(100px, 1.2fr)  /* User CPU */
+        minmax(110px, 1.3fr)  /* System CPU */
+        minmax(100px, 1.2fr)  /* Idle CPU */
+        minmax(100px, 1.2fr)  /* I/O Wait */
+        minmax(100px, 1.2fr)  /* Steal CPU */
+        minmax(110px, 1.3fr)  /* Load Avg 1m */
+        minmax(110px, 1.3fr)  /* Load Avg 5m */
+        minmax(110px, 1.3fr)  /* Load Avg 15m */
+        minmax(100px, 1.2fr)  /* 활성 세션 */
+        minmax(100px, 1.2fr)  /* 병렬 워커 */
+        minmax(100px, 1.2fr)  /* 대기 세션 */
+        minmax(140px, 1.6fr)  /* 병렬 워커 시간 */
+        minmax(120px, 1.4fr)  /* Context Switch */
+        minmax(140px, 1.8fr)  /* 전체 CPU */
+        minmax(80px, 1fr);    /* 상태 */
+    min-width: 1800px;
     text-align: center;
-    padding: 1.1rem;
+    padding: 1rem 0.8rem;
     align-items: center;
-    font-size: 1rem;
+    font-size: 0.9rem;
+    gap: 0.5rem;
 }
 
 .cpu-table-header {
@@ -53,8 +74,16 @@
     color: #2e2f33;
 }
 
+.cpu-table-row:hover {
+    background: rgba(123, 97, 255, 0.05);
+}
+
 .cpu-table-row:nth-child(even) {
     background: rgba(255, 255, 255, 0.5);
+}
+
+.cpu-table-row:nth-child(even):hover {
+    background: rgba(123, 97, 255, 0.08);
 }
 
 .cpu-table-empty {
@@ -124,14 +153,27 @@
 }
 
 /* 반응형 */
+@media (max-width: 1600px) {
+    .cpu-table-header,
+    .cpu-table-row {
+        font-size: 0.85rem;
+        padding: 0.9rem 0.7rem;
+    }
+}
+
 @media (max-width: 768px) {
+    .cpu-list-page {
+        padding: 1rem;
+    }
+
     .cpu-list-page__filters {
         flex-wrap: wrap;
     }
 
     .cpu-table-header,
     .cpu-table-row {
-        grid-template-columns: repeat(10, minmax(6rem, 1fr));
-        font-size: 0.8rem;
+        font-size: 0.75rem;
+        padding: 0.8rem 0.5rem;
+        min-width: 1600px;
     }
 }

@@ -249,7 +249,10 @@ export default function BloatDetailPage({ onToggle, expanded = true }: Props) {
                 customOptions={{
                   stroke: { width: 2, curve: "smooth" },
                   grid: { borderColor: "#E5E7EB", strokeDashArray: 4 },
-                  yaxis: { min: 0, title: { text: "Bloat %" } },
+                  yaxis: { min: 0, title: { text: "Bloat %" } ,
+                  labels: {
+                    formatter: (value: number) => value.toFixed(2)
+                  } },
                 }}
               />
             </WidgetCard>

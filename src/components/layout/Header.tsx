@@ -4,7 +4,7 @@ import "../../styles/layout/header.css";
 import { createPortal } from "react-dom";
 import { useDashboard } from "../../context/DashboardContext";
 import { useInstanceContext } from "../../context/InstanceContext";
-import AlertDetailModal, { type AlertDetailData } from "../../pages/alarm/AlarmDetailModal";
+import AlertDetailModal, { type AlertDetailData } from "../../pages/alarm/AlarmFeedModal";
 import type { Instance } from "../../types/instance";
 import type { Database } from "../../types/database";
 

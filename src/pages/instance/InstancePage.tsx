@@ -9,9 +9,9 @@ import type { NewInstance } from "./InstanceRegister";
 export interface DatabaseSummary {
   databaseName: string;
   isEnabled: boolean;
-  connections: number;
-  sizeBytes: number;
-  cacheHitRate: number;
+  connections: number | null;
+  sizeBytes: number| null;
+  cacheHitRate: number| null;
   updatedAt: string;
 }
 
@@ -43,9 +43,9 @@ type InstanceDto = {
         name: string;
         isEnabled: boolean;
         status?: "active" | "inactive";  
-        connections: number;
-        sizeBytes: number;
-        cacheHitRate: number;
+        connections: number| null;
+        sizeBytes: number| null;
+        cacheHitRate: number| null;
         updatedAt: string;
   }>;
 };
@@ -255,7 +255,6 @@ const InstancePage: React.FC = () => {
       instanceName: form.instance,
       port: Number(form.port),
       userName: form.userName,
-      sslmode: "require",
       isEnabled: true,
     };
     
@@ -372,9 +371,6 @@ const InstancePage: React.FC = () => {
                 <div className="il-db-header">
                   <div>DB</div>
                   <div>Status</div>
-                  <div>연결수</div>
-                  <div>크기</div>
-                  <div>캐시 히트율</div>
                   <div>마지막 업데이트</div>
                 </div>
                 {r.databases.map((db) => (
@@ -383,9 +379,6 @@ const InstancePage: React.FC = () => {
                     <span className={`il-badge ${db.isEnabled ? "il-badge--indigo" : "il-badge--red"}`}>
                       {db.isEnabled ? "active" : "inactive"}
                     </span> 
-                    <div className="il-cell">{db.connections}</div>
-                    <div className="il-cell">{formatBytes(db.sizeBytes)}</div>
-                    <div className="il-cell">{(db.cacheHitRate * 100).toFixed(1)}%</div>
                     <div className="il-cell">{formatDateTime(db.updatedAt)}</div>
                   </div>
                 ))}

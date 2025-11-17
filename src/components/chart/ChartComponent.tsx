@@ -29,9 +29,9 @@ interface ChartProps {
   xAxisTickAmount?: number;
   yaxisOptions?: ApexYAxis | ApexYAxis[];
   tooltipFormatter?: (value: number) => string;
-  showDonutTotal?: boolean;      
-  enableDonutShadow?: boolean;    
-  style?: React.CSSProperties;    
+  showDonutTotal?: boolean;
+  enableDonutShadow?: boolean;
+  style?: React.CSSProperties;
   donutTitle?: string;
   titleOptions?: {
     text?: string;
@@ -72,7 +72,7 @@ export default function Chart({
   yaxisOptions,
   tooltipFormatter,
   showDonutTotal = true,
-  enableDonutShadow = false,  
+  enableDonutShadow = false,
   style,
   donutTitle = "",
   titleOptions
@@ -444,7 +444,29 @@ case "column":
         options.stroke = { width: 1 };
         break;
     }
+      let mergedYaxis = options.yaxis;
 
+      if (customOptions?.yaxis) {
+          // 둘 중 하나라도 배열이면 => 배열로 합쳐서 넘기기
+          if (Array.isArray(options.yaxis) || Array.isArray(customOptions.yaxis)) {
+              const baseArr = Array.isArray(options.yaxis)
+                  ? options.yaxis
+                  : options.yaxis
+                      ? [options.yaxis]
+                      : [];
+              const customArr = Array.isArray(customOptions.yaxis)
+                  ? customOptions.yaxis
+                  : [customOptions.yaxis];
+
+              mergedYaxis = [...baseArr, ...customArr];
+          } else {
+              // 둘 다 객체면 기존 옵션에 custom만 덮어쓰기
+              mergedYaxis = {
+                  ...(options.yaxis as ApexYAxis),
+                  ...(customOptions.yaxis as ApexYAxis),
+              };
+          }
+      }
     /** 사용자 옵션 병합 */
     return {
       ...options,
@@ -454,6 +476,8 @@ case "column":
       fill: { ...options.fill, ...customOptions?.fill },
       stroke: { ...options.stroke, ...customOptions?.stroke },
       grid: { ...options.grid, ...customOptions?.grid },
+        xaxis: { ...options.xaxis, ...customOptions?.xaxis },
+        yaxis: mergedYaxis,
     };
   }, [
     type,
