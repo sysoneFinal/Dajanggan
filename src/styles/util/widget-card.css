@@ -20,8 +20,10 @@
 
 .widget-header {
   display: flex;
-  flex-direction: column;
-  gap: 0.15rem;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
   margin: 0 0.4rem 0.4rem;
 }
 
@@ -31,21 +33,23 @@
   color: #6b7280;
   margin: 0;
   text-align: left;
+  flex: 1;
+  min-width: 0;
 }
 
 .widget-subtitle {
   display: inline-block;
-  font-size: 0.9rem;
+  font-size: 0.75rem;
   color: #ffffff;
   background-color: #8594b3;
   padding: 0.125rem 0.5rem;
-  margin: 0 0 0 auto; /* 오른쪽 정렬 */
   border-radius: 0.25rem;
   text-align: right;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   max-width: 200px;
+  flex-shrink: 0;
 }
 
 .widget-content {

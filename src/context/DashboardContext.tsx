@@ -56,26 +56,50 @@ export const DashboardProvider = ({ children }: DashboardProviderProps) => {
     const cacheKey = `metricMapCache_${selectedInstance.instanceId}`;
     const cached = localStorage.getItem(cacheKey);
 
-    // 캐시가 있으면 즉시 로드
+    // 캐시가 있으면 즉시 로드 (하지만 API도 호출하여 최신 데이터로 업데이트)
     if (cached) {
       try {
         const parsed = JSON.parse(cached);
+        console.log("💾 캐시에서 metricMap 로드:", parsed);
+        // 캐시된 데이터의 available_charts 확인
+        const firstKey = Object.keys(parsed)[0];
+        if (firstKey) {
+          console.log(`📊 캐시된 첫 번째 지표 (${firstKey}):`, parsed[firstKey]);
+          console.log(`📈 캐시된 available_charts:`, parsed[firstKey]?.available_charts);
+        }
         setMetricMap(parsed);
-        return;
+        // 캐시가 있어도 API를 호출하여 최신 데이터로 업데이트
+        console.log("🔄 캐시가 있지만 API를 호출하여 최신 데이터로 업데이트합니다.");
       } catch (err) {
         console.warn("metricMap 캐시 파싱 실패:", err);
       }
     }
 
-    // 캐시가 없으면 API 호출
+    // API 호출 (캐시가 있어도 최신 데이터로 업데이트)
     const fetchMetricMap = async () => {
       try {
+        console.log("📡 API 호출 시작 - /metric/list");
         const res = await apiClient.get(`/metric/list`, {
           params: { instanceId: selectedInstance.instanceId },
         });
 
+        console.log("📡 API 응답 전체:", res.data);
+        console.log("📡 첫 번째 항목 예시:", res.data[0]);
+
         const parsed = res.data.reduce((acc: Record<string, any>, item: any) => {
           const key = `${item.category}.${item.name}`;
+          
+          // availableChart 필드 확인
+          console.log(`🔍 ${key} - availableChart:`, item.availableChart);
+          console.log(`🔍 ${key} - availableChart 타입:`, typeof item.availableChart);
+          console.log(`🔍 ${key} - availableChart 배열 여부:`, Array.isArray(item.availableChart));
+          
+          const availableCharts = Array.isArray(item.availableChart) 
+            ? item.availableChart.map((c: string) => c.toLowerCase())
+            : [];
+          
+          console.log(`✅ ${key} - 변환된 available_charts:`, availableCharts);
+          
           acc[key] = {
             title: item.description,
             unit: item.unit,
@@ -83,7 +107,7 @@ export const DashboardProvider = ({ children }: DashboardProviderProps) => {
             column: item.columnName,
             category: item.category,
             level: item.level,
-            available_charts: item.availableChart.map((c: string) => c.toLowerCase()),
+            available_charts: availableCharts,
             default_chart: item.defaultChartType?.toLowerCase(),
             description: item.description,
           };
@@ -92,12 +116,20 @@ export const DashboardProvider = ({ children }: DashboardProviderProps) => {
 
         setMetricMap(parsed);
         localStorage.setItem(cacheKey, JSON.stringify(parsed));
-        console.log(`metricMap API 로드 및 캐시 저장 (${Object.keys(parsed).length}개)`);
+        console.log(`✅ metricMap API 로드 및 캐시 저장 완료 (${Object.keys(parsed).length}개)`);
+        
+        // 저장된 metricMap 확인
+        const firstKey = Object.keys(parsed)[0];
+        if (firstKey) {
+          console.log(`📊 저장된 첫 번째 지표 예시 (${firstKey}):`, parsed[firstKey]);
+          console.log(`📈 저장된 available_charts:`, parsed[firstKey]?.available_charts);
+        }
       } catch (err) {
-        console.error("metricMap 로드 실패:", err);
+        console.error("❌ metricMap 로드 실패:", err);
       }
     };
 
+    // 항상 API 호출 (캐시가 있어도 최신 데이터로 업데이트)
     fetchMetricMap();
   }, [selectedInstance?.instanceId]);
 

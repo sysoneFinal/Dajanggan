@@ -27,6 +27,7 @@ interface ChartProps {
   isStacked?: boolean;
   xaxisOptions?: ApexXAxis;
   xAxisTickAmount?: number;
+  hideOverlappingXAxisLabels?: boolean;
   yaxisOptions?: ApexYAxis | ApexYAxis[];
   tooltipFormatter?: (value: number) => string;
   showDonutTotal?: boolean;
@@ -43,6 +44,10 @@ interface ChartProps {
   enableSlidingAnimation?: boolean;
   slidingAnimationDuration?: number;
   animationEasing?: "linear" | "easein" | "easeout" | "easeinout";
+  /** 롤링 기능: 시간에 따라 최신 데이터로 자동 스크롤 */
+  enableRolling?: boolean;
+  /** 롤링 윈도우: 표시할 데이터 포인트 수 (기본값: 10) */
+  rollingWindow?: number;
 }
 
 /** 공통 색상 팔레트 */
@@ -72,6 +77,7 @@ export default function Chart({
   isStacked = false,
   xaxisOptions,
   xAxisTickAmount = 6, 
+  hideOverlappingXAxisLabels = false, // 기본적으로 모든 레이블 표시
   yaxisOptions,
   tooltipFormatter,
   showDonutTotal = true,
@@ -80,8 +86,10 @@ export default function Chart({
   donutTitle = "",
   titleOptions,
   enableSlidingAnimation = true, // 기본값을 true로 변경
-  slidingAnimationDuration = 800, // 기본 800ms로 증가
+  slidingAnimationDuration = 1000, 
   animationEasing = "easeinout",
+  enableRolling = false,
+  rollingWindow = 10,
 }: ChartProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<any>(null);
@@ -169,6 +177,40 @@ export default function Chart({
     return categories;
   }, [categories]);
 
+  // 롤링 기능: 최신 N개 데이터만 표시 (슬라이딩 애니메이션과 함께)
+  const rollingSeries = useMemo(() => {
+    if (!enableRolling || !Array.isArray(series) || series.length === 0) {
+      return safeSeries;
+    }
+
+    const totalDataPoints = safeCategories.length;
+    if (totalDataPoints <= rollingWindow) {
+      return safeSeries; // 데이터가 윈도우보다 적으면 모두 표시
+    }
+
+    // 최신 N개만 선택 (부드러운 슬라이딩 효과를 위해)
+    const startIndex = totalDataPoints - rollingWindow;
+    
+    return safeSeries.map((s: any) => ({
+      ...s,
+      data: Array.isArray(s.data) ? s.data.slice(startIndex) : [],
+    }));
+  }, [safeSeries, enableRolling, rollingWindow, safeCategories.length]);
+
+  const rollingCategories = useMemo(() => {
+    if (!enableRolling || !Array.isArray(safeCategories) || safeCategories.length === 0) {
+      return safeCategories;
+    }
+
+    const totalDataPoints = safeCategories.length;
+    if (totalDataPoints <= rollingWindow) {
+      return safeCategories;
+    }
+
+    // 최신 N개만 선택
+    const startIndex = totalDataPoints - rollingWindow;
+    return safeCategories.slice(startIndex);
+  }, [safeCategories, enableRolling, rollingWindow]);
 
   // 슬라이딩 애니메이션을 위한 축 차트 타입 확인
   const isAxisChart =
@@ -204,6 +246,14 @@ export default function Chart({
         stacked: isStacked,
         redrawOnParentResize: true,
         redrawOnWindowResize: true,
+        // 롤링 활성화 시 줌 기능 활성화 (자동 스크롤을 위해)
+        ...(enableRolling && {
+          zoom: {
+            enabled: true,
+            type: 'x',
+            autoScaleYaxis: true,
+          },
+        }),
       },
       theme: { mode: "light" },
       colors,
@@ -235,17 +285,17 @@ export default function Chart({
         width: type === "line" || type === "area" ? 2 : 0,
       },
       xaxis: {
-        categories: safeCategories,
+        categories: rollingCategories,
         labels: {
           style: {
             colors: "#6B7280",
             fontFamily: FONT_FAMILY,
-            fontSize: "11px",
+            fontSize: "10px", // 폰트 크기 약간 줄임
           },
           rotate: -45,
           rotateAlways: false,
-          hideOverlappingLabels: true,
-          trim: true,
+          hideOverlappingLabels: hideOverlappingXAxisLabels, // props로 제어 가능하도록
+          trim: false, // trim을 false로 변경
           maxHeight: 80,
         },
         tickAmount: xAxisTickAmount,
@@ -283,7 +333,7 @@ export default function Chart({
           options: {
             legend: { show: showLegend },
             title: { style: { fontSize: "13px" } },
-            xaxis: { labels: { show: true, rotate: -30, fontSize: "10px" } },
+            xaxis: { labels: { show: true, rotate: -30, fontSize: "9px" } }, // 작은 화면에서 폰트 더 작게
             yaxis: { labels: { show: true, fontSize: "10px" } },
           },
         },
@@ -293,6 +343,7 @@ export default function Chart({
             legend: { show: showLegend },
             chart: { height: 220 },
             title: { style: { fontSize: "12px" } },
+            xaxis: { labels: { fontSize: "8px" } }, // 모바일에서 더 작게
           },
         },
       ],
@@ -344,10 +395,10 @@ export default function Chart({
           ...options.xaxis,
           labels: {
             ...options.xaxis?.labels,
-            hideOverlappingLabels: true,
+            hideOverlappingLabels: hideOverlappingXAxisLabels,
             rotate: -45,
             rotateAlways: false,
-            trim: true,
+            trim: false,
           }
         };
         
@@ -523,6 +574,7 @@ export default function Chart({
     tooltipFormatter,
     xaxisOptions,
     xAxisTickAmount,
+    hideOverlappingXAxisLabels,
     yaxisOptions,
     customOptions,
     isStacked,
@@ -535,19 +587,28 @@ export default function Chart({
     animationEasing,
     isAxisChart,
     safeCategories,
+    rollingCategories,
+    enableRolling,
+    rollingWindow,
   ]);
 
   // 데이터 업데이트 시 부드러운 전환을 위한 effect
   useEffect(() => {
     if (chartRef.current && enableSlidingAnimation) {
       try {
+        // 롤링이 활성화된 경우 롤링된 시리즈 사용, 아니면 원본 시리즈 사용
+        const seriesToUpdate = enableRolling ? rollingSeries : safeSeries;
         // ApexCharts의 updateSeries 메서드 사용
-        chartRef.current.chart?.updateSeries(safeSeries, true);
+        chartRef.current.chart?.updateSeries(seriesToUpdate, true);
       } catch (error) {
         console.warn('Chart update failed:', error);
       }
     }
-  }, [safeSeries, enableSlidingAnimation]);
+  }, [safeSeries, rollingSeries, enableSlidingAnimation, enableRolling]);
+
+  // 롤링 기능: 데이터가 업데이트될 때마다 최신 N개로 자동 업데이트
+  // (데이터 필터링이 이미 rollingSeries에서 처리되므로, 
+  //  슬라이딩 애니메이션이 자동으로 적용됨)
 
   // 최종적으로 사용할 width/height 결정
   const finalWidth = isPercentWidth ? calculatedWidth : width;
@@ -578,7 +639,7 @@ export default function Chart({
         <ReactApexChart
           ref={chartRef}
           options={baseOptions}
-          series={safeSeries}
+          series={enableRolling ? rollingSeries : safeSeries}
           type={normalizedType}
           width={finalWidth}
           height={finalHeight}

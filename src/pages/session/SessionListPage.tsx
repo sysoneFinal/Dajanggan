@@ -21,6 +21,7 @@ import SessionDetailModal from "../../components/session/SessionDetailModal";
 import type { SessionDetail } from "../../components/session/SessionDetailModal";
 import { formatRuntime } from "../../utils/formatRunTime";
 import { intervalToMs } from "../../utils/time";
+import { useLoader } from "../../context/LoaderContext";
 
 interface Session {
   databaseId: number;
@@ -46,6 +47,8 @@ const SessionActivityList = () => {
   const [selectedWaitTypes, setSelectedWaitTypes] = useState<string[]>([]);
   const [selectedQueryTypes, setSelectedQueryTypes] = useState<string[]>([]);
   const [page, setPage] = useState(1);
+  const { showLoader, hideLoader } = useLoader();
+  
 
   /** 인스턴스 변경 시 필터 초기화 */
   useEffect(() => {
@@ -95,8 +98,9 @@ const SessionActivityList = () => {
 
   });
 
+
   /** 요약 카드 조회 */
-  const { data: summaryData } = useQuery({
+  const { data: summaryData, isLoading } = useQuery({
     queryKey: ["session-summary", selectedInstance?.instanceId],
     queryFn: async () => {
       const res = await apiClient.get("/session/active/summary", {
@@ -110,6 +114,15 @@ const SessionActivityList = () => {
     refetchInterval : intervalToMs(refreshInterval)
 
   });
+
+      /** === 로딩 상태 관리 === */
+    useEffect(() => {
+      if (isLoading) {
+        showLoader('대시보드 데이터를 불러오는 중...');
+      } else {
+        hideLoader();
+      }
+    }, [isLoading, showLoader, hideLoader]);
 
   /** 세션 매핑 */
   const sessions: Session[] = useMemo(

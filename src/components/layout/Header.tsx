@@ -83,6 +83,8 @@ const Header = ({ breadcrumb }: HeaderProps) => {
           top: dropdownPos.top,
           left: dropdownPos.left,
           minWidth: dropdownPos.width,
+          maxWidth: "300px",
+          width: "auto",
           zIndex: 9999,
         }}
       >

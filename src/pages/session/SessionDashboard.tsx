@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Chart from "../../components/chart/ChartComponent";
 import GaugeChart from "../../components/chart/GaugeChart";
 import DeadlockModal from "../../components/session/DeadlockModal";
@@ -13,6 +13,8 @@ import { useInstanceContext } from "../../context/InstanceContext";
 import { formatDateTime } from "../../utils/formatDateTime";
 import { intervalToMs } from "../../utils/time";
 import type { ApexOptions } from "apexcharts";
+import { useLoader } from '../../context/LoaderContext';
+
 
 
 
@@ -226,6 +228,7 @@ export default function SessionDashboard() {
   const [selected, setSelected] = useState<DeadlockDetail | null>(null);
   const [isLoadingDeadlock, setIsLoadingDeadlock] = useState(false);
   const maxQueryLen = 40;
+  const { showLoader, hideLoader } = useLoader();
 
   /** API 요청 */
   
@@ -299,16 +302,16 @@ export default function SessionDashboard() {
     enabled: !!selectedInstance?.instanceId && !!selectedDatabase?.databaseId,
     refetchInterval: intervalToMs(refreshInterval),
   });
+  /** === 로딩 상태 관리 === */
+  useEffect(() => {
+    if (isLoading) {
+      showLoader('대시보드 데이터를 불러오는 중...');
+    } else {
+      hideLoader();
+    }
+  }, [isLoading, showLoader, hideLoader]);
 
 
-  if (isLoading) {
-    return <div className="session-db-dashboard">Loading...</div>;
-  }
-
-  if (isError) {  
-    return <div className="session-db-dashboard">Error loading data</div>;
-  }
-  
   const dashboard = transformApiData(data);
 
   const sessionTrend = dashboard.charts?.sessionTrend || {
@@ -342,10 +345,7 @@ export default function SessionDashboard() {
 
   // X축 설정을 위한 헬퍼 함수
   const createXAxisOptions = (label: string = "시간"): ApexOptions['xaxis'] => ({
-    title: {
-      text: label,
-      style: { color: "#9CA3AF", fontSize: "12px", fontWeight: 500 },
-    },
+    // title 제거
   });
 
   return (

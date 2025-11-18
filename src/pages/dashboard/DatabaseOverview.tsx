@@ -15,6 +15,7 @@ import apiClient from "../../api/apiClient";
 import { intervalToMs } from "../../utils/time";
 
 
+
 interface MetricData {
   activeSessions: number[];
   tps: number[];
@@ -192,9 +193,7 @@ export default function DatabaseDashboard() {
             type="line"
             series={[{ name: "활성 세션 수", data: data!.activeSessions }]}
             categories={data!.diskIO.map(d => d.time)}
-            xaxisOptions={{
-              title: { text: "시간", style: { fontSize: "12px", fontWeight: 500, color: "#6B7280" } }
-            }}
+            xaxisOptions={{}}
             yaxisOptions={{
               title: { text: "세션 수", style: { fontSize: "12px", fontWeight: 500, color: "#6B7280" } },
               labels: {
@@ -202,6 +201,7 @@ export default function DatabaseDashboard() {
                 formatter: (val: number) => val.toLocaleString(),
               }
             }}
+            xAxisTickAmount={6}
           />
         </WidgetCard>
 
@@ -210,9 +210,7 @@ export default function DatabaseDashboard() {
             type="line"
             series={[{ name: "TPS", data: data!.tps }]}
             categories={data!.diskIO.map(d => d.time)}
-            xaxisOptions={{
-              title: { text: "시간", style: { fontSize: "12px", fontWeight: 500, color: "#6B7280" } }
-            }}
+            xaxisOptions={{}}
             yaxisOptions={{
               title: { text: "트랜잭션/초", style: { fontSize: "12px", fontWeight: 500, color: "#6B7280" } },
               labels: {
@@ -267,9 +265,7 @@ export default function DatabaseDashboard() {
               series={[{ name: "Usage", data: data!.connectionTrend.map(d => d.used) }]}
               categories={data!.connectionTrend.map(d => d.time)}
               height={130}
-              xaxisOptions={{
-                title: { text: "시간", style: { fontSize: "11px", fontWeight: 500, color: "#6B7280" } }
-              }}
+              xaxisOptions={{}}
               yaxisOptions={{
                 title: { text: "연결 수", style: { fontSize: "11px", fontWeight: 500, color: "#6B7280" } },
                 labels: {
@@ -292,9 +288,7 @@ export default function DatabaseDashboard() {
             isStacked
             tooltipFormatter={v => `${v} events`}
             colors={["#60A5FA", "#7B61FF"]}
-            xaxisOptions={{
-              title: { text: "시간", style: { fontSize: "12px", fontWeight: 500, color: "#6B7280" } }
-            }}
+            xaxisOptions={{}}
             yaxisOptions={{
               title: { text: "이벤트 수", style: { fontSize: "12px", fontWeight: 500, color: "#6B7280" } },
               labels: {
@@ -302,6 +296,7 @@ export default function DatabaseDashboard() {
                 formatter: (val: number) => val.toLocaleString(),
               }
             }}
+            height={280}
           />
         </WidgetCard>
 
@@ -342,9 +337,7 @@ export default function DatabaseDashboard() {
               { name: "blks_read", data: data!.diskIO.map(d => d.read) },
             ]}
             categories={data!.diskIO.map(d => d.time)}
-            xaxisOptions={{
-              title: { text: "시간", style: { fontSize: "12px", fontWeight: 500, color: "#6B7280" } }
-            }}
+            xaxisOptions={{}}
             yaxisOptions={{
               title: { text: "블록 수", style: { fontSize: "12px", fontWeight: 500, color: "#6B7280" } },
               labels: {
@@ -366,9 +359,7 @@ export default function DatabaseDashboard() {
             categories={data!.deadTuples.map(d => d.time)}
             tooltipFormatter={v => `${v} tuples`}
             colors={["#EF4444"]}
-            xaxisOptions={{
-              title: { text: "시간", style: { fontSize: "12px", fontWeight: 500, color: "#6B7280" } }
-            }}
+            xaxisOptions={{}}
             yaxisOptions={{
               title: { text: "Tuple 수", style: { fontSize: "12px", fontWeight: 500, color: "#6B7280" } },
               labels: {
