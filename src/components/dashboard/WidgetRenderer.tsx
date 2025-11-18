@@ -183,7 +183,7 @@ export default function WidgetRenderer({
     }
   });
 
-  const categories = data.map((row) => {
+  let categories = data.map((row) => {
     const d = new Date(row.timestamp);
     const hh = String(d.getHours()).padStart(2, "0");
     const min = String(d.getMinutes()).padStart(2, "0");
