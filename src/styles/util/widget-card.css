@@ -18,12 +18,34 @@
 
 
 
+.widget-header {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  margin: 0 0.4rem 0.4rem;
+}
+
 .widget-title {
   font-size: 0.9rem;
   font-weight: 600;
   color: #6b7280;
-  margin: 0.4rem;
+  margin: 0;
   text-align: left;
+}
+
+.widget-subtitle {
+  display: inline-block;
+  font-size: 0.9rem;
+  color: #ffffff;
+  background-color: #8594b3;
+  padding: 0.125rem 0.5rem;
+  margin: 0 0 0 auto; /* 오른쪽 정렬 */
+  border-radius: 0.25rem;
+  text-align: right;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 200px;
 }
 
 .widget-content {

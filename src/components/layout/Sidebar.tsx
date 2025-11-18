@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import plus from "../../assets/icon/sidebar-plus.svg";
 import minus from "../../assets/icon/sidebar-minus.svg";
 import { SIDEBAR_MENU } from "./SidebarMenu";
+import { getBreadcrumbOrFallback } from "./FindBreadcrumb";
 import "../../styles/layout/sidebar.css";
 
 interface MenuItem {
@@ -42,10 +43,12 @@ export default function Sidebar({ onChangeBreadcrumb }: SidebarProps) {
     setOpenMenus((prev) => ({ ...prev, [label]: !prev[label] }));
   };
 
-  const handleNavigate = (path?: string, labels?: string[]) => {
+  const handleNavigate = (path?: string) => {
     if (path) {
       navigate(path);
-      if (onChangeBreadcrumb && labels) onChangeBreadcrumb(labels);
+      if (onChangeBreadcrumb) {
+        onChangeBreadcrumb(getBreadcrumbOrFallback(SIDEBAR_MENU, path));
+      }
     }
   };
 
@@ -86,13 +89,7 @@ export default function Sidebar({ onChangeBreadcrumb }: SidebarProps) {
                 if (item.children) {
                   toggleMenu(item.label);
                 } else {
-                  const breadcrumbTrail =
-                    depth === 0
-                      ? [item.label]
-                      : depth === 1
-                      ? [items.find((i) => i.label)?.label || "", item.label]
-                      : ["Database", "Session", item.label];
-                  handleNavigate(item.path, breadcrumbTrail);
+                  handleNavigate(item.path);
                 }
               }}
               style={{ cursor: isStatic ? "default" : "pointer" }}
@@ -136,17 +133,13 @@ export default function Sidebar({ onChangeBreadcrumb }: SidebarProps) {
           <div className="sidebar_footer">
             <div
               className="sidebar_footer_link"
-              onClick={() => {navigate("/instance-management");
-                onChangeBreadcrumb(["Instance Management"]);
-              }}
+              onClick={() => handleNavigate("/instance-management")}
             >
               Instance Management
             </div>
             <div
               className="sidebar_footer_link"
-              onClick={() =>{ navigate("/alarm");
-                onChangeBreadcrumb(["Alarm Settings"]);
-              }}
+              onClick={() => handleNavigate("/alarm")}
             >
               Alarm Settings
             </div>

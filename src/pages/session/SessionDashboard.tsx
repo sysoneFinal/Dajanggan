@@ -11,6 +11,9 @@ import "../../styles/session/session-dashboard.css";
 import apiClient from "../../api/apiClient";
 import { useInstanceContext } from "../../context/InstanceContext";
 import { formatDateTime } from "../../utils/formatDateTime";
+import { intervalToMs } from "../../utils/time";
+
+
 
 /** 시간 포맷 변환 함수 */
 const formatTime = (isoString: string) => {
@@ -25,10 +28,10 @@ const transformApiData = (apiData: any) => {
   if (!apiData) {
     return {
       summary: [
-        { label: "Active Sessions", value: 0, desc: "최근 5분 평균 기준", status: "info" as const },
-        { label: "Idle In Transaction", value: 0, desc: "최근 5분 평균 기준", status: "info" as const },
-        { label: "Waiting Sessions", value: 0, desc: "최근 5분 평균 기준", status: "info" as const },
-        { label: "Avg Transaction Time", value: "0s", desc: "최근 5분 평균 기준", status: "info" as const },
+        { label: "활성 세션", value: 0, desc: "최근 5분 평균 기준", status: "info" as const },
+        { label: "대기 중인 트랜잭션", value: 0, desc: "최근 5분 평균 기준", status: "info" as const },
+        { label: "대기 중인 세션", value: 0, desc: "최근 5분 평균 기준", status: "info" as const },
+        { label: "평균 트랜잭션 시간", value: "0s", desc: "최근 5분 평균 기준", status: "info" as const },
         { label: "DeadLocks", value: 0, desc: "최근 10분 이내 발생", status: "info" as const },
       ],
       charts: {
@@ -58,25 +61,25 @@ const transformApiData = (apiData: any) => {
 
   const summary = [
     {
-      label: "Active Sessions",
+      label: "활성 세션",
       value: sessionSummary.activeSessions || 0,
       desc: "최근 5분 평균 기준",
       status: "info" as const,
     },
     {
-      label: "Idle In Transaction",
+      label: "대기 중인 트랜잭션",
       value: sessionSummary.idleSessions || 0,
       desc: "최근 5분 평균 기준",
       status: "info" as const,
     },
     {
-      label: "Waiting Sessions",
+      label: "대기 중인 세션",
       value: sessionSummary.waitingSessions || 0,
       desc: "최근 5분 평균 기준",
       status: "info" as const,
     },
     {
-      label: "Avg Transaction Time",
+      label: "평균 트랜잭션 시간",
       value: sessionSummary.avgTransactionTime 
         ? `${(sessionSummary.avgTransactionTime / 1000).toFixed(1)}s`
         : "0s",
@@ -204,7 +207,7 @@ const transformApiData = (apiData: any) => {
 };
 
 export default function SessionDashboard() {
-  const { selectedInstance, selectedDatabase } = useInstanceContext();
+  const { selectedInstance, selectedDatabase , refreshInterval} = useInstanceContext();
   const [open, setOpen] = useState(false);
   const [selected, setSelected] = useState<DeadlockDetail | null>(null);
   const [isLoadingDeadlock, setIsLoadingDeadlock] = useState(false);
@@ -277,7 +280,7 @@ export default function SessionDashboard() {
     queryKey: ["sessionDashboard", selectedInstance?.instanceId, selectedDatabase?.databaseId],
     queryFn: fetchSessionDashboard,
     enabled: !!selectedInstance?.instanceId && !!selectedDatabase?.databaseId,
-    refetchInterval: 60000,
+    refetchInterval: intervalToMs(refreshInterval),
   });
 
   if (isLoading) {
@@ -312,7 +315,7 @@ export default function SessionDashboard() {
 
       {/* --- 첫 번째 차트 섹션 --- */}
       <ChartGridLayout>
-        <WidgetCard title="Session State Trend" span={4}>
+        <WidgetCard title="세션 상태 추이" span={4}>
           <Chart
             type="line"
             series={Array.isArray(sessionTrend.series) ? sessionTrend.series : []}
@@ -320,7 +323,7 @@ export default function SessionDashboard() {
           />
         </WidgetCard>
 
-        <WidgetCard title="Wait Event Type Ratio Trend (Last 15 Minutes)" span={4}>
+        <WidgetCard title="대기 이벤트 유형별 비율 추이 (최근 15분 내)" span={4}>
           <Chart
             type="column"
             series={Array.isArray(dashboard.charts?.waitEvent?.series) ? dashboard.charts.waitEvent.series : []}
@@ -329,7 +332,7 @@ export default function SessionDashboard() {
           />
         </WidgetCard>
 
-        <WidgetCard title="Database Connection Usage" span={4}>
+        <WidgetCard title="데이터베이스 커넥션 사용률" span={4}>
           <div className="session-db-connection-content">
             <div className="session-db-connection-chart">
                 <GaugeChart
@@ -371,7 +374,7 @@ export default function SessionDashboard() {
 
       {/* --- 두 번째 차트 섹션 --- */}
       <ChartGridLayout>
-        <WidgetCard title="Avg Transaction Duration Trend (Last 30 Minutes)" span={4}>
+        <WidgetCard title="평균 트랜잭션 소요 시간 추이 (최근 30분 내)" span={4}>
           <Chart
             type="line"
             series={[{ name: "Avg Tx Duration", data: Array.isArray(dashboard.charts?.txDuration?.data) ? dashboard.charts.txDuration.data : [] }]}
@@ -379,7 +382,7 @@ export default function SessionDashboard() {
           />
         </WidgetCard>
 
-        <WidgetCard title="Avg Lock Wait Time (Last 30 Minutes)" span={4}>
+        <WidgetCard title="평균 잠금 대기 시간 (최근 30분 내)" span={4}>
           <Chart
             type="line"
             series={[{ name: "Lock Wait", data: Array.isArray(dashboard.charts?.lockWait?.data) ? dashboard.charts.lockWait.data : [] }]}
@@ -387,7 +390,7 @@ export default function SessionDashboard() {
           />
         </WidgetCard>
 
-        <WidgetCard title="Top Users by Session Count" span={4}>
+        <WidgetCard title="세션 수 상위 사용자" span={4}>
           <Chart
             type="bar"
             series={[{ name: "Session Count", data: Array.isArray(dashboard.charts?.topUsers?.data) ? dashboard.charts.topUsers.data : [] }]}
@@ -398,7 +401,7 @@ export default function SessionDashboard() {
 
       {/* --- Deadlock 섹션 --- */}
       <ChartGridLayout>
-        <WidgetCard title="DeadLock Overview (Last 30 Minutes)" span={8}>
+        <WidgetCard title="데드락 현황 (최근 30분 내)" span={8}>
           <div className="deadlock-content">
             <div className="deadlock-chart">
               <Chart
@@ -414,7 +417,7 @@ export default function SessionDashboard() {
             </div>
 
           <div className="recent-deadlocks-mini">
-            <h6>Recent DeadLocks</h6>
+            <h6>최근 데드락 리스트</h6>
 
             {isLoadingDeadlock && (
               <div className="loading-indicator">Loading...</div>
@@ -426,7 +429,7 @@ export default function SessionDashboard() {
             )}
 
             <ul>
-              {(dashboard.recentDeadlocks || []).map((d, idx) => (
+              {(dashboard.recentDeadlocks || []).map((d:any, idx:any) => (
                 <li
                   key={idx}
                   onClick={() => handleDeadlockClick(d)}

@@ -1,6 +1,7 @@
-import React, { useMemo, useTransition } from "react";
+import React, { useMemo, useTransition, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useInstanceContext } from "../../context/InstanceContext";
+import { useLoader } from "../../context/LoaderContext";
 
 import Chart from "../../components/chart/ChartComponent";
 import "@/styles/dashboard/databaseSummary.css";
@@ -11,6 +12,8 @@ import GaugeChart from "../../components/chart/GaugeChart";
 
 import type { DatabaseMetricsAgg } from "../../types/databaseMetricsAgg";
 import apiClient from "../../api/apiClient";
+import { intervalToMs } from "../../utils/time";
+
 
 interface MetricData {
   activeSessions: number[];
@@ -35,7 +38,8 @@ interface MetricData {
 }
 
 export default function DatabaseDashboard() {
-  const { databases, selectedDatabase, setSelectedDatabase } = useInstanceContext();
+  const { databases, selectedDatabase, setSelectedDatabase, refreshInterval } = useInstanceContext();
+  const { showLoader, hideLoader } = useLoader();
   const [isPending, startTransition] = useTransition();
 
   const selectedDBId = selectedDatabase?.databaseId;
@@ -44,6 +48,8 @@ export default function DatabaseDashboard() {
   const { data: metricsData, isLoading: metricsLoading, isFetching } = useQuery<DatabaseMetricsAgg[]>({
     queryKey: ["metrics", selectedDBId],
     queryFn: async () => {
+      console.log('db 요약  페이지 API 호출 시작:', new Date().toLocaleTimeString());
+
       const res = await apiClient.get(`/database/summary`,{
         params : {databaseId : selectedDBId}
       });
@@ -51,11 +57,17 @@ export default function DatabaseDashboard() {
       return res.data;
     },
     enabled: !!selectedDBId,
-    refetchInterval: 60000, // 30초 간격으로 자동 갱신
-    staleTime: 0,
-    cacheTime: 0,
-    retry: 1,
+    refetchInterval: intervalToMs(refreshInterval), 
   });
+
+  /** === 로딩 상태 관리 === */
+  useEffect(() => {
+    if (metricsLoading) {
+      showLoader('데이터베이스 메트릭을 불러오는 중...');
+    } else {
+      hideLoader();
+    }
+  }, [metricsLoading, showLoader, hideLoader]);
 
   // === metricsData -> 화면용 포맷 로컬 변환 (useMemo로 계산) ===
   const data = useMemo<MetricData | null>(() => {
@@ -63,9 +75,7 @@ export default function DatabaseDashboard() {
 
     // API가 내림차순(최신이 0번)인지 확실치 않으므로 안전하게 뒤집어 최신을 first로
     const reversed = [...metricsData].reverse(); // 오래된 -> 최신
-    const latest = reversed[reversed.length - 1] ?? reversed[0]; // 안전 guard
-    // 실제 최신값은 reversed[reversed.length-1] (원래 metricsData[0]이 최신이면 reversed[last]다)
-    // 하지만 위 보정으로 어떤 순서든 어느정도 안전함.
+    const latest = reversed[reversed.length - 1] ?? reversed[0]; 
 
     // 포맷 변환 (필드 안전 검사)
     const activeSessions = reversed.map(m => m.activeSessions ?? 0);
@@ -158,7 +168,7 @@ export default function DatabaseDashboard() {
 
       {/* ---------- 1번째 행 ---------- */}
       <ChartGridLayout>
-        <WidgetCard title="Database Activity" span={2}>
+        <WidgetCard title="데이터베이스 목록" span={2}>
           <div className="db-sm-container">
             <div className="db-sm-desc">Database를 선택하여 상태를 확인하세요.</div>
 
@@ -177,7 +187,7 @@ export default function DatabaseDashboard() {
           </div>
         </WidgetCard>
 
-        <WidgetCard span={5} title="Active Sessions Over Time">
+        <WidgetCard span={5} title="활성 세션 추이">
           <Chart
             type="line"
             series={[{ name: "활성 세션 수", data: data!.activeSessions }]}
@@ -185,7 +195,7 @@ export default function DatabaseDashboard() {
           />
         </WidgetCard>
 
-        <WidgetCard span={5} title="Transactions Per Second (TPS)">
+        <WidgetCard span={5} title="초당 트랜잭션 수 (TPS)">
           <Chart
             type="line"
             series={[{ name: "TPS", data: data!.tps }]}
@@ -196,7 +206,7 @@ export default function DatabaseDashboard() {
 
       {/* ---------- 2번째 행 ---------- */}
       <ChartGridLayout>
-        <WidgetCard title="Database Connection Usage" span={4}>
+        <WidgetCard title="데이터베이스 연결 사용량" span={4}>
           <div className="session-db-connection-content">
             <div className="session-db-connection-chart">
               <GaugeChart
@@ -241,7 +251,7 @@ export default function DatabaseDashboard() {
           </div>
         </WidgetCard>
 
-        <WidgetCard title="Wait Event Distribution" span={4}>
+        <WidgetCard title="대기 이벤트 분포" span={4}>
           <Chart
             type="column"
             series={[
@@ -257,7 +267,7 @@ export default function DatabaseDashboard() {
 
         <WidgetCard title="" span={4} className="no-style">
           <div className="sq-card slow-query">
-            <h4 className="section-title">slow query Top 3</h4>
+            <h4 className="section-title">슬로우 쿼리 Top 3</h4>
             {data!.slowQueries.length > 0 ? (
               <ul className="slow-query-list">
                 {data!.slowQueries.map((q, i) => (
@@ -274,7 +284,7 @@ export default function DatabaseDashboard() {
               </ul>
             ) : (
               <div className="no-data-message">
-                <p>No slow queries detected</p>
+                <p>감지된 슬로우 쿼리가 없습니다.</p>
               </div>
             )}
           </div>
@@ -284,7 +294,7 @@ export default function DatabaseDashboard() {
       {/* ---------- 3번째 행 ---------- */}
       <ChartGridLayout>
 
-        <WidgetCard title="Disk I/O Activity" span={4}>
+        <WidgetCard title="디스크 I/O 활동" span={4}>
           <Chart
             type="area"
             series={[
@@ -294,7 +304,7 @@ export default function DatabaseDashboard() {
             categories={data!.diskIO.map(d => d.time)}
           />
         </WidgetCard>
-        <WidgetCard title="Dead Tuples Trend" span={4}>
+        <WidgetCard title="Dead Tuples 추이" span={4}>
           <Chart
             type="area"
             series={[{ name: "Dead Tuples", data: data!.deadTuples.map(d => d.count) }]}
@@ -304,7 +314,7 @@ export default function DatabaseDashboard() {
           />
         </WidgetCard>
 
-        <WidgetCard title="System Events" span={4}>
+        <WidgetCard title="시스템 이벤트" span={4}>
           <div className="event-summary-card">
             <div className="event-stats">
               <div className="stat info">
