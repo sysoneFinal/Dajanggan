@@ -42,6 +42,7 @@ interface ChartProps {
   };
   enableSlidingAnimation?: boolean;
   slidingAnimationDuration?: number;
+  animationEasing?: "linear" | "easein" | "easeout" | "easeinout";
 }
 
 /** 공통 색상 팔레트 */
@@ -78,10 +79,12 @@ export default function Chart({
   style,
   donutTitle = "",
   titleOptions,
-  enableSlidingAnimation = false,
-  slidingAnimationDuration = 400,
+  enableSlidingAnimation = true, // 기본값을 true로 변경
+  slidingAnimationDuration = 800, // 기본 800ms로 증가
+  animationEasing = "easeinout",
 }: ChartProps) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const chartRef = useRef<any>(null);
 
   // width/height가 퍼센트 문자열인지 확인
   const isPercentHeight = typeof height === 'string' && height.includes('%');
@@ -167,6 +170,17 @@ export default function Chart({
   }, [categories]);
 
 
+  // 슬라이딩 애니메이션을 위한 축 차트 타입 확인
+  const isAxisChart =
+    normalizedType === "line" ||
+    normalizedType === "area" ||
+    normalizedType === "bar" ||
+    normalizedType === "scatter" ||
+    normalizedType === "boxPlot";
+
+  // 도넛/파이 차트인지 확인
+  const isCircularChart = normalizedType === "donut" || normalizedType === "pie";
+
   const baseOptions = useMemo<ApexCharts.ApexOptions>(() => {
     const options: ApexCharts.ApexOptions = {
       chart: {
@@ -174,7 +188,19 @@ export default function Chart({
         toolbar: { show: showToolbar },
         background: "transparent",
         fontFamily: FONT_FAMILY,
-        animations: { enabled: false },
+        animations: {
+          enabled: enableSlidingAnimation,
+          easing: animationEasing,
+          speed: slidingAnimationDuration,
+          animateGradually: {
+            enabled: false, // 등장 애니메이션 비활성화
+            delay: 0,
+          },
+          dynamicAnimation: {
+            enabled: enableSlidingAnimation, // 데이터 업데이트 애니메이션만 활성화
+            speed: slidingAnimationDuration,
+          },
+        },
         stacked: isStacked,
         redrawOnParentResize: true,
         redrawOnWindowResize: true,
@@ -216,9 +242,9 @@ export default function Chart({
             fontFamily: FONT_FAMILY,
             fontSize: "11px",
           },
-          rotate: -45,  // 라벨 회전
+          rotate: -45,
           rotateAlways: false,
-          hideOverlappingLabels: true,  // 겹치는 라벨 숨기기
+          hideOverlappingLabels: true,
           trim: true,
           maxHeight: 80,
         },
@@ -274,64 +300,65 @@ export default function Chart({
 
     /** 타입별 세부 설정 */
     switch (type) {
-case "bar":
-case "column":
-  options.plotOptions = {
-    bar: {
-      horizontal: type === "bar",
-      borderRadius: 4,
-      columnWidth: "60%",
-      dataLabels: {
-        total: {
-          enabled: isStacked,
-          style: { fontSize: "13px", fontWeight: 600 },
-        },
-      },
-    },
-  };
-  
-  // 줌 기능 추가
-  options.chart = {
-    ...options.chart,
-    zoom: {
-      enabled: true,
-      type: 'x',
-      autoScaleYaxis: true,
-    },
-    toolbar: {
-      show: true,
-      tools: {
-        download: true,
-        selection: true,
-        zoom: true,
-        zoomin: true,
-        zoomout: true,
-        pan: true,
-        reset: true,
-      },
-      autoSelected: 'zoom'
-    }
-  };
-  
-  // x축 라벨 개선
-  options.xaxis = {
-    ...options.xaxis,
-    labels: {
-      ...options.xaxis?.labels,
-      hideOverlappingLabels: true,
-      rotate: -45,
-      rotateAlways: false,
-      trim: true,
-    }
-  };
-  
-  // 막대 위 숫자 끄기 (빽빽할 때)
-  options.dataLabels = {
-    ...options.dataLabels,
-    enabled: false,
-  };
-  
-  break;
+      case "bar":
+      case "column":
+        options.plotOptions = {
+          bar: {
+            horizontal: type === "bar",
+            borderRadius: 4,
+            columnWidth: "60%",
+            dataLabels: {
+              total: {
+                enabled: isStacked,
+                style: { fontSize: "13px", fontWeight: 600 },
+              },
+            },
+          },
+        };
+        
+        // 줌 기능 추가
+        options.chart = {
+          ...options.chart,
+          zoom: {
+            enabled: true,
+            type: 'x',
+            autoScaleYaxis: true,
+          },
+          toolbar: {
+            show: true,
+            tools: {
+              download: true,
+              selection: true,
+              zoom: true,
+              zoomin: true,
+              zoomout: true,
+              pan: true,
+              reset: true,
+            },
+            autoSelected: 'zoom'
+          }
+        };
+        
+        // x축 라벨 개선
+        options.xaxis = {
+          ...options.xaxis,
+          labels: {
+            ...options.xaxis?.labels,
+            hideOverlappingLabels: true,
+            rotate: -45,
+            rotateAlways: false,
+            trim: true,
+          }
+        };
+        
+        // 막대 위 숫자 끄기
+        options.dataLabels = {
+          ...options.dataLabels,
+          enabled: false,
+        };
+        
+        break;
+
       /** 채워진 선 차트 */
       case "area":
         options.stroke = { curve: "smooth", width: 2 };
@@ -345,19 +372,13 @@ case "column":
             stops: [0, 100],
           },
         };
-        options.markers = {
-          size: 4,
-          strokeWidth: 2,
-          strokeColors: "#fff",
-          hover: { size: 6 },
-        };
         break;
 
       /** 파이 / 도넛 */
       case "pie":
       case "donut":
-      options.labels = safeCategories as string[];      
-      options.plotOptions = {
+        options.labels = safeCategories as string[];      
+        options.plotOptions = {
           pie: {
             donut: {
               size: "55%",
@@ -448,29 +469,31 @@ case "column":
         options.stroke = { width: 1 };
         break;
     }
-      let mergedYaxis = options.yaxis;
 
-      if (customOptions?.yaxis) {
-          // 둘 중 하나라도 배열이면 => 배열로 합쳐서 넘기기
-          if (Array.isArray(options.yaxis) || Array.isArray(customOptions.yaxis)) {
-              const baseArr = Array.isArray(options.yaxis)
-                  ? options.yaxis
-                  : options.yaxis
-                      ? [options.yaxis]
-                      : [];
-              const customArr = Array.isArray(customOptions.yaxis)
-                  ? customOptions.yaxis
-                  : [customOptions.yaxis];
+    let mergedYaxis = options.yaxis;
 
-              mergedYaxis = [...baseArr, ...customArr];
-          } else {
-              // 둘 다 객체면 기존 옵션에 custom만 덮어쓰기
-              mergedYaxis = {
-                  ...(options.yaxis as ApexYAxis),
-                  ...(customOptions.yaxis as ApexYAxis),
-              };
-          }
+    if (customOptions?.yaxis) {
+      // 둘 중 하나라도 배열이면 => 배열로 합쳐서 넘기기
+      if (Array.isArray(options.yaxis) || Array.isArray(customOptions.yaxis)) {
+        const baseArr = Array.isArray(options.yaxis)
+          ? options.yaxis
+          : options.yaxis
+            ? [options.yaxis]
+            : [];
+        const customArr = Array.isArray(customOptions.yaxis)
+          ? customOptions.yaxis
+          : [customOptions.yaxis];
+
+        mergedYaxis = [...baseArr, ...customArr];
+      } else {
+        // 둘 다 객체면 기존 옵션에 custom만 덮어쓰기
+        mergedYaxis = {
+          ...(options.yaxis as ApexYAxis),
+          ...(customOptions.yaxis as ApexYAxis),
+        };
       }
+    }
+
     /** 사용자 옵션 병합 */
     return {
       ...options,
@@ -487,8 +510,8 @@ case "column":
       fill: { ...options.fill, ...customOptions?.fill },
       stroke: { ...options.stroke, ...customOptions?.stroke },
       grid: { ...options.grid, ...customOptions?.grid },
-        xaxis: { ...options.xaxis, ...customOptions?.xaxis },
-        yaxis: mergedYaxis,
+      xaxis: { ...options.xaxis, ...customOptions?.xaxis },
+      yaxis: mergedYaxis,
     };
   }, [
     type,
@@ -507,7 +530,24 @@ case "column":
     enableDonutShadow,
     donutTitle,
     titleOptions,
+    enableSlidingAnimation,
+    slidingAnimationDuration,
+    animationEasing,
+    isAxisChart,
+    safeCategories,
   ]);
+
+  // 데이터 업데이트 시 부드러운 전환을 위한 effect
+  useEffect(() => {
+    if (chartRef.current && enableSlidingAnimation) {
+      try {
+        // ApexCharts의 updateSeries 메서드 사용
+        chartRef.current.chart?.updateSeries(safeSeries, true);
+      } catch (error) {
+        console.warn('Chart update failed:', error);
+      }
+    }
+  }, [safeSeries, enableSlidingAnimation]);
 
   // 최종적으로 사용할 width/height 결정
   const finalWidth = isPercentWidth ? calculatedWidth : width;
@@ -536,6 +576,7 @@ case "column":
       </style>
       {(finalHeight && finalWidth) && (
         <ReactApexChart
+          ref={chartRef}
           options={baseOptions}
           series={safeSeries}
           type={normalizedType}

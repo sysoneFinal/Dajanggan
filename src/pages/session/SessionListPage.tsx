@@ -102,6 +102,8 @@ const SessionActivityList = () => {
       const res = await apiClient.get("/session/active/summary", {
         params: { instanceId: selectedInstance!.instanceId },
       });
+
+      console.log('리스트 요약카드 ',res.data);
       return res.data;
     },
     enabled: !!selectedInstance?.instanceId,
@@ -245,10 +247,10 @@ const SessionActivityList = () => {
     <main className="session-section">
       {/* 요약 카드 */}
       <section className="session-summary">
-        <SummaryCard label="전체 세션" value={summaryData?.totalCount ?? 0} desc="최근 5분 평균 기준" status="info" />
-        <SummaryCard label="활성 세션" value={summaryData?.activeCount ?? 0} desc="최근 5분 평균 기준" status="info" />
-        <SummaryCard label="대기 세션" value={summaryData?.waitingCount ?? 0} desc="최근 5분 평균 기준" status="warning" />
-        <SummaryCard label="유휴 세션" value={summaryData?.idleCount ?? 0} desc="최근 5분 평균 기준" status="info" />
+        <SummaryCard label="전체 세션" value={summaryData?.totalcount ?? 0} desc="최근 5분 평균 기준" status="info" />
+        <SummaryCard label="쿼리 실행 중 세션" value={summaryData?.activecount ?? 0} desc="최근 5분 평균 기준" status="info" />
+        <SummaryCard label="대기 세션" value={summaryData?.waitingcount ?? 0} desc="최근 5분 평균 기준" status="warning" />
+        <SummaryCard label="유휴 세션" value={summaryData?.idlecount ?? 0} desc="최근 5분 평균 기준" status="info" />
       </section>
 
       {/* 필터 */}

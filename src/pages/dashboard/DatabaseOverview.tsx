@@ -157,7 +157,7 @@ export default function DatabaseDashboard() {
   };
 
   // 로딩/선택 안내
-  const loading = !selectedDBId || metricsLoading || !data || isFetching;
+  const loading = !selectedDBId || metricsLoading || !data ;
 
   if (!selectedDBId) return <div className="loading">Database를 선택해주세요.</div>;
   if (loading) return <div className="loading">Loading...</div>;
@@ -192,6 +192,16 @@ export default function DatabaseDashboard() {
             type="line"
             series={[{ name: "활성 세션 수", data: data!.activeSessions }]}
             categories={data!.diskIO.map(d => d.time)}
+            xaxisOptions={{
+              title: { text: "시간", style: { fontSize: "12px", fontWeight: 500, color: "#6B7280" } }
+            }}
+            yaxisOptions={{
+              title: { text: "세션 수", style: { fontSize: "12px", fontWeight: 500, color: "#6B7280" } },
+              labels: {
+                style: { colors: "#6B7280", fontFamily: 'var(--font-family, "Pretendard", sans-serif)' },
+                formatter: (val: number) => val.toLocaleString(),
+              }
+            }}
           />
         </WidgetCard>
 
@@ -200,6 +210,16 @@ export default function DatabaseDashboard() {
             type="line"
             series={[{ name: "TPS", data: data!.tps }]}
             categories={data!.diskIO.map(d => d.time)}
+            xaxisOptions={{
+              title: { text: "시간", style: { fontSize: "12px", fontWeight: 500, color: "#6B7280" } }
+            }}
+            yaxisOptions={{
+              title: { text: "트랜잭션/초", style: { fontSize: "12px", fontWeight: 500, color: "#6B7280" } },
+              labels: {
+                style: { colors: "#6B7280", fontFamily: 'var(--font-family, "Pretendard", sans-serif)' },
+                formatter: (val: number) => val.toLocaleString(),
+              }
+            }}
           />
         </WidgetCard>
       </ChartGridLayout>
@@ -247,6 +267,16 @@ export default function DatabaseDashboard() {
               series={[{ name: "Usage", data: data!.connectionTrend.map(d => d.used) }]}
               categories={data!.connectionTrend.map(d => d.time)}
               height={130}
+              xaxisOptions={{
+                title: { text: "시간", style: { fontSize: "11px", fontWeight: 500, color: "#6B7280" } }
+              }}
+              yaxisOptions={{
+                title: { text: "연결 수", style: { fontSize: "11px", fontWeight: 500, color: "#6B7280" } },
+                labels: {
+                  style: { colors: "#6B7280", fontSize: "10px" },
+                  formatter: (val: number) => val.toLocaleString(),
+                }
+              }}
             />
           </div>
         </WidgetCard>
@@ -262,6 +292,16 @@ export default function DatabaseDashboard() {
             isStacked
             tooltipFormatter={v => `${v} events`}
             colors={["#60A5FA", "#7B61FF"]}
+            xaxisOptions={{
+              title: { text: "시간", style: { fontSize: "12px", fontWeight: 500, color: "#6B7280" } }
+            }}
+            yaxisOptions={{
+              title: { text: "이벤트 수", style: { fontSize: "12px", fontWeight: 500, color: "#6B7280" } },
+              labels: {
+                style: { colors: "#6B7280", fontFamily: 'var(--font-family, "Pretendard", sans-serif)' },
+                formatter: (val: number) => val.toLocaleString(),
+              }
+            }}
           />
         </WidgetCard>
 
@@ -302,6 +342,21 @@ export default function DatabaseDashboard() {
               { name: "blks_read", data: data!.diskIO.map(d => d.read) },
             ]}
             categories={data!.diskIO.map(d => d.time)}
+            xaxisOptions={{
+              title: { text: "시간", style: { fontSize: "12px", fontWeight: 500, color: "#6B7280" } }
+            }}
+            yaxisOptions={{
+              title: { text: "블록 수", style: { fontSize: "12px", fontWeight: 500, color: "#6B7280" } },
+              labels: {
+                style: { colors: "#6B7280", fontFamily: 'var(--font-family, "Pretendard", sans-serif)' },
+                formatter: (val: number) =>
+                  val >= 1_000_000
+                    ? `${(val / 1_000_000).toFixed(1)}M`
+                    : val >= 1_000
+                    ? `${(val / 1_000).toFixed(0)}K`
+                    : val.toLocaleString(),
+              }
+            }}
           />
         </WidgetCard>
         <WidgetCard title="Dead Tuples 추이" span={4}>
@@ -311,6 +366,21 @@ export default function DatabaseDashboard() {
             categories={data!.deadTuples.map(d => d.time)}
             tooltipFormatter={v => `${v} tuples`}
             colors={["#EF4444"]}
+            xaxisOptions={{
+              title: { text: "시간", style: { fontSize: "12px", fontWeight: 500, color: "#6B7280" } }
+            }}
+            yaxisOptions={{
+              title: { text: "Tuple 수", style: { fontSize: "12px", fontWeight: 500, color: "#6B7280" } },
+              labels: {
+                style: { colors: "#6B7280", fontFamily: 'var(--font-family, "Pretendard", sans-serif)' },
+                formatter: (val: number) =>
+                  val >= 1_000_000
+                    ? `${(val / 1_000_000).toFixed(1)}M`
+                    : val >= 1_000
+                    ? `${(val / 1_000).toFixed(0)}K`
+                    : val.toLocaleString(),
+              }
+            }}
           />
         </WidgetCard>
 

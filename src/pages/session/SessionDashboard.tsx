@@ -12,6 +12,7 @@ import apiClient from "../../api/apiClient";
 import { useInstanceContext } from "../../context/InstanceContext";
 import { formatDateTime } from "../../utils/formatDateTime";
 import { intervalToMs } from "../../utils/time";
+import type { ApexOptions } from "apexcharts";
 
 
 
@@ -61,7 +62,7 @@ const transformApiData = (apiData: any) => {
 
   const summary = [
     {
-      label: "활성 세션",
+      label: "쿼리 처리 중 세션",
       value: sessionSummary.activeSessions || 0,
       desc: "최근 5분 평균 기준",
       status: "info" as const,
@@ -80,11 +81,11 @@ const transformApiData = (apiData: any) => {
     },
     {
       label: "평균 트랜잭션 시간",
-      value: sessionSummary.avgTransactionTime 
-        ? `${(sessionSummary.avgTransactionTime / 1000).toFixed(1)}s`
+      value: sessionSummary.avgTxDurationSec 
+        ? `${(sessionSummary.avgTxDurationSec ).toFixed(1)}s`
         : "0s",
       desc: "최근 5분 평균 기준",
-      status: (sessionSummary.avgTransactionTime || 0) > 5000 ? "critical" as const : "info" as const,
+      status: (sessionSummary.avgTxDurationSec || 0) > 5000 ? "critical" as const : "info" as const,
     },
     {
       label: "DeadLocks",
@@ -150,20 +151,33 @@ const transformApiData = (apiData: any) => {
     ),
   };
 
-  const topUsers = {
-    data: [
-      topUserSessions.topUser1Sessions,
-      topUserSessions.topUser2Sessions,
-      topUserSessions.topUser3Sessions,
-      topUserSessions.topUser4Sessions,
-    ].filter((v) => v != null && v > 0),
-    categories: [
-      topUserSessions.topUser1,
-      topUserSessions.topUser2,
-      topUserSessions.topUser3,
-      topUserSessions.topUser4,
-    ].filter((v) => v != null && v !== ""),
+const topUsers = (() => {
+  
+  const users = [
+    { name: topUserSessions.topUser1, sessions: topUserSessions.topUser1Sessions },
+    { name: topUserSessions.topUser2, sessions: topUserSessions.topUser2Sessions },
+    { name: topUserSessions.topUser3, sessions: topUserSessions.topUser3Sessions },
+    { name: topUserSessions.topUser4, sessions: topUserSessions.topUser4Sessions },
+  ];
+  
+  console.log("🔍 users 배열 (필터 전):", users);
+  
+  const filteredUsers = users.filter(user => 
+    user.name != null && 
+    user.name !== "" && 
+    user.sessions != null && 
+    user.sessions > 0
+  );
+
+  
+  const result = {
+    data: filteredUsers.map(u => u.sessions),
+    categories: filteredUsers.map(u => u.name),
   };
+  
+  return result;
+})();
+
 
   const deadlockTrend = {
     data: deadLockTrend.map((item: any) => item.deadlockCount || 0),
@@ -214,12 +228,14 @@ export default function SessionDashboard() {
   const maxQueryLen = 40;
 
   /** API 요청 */
+  
   const fetchSessionDashboard = async() => {
     if (!selectedInstance?.instanceId || !selectedDatabase?.databaseId) {
       console.warn('인스턴스나 데이터베이스 선택이 필요합니다.');
       return null; 
     }
     try {
+      
       const res = await apiClient.get("/session/details", {
         params: {
           instanceId: selectedInstance.instanceId,
@@ -276,12 +292,14 @@ export default function SessionDashboard() {
     }
   };
 
+    //  기본 대시보드 데이터 로드
   const { data, isLoading, isError } = useQuery({
     queryKey: ["sessionDashboard", selectedInstance?.instanceId, selectedDatabase?.databaseId],
     queryFn: fetchSessionDashboard,
     enabled: !!selectedInstance?.instanceId && !!selectedDatabase?.databaseId,
     refetchInterval: intervalToMs(refreshInterval),
   });
+
 
   if (isLoading) {
     return <div className="session-db-dashboard">Loading...</div>;
@@ -297,6 +315,38 @@ export default function SessionDashboard() {
     series: [{ name: "Active", data: [] }, { name: "Idle", data: [] }, { name: "Waiting", data: [] }],
     categories: [],
   };
+
+  // Unit 설정을 위한 헬퍼 함수
+  const createYAxisOptions = (unit: string): ApexOptions['yaxis'] => ({
+    title: {
+      text: unit,
+      style: { color: "#9CA3AF", fontSize: "12px", fontWeight: 500 },
+    },
+    labels: {
+      style: { colors: "#6B7280", fontFamily: 'var(--font-family, "Pretendard", sans-serif)' },
+      formatter: (val: number) => {
+        if (typeof val !== "number" || Number.isNaN(val)) return "0";
+        const absVal = Math.abs(val);
+        if (absVal >= 1_000_000) return `${(val / 1_000_000).toFixed(1)}M`;
+        if (absVal >= 1_000) return `${(val / 1_000).toFixed(0)}K`;
+        return val.toLocaleString();
+      },
+    },
+  });
+
+  const createTooltipFormatter = (unit: string) => (value: number) => {
+    const numeric = typeof value === "number" ? value : 0;
+    const formatted = numeric.toLocaleString();
+    return unit ? `${formatted} ${unit}` : formatted;
+  };
+
+  // X축 설정을 위한 헬퍼 함수
+  const createXAxisOptions = (label: string = "시간"): ApexOptions['xaxis'] => ({
+    title: {
+      text: label,
+      style: { color: "#9CA3AF", fontSize: "12px", fontWeight: 500 },
+    },
+  });
 
   return (
     <div className="session-db-dashboard">
@@ -320,6 +370,10 @@ export default function SessionDashboard() {
             type="line"
             series={Array.isArray(sessionTrend.series) ? sessionTrend.series : []}
             categories={Array.isArray(sessionTrend.categories) ? sessionTrend.categories : []}
+            xaxisOptions={createXAxisOptions("시간")}
+            yaxisOptions={createYAxisOptions("세션 수(개)")}
+            tooltipFormatter={createTooltipFormatter("개")}
+            height={260}      
           />
         </WidgetCard>
 
@@ -329,6 +383,11 @@ export default function SessionDashboard() {
             series={Array.isArray(dashboard.charts?.waitEvent?.series) ? dashboard.charts.waitEvent.series : []}
             categories={Array.isArray(dashboard.charts?.waitEvent?.categories) ? dashboard.charts.waitEvent.categories : []}
             isStacked={true}
+            xaxisOptions={createXAxisOptions("시간")}
+            yaxisOptions={createYAxisOptions("이벤트 발생 수 (개)")}
+            tooltipFormatter={createTooltipFormatter("개")}
+            height={260}      
+
           />
         </WidgetCard>
 
@@ -367,6 +426,9 @@ export default function SessionDashboard() {
             series={[{ name: "Usage", data: Array.isArray((dashboard as any).connectionTrend) ? (dashboard as any).connectionTrend : [] }]}
             categories={Array.isArray(dashboard.charts?.sessionTrend?.categories) ? dashboard.charts.sessionTrend.categories : []}
             height={130}
+            xaxisOptions={createXAxisOptions("시간")}
+            yaxisOptions={createYAxisOptions("연결 수 (개)")}
+            tooltipFormatter={createTooltipFormatter("개")}
           />
           </div>
         </WidgetCard>
@@ -379,6 +441,9 @@ export default function SessionDashboard() {
             type="line"
             series={[{ name: "Avg Tx Duration", data: Array.isArray(dashboard.charts?.txDuration?.data) ? dashboard.charts.txDuration.data : [] }]}
             categories={Array.isArray(dashboard.charts?.sessionTrend?.categories) ? dashboard.charts.sessionTrend.categories : []}
+            xaxisOptions={createXAxisOptions("시간")}
+            yaxisOptions={createYAxisOptions("소요 시간 (초)")}
+            tooltipFormatter={createTooltipFormatter("초")}
           />
         </WidgetCard>
 
@@ -387,15 +452,21 @@ export default function SessionDashboard() {
             type="line"
             series={[{ name: "Lock Wait", data: Array.isArray(dashboard.charts?.lockWait?.data) ? dashboard.charts.lockWait.data : [] }]}
             categories={Array.isArray(dashboard.charts?.sessionTrend?.categories) ? dashboard.charts.sessionTrend.categories : []}
+            xaxisOptions={createXAxisOptions("시간")}
+            yaxisOptions={createYAxisOptions("대기 시간 (초)")}
+            tooltipFormatter={createTooltipFormatter("초")}
           />
         </WidgetCard>
 
         <WidgetCard title="세션 수 상위 사용자" span={4}>
-          <Chart
-            type="bar"
-            series={[{ name: "Session Count", data: Array.isArray(dashboard.charts?.topUsers?.data) ? dashboard.charts.topUsers.data : [] }]}
-            categories={Array.isArray((dashboard.charts?.topUsers as any)?.categories) ? (dashboard.charts.topUsers as any).categories : []}
-          />
+         <Chart
+          type="column"  
+          series={[{ name: "Session Count", data: dashboard.charts?.topUsers?.data || [] }]}
+          categories={dashboard.charts?.topUsers?.categories || []}
+          xaxisOptions={createXAxisOptions("유저명")}
+          yaxisOptions={createYAxisOptions("세션 수 (개)")}
+          tooltipFormatter={createTooltipFormatter("개")}
+        />
         </WidgetCard>
       </ChartGridLayout>
 
@@ -413,6 +484,9 @@ export default function SessionDashboard() {
                     ? dashboard.charts.sessionTrend.categories 
                     : []}
                 colors={["#FF6363"]}
+                xaxisOptions={createXAxisOptions("시간")}
+                yaxisOptions={createYAxisOptions("데드락 수 (개)")}
+                tooltipFormatter={createTooltipFormatter("개")}
               />
             </div>
 

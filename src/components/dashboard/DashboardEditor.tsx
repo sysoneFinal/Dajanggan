@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useInstanceContext } from "../../context/InstanceContext";
 import { useDashboard } from "../../context/DashboardContext";
 import MultiSelectDropdown from "../../components/util/MultiSelectDropdown";
@@ -35,8 +35,8 @@ import card9Icon from "@/assets/icon/9card.svg";
 import card9ActiveIcon from "@/assets/icon/9card-active.svg";
 
 interface DashboardEditorPanelProps {
-  currentTheme: string;
-  onThemeChange: (id: string) => void;
+  currentTheme?: string;
+  onThemeChange?: (id: string) => void;
 }
 
 export default function DashboardEditorPanel({
@@ -128,10 +128,10 @@ const { metricMap } = useDashboard();
     e.dataTransfer.setData("application/json", JSON.stringify(payload));
   };
 
-  const metricOptions = Object.entries(metricMap).map(([key, value]) => ({
-  value: key,  // "SESSION.total_sessions"
-  label: value.title  // "활성 세션 수"
-}));
+//   const metricOptions = Object.entries(metricMap).map(([key, value]) => ({
+//   value: key,  
+//   label: value.title  
+// }));
 
   /* 
    * 렌더링
