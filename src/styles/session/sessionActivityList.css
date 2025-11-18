@@ -67,6 +67,8 @@
   align-items: center;
   margin-top: 0.5rem;
   margin-bottom: 1rem;
+  justify-content: flex-end;
+
 }
 
 
@@ -177,5 +179,29 @@
 
   .query-text {
     font-size: 0.8rem;
+  }
+}
+.session-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 200px;
+  padding: 40px 20px;
+  color: #9ca3af;
+  font-size: 14px;
+  font-weight: 500;
+  background: rgba(0, 0, 0, 0.02);
+  border-radius: 8px;
+  border: 1px dashed #e5e7eb;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
 }

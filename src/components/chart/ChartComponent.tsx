@@ -40,6 +40,8 @@ interface ChartProps {
     fontSize?: string;
     fontWeight?: number;
   };
+  enableSlidingAnimation?: boolean;
+  slidingAnimationDuration?: number;
 }
 
 /** 공통 색상 팔레트 */
@@ -75,7 +77,9 @@ export default function Chart({
   enableDonutShadow = false,
   style,
   donutTitle = "",
-  titleOptions
+  titleOptions,
+  enableSlidingAnimation = false,
+  slidingAnimationDuration = 400,
 }: ChartProps) {
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -471,7 +475,14 @@ case "column":
     return {
       ...options,
       ...customOptions,
-      chart: { ...options.chart, ...customOptions?.chart },
+      chart: {
+        ...options.chart,
+        ...customOptions?.chart,
+        animations: {
+          ...(options.chart?.animations ?? {}),
+          ...(customOptions?.chart?.animations ?? {}),
+        },
+      },
       plotOptions: { ...options.plotOptions, ...customOptions?.plotOptions },
       fill: { ...options.fill, ...customOptions?.fill },
       stroke: { ...options.stroke, ...customOptions?.stroke },

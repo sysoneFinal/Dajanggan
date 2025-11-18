@@ -12,6 +12,7 @@ import type { DashboardLayout } from "../../types/dashboard";
 import { useDashboard } from "../../context/DashboardContext";
 import { useInstanceContext } from "../../context/InstanceContext";
 import { intervalToMs } from "../../utils/time";
+import { useLoader } from '../../context/LoaderContext';
 
 const ResponsiveGridLayout = WidthProvider(Responsive);
 
@@ -26,6 +27,7 @@ export default function OverviewPage() {
   const { isEditing, setIsEditing, layout, setLayout, themeId, setThemeId } = useDashboard();
   const { selectedInstance, refreshInterval } = useInstanceContext();
   const [isDragOver, setIsDragOver] = useState(false);
+  const { showLoader, hideLoader } = useLoader();
 
   // 새로고침 주기를 밀리초로 변환
   const refreshMs = intervalToMs(refreshInterval);
@@ -38,10 +40,11 @@ export default function OverviewPage() {
   });
 
   /** === 대시보드 조회 (React Query로 자동 새로고침) === */
+  
   const { data: dashboardData, isLoading, error: queryError, dataUpdatedAt } = useQuery({
     queryKey: ['overview-dashboard', selectedInstance?.instanceId],
     queryFn: async () => {
-      console.log('📡 API 호출 시작:', new Date().toLocaleTimeString());
+      console.log('API 호출 시작:', new Date().toLocaleTimeString());
       
       if (!selectedInstance?.instanceId) return null;
       
@@ -49,12 +52,21 @@ export default function OverviewPage() {
         params: { instanceId: selectedInstance.instanceId },
       });
       
-      console.log('✅ API 호출 완료:', new Date().toLocaleTimeString(), res.data);
+      console.log('API 호출 완료:', new Date().toLocaleTimeString(), res.data);
       return res.data;
     },
     refetchInterval: refreshMs, // 헤더에서 선택한 주기로 자동 갱신
     enabled: !!selectedInstance?.instanceId,
   });
+
+  /** === 로딩 상태 관리 === */
+  useEffect(() => {
+    if (isLoading) {
+      showLoader('대시보드 데이터를 불러오는 중...');
+    } else {
+      hideLoader();
+    }
+  }, [isLoading, showLoader, hideLoader]);
 
   // 데이터가 업데이트될 때마다 로그
   useEffect(() => {
@@ -69,21 +81,32 @@ export default function OverviewPage() {
 
     console.log('대시보드 데이터 조회 ----->>>', dashboardData);
     
-    const normalizedLayout = dashboardData.widgets.map((item: any) => ({
-      i: item.id,
-      x: item.layout.x ?? 0,
-      y: item.layout.y ?? 0,
-      w: item.layout.w ?? 8,
-      h: item.layout.h ?? 6,
-      title: item.title,
-      type: item.chartType,
-      metricType: Array.isArray(item.metrics)
-        ? item.metrics[0]
-        : item.metrics,
-      databases: item.databases ?? [],
-      data: item.data ?? [],
-      error: item.error ?? null,
-    }));
+    const normalizedLayout = dashboardData.widgets.map((item: any) => {
+      const dbSource = item.databases ?? item.options?.databases ?? [];
+      const normalizedDatabases = Array.isArray(dbSource)
+        ? dbSource.map((db: any) => ({
+            id: db?.id ?? db?.databaseId ?? null,
+            name: db?.name ?? db?.databaseName ?? "",
+          }))
+        : [];
+
+      return {
+        i: item.id,
+        x: item.layout.x ?? 0,
+        y: item.layout.y ?? 0,
+        w: item.layout.w ?? 8,
+        h: item.layout.h ?? 6,
+        unit: item.unit ?? item.options?.unit ?? null,
+        title: item.title,
+        type: item.chartType,
+        metricType: Array.isArray(item.metrics)
+          ? item.metrics[0]
+          : item.metrics,
+        databases: normalizedDatabases,
+        data: item.data ?? [],
+        error: item.error ?? null,
+      };
+    });
 
     setLayout(normalizedLayout);
   }, [dashboardData, setLayout]);
@@ -209,6 +232,8 @@ export default function OverviewPage() {
                 <div key={item.i} className="grid-item">
                   <WidgetRenderer
                     metric={item.metricType}
+                    unit={item.unit}
+                    databases={item.databases}
                     data={item.data}
                     error={item.error}
                     isEditable={isEditing && themeId === "custom"}
