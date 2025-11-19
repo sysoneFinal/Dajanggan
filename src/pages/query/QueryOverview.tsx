@@ -797,7 +797,6 @@ Execution Time: 3500 ms`,
             label={metric.label}
             value={metric.value}
             status={metric.status}
-            diff={metric.diff}
             desc={metric.desc}
           />
         ))}
@@ -805,7 +804,7 @@ Execution Time: 3500 ms`,
 
       {/* TPS/QPS 그래프 + 리소스 사용률 */}
       <ChartGridLayout>
-        <WidgetCard title="TPS/QPS 실시간 그래프" span={9} height={350}>
+        <WidgetCard title="TPS/QPS 실시간 그래프" span={9}>
           <div style={{ width: '100%', height: '100%', paddingBottom: '1rem' }}>
             <div className="qo-legend" style={{ marginBottom: '0.75rem', display: 'flex', justifyContent: 'flex-end', gap: '1.25rem' }}>
               <div className="qo-legend-item">

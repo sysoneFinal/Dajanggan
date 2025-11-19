@@ -1,147 +1,113 @@
+import { useState, useEffect } from "react";
 import Chart from "../../components/chart/ChartComponent";
-import GaugeChart from "../../components/chart/GaugeChart";
 import SummaryCard from "../../components/util/SummaryCard";
 import WidgetCard from "../../components/util/WidgetCard";
 import ChartGridLayout from "../../components/layout/ChartGridLayout";
 import "../../styles/system/cpu.css";
 import apiClient from "../../api/apiClient";
-import {useQuery} from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { useInstanceContext } from "../../context/InstanceContext";
 
-// API 응답 전체 구조
-interface CPUData {
-    cpuUsage: {
-        value: number;
-        description: string;
-        runningQueries: number;
-        waitingQueries: number;
-        idleConnections: number;
-    };
-    cpuUsageTrend: {
-        categories: string[];
-        data: number[];
-    };
-    cpuLoadTypes: {
-        categories: string[];
-        autoVacuum: number[];
-        bgWriter: number[];
-        checkpoint: number[];
-        postgresqlBackend: number[];
-    };
-    ioWaitVsLatency: {
-        normal: Array<{ x: number; y: number }>;
-        warning: Array<{ x: number; y: number }>;
-        danger: Array<{ x: number; y: number }>;
-    };
-    backendProcessStats: {
-        types: string[];
-        activeCount: number[];
-        idleCount: number[];
-        totalCount: number[];
-        colors: string[];
-    };
-    waitEventDistribution: {
-        categories: string[];
-        cpu: number[];
-        client: number[];
-        io: number[];
-        lock: number[];
-        other: number[];
-    };
-    recentStats: {
+// ===== PDF 기반 백엔드 API 응답 구조 =====
+interface CpuDashboardData {
+    widgets: {
+        osCpuUsage: {
+            current: number;
+            trend: number;
+            status: "정상" | "주의" | "위험";
+        };
+        postgresqlTps: {
+            current: number;
+            trend: number;
+            status: "정상" | "주의" | "위험";
+        };
+        errorRate: {
+            rollbackTps: number;
+            errorRate: number;
+            status: "정상" | "주의" | "위험";
+        };
+        backendProcesses: {
+            clientBackend: number;
+            autovacuum: number;
+            parallelWorker: number;
+        };
         loadAverage: {
-            one: number;
-            five: number;
-            fifteen: number;
+            load1m: number;
+            load5m: number;
+            load15m: number;
+            cpuCoreCount: number;
         };
-        ioWait: number;
-        connections: {
-            active: number;
-            idle: number;
-            total: number;
+    };
+    charts: {
+        osCpuUsageTrend1h: {
+            categories: string[];
+            data: number[];
         };
-        idleCpu: number;
-        contextSwitches: number;
-        postgresqlBackendCpu: number;
+        postgresqlTpsTrend1h: {
+            categories: string[];
+            commitTps: number[];
+            rollbackTps: number[];
+        };
+        osCpuVsActiveConnections24h: {
+            categories: string[];
+            osCpuUsage: number[];
+            activeConnections: number[];
+        };
+        loadAverageTrend24h: {
+            categories: string[];
+            load1m: number[];
+            load5m: number[];
+            load15m: number[];
+            cpuCoreCount: number;
+        };
+        connectionStatus24h: {
+            categories: string[];
+            active: number[];
+            idle: number[];
+            idleInTx: number[];
+        };
+        tpsDailyTrend24h: {
+            categories: string[];
+            commitTps: number[];
+            rollbackTps: number[];
+        };
+        waitEventDistribution24h: {
+            categories: string[];
+            lock: number[];
+            io: number[];
+            client: number[];
+            activity: number[];
+            lwlock: number[];
+            other: number[];
+        };
+        backendTypeTrend24h: {
+            categories: string[];
+            client: number[];
+            autovacuum: number[];
+            parallel: number[];
+            background: number[];
+        };
+        errorRateTrend24h: {
+            categories: string[];
+            data: number[];
+        };
     };
 }
 
-// Gauge 색상 결정
-const getGaugeColor = (value: number): string => {
-    if (value < 70) return "#8E79FF";
-    if (value < 90) return "#FFD66B";
-    return "#FEA29B";
-};
-
-interface SummaryCardWithLinkProps {
-    label: string;
-    value: string | number;
-    diff?: number;
-    desc?: string;
-    status?: "info" | "warning" | "critical";
-    link?: string;
+// SSE 실시간 데이터 타입
+interface RealtimeMetrics {
+    timestamp: number;
+    cpu: number;
+    memory: number;
+    diskUsage: number;
+    diskRead: number;
+    diskWrite: number;
+    loadAverage?: number[];
 }
 
-function SummaryCardWithLink({ link, status = "info", ...props }: SummaryCardWithLinkProps) {
-    const statusColors: Record<string, string> = {
-        info: "#555555",
-        warning: "#F59E0B",
-        critical: "#EF4444",
-    };
-
-    return (
-        <div style={{ position: "relative", flex: 1 }}>
-            <SummaryCard {...props} status={status} />
-
-            {link && (
-                <a
-                    href={link}
-                    style={{
-                        position: "absolute",
-                        top: "1rem",
-                        right: "1rem",
-                        width: "20px",
-                        height: "20px",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        cursor: "pointer",
-                        transition: "all 0.2s ease",
-                        opacity: 0.6,
-                        zIndex: 10,
-                    }}
-                    onMouseEnter={(e) => {
-                        e.currentTarget.style.opacity = "1";
-                        e.currentTarget.style.transform = "scale(1.15)";
-                    }}
-                    onMouseLeave={(e) => {
-                        e.currentTarget.style.opacity = "0.6";
-                        e.currentTarget.style.transform = "scale(1)";
-                    }}
-                >
-                    <svg
-                        width="16"
-                        height="16"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke={statusColors[status]}
-                        strokeWidth="2.5"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                    >
-                        <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
-                        <polyline points="15 3 21 3 21 9" />
-                        <line x1="10" y1="14" x2="21" y2="3" />
-                    </svg>
-                </a>
-            )}
-        </div>
-    );
-}
-
-/** API 요청 - instanceId를 쿼리 파라미터로 전달 */
-async function fetchCPUData(instanceId: number) {
-    const response = await apiClient.get<CPUData>("/system/cpu", {
+/** API 요청 */
+async function fetchCPUDashboard(instanceId: number) {
+    const response = await apiClient.get<CpuDashboardData>("/system/cpu", {
         params: { instanceId }
     });
     return response.data;
@@ -151,473 +117,393 @@ async function fetchCPUData(instanceId: number) {
 export default function CPUPage() {
     const { selectedInstance } = useInstanceContext();
 
+    // 실시간 데이터 상태
+    const [realtimeCpu, setRealtimeCpu] = useState<number | null>(null);
+    const [realtimeLoadAverage, setRealtimeLoadAverage] = useState<number[] | null>(null);
+
+    // 대시보드 데이터 조회
     const { data, isLoading, isError, error } = useQuery({
         queryKey: ["cpuDashboard", selectedInstance?.instanceId],
-        queryFn: () => fetchCPUData(selectedInstance!.instanceId),
+        queryFn: () => fetchCPUDashboard(selectedInstance!.instanceId),
         retry: 1,
         enabled: !!selectedInstance,
+        refetchInterval: 60000, // 1분마다 갱신
     });
 
-    // 인스턴스가 선택되지 않은 경우
+    // SSE 연결 - OS 메트릭 실시간 수신
+    useEffect(() => {
+        if (!selectedInstance) return;
+
+        const instanceId = selectedInstance.instanceId;
+        const eventSource = new EventSource(
+            `${import.meta.env.VITE_API_BASE_URL}/osmetric/stream/${instanceId}`
+        );
+
+        eventSource.addEventListener('metrics', (event) => {
+            try {
+                const metrics: RealtimeMetrics = JSON.parse(event.data);
+                setRealtimeCpu(metrics.cpu);
+                setRealtimeLoadAverage(metrics.loadAverage || null);
+            } catch (error) {
+                console.error('SSE 데이터 파싱 오류:', error);
+            }
+        });
+
+        eventSource.onerror = (error) => {
+            console.error('SSE 연결 오류:', error);
+            eventSource.close();
+        };
+
+        return () => {
+            eventSource.close();
+        };
+    }, [selectedInstance]);
+
     if (!selectedInstance) {
         return (
             <div className="cpu-page">
-                <div style={{
-                    display: 'flex',
-                    justifyContent: 'center',
-                    alignItems: 'center',
-                    height: '400px',
-                    fontSize: '18px',
-                    color: '#6B7280'
-                }}>
+                <div style={{ padding: "2rem", textAlign: "center" }}>
                     인스턴스를 선택해주세요.
                 </div>
             </div>
         );
     }
 
-    // 로딩 중
     if (isLoading) {
         return (
-            <div className="bgwriter-page">
-                <div style={{
-                    display: 'flex',
-                    justifyContent: 'center',
-                    alignItems: 'center',
-                    height: '400px',
-                    fontSize: '18px',
-                    color: '#6B7280'
-                }}>
-                    데이터를 불러오는 중...
+            <div className="cpu-page">
+                <div style={{ padding: "2rem", textAlign: "center" }}>
+                    CPU 데이터를 불러오는 중...
                 </div>
             </div>
         );
     }
 
-    // 에러 발생
     if (isError) {
         return (
-            <div className="bgwriter-page">
-                <div style={{
-                    display: 'flex',
-                    flexDirection: 'column',
-                    justifyContent: 'center',
-                    alignItems: 'center',
-                    height: '400px',
-                    fontSize: '18px',
-                    color: '#EF4444'
-                }}>
-                    <p>데이터를 불러오는데 실패했습니다.</p>
-                    <p style={{ fontSize: '14px', color: '#6B7280', marginTop: '8px' }}>
-                        {error instanceof Error ? error.message : '알 수 없는 오류가 발생했습니다.'}
-                    </p>
-                    <button
-                        onClick={() => window.location.reload()}
-                        style={{
-                            marginTop: '16px',
-                            padding: '8px 16px',
-                            backgroundColor: '#3B82F6',
-                            color: 'white',
-                            border: 'none',
-                            borderRadius: '4px',
-                            cursor: 'pointer'
-                        }}
-                    >
-                        새로고침
-                    </button>
+            <div className="cpu-page">
+                <div style={{ padding: "2rem", textAlign: "center", color: "#EF4444" }}>
+                    데이터 로드 실패: {error?.message || "알 수 없는 오류"}
                 </div>
             </div>
         );
     }
 
-    // 데이터가 없는 경우
     if (!data) {
         return (
-            <div className="bgwriter-page">
-                <div style={{
-                    display: 'flex',
-                    justifyContent: 'center',
-                    alignItems: 'center',
-                    height: '400px',
-                    fontSize: '18px',
-                    color: '#6B7280'
-                }}>
+            <div className="cpu-page">
+                <div style={{ padding: "2rem", textAlign: "center" }}>
                     데이터가 없습니다.
                 </div>
             </div>
         );
     }
 
-    const dashboard = data;
-    const gaugeColor = getGaugeColor(dashboard.cpuUsage.value);
-    const recentStats = dashboard.recentStats;
+    const { widgets, charts } = data;
 
-    const summaryCards: Array<{
-        label: string;
-        value: string | number;
-        desc: string;
-        status: "info" | "warning" | "critical";
-        link?: string;
-    }> = [
-        {
-            label: "Load Average (1m/5m/15m)",
-            value: `${recentStats.loadAverage.one} / ${recentStats.loadAverage.five} / ${recentStats.loadAverage.fifteen}`,
-            desc: "시스템 부하 평균",
-            status: recentStats.loadAverage.one > 4 ? "warning" : "info",
-            link: "http://localhost:5173/instance/cpu/usage",
-        },
-        {
-            label: "I/O Wait",
-            value: `${recentStats.ioWait}%`,
-            desc: "디스크 대기 시간",
-            status: recentStats.ioWait > 20 ? "warning" : "info",
-            link: "http://localhost:5173/instance/cpu/usage",
-        },
-        {
-            label: "Active / Idle Connections",
-            value: `${recentStats.connections.active} / ${recentStats.connections.idle}`,
-            desc: "활성 / 유휴 연결",
-            status: recentStats.connections.active > 80 ? "warning" : "info",
-        },
-        {
-            label: "PostgreSQL Backend CPU",
-            value: `${recentStats.postgresqlBackendCpu}%`,
-            desc: "PG 프로세스 CPU 사용률",
-            status: recentStats.postgresqlBackendCpu > 80 ? "warning" : "info",
-        },
-        {
-            label: "Idle CPU",
-            value: `${recentStats.idleCpu}%`,
-            desc: "여유 리소스",
-            status: recentStats.idleCpu < 20 ? "critical" : "info",
-        },
+    // 실시간 CPU 값 (SSE 우선, 없으면 위젯 값 사용)
+    const displayCpuValue = realtimeCpu !== null ? realtimeCpu : widgets.osCpuUsage.current;
+
+    // 실시간 Load Average 값 (SSE 우선, 없으면 위젯 값 사용)
+    const displayLoadAverage = realtimeLoadAverage || [
+        widgets.loadAverage.load1m,
+        widgets.loadAverage.load5m,
+        widgets.loadAverage.load15m,
     ];
 
     return (
         <div className="cpu-page">
-            {/* 상단 요약 카드 */}
-            <div className="cpu-summary-cards">
-                {summaryCards.map((card, idx) => (
-                    <SummaryCardWithLink
-                        key={idx}
-                        label={card.label}
-                        value={card.value}
-                        desc={card.desc}
-                        status={card.status}
-                    />
-                ))}
+            {/* ===== 위젯 영역 (5개) ===== */}
+            <div style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(5, 1fr)",
+                gap: "1rem",
+                marginBottom: "1.5rem"
+            }}>
+                <SummaryCard
+                    label="OS CPU 사용률"
+                    value={`${displayCpuValue.toFixed(1)}%`}
+                    desc="1분 전 대비"
+                    status={widgets.osCpuUsage.status === "정상" ? "info" : widgets.osCpuUsage.status === "주의" ? "warning" : "critical"}
+                />
+
+                <SummaryCard
+                    label="PostgreSQL TPS"
+                    value={widgets.postgresqlTps.current.toLocaleString()}                
+                    desc="1분 전 대비"
+                    status={widgets.postgresqlTps.status === "정상" ? "info" : widgets.postgresqlTps.status === "주의" ? "warning" : "critical"}
+                />
+
+                <SummaryCard
+                    label="에러율"
+                    value={`${widgets.errorRate.errorRate.toFixed(2)}%`}
+                    desc={`롤백 TPS: ${widgets.errorRate.rollbackTps}`}
+                    status={widgets.errorRate.status === "정상" ? "info" : widgets.errorRate.status === "주의" ? "warning" : "critical"}
+                />
+
+                <SummaryCard
+                    label="Backend 프로세스"
+                    value={widgets.backendProcesses.clientBackend}
+                    desc={`Auto: ${widgets.backendProcesses.autovacuum} | Parallel: ${widgets.backendProcesses.parallelWorker}`}
+                />
+
+                <SummaryCard
+                    label="Load Average (1m)"
+                    value={displayLoadAverage[0].toFixed(2)}
+                    desc={`5m: ${displayLoadAverage[1].toFixed(2)} | 15m: ${displayLoadAverage[2].toFixed(2)}`}
+                    status={displayLoadAverage[0] > widgets.loadAverage.cpuCoreCount ? "warning" : "info"}
+                />
             </div>
 
-            {/* 첫 번째 행: 게이지 + 2개 차트 */}
-            <ChartGridLayout>
-                <WidgetCard title="CPU 사용률" span={2}>
-                    <div style={{
-                        display: 'flex',
-                        flexDirection: 'column',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        height: '100%',
-                        width: '100%',
-                        marginTop: '18px',
-                    }}>
-                        <GaugeChart
-                            value={dashboard.cpuUsage.value}
-                            type="semi-circle"
-                            color={gaugeColor}
-                            radius={100}
-                            strokeWidth={20}
-                            height={200}
-                            flattenRatio={0.89}
-                        />
-                        <div className="cpu-gauge-details">
-                            <div className="cpu-detail-item">
-                                <span className="cpu-detail-label">Running</span>
-                                <span className="cpu-detail-value">{dashboard.cpuUsage.runningQueries}개</span>
-                            </div>
-                            <div className="cpu-detail-divider"></div>
-                            <div className="cpu-detail-item">
-                                <span className="cpu-detail-label">Waiting</span>
-                                <span className="cpu-detail-value">{dashboard.cpuUsage.waitingQueries}개</span>
-                            </div>
-                        </div>
-                    </div>
-                </WidgetCard>
+            {/* ===== 차트 영역 (9개) ===== */}
 
-                <WidgetCard title="CPU 부하 유형별 분석" span={10}>
+            {/* 차트 1-2: 1시간 추이 */}
+            <ChartGridLayout>
+                <WidgetCard title="OS CPU 사용률 추이 (최근 1시간)" span={4}>
                     <Chart
                         type="line"
-                        series={[
-                            { name: "PostgreSQL Backend", data: dashboard.cpuLoadTypes.postgresqlBackend },
-                            { name: "BGWriter", data: dashboard.cpuLoadTypes.bgWriter },
-                            { name: "Auto Vacuum", data: dashboard.cpuLoadTypes.autoVacuum },
-                            { name: "Checkpoint", data: dashboard.cpuLoadTypes.checkpoint },
-                        ]}
-                        categories={dashboard.cpuLoadTypes.categories}
+                        series={[{ name: "CPU 사용률", data: charts.osCpuUsageTrend1h.data }]}
+                        categories={charts.osCpuUsageTrend1h.categories}
                         height={250}
-                        xaxisOptions={{
-                            title: { text: "시간", style: { fontSize: "12px", color: "#6B7280" } }
-                        }}
-                        yaxisOptions={{
-                            title: { text: "CPU 부하 (%)", style: { fontSize: "12px", color: "#6B7280" } },
-                            labels: {
-                                formatter: (val) => Math.round(val),
-                            },
-                        }}
-                        colors={["#8E79FF", "#77B2FB", "#51DAA8", "#FEA29B"]}
-                        showGrid={true}
-                        showLegend={true}
-                        tooltipFormatter={(value: number) => `${value}%`}
-                    />
-                </WidgetCard>
-            </ChartGridLayout>
-
-            {/* 나머지 차트들... */}
-            <ChartGridLayout>
-                <WidgetCard title="CPU 사용률 추이 (Last 24 Hours)" span={6}>
-                    <Chart
-                        type="line"
-                        series={[
-                            { name: "CPU 사용률", data: dashboard.cpuUsageTrend.data }
-                        ]}
-                        categories={dashboard.cpuUsageTrend.categories}
-                        height={250}
-                        colors={["#8E79FF"]}
+                        colors={["#60A5FA"]}
                         showGrid={true}
                         showLegend={false}
                         xaxisOptions={{
-                            title: { text: "시간", style: { fontSize: "12px", color: "#6B7280" } }
+                            title: {
+                                text: "시간",
+                                style: { fontSize: "12px", color: "#6B7280" }
+                            }
                         }}
                         yaxisOptions={{
-                            title: { text: "CPU 사용률 (%)", style: { fontSize: "12px", color: "#6B7280" } }
+                            title: { text: "CPU 사용률 (%)", style: { fontSize: "12px", color: "#6B7280" } },
+                            labels: { formatter: (val: number) => `${val}%` },
+                            min: 0,
+                            max: 100
                         }}
-                        tooltipFormatter={(value: number) => `${value}%`}
                         customOptions={{
                             annotations: {
                                 yaxis: [
-                                    {
-                                        y: 70,
-                                        borderColor: "#60A5FA",
-                                        strokeDashArray: 4,
-                                        opacity: 0.6,
-                                        label: {
-                                            borderColor: "#60A5FA",
-                                            style: {
-                                                color: "#fff",
-                                                background: "#60A5FA",
-                                                fontSize: "11px",
-                                                fontWeight: 500,
-                                            },
-                                            text: "정상: 70%",
-                                            position: "right",
-                                        },
-                                    },
-                                    {
-                                        y: 80,
-                                        borderColor: "#FBBF24",
-                                        strokeDashArray: 4,
-                                        opacity: 0.7,
-                                        label: {
-                                            borderColor: "#FBBF24",
-                                            style: {
-                                                color: "#fff",
-                                                background: "#FBBF24",
-                                                fontSize: "11px",
-                                                fontWeight: 500,
-                                            },
-                                            text: "주의: 80%",
-                                            position: "right",
-                                        },
-                                    },
-                                    {
-                                        y: 90,
-                                        borderColor: "#FEA29B",
-                                        strokeDashArray: 4,
-                                        opacity: 0.8,
-                                        label: {
-                                            borderColor: "#FEA29B",
-                                            style: {
-                                                color: "#fff",
-                                                background: "#FEA29B",
-                                                fontSize: "11px",
-                                                fontWeight: 600,
-                                            },
-                                            text: "경고: 90%",
-                                            position: "right",
-                                        },
-                                    },
-                                ],
-                            },
-                            yaxis: {
-                                labels: {
-                                    style: {
-                                        colors: "#6B7280",
-                                        fontFamily: 'var(--font-family, "Pretendard", sans-serif)',
-                                    },
-                                    formatter: (val: number) => `${val}%`,
-                                },
-                            },
-                        }}
-                    />
-                </WidgetCard>
-                <WidgetCard title="I/O Wait vs 디스크 Latency 상관관계" span={6}>
-                    <Chart
-                        type="scatter"
-                        series={[
-                            {
-                                name: "정상 상태",
-                                data: dashboard.ioWaitVsLatency.normal
-                            },
-                            {
-                                name: "주의 상관관계",
-                                data: dashboard.ioWaitVsLatency.warning
-                            },
-                            {
-                                name: "높은 상관관계",
-                                data: dashboard.ioWaitVsLatency.danger
-                            },
-                        ]}
-                        height={250}
-                        colors={["#8E79FF", "#FFD66B", "#FEA29B"]}
-                        showGrid={true}
-                        showLegend={false}
-                        xaxisOptions={{
-                            title: { text: "I/O Wait (%)", style: { fontSize: "12px", color: "#6B7280" } },
-                            labels: { formatter: (val: string) => `${val}%` },
-                            min: 0,
-                            max: 40,
-                        }}
-                        yaxisOptions={{
-                            title: { text: "Disk Latency (ms)", style: { fontSize: "12px", color: "#6B7280" } },
-                            labels: { formatter: (val: number) => `${val}ms` },
-                            min: 0,
-                            max: 50,
-                        }}
-                        customOptions={{
-                            markers: {
-                                size: 6,
-                                strokeWidth: 0,
+                                    { y: 70, borderColor: "#FBBF24", strokeDashArray: 4, label: { text: "주의 (70%)", style: { color: "#FFD66B", fontSize: "10px" } } },
+                                    { y: 90, borderColor: "#FEA29B", strokeDashArray: 4, label: { text: "위험 (90%)", style: { color: "#FEA29B", fontSize: "10px" } } }
+                                ]
                             }
                         }}
-                        tooltipFormatter={(value: number) => `${value}`}
+                        tooltipFormatter={(value: number) => `${value.toFixed(1)}%`}
+                    />
+                </WidgetCard>
+
+                <WidgetCard title="PostgreSQL TPS 추이 (최근 1시간)" span={4}>
+                    <Chart
+                        type="line"
+                        series={[
+                            { name: "Commit TPS", data: charts.postgresqlTpsTrend1h.commitTps },
+                            { name: "Rollback TPS", data: charts.postgresqlTpsTrend1h.rollbackTps }
+                        ]}
+                        categories={charts.postgresqlTpsTrend1h.categories}
+                        height={250}
+                        colors={["#60A5FA", "#FEA29B"]}
+                        showGrid={true}
+                        showLegend={true}
+                        xaxisOptions={{ title: { text: "시간", style: { fontSize: "12px", color: "#6B7280" } } }}
+                        yaxisOptions={{
+                            title: { text: "TPS (건/초)", style: { fontSize: "12px", color: "#6B7280" } },
+                            labels: { formatter: (val: number) => val.toLocaleString() }
+                        }}
+                        tooltipFormatter={(value: number) => value.toLocaleString()}
+                    />
+                </WidgetCard>
+                <WidgetCard title="OS CPU vs PostgreSQL 활성 연결 (24시간)" span={4}>
+                    <Chart
+                        type="line"
+                        series={[
+                            { name: "OS CPU 사용률", data: charts.osCpuVsActiveConnections24h.osCpuUsage },
+                            { name: "활성 연결 수", data: charts.osCpuVsActiveConnections24h.activeConnections }
+                        ]}
+                        categories={charts.osCpuVsActiveConnections24h.categories}
+                        height={250}
+                        colors={["#60A5FA", "#FEA29B"]}
+                        showGrid={true}
+                        showLegend={true}
+                        xaxisOptions={{ title: { text: "시간", style: { fontSize: "12px", color: "#6B7280" } } }}
+                        yaxisOptions={[
+                            {
+                                title: { text: "OS CPU 사용률 (%)", style: { fontSize: "12px", color: "#6B7280" } },
+                                labels: { formatter: (val: number) => `${val}%` },
+                                min: 0,
+                                max: 100
+                            },
+                            {
+                                opposite: true,
+                                title: { text: "활성 연결 수", style: { fontSize: "12px", color: "#6B7280" } },
+                                labels: { formatter: (val: number) => val.toLocaleString() }
+                            }
+                        ]}
+                        tooltipFormatter={(value: number, opts: any) => {
+                            return opts.seriesIndex === 0 ? `${value.toFixed(1)}%` : value.toLocaleString();
+                        }}
                     />
                 </WidgetCard>
             </ChartGridLayout>
 
+            {/* 차트 3-5: 24시간 추이 (첫 번째 행) */}
             <ChartGridLayout>
-                <WidgetCard title="Backend 프로세스 타입별 분포" span={6}>
+                <WidgetCard title="Load Average 추이 (24시간)" span={4}>
                     <Chart
-                        type="bar"
+                        type="line"
                         series={[
-                            {
-                                name: "Active",
-                                data: dashboard.backendProcessStats.activeCount,
-                            },
-                            {
-                                name: "Idle",
-                                data: dashboard.backendProcessStats.idleCount,
-                            },
+                            { name: "1분 Load", data: charts.loadAverageTrend24h.load1m },
+                            { name: "5분 Load", data: charts.loadAverageTrend24h.load5m },
+                            { name: "15분 Load", data: charts.loadAverageTrend24h.load15m }
                         ]}
-                        categories={dashboard.backendProcessStats.types}
+                        categories={charts.loadAverageTrend24h.categories}
                         height={250}
-                        colors={["#8E79FF", "#D1D5DB"]}
+                        colors={["#60A5FA", "#FBBF24", "#FEA29B"]}
                         showGrid={true}
                         showLegend={true}
-                        isStacked={true}
-                        xaxisOptions={{
-                            title: { text: "프로세스 수", style: { fontSize: "12px", color: "#6B7280" } },
-                        }}
+                        xaxisOptions={{ title: { text: "시간", style: { fontSize: "12px", color: "#6B7280" } } }}
                         yaxisOptions={{
-                            title: { text: "Backend Type", style: { fontSize: "12px", color: "#6B7280" } },
+                            title: { text: "Load Average", style: { fontSize: "12px", color: "#6B7280" } },
+                            labels: { formatter: (val: number) => val.toFixed(2) }
                         }}
                         customOptions={{
-                            chart: {
-                                stacked: true,
-                            },
-                            plotOptions: {
-                                bar: {
-                                    horizontal: true,
-                                    barHeight: "70%",
-                                },
-                            },
-                            dataLabels: {
-                                enabled: true,
-                                formatter: function(val: number, opts: any) {
-                                    const seriesIndex = opts.seriesIndex;
-                                    const dataPointIndex = opts.dataPointIndex;
-                                    const total = data.backendProcessStats.totalCount[dataPointIndex];
-                                    const value = val as number;
-
-                                    if (seriesIndex === 0) {
-                                        const percentage = ((value / total) * 100).toFixed(0);
-                                        return `${value} (${percentage}%)`;
-                                    }
-                                    return value > 0 ? `${value}` : '';
-                                },
-                                style: {
-                                    fontSize: "11px",
-                                    colors: ["#fff"],
-                                    fontWeight: 600,
-                                },
-                            },
-                            legend: {
-                                position: "top",
-                                horizontalAlign: "right",
-                                fontSize: "12px",
-                                fontFamily: 'var(--font-family, "Pretendard", sans-serif)',
-                                markers: {
-                                    width: 12,
-                                    height: 12,
-                                    radius: 3,
-                                },
-                            },
+                            annotations: {
+                                yaxis: [{
+                                    y: charts.loadAverageTrend24h.cpuCoreCount,
+                                    borderColor: "#EF4444",
+                                    strokeDashArray: 4,
+                                    label: { text: `CPU 코어 수 (${charts.loadAverageTrend24h.cpuCoreCount})`, style: { color: "#EF4444", fontSize: "10px" } }
+                                }]
+                            }
                         }}
-                        tooltipFormatter={(value: number, opts: any) => {
-                            const dataPointIndex = opts.dataPointIndex;
-                            const total = data.backendProcessStats.totalCount[dataPointIndex];
-                            const percentage = ((value / total) * 100).toFixed(1);
-                            return `${value}개 (${percentage}%)`;
-                        }}
+                        tooltipFormatter={(value: number) => value.toFixed(2)}
                     />
                 </WidgetCard>
 
-                <WidgetCard title="대기 유형별 비중 변화 (100%)" span={6}>
+                <WidgetCard title="연결 상태 분포 (24시간)" span={4}>
                     <Chart
-                        type="column"
+                        type="line"
                         series={[
-                            { name: "CPU", data: dashboard.waitEventDistribution.cpu },
-                            { name: "Client", data: dashboard.waitEventDistribution.client },
-                            { name: "I/O", data: dashboard.waitEventDistribution.io },
-                            { name: "Lock", data: dashboard.waitEventDistribution.lock },
-                            { name: "Other", data: dashboard.waitEventDistribution.other },
+                            { name: "Active", data: charts.connectionStatus24h.active },
+                            { name: "Idle", data: charts.connectionStatus24h.idle },
+                            { name: "Idle in Tx", data: charts.connectionStatus24h.idleInTx }
                         ]}
-                        categories={data.waitEventDistribution.categories}
+                        categories={charts.connectionStatus24h.categories}
                         height={250}
-                        colors={["#8E79FF", "#51DAA8", "#77B2FB", "#FEA29B", "#6B7280"]}
+                        colors={["#60A5FA", "#FBBF24", "#FEA29B"]}
                         showGrid={true}
                         showLegend={true}
                         isStacked={true}
-                        xaxisOptions={{
-                            title: { text: "시간", style: { fontSize: "12px", color: "#6B7280" } },
-                        }}
+                        xaxisOptions={{ title: { text: "시간", style: { fontSize: "12px", color: "#6B7280" } } }}
                         yaxisOptions={{
-                            title: { text: "비중 (%)", style: { fontSize: "12px", color: "#6B7280" } },
+                            title: { text: "연결 수", style: { fontSize: "12px", color: "#6B7280" } },
+                            labels: { formatter: (val: number) => val.toLocaleString() }
+                        }}
+                        customOptions={{ chart: { stacked: true }, fill: { opacity: 0.7 } }}
+                        tooltipFormatter={(value: number) => value.toLocaleString()}
+                    />
+                </WidgetCard>
+                <WidgetCard title="TPS 일일 추이 (24시간)" span={4}>
+                    <Chart
+                        type="line"
+                        series={[
+                            { name: "Commit TPS", data: charts.tpsDailyTrend24h.commitTps },
+                            { name: "Rollback TPS", data: charts.tpsDailyTrend24h.rollbackTps }
+                        ]}
+                        categories={charts.tpsDailyTrend24h.categories}
+                        height={250}
+                        colors={["#60A5FA", "#FEA29B"]}
+                        showGrid={true}
+                        showLegend={true}
+                        isStacked={true}
+                        xaxisOptions={{ title: { text: "시간", style: { fontSize: "12px", color: "#6B7280" } } }}
+                        yaxisOptions={{
+                            title: { text: "TPS (건/초)", style: { fontSize: "12px", color: "#6B7280" } },
+                            labels: { formatter: (val: number) => val.toLocaleString() }
+                        }}
+                        customOptions={{ chart: { stacked: true }, plotOptions: { bar: { horizontal: false, columnWidth: "70%" } } }}
+                        tooltipFormatter={(value: number) => value.toLocaleString()}
+                    />
+                </WidgetCard>
+            </ChartGridLayout>
+
+            {/* 차트 6-8: 24시간 추이 (두 번째 행) */}
+            <ChartGridLayout>
+                <WidgetCard title="Wait Event 유형별 분포 (24시간)" span={4}>
+                    <Chart
+                        type="line"
+                        series={[
+                            { name: "Lock", data: charts.waitEventDistribution24h.lock },
+                            { name: "I/O", data: charts.waitEventDistribution24h.io },
+                            { name: "Client", data: charts.waitEventDistribution24h.client },
+                            { name: "Activity", data: charts.waitEventDistribution24h.activity },
+                            { name: "LWLock", data: charts.waitEventDistribution24h.lwlock },
+                            { name: "기타", data: charts.waitEventDistribution24h.other }
+                        ]}
+                        categories={charts.waitEventDistribution24h.categories}
+                        height={250}
+                        colors={["#FEA29B", "#77B2FB", "#51DAA8", "#FFD66B", "#8E79FF", "#6B7280"]}
+                        showGrid={true}
+                        showLegend={true}
+                        isStacked={true}
+                        xaxisOptions={{ title: { text: "시간", style: { fontSize: "12px", color: "#6B7280" } } }}
+                        yaxisOptions={{
+                            title: { text: "대기 세션 수", style: { fontSize: "12px", color: "#6B7280" } },
+                            labels: { formatter: (val: number) => val.toLocaleString() }
+                        }}
+                        customOptions={{ chart: { stacked: true }, fill: { opacity: 0.7 } }}
+                        tooltipFormatter={(value: number) => value.toLocaleString()}
+                    />
+                </WidgetCard>
+
+                <WidgetCard title="Backend 유형별 추이 (24시간)" span={4}>
+                    <Chart
+                        type="line"
+                        series={[
+                            { name: "Client", data: charts.backendTypeTrend24h.client },
+                            { name: "Autovacuum", data: charts.backendTypeTrend24h.autovacuum },
+                            { name: "Parallel", data: charts.backendTypeTrend24h.parallel },
+                            { name: "Background", data: charts.backendTypeTrend24h.background }
+                        ]}
+                        categories={charts.backendTypeTrend24h.categories}
+                        height={250}
+                        colors={["#60A5FA", "#FBBF24", "#FEA29B", "#6B7280"]}
+                        showGrid={true}
+                        showLegend={true}
+                        isStacked={true}
+                        xaxisOptions={{ title: { text: "시간", style: { fontSize: "12px", color: "#6B7280" } } }}
+                        yaxisOptions={{
+                            title: { text: "프로세스 수", style: { fontSize: "12px", color: "#6B7280" } },
+                            labels: { formatter: (val: number) => val.toLocaleString() }
+                        }}
+                        customOptions={{ chart: { stacked: true }, plotOptions: { bar: { horizontal: false, columnWidth: "70%" } } }}
+                        tooltipFormatter={(value: number) => value.toLocaleString()}
+                    />
+                </WidgetCard>
+                {/* 차트 9: 에러율 추이 */}
+                <WidgetCard title="에러율 추이 (24시간)" span={4}>
+                    <Chart
+                        type="line"
+                        series={[{ name: "에러율", data: charts.errorRateTrend24h.data }]}
+                        categories={charts.errorRateTrend24h.categories}
+                        height={250}
+                        colors={["#FEA29B"]}
+                        showGrid={true}
+                        showLegend={false}
+                        xaxisOptions={{ title: { text: "시간", style: { fontSize: "12px", color: "#6B7280" } } }}
+                        yaxisOptions={{
+                            title: { text: "에러율 (%)", style: { fontSize: "12px", color: "#6B7280" } },
                             labels: { formatter: (val: number) => `${val}%` },
-                            min: 0,
-                            max: 100,
+                            min: 0
                         }}
                         customOptions={{
-                            chart: {
-                                stacked: true,
-                                stackType: "100%"
-                            },
-                            plotOptions: {
-                                bar: {
-                                    horizontal: false,
-                                    columnWidth: "70%"
-                                }
+                            annotations: {
+                                yaxis: [
+                                    { y: 1, borderColor: "#FFD66B", strokeDashArray: 4, label: { text: "주의 (1%)", style: { color: "#FFD66B", fontSize: "10px" } } },
+                                    { y: 5, borderColor: "#FEA29B", strokeDashArray: 4, label: { text: "위험 (5%)", style: { color: "#FEA29B", fontSize: "10px" } } }
+                                ]
                             }
                         }}
-                        tooltipFormatter={(value: number) => `${value}%`}
+                        tooltipFormatter={(value: number) => `${value.toFixed(2)}%`}
                     />
                 </WidgetCard>
             </ChartGridLayout>

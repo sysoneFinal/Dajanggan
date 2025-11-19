@@ -2,6 +2,7 @@ import "../../styles/util/widget-card.css";
 
 interface WidgetCardProps {
   title?: string;
+  subtitle?: string;
   span?: number;
   children: React.ReactNode;
   className?: string;
@@ -13,6 +14,7 @@ interface WidgetCardProps {
  */
 export default function WidgetCard({
   title,
+  subtitle,
   children,
   span = 1,
   className = "",
@@ -24,7 +26,12 @@ export default function WidgetCard({
         gridColumn: `span ${span}`,
       }}
     >
-      {title && <h6 className="widget-title">{title}</h6>}
+      {(title || subtitle) && (
+        <div className="widget-header">
+          {title && <h6 className="widget-title">{title}</h6>}
+          {subtitle && <p className="widget-subtitle" title={subtitle}>{subtitle}</p>}
+        </div>
+      )}
       <div
         className="widget-content"
       >
