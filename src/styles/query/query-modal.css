@@ -434,4 +434,93 @@
   .query-modal__metrics {
     grid-template-columns: 1fr;
   }
+
+  
+/* 로딩 상태 배지 */
+.query-modal__status-badge--loading {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
+/* 에러 상태 배지 */
+.query-modal__status-badge--error {
+  background: linear-gradient(135deg, #f56565 0%, #c53030 100%);
+}
+
+/* 로딩 컨테이너 */
+.query-modal__loading-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 4rem 2rem;
+  gap: 1.5rem;
+}
+
+/* 로딩 스피너 */
+.query-modal__loading-spinner {
+  width: 48px;
+  height: 48px;
+  border: 4px solid rgba(99, 102, 241, 0.1);
+  border-top-color: #6366f1;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* 로딩 텍스트 */
+.query-modal__loading-text {
+  font-size: 1rem;
+  color: #64748b;
+  margin: 0;
+  font-weight: 500;
+}
+
+/* 에러 컨테이너 */
+.query-modal__error-container {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+/* 에러 아이콘 */
+.query-modal__error-icon {
+  width: 48px;
+  height: 48px;
+  color: #ef4444;
+  margin: 0 auto;
+}
+
+/* 에러 상태의 EXPLAIN 박스 */
+.query-modal__explain-box--error {
+  background-color: #fef2f2;
+  border-color: #fecaca;
+  color: #991b1b;
+}
+
+/* 닫기 버튼 비활성화 상태 */
+.query-modal__close-btn:disabled {
+  background-color: #cbd5e1;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.query-modal__close-btn:disabled:hover {
+  background-color: #cbd5e1;
+  transform: none;
+}
 }
