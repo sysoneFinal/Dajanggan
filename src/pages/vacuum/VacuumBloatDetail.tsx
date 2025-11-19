@@ -307,17 +307,14 @@ export default function BloatDetailPage({ onToggle, expanded = true }: Props) {
             <SummaryCard
               label="Bloat %"
               value={data.kpi.bloatPct}
-              diff={3}
             />
             <SummaryCard
               label="Table Size"
               value={data.kpi.tableSize}
-              diff={3}
             />
             <SummaryCard
               label="Wasted Space"
               value={data.kpi.wastedSpace}
-              diff={3}
             />
           </div>
 

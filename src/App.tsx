@@ -18,8 +18,7 @@ export const queryClient = new QueryClient({
       staleTime: 0,
 
       // 컴포넌트 unmount 시 캐시 즉시 삭제
-      cacheTime: 0,
-
+      gcTime: 0, 
       // 화면 focus나 reconnect 시 자동 refetch 방지
       refetchOnWindowFocus: false,
       refetchOnReconnect: false,
