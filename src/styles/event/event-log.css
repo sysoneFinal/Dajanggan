@@ -41,6 +41,8 @@
   width: 100%;
   overflow: visible; /* 툴팁이 잘리지 않게 */
   box-sizing: border-box;
+  overflow-x: auto; /* 가로 스크롤 허용 */
+
 }
 
 .e-table-header,
@@ -52,10 +54,10 @@
     10rem   /* DB명 */
     9rem    /* 구분 */
     12rem   /* 이벤트 유형 */
-    11rem   /* 자원유형 */
-    10rem   /* 사용자명 */
-    6rem    /* Level */
-    8rem    /* 지속시간 */
+    10rem   /* 자원유형 */
+    9rem   /* 사용자명 */
+    5rem    /* Level */
+    10rem    /* 지속시간 */
     minmax(10rem, 1fr); /* 내용 */
   text-align: center;
   padding: 1rem 1.2rem;

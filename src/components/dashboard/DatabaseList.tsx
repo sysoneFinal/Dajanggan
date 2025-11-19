@@ -1,4 +1,3 @@
-import React from "react";
 import "@/styles/dashboard/database-list.css";
 import rightArrowIcon from "../../assets/icon/right-arrow.svg";
 

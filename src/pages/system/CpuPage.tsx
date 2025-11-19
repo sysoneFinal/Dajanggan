@@ -223,15 +223,13 @@ export default function CPUPage() {
                 <SummaryCard
                     label="OS CPU 사용률"
                     value={`${displayCpuValue.toFixed(1)}%`}
-                    diff={widgets.osCpuUsage.trend}
                     desc="1분 전 대비"
                     status={widgets.osCpuUsage.status === "정상" ? "info" : widgets.osCpuUsage.status === "주의" ? "warning" : "critical"}
                 />
 
                 <SummaryCard
                     label="PostgreSQL TPS"
-                    value={widgets.postgresqlTps.current.toLocaleString()}
-                    diff={widgets.postgresqlTps.trend}
+                    value={widgets.postgresqlTps.current.toLocaleString()}                
                     desc="1분 전 대비"
                     status={widgets.postgresqlTps.status === "정상" ? "info" : widgets.postgresqlTps.status === "주의" ? "warning" : "critical"}
                 />

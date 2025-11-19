@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import { useState } from "react";
 import { Responsive, WidthProvider } from "react-grid-layout";
 import type { Layout, Layouts } from "react-grid-layout";
 
@@ -27,7 +27,7 @@ import "../../styles/dashboard/Layout.css";
 { "w": 8,"h": 6,"x": 16,"y": 12,"i": "i",} */
 
 interface DashboardProps {
-  isEditing: boolean;
+  isEditing?: boolean;
 }
 
 const ResponsiveGridLayout = WidthProvider(Responsive);

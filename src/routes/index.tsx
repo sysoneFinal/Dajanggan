@@ -49,7 +49,7 @@ const routeList = [
   { path: "/", element: <Home /> },
 
   // 대시보드 메인
-  { path: "/overview", element: <Overview isEditing={isEditing}/> },
+  { path: "/overview", element: <Overview/> },
   { path : "/layout", element : <LayoutBuilder />},
   { path : "/editor", element : <DashboardEditor />},
 

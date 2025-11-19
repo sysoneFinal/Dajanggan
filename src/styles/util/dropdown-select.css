@@ -61,7 +61,6 @@
   padding: 0.4rem;
   z-index: 10;
   max-height: 220px;
-  overflow-y: auto;
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
   animation: fadeIn 0.15s ease;
