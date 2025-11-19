@@ -8,6 +8,7 @@ import {
   flexRender,
   type ColumnDef,
   type SortingState,
+  type FilterFn,
 } from "@tanstack/react-table";
 import Pagination from "../../components/util/Pagination";
 import CsvButton from "../../components/util/CsvButton";
@@ -15,7 +16,7 @@ import SlackSettingsModal from "./SlackSetting";
 import AlarmRuleModal from "./AlarmRuleModal";
 import AlarmRuleEditModal from "./AlarmRuleEditModal";
 import AlarmRuleDetailModal from "../alarm/AlarmRuleDetailModal";
-import type { Metric, Aggregation, AlarmRulePayload } from "./AlarmRuleModal";
+import type { Metric, Aggregation, MetricCategory, AlarmRulePayload } from "./AlarmRuleModal";
 import "/src/styles/alarm/alarm-list.css";
 import apiClient from "../../api/apiClient";
 import { useInstanceContext } from "../../context/InstanceContext";
@@ -25,10 +26,10 @@ import { useInstanceContext } from "../../context/InstanceContext";
 /* ============================== */
 
 type RuleThreshold = {
-  threshold: number;
-  minDurationMin: number;
-  occurCount: number;
-  windowMin: number;
+  threshold: number | null;
+  minDurationMin: number | null;
+  occurCount: number | null;
+  windowMin: number | null;
 };
 
 type ServerCreatePayload = {
@@ -47,6 +48,8 @@ type ServerCreatePayload = {
 
 type ServerUpdatePayload = {
   alarmRuleId?: number; // 서버가 path param으로 받으면 생략 가능
+  metricCategory?: MetricCategory;
+  metricType?: Metric;
   aggregationType: Aggregation;
   enabled: boolean;
   levels: {
@@ -84,6 +87,8 @@ function toServerUpdateJSONB(p: any): ServerUpdatePayload {
 
   return {
     alarmRuleId: p.alarmRuleId,
+    metricCategory: p.metricCategory,
+    metricType: p.metricType,
     aggregationType: p.aggregationType,
     enabled: p.enabled,
     levels: hasServerKeys
@@ -121,6 +126,7 @@ export default function AlarmRuleList() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [sorting, setSorting] = useState<SortingState>([]);
+  const [globalFilter, setGlobalFilter] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 15;
   const [openSlack, setOpenSlack] = useState(false);
@@ -269,25 +275,52 @@ export default function AlarmRuleList() {
     []
   );
 
+  const globalFilterFn = useMemo<FilterFn<AlarmRuleRow>>(
+    () => (row, _columnId, filterValue) => {
+      const keyword = String(filterValue ?? "").trim().toLowerCase();
+      if (!keyword) return true;
+
+      const values = [
+        row.original.instanceName,
+        row.original.databaseName,
+        row.original.section,
+        row.original.metricType,
+        row.original.enabled ? "활성화" : "비활성화",
+      ]
+        .filter(Boolean)
+        .map((v) => String(v).toLowerCase());
+
+      return values.some((v) => v.includes(keyword));
+    },
+    []
+  );
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [globalFilter]);
+
   const table = useReactTable({
     data,
     columns,
     state: {
       sorting,
+      globalFilter,
       pagination: {
         pageIndex: currentPage - 1,
         pageSize,
       },
     },
     onSortingChange: setSorting,
+    onGlobalFilterChange: setGlobalFilter,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
+    globalFilterFn,
     manualPagination: false,
   });
 
-  const totalPages = Math.ceil(data.length / pageSize);
+  const totalPages = Math.ceil(table.getFilteredRowModel().rows.length / pageSize);
 
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
@@ -461,7 +494,23 @@ export default function AlarmRuleList() {
             알림 규칙 생성
           </button>
         </div>
-        <div className="alarm-page__filters">
+        <div className="filter-right" style={{ display: "flex", gap: "12px", alignItems: "center" }}>
+          <div className="al-search" style={{ position: "relative" }}>
+            <input
+              type="text"
+              value={globalFilter}
+              onChange={(e) => setGlobalFilter(e.target.value)}
+              placeholder="규칙/지표 검색"
+              aria-label="알람 규칙 검색"
+              style={{
+                border: "1px solid #E5E7EB",
+                borderRadius: "8px",
+                padding: "8px 12px",
+                fontSize: "0.9rem",
+                minWidth: "220px",
+              }}
+            />
+          </div>
           <CsvButton onClick={handleExportCSV} tooltip="CSV 파일 저장" />
         </div>
       </section>

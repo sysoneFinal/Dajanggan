@@ -279,13 +279,13 @@ export default function VacuumDetailPage({ tableName: propTableName }: Props) {
             type="line"
             series={progressSeries}
             categories={data.progress.labels}
-            height="100%"
-            width="100%"
+            height={520}
             showLegend={true}
             showToolbar={false}
             colors={["#6366F1", "#10B981", "#FBBF24"]}
             customOptions={{
-              chart: { redrawOnParentResize: true, redrawOnWindowResize: true },
+              chart: {   redrawOnParentResize: false,
+          redrawOnWindowResize: false },
               stroke: { curve: "smooth", width: 2 },
               grid: { borderColor: "#E5E7EB", strokeDashArray: 4 },
               legend: { position: "bottom" },

@@ -2,15 +2,19 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import "/src/styles/alarm/alarm-rule.css";
 import "/src/styles/alarm/alarm-modal-root.css";
 import apiClient from "../../api/apiClient";
-
-export type Metric = "dead_tuples" | "bloat_pct" | "vacuum_backlog" | "wal_lag";
-export type Aggregation = "latest_avg" | "avg_5m" | "avg_15m" | "p95_15m";
+import {
+  AGGREGATION_OPTIONS,
+  METRIC_BY_CATEGORY,
+  CATEGORY_LABELS,
+  type Metric,
+} from "./AlarmRuleModal";
+import type { Aggregation, MetricCategory } from "./AlarmRuleModal";
 
 export interface RuleThreshold {
-  threshold: number;
-  minDurationMin: number;
-  occurCount: number;
-  windowMin: number;
+  threshold: number | null;
+  minDurationMin: number | null;
+  occurCount: number | null;
+  windowMin: number | null;
 }
 
 export interface ServerRuleDetail {
@@ -21,7 +25,6 @@ export interface ServerRuleDetail {
   aggregationType: Aggregation;
   operator: string;
   enabled: boolean;
-  // JSONB levels 원본
   levels: {
     notice: RuleThreshold;
     warning: RuleThreshold;
@@ -31,6 +34,8 @@ export interface ServerRuleDetail {
 
 export interface ServerUpdatePayload {
   alarmRuleId: number;
+  metricCategory?: MetricCategory;
+  metricType?: Metric;
   aggregationType: Aggregation;
   enabled: boolean;
   levels: {
@@ -59,12 +64,13 @@ export default function AlarmRuleEditModal({
   const [enabled, setEnabled] = useState<boolean>(true);
   const [instanceName, setInstanceName] = useState<string>("");
   const [databaseName, setDatabaseName] = useState<string>("");
+  const [category, setCategory] = useState<MetricCategory>("vacuum");
   const [metric, setMetric] = useState<Metric>("dead_tuples");
   const [aggregation, setAggregation] = useState<Aggregation>("latest_avg");
   const [levels, setLevels] = useState<{
-    notice: RuleThreshold;
-    warn: RuleThreshold;    // 프론트 내부 키
-    danger: RuleThreshold;  // 프론트 내부 키
+    notice: RuleThreshold;// 프론트 내부 키
+    warn: RuleThreshold;    
+    danger: RuleThreshold;  
   }>({
     notice: { threshold: 0, minDurationMin: 0, occurCount: 0, windowMin: 1 },
     warn:   { threshold: 0, minDurationMin: 0, occurCount: 0, windowMin: 1 },
@@ -72,7 +78,38 @@ export default function AlarmRuleEditModal({
   });
 
   const overlayRef = useRef<HTMLDivElement>(null);
-  const firstFieldRef = useRef<HTMLSelectElement>(null);
+  const firstFieldRef = useRef<HTMLButtonElement>(null);
+  const categoryDropdownRef = useRef<HTMLDivElement>(null);
+  const metricDropdownRef = useRef<HTMLDivElement>(null);
+  const aggregationDropdownRef = useRef<HTMLDivElement>(null);
+  const [openDropdown, setOpenDropdown] = useState<"category" | "metric" | "aggregation" | null>(null);
+
+  // metricType으로부터 카테고리 찾기
+  const findCategoryByMetric = (metricType: Metric): MetricCategory => {
+    for (const [cat, metrics] of Object.entries(METRIC_BY_CATEGORY)) {
+      if (metrics.some((m) => m.value === metricType)) {
+        return cat as MetricCategory;
+      }
+    }
+    return "vacuum"; // 기본값
+  };
+
+  // 현재 카테고리의 지표 목록
+  const currentMetricOptions = useMemo(() => {
+    return METRIC_BY_CATEGORY[category] || [];
+  }, [category]);
+
+  const metricLabel = useMemo(() => {
+    return currentMetricOptions.find((opt) => opt.value === metric)?.label ?? metric;
+  }, [metric, currentMetricOptions]);
+
+  // 카테고리 변경 시 첫 번째 지표로 초기화
+  useEffect(() => {
+    const firstMetric = currentMetricOptions[0];
+    if (firstMetric && !currentMetricOptions.some((m) => m.value === metric)) {
+      setMetric(firstMetric.value);
+    }
+  }, [category, currentMetricOptions, metric]);
 
   // 규칙 상세 조회(JSONB levels 포함)
   useEffect(() => {
@@ -87,6 +124,8 @@ export default function AlarmRuleEditModal({
         setEnabled(detail.enabled ?? true);
         setInstanceName(detail.instanceName || "Unknown");
         setDatabaseName(detail.databaseName || "Unknown");
+        const detectedCategory = findCategoryByMetric(detail.metricType as Metric);
+        setCategory(detectedCategory);
         setMetric(detail.metricType as Metric);
         setAggregation(detail.aggregationType as Aggregation);
 
@@ -118,22 +157,46 @@ export default function AlarmRuleEditModal({
     return () => window.removeEventListener("keydown", onKey);
   }, [open, onClose]);
 
+  useEffect(() => {
+    if (!openDropdown) return;
+    const handleClick = (e: MouseEvent) => {
+      const refMap = {
+        category: categoryDropdownRef,
+        metric: metricDropdownRef,
+        aggregation: aggregationDropdownRef,
+      } as const;
+      const targetRef = refMap[openDropdown];
+      if (targetRef.current && !targetRef.current.contains(e.target as Node)) {
+        setOpenDropdown(null);
+      }
+    };
+    document.addEventListener("mousedown", handleClick, true);
+    return () => document.removeEventListener("mousedown", handleClick, true);
+  }, [openDropdown]);
+
   const handleOutside = (e: React.MouseEvent) => {
     if (e.target === overlayRef.current) onClose();
   };
 
-  const num = (v: string, fallback = 0) => {
-    const n = Number(String(v).replace(/[^0-9.-]/g, ""));
-    return Number.isFinite(n) ? n : fallback;
+  const parseNumeric = (v: string): number | null => {
+    const cleaned = String(v).replace(/[^0-9.-]/g, "").trim();
+    if (cleaned === "") return null;
+    const n = Number(cleaned);
+    return Number.isFinite(n) ? n : null;
   };
 
   const updateLevel = (key: keyof typeof levels, field: keyof RuleThreshold, value: string) => {
-    setLevels(prev => ({ ...prev, [key]: { ...prev[key], [field]: num(value) } }));
+    setLevels((prev) => ({
+      ...prev,
+      [key]: { ...prev[key], [field]: parseNumeric(value) },
+    }));
   };
 
   // 프론트 상태 → 서버(JSONB) 업데이트 페이로드
   const toServerUpdate = (): ServerUpdatePayload => ({
     alarmRuleId: ruleId!,
+    metricCategory: category,
+    metricType: metric,
     aggregationType: aggregation,
     enabled,
     levels: {
@@ -202,23 +265,170 @@ export default function AlarmRuleEditModal({
                 </div>
 
                 <div>
+                  <div className="ar-kicker">카테고리</div>
+                  <div
+                    className="dropdown-wrapper"
+                    ref={categoryDropdownRef}
+                    style={{ position: "relative" }}
+                  >
+                    <button
+                      ref={firstFieldRef}
+                      type="button"
+                      className="header-btn"
+                      onClick={() =>
+                        setOpenDropdown((prev) => (prev === "category" ? null : "category"))
+                      }
+                      style={{
+                        width: "100%",
+                        justifyContent: "space-between",
+                        padding: "10px 14px",
+                        fontWeight: 400,
+                      }}
+                    >
+                      <span className="header-btn-text" style={{ fontWeight: 400 }}>
+                        {CATEGORY_LABELS[category]}
+                      </span>
+                      <span className="dropdown-arrow">▼</span>
+                    </button>
+                    {openDropdown === "category" && (
+                      <div
+                        className="dropdown-menu"
+                        style={{
+                          position: "absolute",
+                          top: "calc(100% + 8px)",
+                          left: 0,
+                          width: "100%",
+                          zIndex: 20,
+                        }}
+                      >
+                        {Object.entries(CATEGORY_LABELS).map(([key, label]) => (
+                          <button
+                            key={key}
+                            className={`dropdown-item ${category === key ? "active" : ""}`}
+                            style={{ fontWeight: 400 }}
+                            onClick={() => {
+                              setCategory(key as MetricCategory);
+                              setOpenDropdown(null);
+                            }}
+                          >
+                            {label}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div>
                   <div className="ar-kicker">지표</div>
-                  <select ref={firstFieldRef} className="ar-select" value={metric} onChange={(e) => setMetric(e.target.value as Metric)} disabled={lockMetricInstanceOnEdit}>
-                    <option value="dead_tuples">Dead Tuples</option>
-                    <option value="bloat_pct">Bloat %</option>
-                    <option value="vacuum_backlog">Vacuum Backlog</option>
-                    <option value="wal_lag">WAL Lag</option>
-                  </select>
+                  <div
+                    className="dropdown-wrapper"
+                    ref={metricDropdownRef}
+                    style={{ position: "relative" }}
+                  >
+                    <button
+                      ref={firstFieldRef}
+                      type="button"
+                      className="header-btn"
+                      onClick={() => {
+                        setOpenDropdown((prev) => (prev === "metric" ? null : "metric"));
+                      }}
+                      style={{
+                        width: "100%",
+                        justifyContent: "space-between",
+                        padding: "10px 14px",
+                        fontWeight: 400,
+                      }}
+                    >
+                      <span className="header-btn-text" style={{ fontWeight: 400 }}>
+                        {metricLabel}
+                      </span>
+                      <span className="dropdown-arrow">▼</span>
+                    </button>
+                    {openDropdown === "metric" && (
+                      <div
+                        className="dropdown-menu"
+                        style={{
+                          position: "absolute",
+                          top: "calc(100% + 8px)",
+                          left: 0,
+                          width: "100%",
+                          zIndex: 20,
+                          maxHeight: "220px",
+                          overflowY: "auto",
+                        }}
+                      >
+                        {currentMetricOptions.map((opt) => (
+                          <button
+                            key={opt.value}
+                            className={`dropdown-item ${metric === opt.value ? "active" : ""}`}
+                            style={{ fontWeight: 400 }}
+                            onClick={() => {
+                              setMetric(opt.value);
+                              setOpenDropdown(null);
+                            }}
+                          >
+                            {opt.label}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </div>
 
                 <div>
                   <div className="ar-kicker">집계</div>
-                  <select className="ar-select" value={aggregation} onChange={(e) => setAggregation(e.target.value as Aggregation)}>
-                    <option value="latest_avg">Latest Average</option>
-                    <option value="avg_5m">Avg (5m)</option>
-                    <option value="avg_15m">Avg (15m)</option>
-                    <option value="p95_15m">P95 (15m)</option>
-                  </select>
+                  <div
+                    className="dropdown-wrapper"
+                    ref={aggregationDropdownRef}
+                    style={{ position: "relative" }}
+                  >
+                    <button
+                      type="button"
+                      className="header-btn"
+                      onClick={() =>
+                        setOpenDropdown((prev) => (prev === "aggregation" ? null : "aggregation"))
+                      }
+                      style={{
+                        width: "100%",
+                        justifyContent: "space-between",
+                        padding: "10px 14px",
+                        fontWeight: 400,
+                      }}
+                    >
+                      <span className="header-btn-text" style={{ fontWeight: 400 }}>
+                        {AGGREGATION_OPTIONS.find((opt) => opt.value === aggregation)?.label ??
+                          "집계 선택"}
+                      </span>
+                      <span className="dropdown-arrow">▼</span>
+                    </button>
+                    {openDropdown === "aggregation" && (
+                      <div
+                        className="dropdown-menu"
+                        style={{
+                          position: "absolute",
+                          top: "calc(100% + 8px)",
+                          left: 0,
+                          width: "100%",
+                          zIndex: 20,
+                        }}
+                      >
+                        {AGGREGATION_OPTIONS.map((opt) => (
+                          <button
+                            key={opt.value}
+                            className={`dropdown-item ${aggregation === opt.value ? "active" : ""}`}
+                            style={{ fontWeight: 400 }}
+                            onClick={() => {
+                              setAggregation(opt.value);
+                              setOpenDropdown(null);
+                            }}
+                          >
+                            {opt.label}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
 
@@ -237,13 +447,13 @@ export default function AlarmRuleEditModal({
                     <tr className="ar-row">
                       <td className="ar-td-strong">임계치</td>
                       <td><input className="ar-input" type="number" min={0} step={1}
-                            value={levels.notice.threshold}
+                            value={levels.notice.threshold ?? ""}
                             onChange={(e) => updateLevel("notice", "threshold", e.target.value)} /></td>
                       <td><input className="ar-input" type="number" min={0} step={1}
-                            value={levels.warn.threshold}
+                            value={levels.warn.threshold ?? ""}
                             onChange={(e) => updateLevel("warn", "threshold", e.target.value)} /></td>
                       <td><input className="ar-input" type="number" min={0} step={1}
-                            value={levels.danger.threshold}
+                            value={levels.danger.threshold ?? ""}
                             onChange={(e) => updateLevel("danger", "threshold", e.target.value)} /></td>
                       <td className="ar-right"></td>
                     </tr>
@@ -251,13 +461,13 @@ export default function AlarmRuleEditModal({
                     <tr className="ar-row">
                       <td className="ar-td-strong">지속 시간</td>
                       <td><input className="ar-input" type="number" min={0} step={1}
-                            value={levels.notice.minDurationMin}
+                            value={levels.notice.minDurationMin ?? ""}
                             onChange={(e) => updateLevel("notice", "minDurationMin", e.target.value)} /></td>
                       <td><input className="ar-input" type="number" min={0} step={1}
-                            value={levels.warn.minDurationMin}
+                            value={levels.warn.minDurationMin ?? ""}
                             onChange={(e) => updateLevel("warn", "minDurationMin", e.target.value)} /></td>
                       <td><input className="ar-input" type="number" min={0} step={1}
-                            value={levels.danger.minDurationMin}
+                            value={levels.danger.minDurationMin ?? ""}
                             onChange={(e) => updateLevel("danger", "minDurationMin", e.target.value)} /></td>
                       <td className="ar-right">분</td>
                     </tr>
@@ -265,13 +475,13 @@ export default function AlarmRuleEditModal({
                     <tr className="ar-row">
                       <td className="ar-td-strong">발생 횟수</td>
                       <td><input className="ar-input" type="number" min={0} step={1}
-                            value={levels.notice.occurCount}
+                            value={levels.notice.occurCount ?? ""}
                             onChange={(e) => updateLevel("notice", "occurCount", e.target.value)} /></td>
                       <td><input className="ar-input" type="number" min={0} step={1}
-                            value={levels.warn.occurCount}
+                            value={levels.warn.occurCount ?? ""}
                             onChange={(e) => updateLevel("warn", "occurCount", e.target.value)} /></td>
                       <td><input className="ar-input" type="number" min={0} step={1}
-                            value={levels.danger.occurCount}
+                            value={levels.danger.occurCount ?? ""}
                             onChange={(e) => updateLevel("danger", "occurCount", e.target.value)} /></td>
                       <td className="ar-right">회</td>
                     </tr>
@@ -279,13 +489,13 @@ export default function AlarmRuleEditModal({
                     <tr className="ar-row">
                       <td className="ar-td-strong">윈도우</td>
                       <td><input className="ar-input" type="number" min={1} step={1}
-                            value={levels.notice.windowMin}
+                            value={levels.notice.windowMin ?? ""}
                             onChange={(e) => updateLevel("notice", "windowMin", e.target.value)} /></td>
                       <td><input className="ar-input" type="number" min={1} step={1}
-                            value={levels.warn.windowMin}
+                            value={levels.warn.windowMin ?? ""}
                             onChange={(e) => updateLevel("warn", "windowMin", e.target.value)} /></td>
                       <td><input className="ar-input" type="number" min={1} step={1}
-                            value={levels.danger.windowMin}
+                            value={levels.danger.windowMin ?? ""}
                             onChange={(e) => updateLevel("danger", "windowMin", e.target.value)} /></td>
                       <td className="ar-right">분</td>
                     </tr>

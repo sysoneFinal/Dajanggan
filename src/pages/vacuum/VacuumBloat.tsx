@@ -61,6 +61,8 @@ const VacuumBloatPage: React.FC = () => {
         setError(null);
 
         const databaseId = selectedDatabase?.databaseId;
+        const instanceId = selectedInstance?.instanceId; 
+
 
         console.log('Fetching bloat dashboard...', {
           instanceId: selectedInstance.instanceId,
@@ -76,7 +78,10 @@ const VacuumBloatPage: React.FC = () => {
         }
 
         const res = await apiClient.get<DashboardResponse>("/vacuum/bloat/dashboard", {
-          params,
+          params: {
+            databaseId: databaseId,
+            instanceId: instanceId
+          },
           signal: ac.signal,
         });
 
