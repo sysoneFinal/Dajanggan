@@ -5,6 +5,14 @@ import Chart from "../../components/chart/ChartComponent";
 import "/src/styles/alarm/alarm-modal.css";
 import apiClient from "../../api/apiClient";
 import { useInstanceContext } from "../../context/InstanceContext";
+import {
+  CATEGORY_LABELS,
+  METRIC_BY_CATEGORY,
+  AGGREGATION_OPTIONS,
+  type MetricCategory,
+  type Metric,
+  type Aggregation,
+} from "./AlarmRuleModal";
 
 type RelatedItem = {
   type: "table" | "index" | "schema";
@@ -33,6 +41,9 @@ export type AlarmDetailData = {
     duration: string;
   };
   related: RelatedItem[];
+  category?: MetricCategory;
+  metricType?: Metric;
+  aggregationType?: Aggregation;
 };
 
 type AlarmListItem = {
@@ -68,6 +79,16 @@ export default function AlarmDetailModal({ open, onClose, onAcknowledge }: Props
       const res = await apiClient.get(`/alarms/feeds/${id}`);
       const detail = res.data; // 서버 DetailResponse (id, title, severity, occurredAt, ...)
 
+      // metricType으로부터 카테고리 찾기
+      const findCategoryByMetric = (metricType: string): MetricCategory | undefined => {
+        for (const [cat, metrics] of Object.entries(METRIC_BY_CATEGORY)) {
+          if (metrics.some((m) => m.value === metricType)) {
+            return cat as MetricCategory;
+          }
+        }
+        return undefined;
+      };
+
       const alarmDetail: AlarmDetailData = {
         id: detail.id,
         title: detail.title,
@@ -89,6 +110,13 @@ export default function AlarmDetailModal({ open, onClose, onAcknowledge }: Props
           metric: String(obj.metric ?? "N/A"),
           level: (obj.level ?? "정상") as RelatedItem["level"],
         })),
+        category: detail.metricCategory
+          ? (detail.metricCategory as MetricCategory)
+          : detail.metricType
+          ? findCategoryByMetric(detail.metricType)
+          : undefined,
+        metricType: detail.metricType as Metric | undefined,
+        aggregationType: detail.aggregationType as Aggregation | undefined,
       };
 
       setCurrentData(alarmDetail);
@@ -344,7 +372,35 @@ export default function AlarmDetailModal({ open, onClose, onAcknowledge }: Props
                 {/* 요약 & 버튼 */}
                 <aside className="am-side">
                   <div className="am-summary">
-                    <h4>요약</h4>
+                    <h4>규칙 정보</h4>
+                    <dl>
+                      {currentData.category && (
+                        <>
+                          <dt>카테고리</dt>
+                          <dd>{CATEGORY_LABELS[currentData.category]}</dd>
+                        </>
+                      )}
+                      {currentData.metricType && (
+                        <>
+                          <dt>지표</dt>
+                          <dd>
+                            {Object.values(METRIC_BY_CATEGORY)
+                              .flat()
+                              .find((m) => m.value === currentData.metricType)?.label ?? currentData.metricType}
+                          </dd>
+                        </>
+                      )}
+                      {currentData.aggregationType && (
+                        <>
+                          <dt>집계</dt>
+                          <dd>
+                            {AGGREGATION_OPTIONS.find((opt) => opt.value === currentData.aggregationType)?.label ??
+                              currentData.aggregationType}
+                          </dd>
+                        </>
+                      )}
+                    </dl>
+                    <h4 style={{ marginTop: "24px" }}>요약</h4>
                     <dl>
                       <dt>현재값</dt>
                       <dd>{String(currentData.summary.current)}</dd>

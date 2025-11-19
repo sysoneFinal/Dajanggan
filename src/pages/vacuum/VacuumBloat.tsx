@@ -61,6 +61,8 @@ const VacuumBloatPage: React.FC = () => {
         setError(null);
 
         const databaseId = selectedDatabase?.databaseId;
+        const instanceId = selectedInstance?.instanceId; 
+
 
         console.log('Fetching bloat dashboard...', {
           instanceId: selectedInstance.instanceId,
@@ -76,7 +78,10 @@ const VacuumBloatPage: React.FC = () => {
         }
 
         const res = await apiClient.get<DashboardResponse>("/vacuum/bloat/dashboard", {
-          params,
+          params: {
+            databaseId: databaseId,
+            instanceId: instanceId
+          },
           signal: ac.signal,
         });
 
@@ -359,17 +364,14 @@ const VacuumBloatPage: React.FC = () => {
             <SummaryCard
               label="Table Bloat 예상치"
               value={resp.kpi.tableBloat}
-              diff={0}
             />
             <SummaryCard
               label="Critical Tables"
               value={resp.kpi.criticalTable}
-              diff={0}
             />
             <SummaryCard
               label="Bloat 증가량"
               value={resp.kpi.bloatGrowth}
-              diff={0}
               desc="30d"
             />
           </div>

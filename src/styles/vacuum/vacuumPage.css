@@ -83,9 +83,10 @@
 /* 차트가 초기 0폭으로 렌더되는 걸 방지하는 안전장치 */
 .vd-chart2 {
   height: 520px; /* 예: 기본 380~400px 정도에서 줄이기 */
+  max-width: 1000px;
 }
 .vd-card.vd-chart { min-height: 260px; }
-.vd-card .apexcharts-canvas { min-height: 240px; width:100% !important; }
+.vd-card .apexcharts-canvas { min-height: 240px; width:100%  }
 
 @media (max-width: 1024px){ .vd-grid{ grid-template-columns:1fr; } }
 

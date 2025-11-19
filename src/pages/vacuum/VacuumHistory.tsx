@@ -37,7 +37,7 @@ type ApiHistoryRow = {
   lastAutovacuum: string;
   deadTuples: string;
   modSinceAnalyze: string;
-  bloatPct: string;
+  bloatRatio: string;
   frequency: string;
   status: string;
 };
@@ -61,7 +61,7 @@ function transformApiResponse(apiData: ApiHistoryRow[]): VacuumHistoryRow[] {
         status: row.status === "주의" ? "주의" : "정상",
         tuples: row.deadTuples,
         duration: "-",
-        bloatBefore: row.bloatPct,
+        bloatBefore: row.bloatRatio,
         bloatAfter: "-",
       });
     }
@@ -75,7 +75,7 @@ function transformApiResponse(apiData: ApiHistoryRow[]): VacuumHistoryRow[] {
         status: row.status === "주의" ? "주의" : "정상",
         tuples: row.deadTuples,
         duration: "-",
-        bloatBefore: row.bloatPct,
+        bloatBefore: row.bloatRatio,
         bloatAfter: "-",
       });
     }

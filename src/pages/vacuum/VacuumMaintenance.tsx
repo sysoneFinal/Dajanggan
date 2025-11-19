@@ -13,30 +13,22 @@ import "/src/styles/vacuum/VacuumPage.css";
 /* ---------- 타입 정의 ---------- */
 type VacuumSession = {
   tableName: string;
-  phase: "initializing" | "scanning" | "vacuuming" | "index_cleanup" | "truncating";
+  phase: string;
   deadTuples: string;
-  trigger: "autovacuum" | "manual";
+  trigger: string;
   elapsed: string;
-  progressSeries: number[];
-  // Detail에서 가져올 데이터
-  progressDetail?: {
-    scanned: number[];
-    vacuumed: number[];
-    deadRows: number[];
-    labels: string[];
-  };
 };
 
 type DashboardData = {
   deadtuple: { data: number[][]; labels: string[] };
   autovacuum: { data: number[][]; labels: string[] };
-  latency: { data: number[]; labels: string[] };
+  latency: { data: number[][]; labels: string[] };
   sessions: VacuumSession[];
-  Kpi: { 
-    avgDelay: number; 
-    avgDuration: number; 
-    totalDeadTuple: number; 
-    autovacuumWorker: number; 
+  kpi: { 
+    blockedSessions: number; 
+    avgRunningTime: number; 
+    totalDeadTuples: number; 
+    activeWorkers: string; 
   };
 };
 
@@ -60,23 +52,12 @@ type ApiResponse = {
     deadTuples: string;
     trigger: string;
     elapsed: string;
-    progressSeries: number[];
   }>;
   kpi: {
-    avgDelay: number;
-    avgDuration: number;
-    deadTupleTotal: number;
-    autovacuumWorker: number;
-  };
-};
-
-// VacuumDetail API 응답 타입
-type VacuumDetailResponse = {
-  progress: {
-    scanned: number[];
-    vacuumed: number[];
-    deadRows: number[];
-    labels: string[];
+    blockedSessions: number;
+    avgRunningTime: number;
+    totalDeadTuples: number;
+    activeWorkers: string;
   };
 };
 
@@ -84,30 +65,17 @@ type VacuumDetailResponse = {
 const emptyData: DashboardData = {
   deadtuple: { data: [[], []], labels: [] },
   autovacuum: { data: [[], []], labels: [] },
-  latency: { data: [], labels: [] },
+  latency: { data: [[]], labels: [] },
   sessions: [],
-  Kpi: {
-    avgDelay: 0,
-    avgDuration: 0,
-    totalDeadTuple: 0,
-    autovacuumWorker: 0,
+  kpi: {
+    blockedSessions: 0,
+    avgRunningTime: 0,
+    totalDeadTuples: 0,
+    activeWorkers: "0/3",
   }
 };
 
-/* ---------- 유틸리티 함수 ---------- */
-function formatNumber(num: number): string {
-  if (num >= 1000000) return `${(num / 1000000).toFixed(1)}M`;
-  if (num >= 1000) return `${(num / 1000).toFixed(1)}K`;
-  return num.toString();
-}
-
-function formatElapsed(seconds: number): string {
-  const hours = Math.floor(seconds / 3600);
-  const mins = Math.floor((seconds % 3600) / 60);
-  if (hours > 0) return `${hours}h ${mins}m`;
-  return `${mins}m`;
-}
-
+/* ---------- 데이터 변환 함수 ---------- */
 function transformApiResponse(apiData: ApiResponse): DashboardData {
   if (!apiData) {
     console.warn('API response is null or undefined');
@@ -124,68 +92,33 @@ function transformApiResponse(apiData: ApiResponse): DashboardData {
       labels: apiData.autovacuum?.labels || [],
     },
     latency: {
-      data: Array.isArray(apiData.latency?.data?.[0]) 
-        ? apiData.latency.data[0] 
-        : (apiData.latency?.data || []),
+      data: apiData.latency?.data || [[]],
       labels: apiData.latency?.labels || [],
     },
     sessions: (apiData.sessions || []).map(s => ({
       tableName: s.tableName,
-      phase: s.phase as any,
+      phase: s.phase,
       deadTuples: s.deadTuples,
-      trigger: s.trigger as any,
+      trigger: s.trigger,
       elapsed: s.elapsed,
-      progressSeries: s.progressSeries || [0],
     })),
-    Kpi: {
-      avgDelay: apiData.kpi?.avgDelay || 0,
-      avgDuration: apiData.kpi?.avgDuration || 0,
-      totalDeadTuple: apiData.kpi?.deadTupleTotal || 0,
-      autovacuumWorker: apiData.kpi?.autovacuumWorker || 0,
+    kpi: {
+      blockedSessions: apiData.kpi?.blockedSessions || 0,
+      avgRunningTime: apiData.kpi?.avgRunningTime || 0,
+      totalDeadTuples: apiData.kpi?.totalDeadTuples || 0,
+      activeWorkers: apiData.kpi?.activeWorkers || "0/3",
     },
   };
 }
 
-/* ---------- Progress 미니 차트 ---------- */
-function ProgressMini({ 
-  scanned, 
-  vacuumed, 
-  deadRows, 
-  labels 
-}: { 
-  scanned: number[]; 
-  vacuumed: number[]; 
-  deadRows: number[];
-  labels: string[];
-}) {
-  return (
-    <div className="vd-progress">
-      <div className="vd-progress__spark">
-        <Chart
-          type="line"
-          series={[
-            { name: "Heap Bytes Scanned", data: scanned },
-            { name: "Heap Bytes Vacuumed", data: vacuumed },
-            { name: "Dead Rows", data: deadRows },
-          ]}
-          categories={labels}
-          height={100}
-          width="360px"
-          showGrid={false}
-          showLegend={false}
-          showToolbar={false}
-          colors={["#6366F1", "#10B981", "#FBBF24"]}
-          customOptions={{
-            chart: { redrawOnParentResize: true, redrawOnWindowResize: true },
-            stroke: { curve: "smooth", width: 2 },
-            yaxis: { min: 0, labels: { show: false } },
-            xaxis: { labels: { show: false }, axisBorder: { show: false }, axisTicks: { show: false } },
-            tooltip: { enabled: true },
-          }}
-        />
-      </div>
-    </div>
-  );
+/* ---------- Dead Tuple 포맷팅 함수 ---------- */
+function formatDeadTuples(count: number): string {
+  if (count >= 1_000_000) {
+    return (count / 1_000_000).toFixed(2) + "M";
+  } else if (count >= 1_000) {
+    return (count / 1_000).toFixed(1) + "K";
+  }
+  return count.toString();
 }
 
 /* ---------- 메인 페이지 ---------- */
@@ -196,10 +129,10 @@ export default function VacuumPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // API 호출 - Instance/Database 변경 시마다 다시 호출
+  // API 호출
   useEffect(() => {
     const fetchData = async () => {
-      if (!selectedInstance) {
+      if (!selectedInstance || !selectedDatabase) {
         setData(emptyData);
         setLoading(false);
         setError(null);
@@ -210,17 +143,23 @@ export default function VacuumPage() {
         setLoading(true);
         setError(null);
         
+        const databaseId = selectedDatabase.databaseId;
         const instanceId = selectedInstance.instanceId;
-        const databaseId = selectedDatabase?.databaseId;
 
-        console.log('Fetching vacuum dashboard data...', { instanceId, databaseId });
+        console.log('Fetching vacuum dashboard data...', { 
+          instanceId, 
+          instanceName: selectedInstance.instanceName,
+          databaseId,
+          databaseName: selectedDatabase.databaseName 
+        });
         
-        const params: any = { 
-          hours: 100,
-          databaseId: databaseId
-        };
-
-        const response = await apiClient.get<ApiResponse>('/vacuum/dashboard', { params });
+        const response = await apiClient.get<ApiResponse>('/vacuum/dashboard', { 
+          params: { 
+            hours: 24,
+            databaseId: databaseId,
+            instanceId: instanceId
+          }
+        });
         
         console.log('API Response:', response.data);
         
@@ -229,12 +168,13 @@ export default function VacuumPage() {
         
         setData(transformedData);
 
-        // 각 세션의 Detail 데이터를 비동기로 가져오기
-        if (transformedData.sessions.length > 0 && databaseId) {
-          fetchSessionDetails(transformedData.sessions, databaseId);
-        }
       } catch (err: any) {
         console.error('Failed to fetch vacuum dashboard:', err);
+        console.error('Error details:', {
+          message: err.message,
+          response: err.response?.data,
+          status: err.response?.status
+        });
         setError(err.response?.data?.message || err.message || 'Failed to load data');
         setData(emptyData);
       } finally {
@@ -246,55 +186,16 @@ export default function VacuumPage() {
     
   }, [selectedInstance, selectedDatabase]);
 
-  // 각 세션의 Detail Progress 데이터 가져오기
-  const fetchSessionDetails = async (sessions: VacuumSession[], databaseId: number) => {
-    try {
-      const detailPromises = sessions.map(async (session) => {
-        try {
-          const response = await apiClient.get<VacuumDetailResponse>('/vacuum/detail', {
-            params: {
-              databaseId: databaseId,
-              tableName: session.tableName
-            }
-          });
-          
-          return {
-            tableName: session.tableName,
-            progressDetail: response.data.progress
-          };
-        } catch (err) {
-          console.warn(`Failed to fetch detail for ${session.tableName}:`, err);
-          return {
-            tableName: session.tableName,
-            progressDetail: undefined
-          };
-        }
-      });
-
-      const details = await Promise.all(detailPromises);
-
-      // 기존 sessions 데이터에 progressDetail 추가
-      setData(prevData => ({
-        ...prevData,
-        sessions: prevData.sessions.map(session => {
-          const detail = details.find(d => d.tableName === session.tableName);
-          return {
-            ...session,
-            progressDetail: detail?.progressDetail
-          };
-        })
-      }));
-    } catch (err) {
-      console.error('Failed to fetch session details:', err);
-    }
-  };
-
   const handleRowClick = (tableName: string) => {
     navigate("/database/vacuum/detail", {
-      state: { tableName },
+      state: { 
+        tableName,
+        databaseId: selectedDatabase?.databaseId 
+      },
     });
   };
 
+  // 차트 시리즈 데이터
   const deadtupleSeries = useMemo(
     () => [
       { name: "Dead Tuple 증가 속도", data: data.deadtuple.data[0] || [] },
@@ -312,11 +213,16 @@ export default function VacuumPage() {
   );
 
   const latencySeries = useMemo(
-    () => [{ name: "latency", data: data.latency.data }],
+    () => [
+      { 
+        name: "평균 지연 시간", 
+        data: data.latency.data[0] || [] 
+      }
+    ],
     [data.latency.data]
   );
   
- // Instance나 Database가 선택되지 않은 경우
+  // Instance나 Database가 선택되지 않은 경우
   if (!selectedInstance || !selectedDatabase) {
     return (
       <div className="vd-root">
@@ -351,9 +257,10 @@ export default function VacuumPage() {
             Failed to load vacuum dashboard
           </p>
           <p style={{ fontSize: '14px', marginTop: '8px', color: '#9CA3AF' }}>{error}</p>
-          <p style={{ fontSize: '12px', marginTop: '16px', color: '#6B7280' }}>
+          <p style={{ fontSize: '12px', marginTop: '16px', color: '#7F1D1D' }}>
             Instance: {selectedInstance.instanceName}
-            {selectedDatabase && ` / Database: ${selectedDatabase.databaseName}`}
+            {' / '}
+            Database: {selectedDatabase.databaseName}
           </p>
         </div>
       </div>
@@ -362,32 +269,34 @@ export default function VacuumPage() {
 
   return (
     <div className="vd-root">
+      {/* KPI 카드 */}
       <div className="vd-grid2">
         <SummaryCard
-          label="평균 지연시간"
-          value={Number(data.Kpi.avgDelay.toFixed(2))}
+          label="Blocked Sessions"
+          value={data.kpi.blockedSessions}
+          desc="개 • 24h"
+        />
+
+        <SummaryCard
+          label="Avg Running Time"
+          value={Number(data.kpi.avgRunningTime.toFixed(2))}
           desc="seconds • 24h"
         />
 
         <SummaryCard
-          label="Average Duration"
-          value={Number(data.Kpi.avgDuration.toFixed(2))}
-          desc="seconds • 24h"
+          label="Total Dead Tuples"
+          value={formatDeadTuples(data.kpi.totalDeadTuples)}
+          desc="• 24h"
         />
 
         <SummaryCard
-          label="Dead Tuples 처리량"
-          value={Number(data.Kpi.totalDeadTuple.toFixed(2))}
-          desc="M • 24h"
-        />
-
-        <SummaryCard
-          label="Auto Vacuum Worker 활동률"
-          value={Math.round(data.Kpi.autovacuumWorker)}
-          desc="%"
+          label="Active Workers"
+          value={data.kpi.activeWorkers}
+          desc=""
         />
       </div>
 
+      {/* 차트 섹션 */}
       <ChartGridLayout>
         <WidgetCard title="Vacuum deadtuple (rows/sec • 24h)" span={4}>
           <Chart
@@ -403,12 +312,13 @@ export default function VacuumPage() {
                 labels: { style: { colors: "#9CA3AF" } },
                 axisBorder: { show: false },
                 axisTicks: { show: false },
-                categories: data.deadtuple.labels,
               },
-              yaxis: { title: { text: "rows/sec" },
-              labels: {
-                    formatter: (value: number) => value.toFixed(2)
-                  } },
+              yaxis: { 
+                title: { text: "rows/sec" },
+                labels: {
+                  formatter: (value: number) => value.toFixed(2)
+                }
+              },
             }}
           />
         </WidgetCard>
@@ -425,15 +335,19 @@ export default function VacuumPage() {
               grid: { borderColor: "#E5E7EB", strokeDashArray: 4 },
               markers: { size: 0 },
               yaxis: [
-                { title: { text: "Cost Delay (ms)" }, 
+                { 
+                  title: { text: "Cost Delay (ms)" }, 
                   labels: {
                     formatter: (value: number) => value.toFixed(2)
                   }
                 },
-                { title: { text: "Active Workers" }, opposite: true, decimalsInFloat: 0 },
+                { 
+                  title: { text: "Active Workers" }, 
+                  opposite: true, 
+                  decimalsInFloat: 0 
+                },
               ],
             }}
-            tooltipFormatter={(v) => `${Math.round(v).toLocaleString()}`}
           />
         </WidgetCard>
 
@@ -448,13 +362,13 @@ export default function VacuumPage() {
               stroke: { width: 2, curve: "smooth" },
               grid: { borderColor: "#E5E7EB", strokeDashArray: 4 },
               markers: { size: 4 },
-              yaxis: { min: 0,
+              yaxis: { 
+                min: 0,
                 labels: {
                   formatter: (value: number) => value.toFixed(2)
                 }
-               },
+              },
             }}
-            tooltipFormatter={(v) => `${Math.round(v).toLocaleString()}`}
           />
         </WidgetCard>
       </ChartGridLayout>
@@ -463,14 +377,12 @@ export default function VacuumPage() {
       <section className="vd-card">
         <header className="vd-card__header">
           <h3>Current VACUUM Sessions</h3>
-          {loading && <span style={{ fontSize: '12px', color: '#6B7280' }}>Loading...</span>}
         </header>
         <div className="vd-tablewrap" style={{ height: "500px" }}>
           <table className="vd-table">
             <thead>
               <tr>
                 <th>TABLE</th>
-                <th>PROGRESS</th>
                 <th>작업 단계</th>
                 <th>DEAD TUPLES</th>
                 <th>TRIGGER</th>
@@ -480,29 +392,25 @@ export default function VacuumPage() {
             <tbody>
               {data.sessions.length === 0 ? (
                 <tr>
-                  <td colSpan={6} style={{ textAlign: 'center', padding: '40px', color: '#9CA3AF' }}>
+                  <td colSpan={5} style={{ textAlign: 'center', padding: '40px', color: '#9CA3AF' }}>
                     No active vacuum sessions
                   </td>
                 </tr>
               ) : (
                 data.sessions.map((s, idx) => (
-                  <tr key={`${s.tableName}-${idx}`} onClick={() => handleRowClick(s.tableName)}>
+                  <tr 
+                    key={`${s.tableName}-${idx}`} 
+                    onClick={() => handleRowClick(s.tableName)}
+                    style={{ cursor: 'pointer' }}
+                  >
                     <td className="vd-td-strong">{s.tableName}</td>
-                    <td>
-                      {s.progressDetail ? (
-                        <ProgressMini 
-                          scanned={s.progressDetail.scanned}
-                          vacuumed={s.progressDetail.vacuumed}
-                          deadRows={s.progressDetail.deadRows}
-                          labels={s.progressDetail.labels}
-                        />
-                      ) : (
-                        <div style={{ fontSize: '12px', color: '#9CA3AF' }}>Loading...</div>
-                      )}
-                    </td>
                     <td>{s.phase}</td>
                     <td>{s.deadTuples}</td>
-                    <td>{s.trigger}</td>
+                    <td>
+                      <span className={`badge badge-${s.trigger === 'autovacuum' ? 'auto' : 'manual'}`}>
+                        {s.trigger}
+                      </span>
+                    </td>
                     <td>{s.elapsed}</td>
                   </tr>
                 ))

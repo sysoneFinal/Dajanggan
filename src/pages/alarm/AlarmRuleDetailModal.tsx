@@ -2,15 +2,20 @@ import React, { useEffect, useRef, useState } from "react";
 import "/src/styles/alarm/alarm-rule.css";
 import "/src/styles/alarm/alarm-modal-root.css";
 import apiClient from "../../api/apiClient";
-
-export type Metric = "dead_tuples" | "bloat_pct" | "vacuum_backlog" | "wal_lag";
-export type Aggregation = "latest_avg" | "avg_5m" | "avg_15m" | "p95_15m";
+import {
+  CATEGORY_LABELS,
+  METRIC_BY_CATEGORY,
+  AGGREGATION_OPTIONS,
+  type Metric,
+  type Aggregation,
+  type MetricCategory,
+} from "./AlarmRuleModal";
 
 export interface RuleThreshold {
-  threshold: number;
-  minDurationMin: number;
-  occurCount: number;
-  windowMin: number;
+  threshold: number | null;
+  minDurationMin: number | null;
+  occurCount: number | null;
+  windowMin: number | null;
 }
 
 export default function AlarmRuleDetailModal({
@@ -28,19 +33,50 @@ export default function AlarmRuleDetailModal({
   const [enabled, setEnabled] = useState<boolean>(true);
   const [instanceName, setInstanceName] = useState<string>("");
   const [databaseName, setDatabaseName] = useState<string>("");
-  const [metric, setMetric] = useState<Metric>("dead_tuples");
-  const [aggregation, setAggregation] = useState<Aggregation>("latest_avg");
+  const [category, setCategory] = useState<MetricCategory | null>(null);
+  const [metric, setMetric] = useState<Metric | null>(null);
+  const [aggregation, setAggregation] = useState<Aggregation | null>(null);
+  const emptyLevel: RuleThreshold = { threshold: null, minDurationMin: null, occurCount: null, windowMin: null };
+
   const [levels, setLevels] = useState<{
     notice: RuleThreshold;
     warning: RuleThreshold;
     critical: RuleThreshold;
   }>({
-    notice: { threshold: 0, minDurationMin: 0, occurCount: 0, windowMin: 0 },
-    warning: { threshold: 0, minDurationMin: 0, occurCount: 0, windowMin: 0 },
-    critical: { threshold: 0, minDurationMin: 0, occurCount: 0, windowMin: 0 },
+    notice: { ...emptyLevel },
+    warning: { ...emptyLevel },
+    critical: { ...emptyLevel },
   });
 
   const overlayRef = useRef<HTMLDivElement>(null);
+
+  const formatValue = (value: number | null, useLocale = false) => {
+    if (value === null || value === undefined) return "-";
+    return useLocale ? value.toLocaleString() : value;
+  };
+
+  // metricType으로부터 카테고리 찾기
+  const findCategoryByMetric = (metricType: string): MetricCategory | null => {
+    for (const [cat, metrics] of Object.entries(METRIC_BY_CATEGORY)) {
+      if (metrics.some((m) => m.value === metricType)) {
+        return cat as MetricCategory;
+      }
+    }
+    return null;
+  };
+
+  // 지표 라벨 가져오기
+  const getMetricLabel = (metricType: Metric | null): string => {
+    if (!metricType) return "-";
+    const allMetrics = Object.values(METRIC_BY_CATEGORY).flat();
+    return allMetrics.find((m) => m.value === metricType)?.label ?? metricType;
+  };
+
+  // 집계 라벨 가져오기
+  const getAggregationLabel = (aggType: Aggregation | null): string => {
+    if (!aggType) return "-";
+    return AGGREGATION_OPTIONS.find((opt) => opt.value === aggType)?.label ?? aggType;
+  };
 
   // 규칙 상세 조회
   useEffect(() => {
@@ -61,15 +97,24 @@ export default function AlarmRuleDetailModal({
         setEnabled(detail.enabled ?? true);
         setInstanceName(detail.instanceName || "Unknown");
         setDatabaseName(detail.databaseName || "Unknown");
-        setMetric(detail.metricType as Metric);
+        const metricType = detail.metricType as Metric;
+        setMetric(metricType);
         setAggregation(detail.aggregationType as Aggregation);
+        
+        // 카테고리 찾기
+        const detectedCategory = detail.metricCategory
+          ? (detail.metricCategory as MetricCategory)
+          : metricType
+          ? findCategoryByMetric(metricType)
+          : null;
+        setCategory(detectedCategory);
         
         // levels 매핑
         if (detail.levels) {
           setLevels({
-            notice: detail.levels.notice || { threshold: 0, minDurationMin: 0, occurCount: 0, windowMin: 0 },
-            warning: detail.levels.warning || { threshold: 0, minDurationMin: 0, occurCount: 0, windowMin: 0 },
-            critical: detail.levels.critical || { threshold: 0, minDurationMin: 0, occurCount: 0, windowMin: 0 },
+            notice: detail.levels.notice || { ...emptyLevel },
+            warning: detail.levels.warning || { ...emptyLevel },
+            critical: detail.levels.critical || { ...emptyLevel },
           });
         }
       } catch (e: any) {
@@ -103,26 +148,6 @@ export default function AlarmRuleDetailModal({
     if (onEdit && ruleId) {
       onEdit(ruleId);
     }
-  };
-
-  const getMetricLabel = (metric: Metric) => {
-    const labels: Record<Metric, string> = {
-      dead_tuples: "Dead Tuples",
-      bloat_pct: "Bloat %",
-      vacuum_backlog: "Vacuum Backlog",
-      wal_lag: "WAL Lag"
-    };
-    return labels[metric];
-  };
-
-  const getAggregationLabel = (agg: Aggregation) => {
-    const labels: Record<Aggregation, string> = {
-      latest_avg: "Latest Average",
-      avg_5m: "Avg (5m)",
-      avg_15m: "Avg (15m)",
-      p95_15m: "P95 (15m)"
-    };
-    return labels[agg];
   };
 
   if (!open) return null;
@@ -167,6 +192,15 @@ export default function AlarmRuleDetailModal({
                   </div>
                 </div>
 
+                {category && (
+                  <div>
+                    <div className="ar-kicker">카테고리</div>
+                    <div className="ar-select" style={{ backgroundColor: '#F9FAFB', padding: '10px 12px', border: '1px solid #E5E7EB', borderRadius: '6px' }}>
+                      {CATEGORY_LABELS[category]}
+                    </div>
+                  </div>
+                )}
+
                 <div>
                   <div className="ar-kicker">지표</div>
                   <div className="ar-select" style={{ backgroundColor: '#F9FAFB', padding: '10px 12px', border: '1px solid #E5E7EB', borderRadius: '6px' }}>
@@ -196,33 +230,33 @@ export default function AlarmRuleDetailModal({
                   <tbody>
                     <tr className="ar-row">
                       <td className="ar-td-strong">임계치</td>
-                      <td>{levels.notice.threshold.toLocaleString()}</td>
-                      <td>{levels.warning.threshold.toLocaleString()}</td>
-                      <td>{levels.critical.threshold.toLocaleString()}</td>
+                      <td>{formatValue(levels.notice.threshold, true)}</td>
+                      <td>{formatValue(levels.warning.threshold, true)}</td>
+                      <td>{formatValue(levels.critical.threshold, true)}</td>
                       <td className="ar-right"></td>
                     </tr>
 
                     <tr className="ar-row">
                       <td className="ar-td-strong">지속 시간</td>
-                      <td>{levels.notice.minDurationMin}</td>
-                      <td>{levels.warning.minDurationMin}</td>
-                      <td>{levels.critical.minDurationMin}</td>
+                      <td>{formatValue(levels.notice.minDurationMin)}</td>
+                      <td>{formatValue(levels.warning.minDurationMin)}</td>
+                      <td>{formatValue(levels.critical.minDurationMin)}</td>
                       <td className="ar-right">분</td>
                     </tr>
 
                     <tr className="ar-row">
                       <td className="ar-td-strong">발생 횟수</td>
-                      <td>{levels.notice.occurCount}</td>
-                      <td>{levels.warning.occurCount}</td>
-                      <td>{levels.critical.occurCount}</td>
+                      <td>{formatValue(levels.notice.occurCount)}</td>
+                      <td>{formatValue(levels.warning.occurCount)}</td>
+                      <td>{formatValue(levels.critical.occurCount)}</td>
                       <td className="ar-right">회</td>
                     </tr>
 
                     <tr className="ar-row">
                       <td className="ar-td-strong">윈도우</td>
-                      <td>{levels.notice.windowMin}</td>
-                      <td>{levels.warning.windowMin}</td>
-                      <td>{levels.critical.windowMin}</td>
+                      <td>{formatValue(levels.notice.windowMin)}</td>
+                      <td>{formatValue(levels.warning.windowMin)}</td>
+                      <td>{formatValue(levels.critical.windowMin)}</td>
                       <td className="ar-right">분</td>
                     </tr>
                   </tbody>
