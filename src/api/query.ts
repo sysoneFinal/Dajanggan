@@ -8,6 +8,12 @@ import type { AxiosResponse } from 'axios';
  * @author 이해든
  */
 
+export const getRecentQueryMetrics = (databaseId: number, minutes: number = 5) => {
+  return apiClient.get('/api/query-metrics/recent', {
+    params: { databaseId, minutes }
+  });
+};
+
 /* ---------- 타입 정의 ---------- */
 export interface QueryMetricsRawDto {
   queryMetricId: number;
@@ -42,6 +48,39 @@ export interface ApiResponse<T> {
   totalCount?: number;
   thresholdMs?: number;
   limit?: number;
+}
+
+/**
+ * EXPLAIN ANALYZE 요청 DTO
+ */
+export interface ExplainAnalyzeRequest {
+  databaseId: number;
+  query: string;
+}
+
+/**
+ * EXPLAIN ANALYZE 응답 DTO
+ */
+export interface ExplainAnalyzeResult {
+  explainPlan: string;
+  executionMode: string;
+  executionTimeMs: number | null;
+  planningTimeMs: number | null;
+}
+
+/**
+ * 🆕 쿼리 실행 통계 DTO
+ */
+export interface QueryExecutionStatDto {
+  queryHash: string;           // 쿼리 고유 ID (MD5)
+  shortQuery: string;          // 짧은 쿼리문
+  fullQuery: string;           // 전체 쿼리문
+  executionCount: number;      // 실행 횟수
+  avgTimeMs: number;           // 평균 실행 시간 (ms)
+  totalTimeMs: number;         // 총 실행 시간 (ms)
+  callCount: number;           // 호출 수
+  queryType: string;           // 쿼리 타입
+  lastExecutedAt: string;      // 마지막 실행 시간
 }
 
 /* ---------- API 함수들 ---------- */
@@ -128,6 +167,33 @@ export const getTotalCount = async (): Promise<AxiosResponse<ApiResponse<number>
   return apiClient.get('/query-metrics/count');
 };
 
+/**
+ * 🆕 ExecutionStatus용 쿼리별 집계 통계
+ * GET /query-metrics/execution-stats?databaseId={databaseId}&days={days}
+ */
+export const getExecutionStats = async (
+  databaseId: number,
+  days: number = 1
+): Promise<AxiosResponse<ApiResponse<QueryExecutionStatDto[]>>> => {
+  return apiClient.get('/query-metrics/execution-stats', {
+    params: { databaseId, days }
+  });
+};
+
+/**
+ * EXPLAIN ANALYZE 실행
+ * POST /query-metrics/explain-analyze
+ */
+export const postExplainAnalyze = async (
+  databaseId: number, 
+  query: string
+): Promise<AxiosResponse<ApiResponse<ExplainAnalyzeResult>>> => {
+  return apiClient.post('/query-metrics/explain-analyze', {
+    databaseId,
+    query
+  });
+};
+
 /* ---------- Helper 함수들 ---------- */
 
 /**
@@ -138,7 +204,7 @@ export const msToSeconds = (ms: number | string): number => {
 };
 
 /**
- * 날짜 포맷팅 (한국어)
+ * 날짜 포맷팅 
  */
 export const formatDate = (dateString: string): string => {
   const date = new Date(dateString);
@@ -179,4 +245,69 @@ export const isModifyingQuery = (queryText: string): boolean => {
   return upperQuery.startsWith('UPDATE') || 
          upperQuery.startsWith('INSERT') || 
          upperQuery.startsWith('DELETE');
+};
+
+/* ---------- 집계 API (1분/5분) ---------- */
+
+/**
+ * 요약 데이터 조회 (집계 테이블 사용)
+ * GET /api/query-agg-1m/summary
+ */
+export interface QuerySummaryDto {
+  instanceId: number;
+  databaseId: number;
+  totalQueries: number;
+  avgExecutionTimeMs: number;
+  slowQueryCount: number;
+  currentTps: number;
+  currentQps: number;
+  activeSessions: number;
+  selectCount: number;
+  insertCount: number;
+  updateCount: number;
+  deleteCount: number;
+  timeRange: string;
+  createdAt?: string;
+}
+
+export const getQuerySummary = async (
+  instanceId: number,
+  databaseId: number
+): Promise<AxiosResponse<ApiResponse<QuerySummaryDto>>> => {
+  return apiClient.get(`/query-agg-1m/summary`, {
+    params: { instanceId, databaseId }
+  });
+};
+
+/**
+ * 트렌드 데이터 조회 (집계 테이블 사용)
+ * GET /api/query-agg-1m/trend
+ */
+export interface TrendDataPoint {
+  timestamp: string;
+  tps: number;
+  qps: number;
+  avgExecutionTimeMs: number;
+  totalQueries: number;
+  slowQueryCount: number;
+}
+
+export interface QueryOverviewTrendDto {
+  instanceId: number;
+  databaseId: number;
+  trendData: TrendDataPoint[];
+  totalDataPoints: number;
+  avgTps: number;
+  avgQps: number;
+  avgExecutionTimeMs: number;
+}
+
+export const getQueryTrend = async (
+  instanceId: number,
+  databaseId: number,
+  hours: number = 12
+): Promise<AxiosResponse<ApiResponse<QueryOverviewTrendDto>>> => {
+  return apiClient.get(`/query-agg-1m/trend`, {
+    params: { instanceId, databaseId, hours }
+  });
 };
