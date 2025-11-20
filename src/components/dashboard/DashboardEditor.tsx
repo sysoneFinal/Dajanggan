@@ -52,7 +52,6 @@ const { metricMap } = useDashboard();
     console.log("📊 metricMap keys:", Object.keys(metricMap));
     if (Object.keys(metricMap).length > 0) {
       const firstKey = Object.keys(metricMap)[0];
-      console.log("🔍 첫 번째 지표 예시:", firstKey, metricMap[firstKey]);
     }
   }, [metricMap]);
 
@@ -90,22 +89,19 @@ const { metricMap } = useDashboard();
    * Metric 선택 → Chart 옵션 표시
    *  */
   const handleMetricChange = (metricKey: string) => {
-    console.log("🔍 handleMetricChange 호출:", metricKey);
-    console.log("📊 metricMap:", metricMap);
     setSelectedMetric(metricKey);
     const info = metricMap[metricKey];
     console.log("📋 선택된 지표 정보:", info);
     
     if (!info) {
-      console.warn("⚠️ metricMap에서 정보를 찾을 수 없음:", metricKey);
+      console.warn("metricMap에서 정보를 찾을 수 없음:", metricKey);
       return;
     }
 
     const charts = info.available_charts ?? [];
-    console.log("📈 available_charts:", charts);
     setAvailableCharts(charts);
     setSelectedChart(info.default_chart || charts[0] || "");
-    console.log("✅ 설정된 차트:", info.default_chart || charts[0] || "");
+    console.log("설정된 차트:", info.default_chart || charts[0] || "");
   };
 
   /* 
@@ -114,10 +110,6 @@ const { metricMap } = useDashboard();
   const visibleCharts = availableCharts.length
     ? chartTypes.filter((chart) => availableCharts.includes(chart.id))
     : [];
-  
-  console.log("🎨 visibleCharts:", visibleCharts);
-  console.log("📊 availableCharts:", availableCharts);
-  console.log("🔧 chartTypes ids:", chartTypes.map(c => c.id));
   
   const selectedChartData = chartTypes.find((chart) => chart.id === selectedChart);
   const isCustom = currentTheme === "custom";
@@ -147,15 +139,10 @@ const { metricMap } = useDashboard();
       instanceId: selectedInstance?.instanceId ?? null,
     };
 
-    console.log("📦 드래그 전송 데이터:", payload);
+    console.log(">>>> 드래그 전송 데이터:", payload);
     e.dataTransfer.effectAllowed = "copy";
     e.dataTransfer.setData("application/json", JSON.stringify(payload));
   };
-
-//   const metricOptions = Object.entries(metricMap).map(([key, value]) => ({
-//   value: key,  
-//   label: value.title  
-// }));
 
   /* 
    * 렌더링
@@ -220,31 +207,19 @@ const { metricMap } = useDashboard();
           <MultiSelectDropdown
             label="Select Metric"
             options={Object.entries(metricMap).map(([key, value]: [string, any]) => {
-              // key와 title을 함께 표시하여 어떤 데이터인지 확인
-              console.log(`📋 드롭다운 옵션 생성 - key: ${key}, title: ${value.title}, available_charts:`, value.available_charts);
+            
               return value.title;
             })}
-            onChange={(value) => {
-              console.log("🎯 Metric 드롭다운 onChange 호출됨!");
-              console.log("📝 선택된 value (title):", value);
-              console.log("🗺️ metricMap 전체:", metricMap);
-              console.log("🗺️ metricMap keys (category.name 형태):", Object.keys(metricMap));
-              
+            onChange={(value) => {              
               // metricMap의 모든 항목 상세 정보 출력
               Object.entries(metricMap).forEach(([key, val]: [string, any]) => {
-                console.log(`  - key: ${key}, title: ${val.title}, available_charts:`, val.available_charts);
               });
               
-              const key = Object.entries(metricMap).find(([_, v]) => v.title === value)?.[0];
-              console.log("🔑 찾은 key:", key);
-              
+              const key = Object.entries(metricMap).find(([_, v]) => v.title === value)?.[0];              
               if (key) {
-                console.log("✅ key를 찾았습니다. handleMetricChange 호출");
                 handleMetricChange(key);
               } else {
-                console.warn("⚠️ metricMap에서 key를 찾을 수 없음!");
-                console.warn("⚠️ 찾으려는 value:", value);
-                console.warn("⚠️ metricMap의 모든 title들:", Object.values(metricMap).map((m: any) => m.title));
+                console.warn("metricMap에서 key를 찾을 수 없음!");
               }
             }}
             multi={false}

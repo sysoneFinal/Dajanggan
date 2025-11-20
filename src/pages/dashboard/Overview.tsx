@@ -14,8 +14,6 @@ import { useInstanceContext } from "../../context/InstanceContext";
 import { intervalToMs } from "../../utils/time";
 import { useLoader } from "../../context/LoaderContext";
 
-
-
 const ResponsiveGridLayout = WidthProvider(Responsive);
 
 const normalizeLayout = (layout: Layout[]) =>
@@ -31,9 +29,6 @@ export default function OverviewPage() {
   const [isDragOver, setIsDragOver] = useState(false);
   const { showLoader, hideLoader } = useLoader();
   
-
-  // 새로고침 주기를 밀리초로 변환
-  const refreshMs = intervalToMs(refreshInterval);
 
   /** === 대시보드 조회 (React Query로 자동 새로고침) === */
   
@@ -51,7 +46,8 @@ export default function OverviewPage() {
       console.log('API 호출 완료:', new Date().toLocaleTimeString(), res.data);
       return res.data;
     },
-    refetchInterval: refreshMs, // 헤더에서 선택한 주기로 자동 갱신
+    refetchInterval: isEditing ? false : intervalToMs(refreshInterval), // 편집 모드면 새로고침 중단
+    refetchIntervalInBackground: false,
     enabled: !!selectedInstance?.instanceId,
   });
 
@@ -114,7 +110,7 @@ export default function OverviewPage() {
       setIsEditing(true);
     } else if (id === "card_7_layout" || id === "card_9_layout") {
       selectedLayout = (theme?.layout as DashboardLayout[]) ?? [];
-      setIsEditing(false);
+      setIsEditing(true);
     } else {
       selectedLayout = defaultThemes.default.layout ?? [];
       setIsEditing(false);
