@@ -11,141 +11,96 @@ import {
 } from "@tanstack/react-table";
 import Pagination from "../../components/util/Pagination";
 import CsvButton from "../../components/util/CsvButton";
-import "../../styles/system/disklist.css";
+import MultiSelectDropdown from "../../components/util/MultiSelectDropdown";
+import "../../styles/system/cpulist.css";
 import apiClient from "../../api/apiClient";
 import {useQuery} from "@tanstack/react-query";
 import { useInstanceContext } from "../../context/InstanceContext";
 
-interface DiskIOData {
-    id: string;
-    processType: string;
-    totalIO: number;
-    readRate: number;
-    writeRate: number;
-    readMBs: number;
-    writeMBs: number;
-    throughputMBs: number;
-    fsyncRate: number;
-    evictionRate: number;
-    extendRate: number;
-    hitRatio: number;
-    avgQueueDepth: number;
-    avgLatency: number;
-    readPercent: number;
-    writePercent: number;
-    status: "정상" | "주의" | "위험";
+// 낮은 Cache Hit Ratio 시간대 데이터 타입
+interface LowCacheHitItem {
+    collectedAt: string;
+    bufferHitRatio: number;
+    physicalReads: number;
+    cacheHits: number;
+    status: string;
+    backendType: string;
+    databaseName: string;
 }
 
-interface DiskIOListResponse {
-    data: DiskIOData[];
-    total: number;
-}
-
-/** API 요청 함수 - instanceId를 쿼리 파라미터로 전달 */
-async function fetchDiskIOList(instanceId: number, timeRange: string, statusFilter: string) {
+/** 낮은 Cache Hit 리스트 API 요청 */
+async function fetchLowCacheHitList(instanceId: number, timeRange: string, statusFilter: string) {
     const params: any = { instanceId, timeRange };
     if (statusFilter) {
         params.status = statusFilter;
     }
-    const response = await apiClient.get<DiskIOListResponse>("/system/diskio/list", { params });
+    const response = await apiClient.get<LowCacheHitItem[]>("/system/diskio/list/low-cache-hit", { params });
     return response.data;
 }
 
 export default function DiskListPage() {
     const { selectedInstance } = useInstanceContext();
     const [timeRange, setTimeRange] = useState("7d");
-    const [statusFilter, setStatusFilter] = useState("");
-    const [sorting, setSorting] = useState<SortingState>([]);
-    const [currentPage, setCurrentPage] = useState(1);
-    const pageSize = 10;
+    const [selectedStatus, setSelectedStatus] = useState<string[]>([]);
+    
+    // 시간 범위 매핑 (한글 -> API 파라미터)
+    const timeRangeMap: { [key: string]: string } = {
+        "최근 1시간": "1h",
+        "최근 6시간": "6h",
+        "최근 24시간": "24h",
+        "최근 7일": "7d",
+    };
+    
+    const statusFilter = selectedStatus.length > 0 ? selectedStatus.join(",") : "";
 
-    // React Query로 데이터 가져오기
-    const { data: apiResponse, isLoading, isError } = useQuery({
-        queryKey: ["diskioList", selectedInstance?.instanceId, timeRange, statusFilter],
-        queryFn: () => fetchDiskIOList(selectedInstance!.instanceId, timeRange, statusFilter),
+    // 낮은 Cache Hit 리스트 조회
+    const { data: lowCacheHitData, isLoading: isLoadingLowCacheHit, isError: isErrorLowCacheHit } = useQuery({
+        queryKey: ["diskioLowCacheHit", selectedInstance?.instanceId, timeRange, statusFilter],
+        queryFn: () => fetchLowCacheHitList(selectedInstance!.instanceId, timeRange, statusFilter),
         retry: 1,
-        refetchInterval: 60000, // 1분마다 자동 갱신
-        enabled: !!selectedInstance, // 인스턴스가 선택되었을 때만 실행
+        refetchInterval: 60000,
+        enabled: !!selectedInstance,
     });
 
-    const data = apiResponse?.data || [];
+    // 낮은 Cache Hit 테이블 설정
+    const [lowCacheHitSorting, setLowCacheHitSorting] = useState<SortingState>([]);
+    const [lowCacheHitCurrentPage, setLowCacheHitCurrentPage] = useState(1);
+    const lowCacheHitPageSize = 10;
 
-    const columns = useMemo<ColumnDef<DiskIOData>[]>(
+    const lowCacheHitColumns = useMemo<ColumnDef<LowCacheHitItem>[]>(
         () => [
             {
-                accessorKey: "processType",
-                header: "프로세스 타입",
+                accessorKey: "collectedAt",
+                header: "시간",
+                cell: (info) => {
+                    const value = info.getValue() as string;
+                    return new Date(value).toLocaleString("ko-KR");
+                },
+            },
+            {
+                accessorKey: "backendType",
+                header: "Backend 타입",
                 cell: (info) => info.getValue(),
             },
             {
-                accessorKey: "totalIO",
-                header: "전체 I/O(개/s)",
-                cell: (info) => (info.getValue() as number).toLocaleString(),
-            },
-            {
-                accessorKey: "readRate",
-                header: "읽기(개/s)",
-                cell: (info) => (info.getValue() as number).toLocaleString(),
-            },
-            {
-                accessorKey: "writeRate",
-                header: "쓰기(개/s)",
-                cell: (info) => (info.getValue() as number).toLocaleString(),
-            },
-            {
-                accessorKey: "readMBs",
-                header: "읽기(MB/s)",
-                cell: (info) => (info.getValue() as number).toFixed(2),
-            },
-            {
-                accessorKey: "writeMBs",
-                header: "쓰기(MB/s)",
-                cell: (info) => (info.getValue() as number).toFixed(2),
-            },
-            {
-                accessorKey: "throughputMBs",
-                header: "처리량(MB/s)",
-                cell: (info) => (info.getValue() as number).toFixed(2),
-            },
-            {
-                accessorKey: "fsyncRate",
-                header: "Fsync(회/s)",
+                accessorKey: "databaseName",
+                header: "데이터베이스",
                 cell: (info) => info.getValue(),
             },
             {
-                accessorKey: "evictionRate",
-                header: "Eviction(개/s)",
-                cell: (info) => info.getValue(),
-            },
-            {
-                accessorKey: "extendRate",
-                header: "Extend(회/s)",
-                cell: (info) => info.getValue(),
-            },
-            {
-                accessorKey: "hitRatio",
-                header: "Hit Ratio(%)",
+                accessorKey: "bufferHitRatio",
+                header: "Buffer Hit Ratio(%)",
                 cell: (info) => (info.getValue() as number).toFixed(1),
             },
             {
-                accessorKey: "avgQueueDepth",
-                header: "평균 큐 깊이",
-                cell: (info) => (info.getValue() as number).toFixed(2),
+                accessorKey: "physicalReads",
+                header: "Physical Reads",
+                cell: (info) => (info.getValue() as number).toLocaleString(),
             },
             {
-                accessorKey: "avgLatency",
-                header: "평균 지연(ms)",
-                cell: (info) => (info.getValue() as number).toFixed(2),
-            },
-            {
-                accessorKey: "readPercent",
-                header: "읽기(%)",
-                cell: (info) => `${(info.getValue() as number).toFixed(1)}%`,
-            },
-            {
-                accessorKey: "writePercent",
-                header: "쓰기(%)",
-                cell: (info) => `${(info.getValue() as number).toFixed(1)}%`,
+                accessorKey: "cacheHits",
+                header: "Cache Hits",
+                cell: (info) => (info.getValue() as number).toLocaleString(),
             },
             {
                 accessorKey: "status",
@@ -171,18 +126,17 @@ export default function DiskListPage() {
         []
     );
 
-    // 테이블 인스턴스 생성
-    const table = useReactTable({
-        data,
-        columns,
+    const lowCacheHitTable = useReactTable({
+        data: lowCacheHitData || [],
+        columns: lowCacheHitColumns,
         state: {
-            sorting,
+            sorting: lowCacheHitSorting,
             pagination: {
-                pageIndex: currentPage - 1,
-                pageSize,
+                pageIndex: lowCacheHitCurrentPage - 1,
+                pageSize: lowCacheHitPageSize,
             },
         },
-        onSortingChange: setSorting,
+        onSortingChange: setLowCacheHitSorting,
         getCoreRowModel: getCoreRowModel(),
         getSortedRowModel: getSortedRowModel(),
         getFilteredRowModel: getFilteredRowModel(),
@@ -190,39 +144,22 @@ export default function DiskListPage() {
         manualPagination: false,
     });
 
-    const totalPages = Math.ceil(data.length / pageSize);
-
-    const handlePageChange = (page: number) => {
-        setCurrentPage(page);
-    };
+    const lowCacheHitTotalPages = Math.ceil((lowCacheHitData?.length || 0) / lowCacheHitPageSize);
 
     // CSV 내보내기 함수
     const handleExportCSV = () => {
-        const headers = [
-            "프로세스 타입", "전체 I/O(개/s)",
-            "읽기(개/s)", "쓰기(개/s)",
-            "읽기(MB/s)", "쓰기(MB/s)", "처리량(MB/s)",
-            "Fsync(회/s)", "Eviction(개/s)", "Extend(회/s)",
-            "Hit Ratio(%)", "평균 큐 깊이", "평균 지연(ms)",
-            "읽기(%)", "쓰기(%)", "상태",
-        ];
-        const csvData = data.map((row) => [
-            row.processType,
-            row.totalIO,
-            row.readRate,
-            row.writeRate,
-            row.readMBs,
-            row.writeMBs,
-            row.throughputMBs,
-            row.fsyncRate,
-            row.evictionRate,
-            row.extendRate,
-            row.hitRatio,
-            row.avgQueueDepth,
-            row.avgLatency,
-            row.readPercent,
-            row.writePercent,
-            row.status,
+        if (!lowCacheHitData || lowCacheHitData.length === 0) return;
+        
+        const headers = ["시간", "Backend 타입", "데이터베이스", "Buffer Hit Ratio(%)", "Physical Reads", "Cache Hits", "상태"];
+        
+        const csvData = lowCacheHitData.map((item) => [
+            new Date(item.collectedAt).toLocaleString("ko-KR"),
+            item.backendType,
+            item.databaseName,
+            item.bufferHitRatio.toFixed(1),
+            item.physicalReads.toLocaleString(),
+            item.cacheHits.toLocaleString(),
+            item.status,
         ]);
 
         const csvContent = [
@@ -254,87 +191,54 @@ export default function DiskListPage() {
         URL.revokeObjectURL(url);
     };
 
-    // 로딩 상태
-    if (isLoading) {
-        return (
-            <main className="diskio-list-page">
-                <div style={{
-                    display: 'flex',
-                    justifyContent: 'center',
-                    alignItems: 'center',
-                    height: '400px',
-                    fontSize: '18px',
-                    color: '#6B7280'
-                }}>
-                    데이터를 불러오는 중...
-                </div>
-            </main>
-        );
-    }
-
-    // 에러 상태
-    if (isError) {
-        return (
-            <main className="diskio-list-page">
-                <div style={{
-                    display: 'flex',
-                    justifyContent: 'center',
-                    alignItems: 'center',
-                    height: '400px',
-                    fontSize: '18px',
-                    color: '#EF4444'
-                }}>
-                    데이터를 불러오는데 실패했습니다.
-                </div>
-            </main>
-        );
-    }
-
     return (
-        <main className="diskio-list-page">
+        <main className="cpu-list-page">
             {/* 필터 선택 영역 */}
-            <section className="diskio-list-page__filters">
-                <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-                    <select
-                        value={timeRange}
-                        onChange={(e) => setTimeRange(e.target.value)}
-                        style={{
-                            padding: '8px 12px',
-                            borderRadius: '4px',
-                            border: '1px solid #D1D5DB',
-                            fontSize: '14px'
-                        }}
-                    >
-                        <option value="1h">최근 1시간</option>
-                        <option value="6h">최근 6시간</option>
-                        <option value="24h">최근 24시간</option>
-                        <option value="7d">최근 7일</option>
-                    </select>
-
-                    <select
-                        value={statusFilter}
-                        onChange={(e) => setStatusFilter(e.target.value)}
-                        style={{
-                            padding: '8px 12px',
-                            borderRadius: '4px',
-                            border: '1px solid #D1D5DB',
-                            fontSize: '14px'
-                        }}
-                    >
-                        <option value="">전체 상태</option>
-                        <option value="정상">정상</option>
-                        <option value="주의">주의</option>
-                        <option value="위험">위험</option>
-                    </select>
-                </div>
-
+            <section className="cpu-list-page__filters">
+                <MultiSelectDropdown
+                    label="시간 선택"
+                    options={[
+                        "최근 1시간",
+                        "최근 6시간",
+                        "최근 24시간",
+                        "최근 7일",
+                    ]}
+                    value={(() => {
+                        const key = Object.keys(timeRangeMap).find(k => timeRangeMap[k] === timeRange);
+                        return key ? [key] : ["최근 7일"];
+                    })()}
+                    onChange={(values) => {
+                        // 시간 선택은 단일 선택만 허용 - 마지막 선택값만 유지
+                        const valuesArray = Array.isArray(values) ? values : [values];
+                        if (valuesArray.length > 0) {
+                            const lastSelected = valuesArray[valuesArray.length - 1];
+                            setTimeRange(timeRangeMap[lastSelected] || "7d");
+                        } else {
+                            setTimeRange("7d");
+                        }
+                    }}
+                />
+                <MultiSelectDropdown
+                    label="상태"
+                    options={[
+                        "정상",
+                        "주의",
+                        "위험",
+                    ]}
+                    value={selectedStatus}
+                    onChange={(values) => {
+                        const valuesArray = Array.isArray(values) ? values : [values];
+                        setSelectedStatus(valuesArray);
+                    }}
+                />
                 <CsvButton onClick={handleExportCSV} tooltip="CSV 파일 저장"/>
             </section>
 
-            {/* DiskIO 테이블 */}
-            <section className="diskio-list-page__table">
-                <div className="diskio-table-header">
-                    {table.getHeaderGroups().map((headerGroup) => (
+            {/* 낮은 Cache Hit Ratio 시간대 */}
+            <section className="cpu-list-page__table disk-cache-hit-table">
+                {/*<h2 style={{ fontSize: '1.25rem', fontWeight: '600', margin: '0 0 1rem 0' }}>낮은 Cache Hit Ratio 시간대</h2>*/}
+                <div className="cpu-table-header">
+                    {lowCacheHitTable.getHeaderGroups().map((headerGroup) => (
                         <Fragment key={headerGroup.id}>
                             {headerGroup.headers.map((header) => (
                                 <div
@@ -357,9 +261,13 @@ export default function DiskListPage() {
                     ))}
                 </div>
 
-                {table.getRowModel().rows.length > 0 ? (
-                    table.getRowModel().rows.map((row) => (
-                        <div key={row.id} className="diskio-table-row">
+                {isLoadingLowCacheHit ? (
+                    <div className="cpu-table-empty">데이터를 불러오는 중...</div>
+                ) : isErrorLowCacheHit ? (
+                    <div className="cpu-table-empty">오류: 데이터를 불러오는데 실패했습니다.</div>
+                ) : lowCacheHitTable.getRowModel().rows.length > 0 ? (
+                    lowCacheHitTable.getRowModel().rows.map((row) => (
+                        <div key={row.id} className="cpu-table-row">
                             {row.getVisibleCells().map((cell) => (
                                 <div key={cell.id}>
                                     {flexRender(
@@ -371,18 +279,17 @@ export default function DiskListPage() {
                         </div>
                     ))
                 ) : (
-                    <div className="diskio-table-empty">데이터가 없습니다.</div>
+                    <div className="cpu-table-empty">데이터가 없습니다.</div>
+                )}
+
+                {lowCacheHitTotalPages > 1 && (
+                    <Pagination
+                        currentPage={lowCacheHitCurrentPage}
+                        totalPages={lowCacheHitTotalPages}
+                        onPageChange={setLowCacheHitCurrentPage}
+                    />
                 )}
             </section>
-
-            {/* 페이지네이션 */}
-            {totalPages > 1 && (
-                <Pagination
-                    currentPage={currentPage}
-                    totalPages={totalPages}
-                    onPageChange={handlePageChange}
-                />
-            )}
         </main>
     );
 }
