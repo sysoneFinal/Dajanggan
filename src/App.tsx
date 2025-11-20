@@ -6,6 +6,7 @@ import Sidebar from "./components/layout/Sidebar";
 import Header from "./components/layout/Header";
 import { DashboardProvider } from "./context/DashboardContext";
 import { InstanceProvider } from "./context/InstanceContext";
+import { OsMetricSseProvider } from "./context/OsMetricSseContext";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -33,8 +34,9 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <InstanceProvider>
-        <DashboardProvider>
-          <div className="app-background">
+        <OsMetricSseProvider>
+          <DashboardProvider>
+            <div className="app-background">
             {hideLayout ? (
               <AppRoutes />
             ) : (
@@ -48,7 +50,8 @@ function App() {
               </div>
             )}
           </div>
-        </DashboardProvider>
+          </DashboardProvider>
+        </OsMetricSseProvider>
       </InstanceProvider>
     </QueryClientProvider>
   );
