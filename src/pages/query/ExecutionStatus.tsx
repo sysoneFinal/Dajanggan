@@ -1,5 +1,8 @@
 import { useMemo, useState, useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { useInstanceContext } from "../../context/InstanceContext";
+import { useLoader } from "../../context/LoaderContext";
+import { intervalToMs } from "../../utils/time";
 import Chart from "../../components/chart/ChartComponent";
 import Pagination from "../../components/util/Pagination";
 import CsvButton from "../../components/util/CsvButton";
@@ -65,7 +68,8 @@ const getDaysFromFilter = (filter: TimeFilter): number => {
 };
 
 export default function ExecutionStatus() {
-  const { selectedDatabase } = useInstanceContext();
+  const { selectedDatabase, refreshInterval } = useInstanceContext();
+  const { showLoader, hideLoader } = useLoader();
   const databaseId = selectedDatabase?.databaseId ?? null;
 
   const [sortKey, setSortKey] = useState<SortKey | null>(null);
@@ -76,7 +80,6 @@ export default function ExecutionStatus() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedQueryDetail, setSelectedQueryDetail] = useState<QueryDetail | null>(null);
 
-  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [dashboardData, setDashboardData] = useState<DashboardData>({
     transactionDistribution: { data: [], labels: [] },
@@ -223,77 +226,96 @@ export default function ExecutionStatus() {
   };
 
   /**
-   * ✅ 데이터 로드 - 집계 데이터 + 원시 메트릭 데이터 모두 로드
+   * ✅ 데이터 로드 - 집계 데이터 + 원시 메트릭 데이터 모두 로드 (React Query로 자동 새로고침)
    */
-  useEffect(() => {
-    const loadData = async () => {
+  const { data: executionData, isLoading, error: queryError } = useQuery({
+    queryKey: ["execution-status", databaseId, timeFilter],
+    queryFn: async () => {
       if (!databaseId) {
-        console.log("데이터베이스가 선택되지 않음");
-        return;
+        return null;
       }
 
-      try {
-        setLoading(true);
-        setError(null);
+      console.log("==========================================");
+      console.log("📊 Execution Stats 데이터 로딩 시작...");
+      console.log(`  - Database ID: ${databaseId}`);
 
-        console.log("==========================================");
-        console.log("📊 Execution Stats 데이터 로딩 시작...");
-        console.log(`  - Database ID: ${databaseId}`);
+      const days = getDaysFromFilter(timeFilter);
 
-        const days = getDaysFromFilter(timeFilter);
-
-        // 1️⃣ 집계 데이터 로드
-        const aggregatedResponse = await getExecutionStats(databaseId, days);
-        
-        if (!aggregatedResponse.data.success || !aggregatedResponse.data.data) {
-          throw new Error("집계 데이터를 불러오는데 실패했습니다.");
-        }
-
-        const aggregatedStats = aggregatedResponse.data.data;
-        console.log(`  ✅ 집계된 쿼리 수: ${aggregatedStats.length}개`);
-
-        setAllAggregatedStats(aggregatedStats);
-
-        // 2️⃣ 원시 메트릭 데이터 로드 (메모리/IO/CPU 정보 포함)
-        const rawMetricsResponse = await getQueryMetricsByDatabaseId(databaseId);
-        
-        if (rawMetricsResponse.data.success && rawMetricsResponse.data.data) {
-          const rawMetrics = rawMetricsResponse.data.data;
-          console.log(`  ✅ 원시 메트릭 수: ${rawMetrics.length}개`);
-          setAllRawMetrics(rawMetrics);
-        } else {
-          console.warn("  ⚠️ 원시 메트릭 데이터를 불러올 수 없습니다");
-          setAllRawMetrics([]);
-        }
-
-        // 3️⃣ 나머지 처리
-        const filteredStats = filterByTimeRange(aggregatedStats, timeFilter);
-        const stats = filteredStats.map(convertToQueryStat);
-        const queryTypeDistribution = calculateQueryTypeDistribution(filteredStats);
-        const transactionDistribution = calculateTransactionDistribution(filteredStats);
-        const timeSeriesData = calculateTimeSeriesData(filteredStats);
-
-        setDashboardData({
-          transactionDistribution,
-          queryTypeDistribution,
-          stats
-        });
-
-        setTransactionChartData(timeSeriesData);
-
-        console.log("  ✅ 데이터 로딩 완료");
-        console.log("==========================================");
-
-      } catch (err) {
-        console.error("데이터 로드 실패:", err);
-        setError(err instanceof Error ? err.message : "데이터를 불러오는데 실패했습니다.");
-      } finally {
-        setLoading(false);
+      // 1️⃣ 집계 데이터 로드
+      const aggregatedResponse = await getExecutionStats(databaseId, days);
+      
+      if (!aggregatedResponse.data.success || !aggregatedResponse.data.data) {
+        throw new Error("집계 데이터를 불러오는데 실패했습니다.");
       }
-    };
 
-    loadData();
-  }, [databaseId, timeFilter]);
+      const aggregatedStats = aggregatedResponse.data.data;
+      console.log(`  ✅ 집계된 쿼리 수: ${aggregatedStats.length}개`);
+
+      // 2️⃣ 원시 메트릭 데이터 로드 (메모리/IO/CPU 정보 포함)
+      const rawMetricsResponse = await getQueryMetricsByDatabaseId(databaseId);
+      
+      let rawMetrics: QueryMetricsRawDto[] = [];
+      if (rawMetricsResponse.data.success && rawMetricsResponse.data.data) {
+        rawMetrics = rawMetricsResponse.data.data;
+        console.log(`  ✅ 원시 메트릭 수: ${rawMetrics.length}개`);
+      } else {
+        console.warn("  ⚠️ 원시 메트릭 데이터를 불러올 수 없습니다");
+      }
+
+      console.log("  ✅ 데이터 로딩 완료");
+      console.log("==========================================");
+
+      return {
+        aggregatedStats,
+        rawMetrics
+      };
+    },
+    enabled: !!databaseId,
+    refetchInterval: intervalToMs(refreshInterval), // ** 중요 ** 새로고침 주기 적용
+  });
+
+  // 데이터 처리 및 상태 업데이트
+  useEffect(() => {
+    if (!executionData) return;
+
+    const { aggregatedStats, rawMetrics } = executionData;
+
+    setAllAggregatedStats(aggregatedStats);
+    setAllRawMetrics(rawMetrics);
+
+    // 3️⃣ 나머지 처리
+    const filteredStats = filterByTimeRange(aggregatedStats, timeFilter);
+    const stats = filteredStats.map(convertToQueryStat);
+    const queryTypeDistribution = calculateQueryTypeDistribution(filteredStats);
+    const transactionDistribution = calculateTransactionDistribution(filteredStats);
+    const timeSeriesData = calculateTimeSeriesData(filteredStats);
+
+    setDashboardData({
+      transactionDistribution,
+      queryTypeDistribution,
+      stats
+    });
+
+    setTransactionChartData(timeSeriesData);
+  }, [executionData, timeFilter]);
+
+  // 로딩 상태 관리
+  useEffect(() => {
+    if (isLoading) {
+      showLoader("데이터를 불러오는 중...");
+    } else {
+      hideLoader();
+    }
+  }, [isLoading, showLoader, hideLoader]);
+
+  // 에러 상태 관리
+  useEffect(() => {
+    if (queryError) {
+      setError(queryError instanceof Error ? queryError.message : "데이터를 불러오는데 실패했습니다.");
+    } else {
+      setError(null);
+    }
+  }, [queryError]);
 
   useEffect(() => {
     if (!databaseId || dashboardData.stats.length === 0) return;
@@ -361,6 +383,7 @@ export default function ExecutionStatus() {
 
   const executeExplainAnalyze = async (databaseId: number, query: string) => {
     try {
+      showLoader("실행 계획 분석 중...");
       console.log('🔍 EXPLAIN ANALYZE 요청 시작', { databaseId, query });
 
       const { data } = await postExplainAnalyze(databaseId, query);
@@ -374,6 +397,8 @@ export default function ExecutionStatus() {
     } catch (error) {
       console.error('❌ EXPLAIN ANALYZE 실패:', error);
       throw error;
+    } finally {
+      hideLoader();
     }
   };
 
@@ -586,16 +611,6 @@ export default function ExecutionStatus() {
       <div className="es-root">
         <div className="es-empty">
           <p>데이터베이스를 선택해주세요.</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (loading) {
-    return (
-      <div className="es-root">
-        <div className="es-empty">
-          <p>데이터를 불러오는 중...</p>
         </div>
       </div>
     );
