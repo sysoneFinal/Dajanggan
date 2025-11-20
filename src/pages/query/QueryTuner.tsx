@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useLoader } from "../../context/LoaderContext";
 import "/src/styles/query/query-tuner.css";
 
 /**
@@ -85,6 +86,7 @@ const demoPerformance: PerformanceComparison = {
 
 /* ---------- 메인 페이지 ---------- */
 export default function QueryTuner() {
+  const { showLoader, hideLoader } = useLoader();
   const [sqlQuery, setSqlQuery] = useState(demoSafeQuery);
   const [executionMode, setExecutionMode] = useState<ExecutionMode>("dangerous");
   const [hasExecuted, setHasExecuted] = useState(true);
@@ -103,10 +105,28 @@ export default function QueryTuner() {
   };
 
   // 실행 버튼 클릭
-  const handleExecute = () => {
-    const safety = checkQuerySafety(sqlQuery);
-    setExecutionMode(safety);
-    setHasExecuted(true);
+  const handleExecute = async () => {
+    if (!sqlQuery.trim()) {
+      return;
+    }
+
+    try {
+      showLoader("쿼리를 실행하는 중...");
+      const safety = checkQuerySafety(sqlQuery);
+      setExecutionMode(safety);
+      
+      // 실제 API 호출이 있다면 여기에 추가
+      // 예: await postExplainAnalyze(databaseId, sqlQuery);
+      
+      // 시뮬레이션을 위한 짧은 지연
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      setHasExecuted(true);
+    } catch (error) {
+      console.error("쿼리 실행 실패:", error);
+    } finally {
+      hideLoader();
+    }
   };
 
   // 초기화 버튼 클릭
