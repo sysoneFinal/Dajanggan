@@ -1,4 +1,4 @@
-import {Fragment, useEffect, useMemo, useState} from "react";
+import {Fragment, useMemo, useState} from "react";
 import {
     useReactTable,
     getCoreRowModel,
@@ -13,195 +13,95 @@ import Pagination from "../../components/util/Pagination";
 import CsvButton from "../../components/util/CsvButton";
 import MultiSelectDropdown from "../../components/util/MultiSelectDropdown";
 import apiClient from "../../api/apiClient";
-import "../../styles/system/memorylist.css";
+import {useQuery} from "@tanstack/react-query";
+import "../../styles/system/cpulist.css";
 import { useInstanceContext } from "../../context/InstanceContext";
 
-// 데이터 타입 정의
-interface MemoryData {
-    id: string;
-    objectName: string;
-    type: "table" | "index";
-    sizeMb: number;
-    bufferCount: number;
-    usagePercent: number;
-    dirtyCount: number;
-    dirtyPercent: number;
-    pinnedBuffers: number;
-    hitPercent: number;
-    accessCount: number;
-    evictionCount: number;
-    avgAccessTime: number;
-    status: "정상" | "주의" | "위험";
+// 낮은 캐시 히트율 테이블 데이터 타입
+interface LowCacheHitItem {
+    rankNum: number;
+    tableName: string;
+    databaseName: string;
+    cacheHitRatio: number;
+    physicalReads: number;
+    cacheHits: number;
+    status: string;
 }
 
-// API 응답 타입
-interface MemoryListResponse {
-    data: MemoryData[];
-    total: number;
+/** 낮은 캐시 히트율 리스트 API 요청 */
+async function fetchLowCacheHitList(instanceId: number, timeRange: string, statusFilter: string, typeFilter: string) {
+    try {
+        const params: any = { instanceId, timeRange };
+        if (statusFilter) {
+            params.status = statusFilter;
+        }
+        if (typeFilter) {
+            params.type = typeFilter;
+        }
+        console.log("[MemoryListPage] 낮은 캐시 히트율 리스트 API 호출:", params);
+        const response = await apiClient.get<LowCacheHitItem[]>("/system/memory/list/low-cache-hit", { params });
+        console.log("[MemoryListPage] 낮은 캐시 히트율 리스트 API 응답:", response.data?.length || 0, "개");
+        return response.data;
+    } catch (error) {
+        console.error("[MemoryListPage] 낮은 캐시 히트율 리스트 API 에러:", error);
+        throw error;
+    }
 }
 
 export default function MemoryListPage() {
     const { selectedInstance } = useInstanceContext();
-    const [data, setData] = useState<MemoryData[]>([]);
-    const [loading, setLoading] = useState<boolean>(true);
-    const [error, setError] = useState<string | null>(null);
-    const [sorting, setSorting] = useState<SortingState>([]);
-    const [currentPage, setCurrentPage] = useState(1);
+    const [timeRange, setTimeRange] = useState("24h");
     const [selectedType, setSelectedType] = useState<string[]>([]);
     const [selectedStatus, setSelectedStatus] = useState<string[]>([]);
-    const pageSize = 10;
 
-    // API 데이터 조회
-    const fetchData = async () => {
-        // 인스턴스가 선택되지 않은 경우
-        if (!selectedInstance) {
-            setData([]);
-            setLoading(false);
-            return;
-        }
+    const typeFilter = selectedType.length > 0 ? selectedType.join(",") : "";
+    const statusFilter = selectedStatus.length > 0 ? selectedStatus.join(",") : "";
 
-        try {
-            setLoading(true);
-            setError(null);
+    // 낮은 캐시 히트율 리스트 조회
+    const { data: lowCacheHitData, isLoading: isLoadingLowCacheHit, isError: isErrorLowCacheHit } = useQuery({
+        queryKey: ["memoryLowCacheHit", selectedInstance?.instanceId, timeRange, statusFilter, typeFilter],
+        queryFn: () => fetchLowCacheHitList(selectedInstance!.instanceId, timeRange, statusFilter, typeFilter),
+        retry: 1,
+        refetchInterval: 60000,
+        enabled: !!selectedInstance,
+    });
 
-            // 타입 필터 변환
-            const typeParam = selectedType.length > 0
-                ? selectedType.join(",")
-                : undefined;
+    // 낮은 캐시 히트율 테이블 설정
+    const [lowCacheHitSorting, setLowCacheHitSorting] = useState<SortingState>([]);
+    const [lowCacheHitCurrentPage, setLowCacheHitCurrentPage] = useState(1);
+    const lowCacheHitPageSize = 10;
 
-            // 상태 필터 변환
-            const statusParam = selectedStatus.length > 0
-                ? selectedStatus.join(",")
-                : undefined;
-
-            console.log("Fetching memory list with params:", { typeParam, statusParam });
-
-            // apiClient 사용하여 API 호출
-            const response = await apiClient.get<MemoryListResponse>('/system/memory/list', {
-                params: {
-                    instanceId: selectedInstance.instanceId,
-                    type: typeParam,
-                    status: statusParam,
-                },
-            });
-
-            console.log("Memory List API Response:", response);
-
-            // 응답 데이터 확인 및 설정
-            if (response && response.data) {
-                setData(response.data || []);
-            } else {
-                console.warn("No data in response");
-                setData([]);
-            }
-        } catch (err) {
-            console.error("Memory 리스트 조회 오류:", err);
-            setError(err instanceof Error ? err.message : "데이터 조회 중 오류가 발생했습니다.");
-            setData([]);
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    // 초기 로드 및 필터 변경 시 데이터 조회
-    useEffect(() => {
-        fetchData();
-    }, [selectedType, selectedStatus, selectedInstance]);
-
-    const columns = useMemo<ColumnDef<MemoryData>[]>(
+    const lowCacheHitColumns = useMemo<ColumnDef<LowCacheHitItem>[]>(
         () => [
             {
-                accessorKey: "objectName",
-                header: "객체명",
+                accessorKey: "rankNum",
+                header: "순위",
                 cell: (info) => info.getValue(),
             },
             {
-                accessorKey: "type",
-                header: "타입",
-                cell: (info) => {
-                    const value = info.getValue() as string;
-                    return <span className="badge badge-type">{value}</span>;
-                },
+                accessorKey: "tableName",
+                header: "테이블명",
+                cell: (info) => info.getValue(),
             },
             {
-                accessorKey: "sizeMb",
-                header: "크기(MB)",
-                cell: (info) => {
-                    const value = info.getValue() as number;
-                    return value ? value.toLocaleString() : "0";
-                },
+                accessorKey: "databaseName",
+                header: "데이터베이스",
+                cell: (info) => info.getValue(),
             },
             {
-                accessorKey: "bufferCount",
-                header: "버퍼(개)",
-                cell: (info) => {
-                    const value = info.getValue() as number;
-                    return value ? value.toLocaleString() : "0";
-                },
+                accessorKey: "cacheHitRatio",
+                header: "Cache Hit 비율(%)",
+                cell: (info) => (info.getValue() as number).toFixed(2),
             },
             {
-                accessorKey: "usagePercent",
-                header: "점유율(%)",
-                cell: (info) => {
-                    const value = info.getValue() as number;
-                    return value ? value.toLocaleString() : "0";
-                },
+                accessorKey: "physicalReads",
+                header: "Physical Reads",
+                cell: (info) => (info.getValue() as number).toLocaleString(),
             },
             {
-                accessorKey: "dirtyCount",
-                header: "Dirty(개)",
-                cell: (info) => {
-                    const value = info.getValue() as number;
-                    return value ? value.toLocaleString() : "0";
-                },
-            },
-            {
-                accessorKey: "dirtyPercent",
-                header: "Dirty 비율(%)",
-                cell: (info) => {
-                    const value = info.getValue() as number;
-                    return value ? value.toLocaleString() : "0";
-                },
-            },
-            {
-                accessorKey: "pinnedBuffers",
-                header: "고정 버퍼",
-                cell: (info) => {
-                    const value = info.getValue() as number;
-                    return value ? value.toLocaleString() : "0";
-                },
-            },
-            {
-                accessorKey: "hitPercent",
-                header: "Hit 비율(%)",
-                cell: (info) => {
-                    const value = info.getValue() as number;
-                    return value ? value.toLocaleString() : "0";
-                },
-            },
-            {
-                accessorKey: "accessCount",
-                header: "접근 횟수",
-                cell: (info) => {
-                    const value = info.getValue() as number;
-                    return value ? value.toLocaleString() : "0";
-                },
-            },
-            {
-                accessorKey: "evictionCount",
-                header: "Eviction",
-                cell: (info) => {
-                    const value = info.getValue() as number;
-                    return value ? value.toLocaleString() : "0";
-                },
-            },
-            {
-                accessorKey: "avgAccessTime",
-                header: "평균 시간(ms)",
-                cell: (info) => {
-                    const value = info.getValue() as number;
-                    return value || "0";
-                },
+                accessorKey: "cacheHits",
+                header: "Cache Hits",
+                cell: (info) => (info.getValue() as number).toLocaleString(),
             },
             {
                 accessorKey: "status",
@@ -227,17 +127,17 @@ export default function MemoryListPage() {
         []
     );
 
-    const table = useReactTable({
-        data,
-        columns,
+    const lowCacheHitTable = useReactTable({
+        data: lowCacheHitData || [],
+        columns: lowCacheHitColumns,
         state: {
-            sorting,
+            sorting: lowCacheHitSorting,
             pagination: {
-                pageIndex: currentPage - 1,
-                pageSize,
+                pageIndex: lowCacheHitCurrentPage - 1,
+                pageSize: lowCacheHitPageSize,
             },
         },
-        onSortingChange: setSorting,
+        onSortingChange: setLowCacheHitSorting,
         getCoreRowModel: getCoreRowModel(),
         getSortedRowModel: getSortedRowModel(),
         getFilteredRowModel: getFilteredRowModel(),
@@ -245,34 +145,24 @@ export default function MemoryListPage() {
         manualPagination: false,
     });
 
-    const totalPages = Math.ceil(data.length / pageSize);
-
-    const handlePageChange = (page: number) => {
-        setCurrentPage(page);
-    };
+    const lowCacheHitTotalPages = Math.ceil((lowCacheHitData?.length || 0) / lowCacheHitPageSize);
 
     // CSV 내보내기 함수
     const handleExportCSV = () => {
-        const headers = [
-            "객체명", "타입", "크기(MB)", "버퍼(개)", "점유율(%)",
-            "Dirty(개)", "Dirty 비율(%)", "고정 버퍼",
-            "Hit 비율(%)", "접근 횟수", "Eviction", "평균 시간(ms)", "상태",
-        ];
-        const csvData = data.map((row) => [
-            row.objectName,
-            row.type,
-            row.sizeMb,
-            row.bufferCount,
-            row.usagePercent,
-            row.dirtyCount,
-            row.dirtyPercent,
-            row.pinnedBuffers,
-            row.hitPercent,
-            row.accessCount,
-            row.evictionCount,
-            row.avgAccessTime,
-            row.status,
-        ]);
+        const headers = ["순위", "테이블명", "데이터베이스", "Cache Hit 비율(%)", "Physical Reads", "Cache Hits", "상태"];
+        
+        const csvData = lowCacheHitData?.map((row) => {
+            const item = row as LowCacheHitItem;
+            return [
+                item.rankNum,
+                item.tableName,
+                item.databaseName,
+                item.cacheHitRatio.toFixed(2),
+                item.physicalReads,
+                item.cacheHits,
+                item.status,
+            ];
+        }) || [];
 
         const csvContent = [
             headers.join(","),
@@ -287,7 +177,7 @@ export default function MemoryListPage() {
         const url = URL.createObjectURL(blob);
 
         const now = new Date();
-        const fileName = `memory_${now.getFullYear()}${String(
+        const fileName = `memory_low_cache_hit_${now.getFullYear()}${String(
             now.getMonth() + 1
         ).padStart(2, "0")}${String(now.getDate()).padStart(2, "0")}_${String(
             now.getHours()
@@ -303,18 +193,49 @@ export default function MemoryListPage() {
         URL.revokeObjectURL(url);
     };
 
+    // 시간 범위 매핑 (한글 -> API 파라미터)
+    const timeRangeMap: { [key: string]: string } = {
+        "최근 1시간": "1h",
+        "최근 6시간": "6h",
+        "최근 24시간": "24h",
+        "최근 7일": "7d",
+    };
+
     return (
-        <main className="memory-list-page">
+        <main className="cpu-list-page">
             {/* 필터 선택 영역 */}
-            <section className="memory-list-page__filters">
+            <section className="cpu-list-page__filters">
+                <MultiSelectDropdown
+                    label="시간 선택"
+                    options={[
+                        "최근 1시간",
+                        "최근 6시간",
+                        "최근 24시간",
+                        "최근 7일",
+                    ]}
+                    value={(() => {
+                        const key = Object.keys(timeRangeMap).find(k => timeRangeMap[k] === timeRange);
+                        return key ? [key] : ["최근 24시간"];
+                    })()}
+                    onChange={(values) => {
+                        // 시간 선택은 단일 선택만 허용 - 마지막 선택값만 유지
+                        const valuesArray = Array.isArray(values) ? values : [values];
+                        if (valuesArray.length > 0) {
+                            const lastSelected = valuesArray[valuesArray.length - 1];
+                            setTimeRange(timeRangeMap[lastSelected] || "24h");
+                        } else {
+                            setTimeRange("24h");
+                        }
+                    }}
+                />
                 <MultiSelectDropdown
                     label="타입"
-                    options={[
-                        "table",
-                        "index",
-                    ]}
-                    selectedValues={selectedType}
-                    onChange={(values) => setSelectedType(values)}
+                    options={["table", "index"]}
+                    value={selectedType}
+                    onChange={(values) => {
+                        const valuesArray = Array.isArray(values) ? values : [values];
+                        setSelectedType(valuesArray);
+                    }}
                 />
                 <MultiSelectDropdown
                     label="상태"
@@ -323,16 +244,20 @@ export default function MemoryListPage() {
                         "주의",
                         "위험",
                     ]}
-                    selectedValues={selectedStatus}
-                    onChange={(values) => setSelectedStatus(values)}
+                    value={selectedStatus}
+                    onChange={(values) => {
+                        const valuesArray = Array.isArray(values) ? values : [values];
+                        setSelectedStatus(valuesArray);
+                    }}
                 />
                 <CsvButton onClick={handleExportCSV} tooltip="CSV 파일 저장"/>
             </section>
 
-            {/* Memory 테이블 */}
-            <section className="memory-list-page__table">
-                <div className="memory-table-header">
-                    {table.getHeaderGroups().map((headerGroup) => (
+            {/* 낮은 캐시 히트율 테이블 */}
+            <section className="cpu-list-page__table memory-cache-hit-table">
+                {/*<h2 style={{ fontSize: '1.25rem', fontWeight: '600', margin: '0 0 1rem 0' }}>낮은 캐시 히트율 테이블</h2>*/}
+                <div className="cpu-table-header">
+                    {lowCacheHitTable.getHeaderGroups().map((headerGroup) => (
                         <Fragment key={headerGroup.id}>
                             {headerGroup.headers.map((header) => (
                                 <div
@@ -355,29 +280,13 @@ export default function MemoryListPage() {
                     ))}
                 </div>
 
-                {loading ? (
-                    <div className="memory-table-empty">데이터를 불러오는 중...</div>
-                ) : error ? (
-                    <div className="memory-table-empty">
-                        <div>오류: {error}</div>
-                        <button
-                            onClick={fetchData}
-                            style={{
-                                marginTop: '16px',
-                                padding: '8px 16px',
-                                backgroundColor: '#3B82F6',
-                                color: 'white',
-                                border: 'none',
-                                borderRadius: '4px',
-                                cursor: 'pointer'
-                            }}
-                        >
-                            다시 시도
-                        </button>
-                    </div>
-                ) : table.getRowModel().rows.length > 0 ? (
-                    table.getRowModel().rows.map((row) => (
-                        <div key={row.id} className="memory-table-row">
+                {isLoadingLowCacheHit ? (
+                    <div className="cpu-table-empty">데이터를 불러오는 중...</div>
+                ) : isErrorLowCacheHit ? (
+                    <div className="cpu-table-empty">오류: 데이터를 불러오는데 실패했습니다.</div>
+                ) : lowCacheHitTable.getRowModel().rows.length > 0 ? (
+                    lowCacheHitTable.getRowModel().rows.map((row) => (
+                        <div key={row.id} className="cpu-table-row">
                             {row.getVisibleCells().map((cell) => (
                                 <div key={cell.id}>
                                     {flexRender(
@@ -389,23 +298,17 @@ export default function MemoryListPage() {
                         </div>
                     ))
                 ) : (
-                    <div className="memory-table-empty">
-                        <div>데이터가 없습니다.</div>
-                        <div style={{ fontSize: '14px', color: '#6B7280', marginTop: '8px' }}>
-                            데이터베이스에 수집된 메모리 데이터가 없거나, 필터 조건에 맞는 데이터가 없습니다.
-                        </div>
-                    </div>
+                    <div className="cpu-table-empty">데이터가 없습니다.</div>
+                )}
+
+                {lowCacheHitTotalPages > 1 && (
+                    <Pagination
+                        currentPage={lowCacheHitCurrentPage}
+                        totalPages={lowCacheHitTotalPages}
+                        onPageChange={setLowCacheHitCurrentPage}
+                    />
                 )}
             </section>
-
-            {/* 페이지네이션 */}
-            {totalPages > 1 && (
-                <Pagination
-                    currentPage={currentPage}
-                    totalPages={totalPages}
-                    onPageChange={handlePageChange}
-                />
-            )}
         </main>
     );
 }
