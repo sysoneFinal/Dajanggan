@@ -1,5 +1,8 @@
 import { useState, useMemo, useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { useInstanceContext } from "../../context/InstanceContext";
+import { useLoader } from "../../context/LoaderContext";
+import { intervalToMs } from "../../utils/time";
 import Chart from "../../components/chart/ChartComponent";
 import Pagination from "../../components/util/Pagination";
 import CsvButton from "../../components/util/CsvButton";
@@ -11,7 +14,7 @@ import type { QueryDetail } from "../query/QueryModal";
 import {
   formatDate,
   calculateSeverity,
-  postExplainAnalyze, // ✅ 추가
+  postExplainAnalyze, 
 } from "../../api/query";
 
 import {
@@ -115,7 +118,8 @@ function SortButton({
 
 /* ---------- 메인 페이지 ---------- */
 export default function QueryOverview() {
-  const { selectedDatabase, selectedInstance } = useInstanceContext();
+  const { selectedDatabase, selectedInstance, refreshInterval } = useInstanceContext();
+  const { showLoader, hideLoader } = useLoader();
   const databaseId = selectedDatabase?.databaseId ?? null;
 
   const [isResourceMounted, setIsResourceMounted] = useState(false);
@@ -136,7 +140,6 @@ export default function QueryOverview() {
   // API 데이터 상태
   const [topQueries, setTopQueries] = useState<TopQueryItem[]>([]);
   const [slowQueries, setSlowQueries] = useState<SlowQueryItem[]>([]);
-  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // 📌 슬로우 쿼리 Top 5
@@ -242,214 +245,245 @@ export default function QueryOverview() {
     };
   };
 
-  // 🔄 초기 데이터 로드
-  useEffect(() => {
-    const ac = new AbortController();
-
-    (async () => {
-      try {
-        setLoading(true);
-        setError(null);
-
-        if (!databaseId || !selectedInstance?.instanceId) {
-          console.warn("⚠️ instanceId 또는 databaseId가 없습니다");
-          return;
-        }
-
-        const instanceId = selectedInstance.instanceId;
-
-        // 초기화
-        setTopQueries([]);
-        setSlowQueries([]);
-        setSlowQueriesTop5([]);
-        setResourceUsage({ cpu: 0, memory: 0, disk: 0 });
-        setSummaryMetrics([
-          { label: "현재 TPS", value: "0", status: "info", desc: "데이터 없음" },
-          { label: "현재 QPS", value: "0", status: "info", desc: "데이터 없음" },
-          { label: "활성 세션 수", value: 0, status: "info", desc: "데이터 없음" },
-          { label: "평균 응답 시간", value: "0ms", status: "info", desc: "데이터 없음" },
-        ]);
-        setTpsQpsData({ tps: Array(12).fill(0), qps: Array(12).fill(0) });
-
-        // ===================================================
-        // Step 1: 집계 API로 요약 데이터 조회
-        // ===================================================
-        const summaryResponse = await getQuerySummary(selectedInstance.instanceId, databaseId);
-
-        let summary: QuerySummaryDto | null = null;
-
-        if (summaryResponse.data.success && summaryResponse.data.data) {
-          summary = summaryResponse.data.data;
-          
-          // 요약 카드 메트릭 설정
-          setSummaryMetrics([
-            {
-              label: "현재 TPS",
-              value: summary.currentTps.toLocaleString(),
-              status: summary.currentTps > 1000 ? "warning" : "info",
-              desc: summary.timeRange
-            },
-            {
-              label: "현재 QPS",
-              value: summary.currentQps.toLocaleString(),
-              status: summary.currentQps > 5000 ? "critical" : summary.currentQps > 3000 ? "warning" : "info",
-              desc: summary.timeRange
-            },
-            {
-              label: "활성 세션 수",
-              value: summary.activeSessions,
-              status: summary.activeSessions > 200 ? "critical" : summary.activeSessions > 150 ? "warning" : "info",
-              desc: summary.timeRange
-            },
-            {
-              label: "평균 응답 시간",
-              value: `${Math.round(summary.avgExecutionTimeMs)}ms`,
-              status: summary.avgExecutionTimeMs > 100 ? "critical" : summary.avgExecutionTimeMs > 50 ? "warning" : "info",
-              desc: summary.timeRange
-            },
-          ]);
-
-          // 리소스 사용률 설정
-          if (summary.currentCpuUsagePercent !== undefined || 
-              summary.currentMemoryUsagePercent !== undefined || 
-              summary.currentDiskIoUsagePercent !== undefined) {
-            
-            setResourceUsage({
-              cpu: summary.currentCpuUsagePercent || 0,
-              memory: summary.currentMemoryUsagePercent || 0,
-              disk: summary.currentDiskIoUsagePercent || 0,
-            });
-            
-            // 애니메이션을 위해 약간의 지연 후 마운트 상태 변경
-            setTimeout(() => setIsResourceMounted(true), 100);
-          }
-        }
-
-        // ===================================================
-        // Step 2: 트렌드 데이터 조회 (TPS/QPS 차트용)
-        // ===================================================
-        const trendResponse = await getQueryTrend(selectedInstance.instanceId, databaseId, 12);
-
-        if (trendResponse.data.success && trendResponse.data.data) {
-          const trend: QueryOverviewTrendDto = trendResponse.data.data;
-          
-          // TPS/QPS 차트 데이터 설정
-          let tpsData = trend.trendData.map(d => d.tps);
-          let qpsData = trend.trendData.map(d => d.qps);
-          
-          // 데이터가 12개보다 적으면 앞쪽을 0으로 채움
-          while (tpsData.length < 12) {
-            tpsData.unshift(0);
-            qpsData.unshift(0);
-          }
-          
-          // 데이터가 12개보다 많으면 최근 12개만 사용
-          if (tpsData.length > 12) {
-            tpsData = tpsData.slice(-12);
-            qpsData = qpsData.slice(-12);
-          }
-          
-          setTpsQpsData({ tps: tpsData, qps: qpsData });
-        }
-
-        // ===================================================
-        // Step 3: Top Query 데이터 로드 (집계 API 사용)
-        // ===================================================
-        const topQueryResponse = await getTopQueries(instanceId, databaseId, 'memory', 5);
-        
-        if (topQueryResponse.data.success && topQueryResponse.data.data) {
-          const metrics = topQueryResponse.data.data;
-          
-          // 초기 메모리 Top 5 표시
-          const sortedByMemory = metrics.map((item, index) => convertToTopQueryItem(item, index, "메모리"));
-          
-          setTopQueries(sortedByMemory);
-        }
-
-        // ===================================================
-        // Step 4: 슬로우 쿼리 조회 (집계 API)
-        // ===================================================
-        const slowResponse = await getSlowQueryList(instanceId, databaseId, 50);
-
-        if (slowResponse.data.success && slowResponse.data.data) {
-          const slowData: SlowQueryListDto[] = slowResponse.data.data;
-          
-          // SlowQueryListDto를 SlowQueryItem으로 변환
-          const transformedSlowQueries = slowData.map((item): SlowQueryItem => {
-            const executionTimeSec = (item.executionTimeMs / 1000).toFixed(1);
-            
-            return {
-              id: `#${item.queryMetricId}`,
-              query: item.shortQuery || item.queryText?.substring(0, 80) || "Unknown Query",
-              fullQuery: item.queryText || "",
-              severity: calculateSeverity(item.executionTimeMs),
-              suggestion: "인덱스 최적화 권장",
-              executionTime: `${executionTimeSec}초`,
-              occurredAt: formatDate(item.collectedAt),
-            };
-          });
-          
-          setSlowQueries(transformedSlowQueries);
-          
-          // Top 5 설정
-          const top5Fixed = [...transformedSlowQueries]
-            .sort((a, b) => new Date(b.occurredAt).getTime() - new Date(a.occurredAt).getTime())
-            .slice(0, 5);
-          setSlowQueriesTop5(top5Fixed);
-        }
-
-      } catch (e: any) {
-        if (e?.code === "ERR_CANCELED" || e?.name === "CanceledError") return;
-        console.error("❌ API 호출 실패:", e);
-        setError(e?.response?.data?.message ?? e?.message ?? "데이터를 불러오지 못했습니다.");
-      } finally {
-        setLoading(false);
+  // 🔄 초기 데이터 로드 (React Query로 자동 새로고침)
+  const { data: queryOverviewData, isLoading, error: queryError } = useQuery({
+    queryKey: ["query-overview", selectedInstance?.instanceId, databaseId],
+    queryFn: async () => {
+      if (!databaseId || !selectedInstance?.instanceId) {
+        return null;
       }
-    })();
 
-    return () => ac.abort();
-  }, [databaseId, selectedInstance]);
+      const instanceId = selectedInstance.instanceId;
+
+      // ===================================================
+      // Step 1: 집계 API로 요약 데이터 조회
+      // ===================================================
+      const summaryResponse = await getQuerySummary(instanceId, databaseId);
+
+      let summary: QuerySummaryDto | null = null;
+      if (summaryResponse.data.success && summaryResponse.data.data) {
+        summary = summaryResponse.data.data;
+      }
+
+      // ===================================================
+      // Step 2: 트렌드 데이터 조회 (TPS/QPS 차트용)
+      // ===================================================
+      const trendResponse = await getQueryTrend(instanceId, databaseId, 12);
+
+      let trend: QueryOverviewTrendDto | null = null;
+      if (trendResponse.data.success && trendResponse.data.data) {
+        trend = trendResponse.data.data;
+      }
+
+      // ===================================================
+      // Step 3: Top Query 데이터 로드 (집계 API 사용)
+      // ===================================================
+      const topQueryResponse = await getTopQueries(instanceId, databaseId, 'memory', 5);
+      
+      let topQueriesData: QueryAgg1mDto[] = [];
+      if (topQueryResponse.data.success && topQueryResponse.data.data) {
+        topQueriesData = topQueryResponse.data.data;
+      }
+
+      // ===================================================
+      // Step 4: 슬로우 쿼리 조회 (집계 API)
+      // ===================================================
+      const slowResponse = await getSlowQueryList(instanceId, databaseId, 50);
+
+      let slowQueriesData: SlowQueryListDto[] = [];
+      if (slowResponse.data.success && slowResponse.data.data) {
+        slowQueriesData = slowResponse.data.data;
+      }
+
+      return {
+        summary,
+        trend,
+        topQueriesData,
+        slowQueriesData
+      };
+    },
+    enabled: !!databaseId && !!selectedInstance?.instanceId,
+    refetchInterval: intervalToMs(refreshInterval), // ** 중요 ** 새로고침 주기 적용
+  });
+
+  // 데이터 처리 및 상태 업데이트
+  useEffect(() => {
+    if (!queryOverviewData) {
+      // 초기화
+      setTopQueries([]);
+      setSlowQueries([]);
+      setSlowQueriesTop5([]);
+      setResourceUsage({ cpu: 0, memory: 0, disk: 0 });
+      setSummaryMetrics([
+        { label: "현재 TPS", value: "0", status: "info", desc: "데이터 없음" },
+        { label: "현재 QPS", value: "0", status: "info", desc: "데이터 없음" },
+        { label: "활성 세션 수", value: 0, status: "info", desc: "데이터 없음" },
+        { label: "평균 응답 시간", value: "0ms", status: "info", desc: "데이터 없음" },
+      ]);
+      setTpsQpsData({ tps: Array(12).fill(0), qps: Array(12).fill(0) });
+      return;
+    }
+
+    const { summary, trend, topQueriesData, slowQueriesData } = queryOverviewData;
+
+    // 요약 데이터 처리
+    if (summary) {
+      setSummaryMetrics([
+        {
+          label: "현재 TPS",
+          value: summary.currentTps.toLocaleString(),
+          status: summary.currentTps > 1000 ? "warning" : "info",
+          desc: summary.timeRange
+        },
+        {
+          label: "현재 QPS",
+          value: summary.currentQps.toLocaleString(),
+          status: summary.currentQps > 5000 ? "critical" : summary.currentQps > 3000 ? "warning" : "info",
+          desc: summary.timeRange
+        },
+        {
+          label: "활성 세션 수",
+          value: summary.activeSessions,
+          status: summary.activeSessions > 200 ? "critical" : summary.activeSessions > 150 ? "warning" : "info",
+          desc: summary.timeRange
+        },
+        {
+          label: "평균 응답 시간",
+          value: `${Math.round(summary.avgExecutionTimeMs)}ms`,
+          status: summary.avgExecutionTimeMs > 100 ? "critical" : summary.avgExecutionTimeMs > 50 ? "warning" : "info",
+          desc: summary.timeRange
+        },
+      ]);
+
+      // 리소스 사용률 설정
+      if (summary.currentCpuUsagePercent !== undefined || 
+          summary.currentMemoryUsagePercent !== undefined || 
+          summary.currentDiskIoUsagePercent !== undefined) {
+        
+        setResourceUsage({
+          cpu: summary.currentCpuUsagePercent || 0,
+          memory: summary.currentMemoryUsagePercent || 0,
+          disk: summary.currentDiskIoUsagePercent || 0,
+        });
+        
+        // 애니메이션을 위해 약간의 지연 후 마운트 상태 변경
+        setTimeout(() => setIsResourceMounted(true), 100);
+      }
+    }
+
+    // 트렌드 데이터 처리
+    if (trend) {
+      let tpsData = trend.trendData.map(d => d.tps);
+      let qpsData = trend.trendData.map(d => d.qps);
+      
+      // 데이터가 12개보다 적으면 앞쪽을 0으로 채움
+      while (tpsData.length < 12) {
+        tpsData.unshift(0);
+        qpsData.unshift(0);
+      }
+      
+      // 데이터가 12개보다 많으면 최근 12개만 사용
+      if (tpsData.length > 12) {
+        tpsData = tpsData.slice(-12);
+        qpsData = qpsData.slice(-12);
+      }
+      
+      setTpsQpsData({ tps: tpsData, qps: qpsData });
+    }
+
+    // Top Query 데이터 처리
+    if (topQueriesData.length > 0) {
+      const sortedByMemory = topQueriesData.map((item, index) => convertToTopQueryItem(item, index, "메모리"));
+      setTopQueries(sortedByMemory);
+    }
+
+    // 슬로우 쿼리 데이터 처리
+    if (slowQueriesData.length > 0) {
+      const transformedSlowQueries = slowQueriesData.map((item): SlowQueryItem => {
+        const executionTimeSec = (item.executionTimeMs / 1000).toFixed(1);
+        
+        return {
+          id: `#${item.queryMetricId}`,
+          query: item.shortQuery || item.queryText?.substring(0, 80) || "Unknown Query",
+          fullQuery: item.queryText || "",
+          severity: calculateSeverity(item.executionTimeMs),
+          suggestion: "인덱스 최적화 권장",
+          executionTime: `${executionTimeSec}초`,
+          occurredAt: formatDate(item.collectedAt),
+        };
+      });
+      
+      setSlowQueries(transformedSlowQueries);
+      
+      // Top 5 설정
+      const top5Fixed = [...transformedSlowQueries]
+        .sort((a, b) => new Date(b.occurredAt).getTime() - new Date(a.occurredAt).getTime())
+        .slice(0, 5);
+      setSlowQueriesTop5(top5Fixed);
+    }
+  }, [queryOverviewData]);
+
+  // 로딩 상태 관리
+  useEffect(() => {
+    if (isLoading) {
+      showLoader("데이터를 불러오는 중...");
+    } else {
+      hideLoader();
+    }
+  }, [isLoading, showLoader, hideLoader]);
+
+  // 에러 상태 관리
+  useEffect(() => {
+    if (queryError) {
+      setError(queryError instanceof Error ? queryError.message : "데이터를 불러오지 못했습니다.");
+    } else {
+      setError(null);
+    }
+  }, [queryError]);
 
   // ===================================================
-  // 🔄 리소스 타입 변경 시 적절한 API 호출
+  // 🔄 리소스 타입 변경 시 적절한 API 호출 (React Query로 자동 새로고침)
   // ===================================================
-  useEffect(() => {
-    if (!databaseId || !selectedInstance?.instanceId) return;
+  const { data: topQueriesByResource } = useQuery({
+    queryKey: ["top-queries-by-resource", selectedInstance?.instanceId, databaseId, resourceType],
+    queryFn: async () => {
+      if (!databaseId || !selectedInstance?.instanceId) return null;
 
-    const fetchTopQueries = async () => {
-      try {
-        let orderBy: 'cpu' | 'memory' | 'io' | 'execution_time' = 'memory';
-        
-        switch (resourceType) {
-          case "CPU":
-            orderBy = 'cpu';
-            break;
-          case "메모리":
-            orderBy = 'memory';
-            break;
-          case "I/O":
-            orderBy = 'io';
-            break;
-          case "실행시간":
-            orderBy = 'execution_time';
-            break;
-        }
-
-        const response = await getTopQueries(selectedInstance.instanceId, databaseId, orderBy, 5);
-        
-        if (response.data.success && response.data.data) {
-          const metrics = response.data.data;
-          
-          const top5 = metrics.map((item, index) => convertToTopQueryItem(item, index, resourceType));
-          setTopQueries(top5);
-        }
-      } catch (error) {
-        console.error("Top Query 조회 실패:", error);
+      let orderBy: 'cpu' | 'memory' | 'io' | 'execution_time' = 'memory';
+      
+      switch (resourceType) {
+        case "CPU":
+          orderBy = 'cpu';
+          break;
+        case "메모리":
+          orderBy = 'memory';
+          break;
+        case "I/O":
+          orderBy = 'io';
+          break;
+        case "실행시간":
+          orderBy = 'execution_time';
+          break;
       }
-    };
 
-    fetchTopQueries();
-  }, [resourceType, databaseId, selectedInstance]);
+      const response = await getTopQueries(selectedInstance.instanceId, databaseId, orderBy, 5);
+      
+      if (response.data.success && response.data.data) {
+        return response.data.data;
+      }
+      return [];
+    },
+    enabled: !!databaseId && !!selectedInstance?.instanceId,
+    refetchInterval: intervalToMs(refreshInterval), // ** 중요 ** 새로고침 주기 적용
+  });
+
+  // Top Query 데이터 처리
+  useEffect(() => {
+    if (topQueriesByResource && topQueriesByResource.length > 0) {
+      const top5 = topQueriesByResource.map((item, index) => convertToTopQueryItem(item, index, resourceType));
+      setTopQueries(top5);
+    }
+  }, [topQueriesByResource, resourceType]);
 
   const handleExport = () => {
     console.log("Exporting slow queries...");
@@ -496,6 +530,7 @@ export default function QueryOverview() {
 
     // 2️⃣ EXPLAIN ANALYZE 실행
     try {
+      showLoader("실행 계획 분석 중...");
       console.log('🔍 EXPLAIN ANALYZE 요청 시작', { databaseId, query: query.query });
 
       const { data } = await postExplainAnalyze(databaseId, query.query);
@@ -554,6 +589,8 @@ export default function QueryOverview() {
       };
 
       setSelectedQueryDetail(errorDetail);
+    } finally {
+      hideLoader();
     }
   };
 
@@ -596,6 +633,7 @@ export default function QueryOverview() {
 
     // 2️⃣ EXPLAIN ANALYZE 실행
     try {
+      showLoader("실행 계획 분석 중...");
       console.log('🔍 EXPLAIN ANALYZE 요청 시작', { databaseId, query: slowQuery.fullQuery });
 
       const { data } = await postExplainAnalyze(databaseId, slowQuery.fullQuery);
@@ -654,6 +692,8 @@ export default function QueryOverview() {
       };
 
       setSelectedQueryDetail(errorDetail);
+    } finally {
+      hideLoader();
     }
   };
 
@@ -696,14 +736,11 @@ export default function QueryOverview() {
 
   return (
     <div className="qo-root">
-      {loading && topQueries.length === 0 && (
-        <div className="il-banner il-banner--muted">로딩 중…</div>
-      )}
       {error && (
         <div className="il-banner il-banner--error">{error}</div>
       )}
 
-      {!loading && !error && !databaseId && (
+      {!error && !databaseId && (
         <div className="il-empty">데이터베이스를 선택해주세요.</div>
       )}
 
@@ -868,7 +905,7 @@ export default function QueryOverview() {
           <h4 className="qo-section-title">아이콘을 클릭하면 SQL 상세 내용을 볼 수 있습니다.</h4>
 
           <div className="qo-query-bar-list">
-            {topQueries.length === 0 && !loading ? (
+            {topQueries.length === 0 ? (
               <div style={{ textAlign: 'center', padding: '3rem', color: '#999' }}>데이터가 없습니다</div>
             ) : (
               topQueries.map((query) => {
@@ -904,7 +941,7 @@ export default function QueryOverview() {
 
           <div className="qo-query-list-wrapper-top5">
             <div className="qo-query-list">
-              {slowQueriesTop5.length === 0 && !loading ? (
+              {slowQueriesTop5.length === 0 ? (
                 <div style={{ textAlign: 'center', padding: '3rem', color: '#999' }}>슬로우 쿼리가 없습니다</div>
               ) : (
                 slowQueriesTop5.map((sq) => (
@@ -943,7 +980,7 @@ export default function QueryOverview() {
 
           <div className="qo-slow-list-wrapper-tall">
             <div className="qo-slow-list-content">
-              {paginatedFullSlowQueries.length === 0 && !loading ? (
+              {paginatedFullSlowQueries.length === 0 ? (
                 <div style={{ textAlign: 'center', padding: '3rem', color: '#999' }}>슬로우 쿼리가 없습니다</div>
               ) : (
                 paginatedFullSlowQueries.map((sq) => (
