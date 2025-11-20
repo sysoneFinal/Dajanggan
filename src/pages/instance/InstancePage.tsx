@@ -217,6 +217,35 @@ const InstancePage: React.FC = () => {
     setOpenNewInstance(true);
   };
 
+  // 인스턴스 등록 핸들러 (중복 체크 포함)
+  const handleNewInstanceSubmit = async (form: NewInstance) => {
+    // 중복 체크: 동일한 host + port 조합이 이미 존재하는지 확인
+    const isDuplicate = rows.some((row) => {
+      return (
+        row.host.toLowerCase().trim() === form.host.toLowerCase().trim() &&
+        row.port === Number(form.port)
+      );
+    });
+
+    if (isDuplicate) {
+      alert("동일한 Host와 Port를 가진 인스턴스가 이미 존재합니다.");
+      return;
+    }
+
+    // 중복이 없으면 정상 등록 진행
+    const payload = {
+      host: form.host,
+      instanceName: form.instance,
+      port: Number(form.port),
+      userName: form.userName,
+      secretRef: form.password,
+    };
+    
+    const res = await apiClient.post("/instances", payload);
+    alert(`등록 성공! ID: ${res.data?.instanceId ?? "unknown"}`);
+    await fetchInstances(); // 목록 새로고침
+  };
+
   const visibleRows = useMemo(() => rows, [rows]);
 
   useEffect(() => {
@@ -376,8 +405,9 @@ const InstancePage: React.FC = () => {
         open={openNewInstance}
         onClose={() => {
           setOpenNewInstance(false);
-          fetchInstances(); 
         }}
+        onSubmit={handleNewInstanceSubmit}
+        mode="create"
       />
 
       {/* 인스턴스 편집 모달 */}

@@ -6,9 +6,10 @@ import {
   AGGREGATION_OPTIONS,
   METRIC_BY_CATEGORY,
   CATEGORY_LABELS,
+  OPERATOR_OPTIONS,
   type Metric,
 } from "./AlarmRuleModal";
-import type { Aggregation, MetricCategory } from "./AlarmRuleModal";
+import type { Aggregation, MetricCategory, Operator } from "./AlarmRuleModal";
 
 export interface RuleThreshold {
   threshold: number | null;
@@ -37,6 +38,7 @@ export interface ServerUpdatePayload {
   metricCategory?: MetricCategory;
   metricType?: Metric;
   aggregationType: Aggregation;
+  operator?: Operator;
   enabled: boolean;
   levels: {
     notice: RuleThreshold;
@@ -67,6 +69,7 @@ export default function AlarmRuleEditModal({
   const [category, setCategory] = useState<MetricCategory>("vacuum");
   const [metric, setMetric] = useState<Metric>("dead_tuples");
   const [aggregation, setAggregation] = useState<Aggregation>("latest_avg");
+  const [operator, setOperator] = useState<Operator>("gt");
   const [levels, setLevels] = useState<{
     notice: RuleThreshold;// 프론트 내부 키
     warn: RuleThreshold;    
@@ -82,7 +85,8 @@ export default function AlarmRuleEditModal({
   const categoryDropdownRef = useRef<HTMLDivElement>(null);
   const metricDropdownRef = useRef<HTMLDivElement>(null);
   const aggregationDropdownRef = useRef<HTMLDivElement>(null);
-  const [openDropdown, setOpenDropdown] = useState<"category" | "metric" | "aggregation" | null>(null);
+  const operatorDropdownRef = useRef<HTMLDivElement>(null);
+  const [openDropdown, setOpenDropdown] = useState<"category" | "metric" | "aggregation" | "operator" | null>(null);
 
   // metricType으로부터 카테고리 찾기
   const findCategoryByMetric = (metricType: Metric): MetricCategory => {
@@ -128,6 +132,7 @@ export default function AlarmRuleEditModal({
         setCategory(detectedCategory);
         setMetric(detail.metricType as Metric);
         setAggregation(detail.aggregationType as Aggregation);
+        setOperator((detail.operator as Operator) || "gt");
 
         // 서버 -> 프론트 내부 키로 매핑 (warning -> warn, critical -> danger)
         if (detail.levels) {
@@ -164,6 +169,7 @@ export default function AlarmRuleEditModal({
         category: categoryDropdownRef,
         metric: metricDropdownRef,
         aggregation: aggregationDropdownRef,
+        operator: operatorDropdownRef,
       } as const;
       const targetRef = refMap[openDropdown];
       if (targetRef.current && !targetRef.current.contains(e.target as Node)) {
@@ -198,6 +204,7 @@ export default function AlarmRuleEditModal({
     metricCategory: category,
     metricType: metric,
     aggregationType: aggregation,
+    operator,
     enabled,
     levels: {
       notice: levels.notice,
@@ -237,19 +244,10 @@ export default function AlarmRuleEditModal({
         <header className="amr-modal__header">
           <div id="alarm-rule-edit-title" className="amr-modal__title">알림 규칙 수정</div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <button
-              type="button"
-              aria-pressed={enabled}
-              onClick={() => setEnabled(v => !v)}
-              className={`ar-toggle ${enabled ? "ar-toggle--on" : ""}`}
-              title={enabled ? "활성화" : "비활성화"}
-            >
-              <span className="ar-dot" />
-            </button>
           </div>
         </header>
 
-        <div className="amr-modal__body" style={{ maxHeight: '70vh', overflowY: 'auto' }}>
+        <div className="amr-modal__body" style={{ maxHeight: '73vh', overflowY: 'auto' }}>
           {loading ? (
             <div style={{ textAlign: 'center', color: '#9CA3AF', padding: '40px' }}>로딩 중...</div>
           ) : (
@@ -430,6 +428,60 @@ export default function AlarmRuleEditModal({
                     )}
                   </div>
                 </div>
+
+                <div>
+                  <div className="ar-kicker">연산자</div>
+                  <div
+                    className="dropdown-wrapper"
+                    ref={operatorDropdownRef}
+                    style={{ position: "relative" }}
+                  >
+                    <button
+                      type="button"
+                      className="header-btn"
+                      onClick={() =>
+                        setOpenDropdown((prev) => (prev === "operator" ? null : "operator"))
+                      }
+                      style={{
+                        width: "100%",
+                        justifyContent: "space-between",
+                        padding: "10px 14px",
+                        fontWeight: 400,
+                      }}
+                    >
+                      <span className="header-btn-text" style={{ fontWeight: 400 }}>
+                        {OPERATOR_OPTIONS.find((opt) => opt.value === operator)?.label ?? "연산자 선택"}
+                      </span>
+                      <span className="dropdown-arrow">▼</span>
+                    </button>
+                    {openDropdown === "operator" && (
+                      <div
+                        className="dropdown-menu"
+                        style={{
+                          position: "absolute",
+                          top: "calc(100% + 8px)",
+                          left: 0,
+                          width: "100%",
+                          zIndex: 20,
+                        }}
+                      >
+                        {OPERATOR_OPTIONS.map((opt) => (
+                          <button
+                            key={opt.value}
+                            className={`dropdown-item ${operator === opt.value ? "active" : ""}`}
+                            style={{ fontWeight: 400 }}
+                            onClick={() => {
+                              setOperator(opt.value);
+                              setOpenDropdown(null);
+                            }}
+                          >
+                            {opt.label}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
               </div>
 
               <div className="ar-tablewrap" style={{ marginTop: '24px' }}>
@@ -455,6 +507,14 @@ export default function AlarmRuleEditModal({
                       <td><input className="ar-input" type="number" min={0} step={1}
                             value={levels.danger.threshold ?? ""}
                             onChange={(e) => updateLevel("danger", "threshold", e.target.value)} /></td>
+                      <td className="ar-right"></td>
+                    </tr>
+
+                    <tr className="ar-row">
+                      <td className="ar-td-strong">연산자</td>
+                      <td colSpan={3} style={{ textAlign: "center", padding: "10px" }}>
+                        {OPERATOR_OPTIONS.find((opt) => opt.value === operator)?.label ?? operator}
+                      </td>
                       <td className="ar-right"></td>
                     </tr>
 
@@ -501,6 +561,26 @@ export default function AlarmRuleEditModal({
                     </tr>
                   </tbody>
                 </table>
+                 {/* 활성화 버튼을 테이블 아래에 추가 */}
+                  <div style={{ 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    gap: '12px', 
+                    marginTop: '1px',
+                    paddingTop: '16px',
+                    paddingRight: '10px'
+                  }}>
+                    <span style={{ fontSize: '14px', fontWeight: '500', color: '#374151' }}>활성화</span>
+                    <button
+                      type="button"
+                      aria-pressed={enabled}
+                      onClick={() => setEnabled(v => !v)}
+                      className={`ar-toggle ${enabled ? "ar-toggle--on" : ""}`}
+                      title={enabled ? "활성화" : "비활성화"}
+                    >
+                      <span className="ar-dot" />
+                    </button>
+                  </div>
               </div>
             </>
           )}

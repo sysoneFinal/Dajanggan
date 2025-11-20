@@ -17,6 +17,7 @@ import AlarmRuleModal from "./AlarmRuleModal";
 import AlarmRuleEditModal from "./AlarmRuleEditModal";
 import AlarmRuleDetailModal from "../alarm/AlarmRuleDetailModal";
 import type { Metric, Aggregation, MetricCategory, AlarmRulePayload } from "./AlarmRuleModal";
+import { CATEGORY_LABELS } from "./AlarmRuleModal";
 import "/src/styles/alarm/alarm-list.css";
 import apiClient from "../../api/apiClient";
 import { useInstanceContext } from "../../context/InstanceContext";
@@ -51,6 +52,7 @@ type ServerUpdatePayload = {
   metricCategory?: MetricCategory;
   metricType?: Metric;
   aggregationType: Aggregation;
+  operator?: "gt" | "gte" | "lt" | "lte" | "eq";
   enabled: boolean;
   levels: {
     notice: RuleThreshold;
@@ -66,7 +68,7 @@ function toServerCreateJSONB(p: AlarmRulePayload): ServerCreatePayload {
     databaseId: p.databaseId,
     metricType: p.metricType,
     aggregationType: p.aggregationType,
-    operator: "gt",
+    operator: p.operator || "gt",
     enabled: p.enabled,
     levels: {
       notice: p.levels.notice,
@@ -90,6 +92,7 @@ function toServerUpdateJSONB(p: any): ServerUpdatePayload {
     metricCategory: p.metricCategory,
     metricType: p.metricType,
     aggregationType: p.aggregationType,
+    operator: p.operator,
     enabled: p.enabled,
     levels: hasServerKeys
       ? {
@@ -377,8 +380,34 @@ export default function AlarmRuleList() {
 
   // 생성
   const handleCreateRule = async (payload: AlarmRulePayload) => {
+    // 중복 체크: 동일한 instance, database, 카테고리, 지표 조합이 이미 존재하는지 확인
+    // try 블록 밖에서 먼저 체크
+    const categoryLabel = CATEGORY_LABELS[payload.metricCategory];
+    
+    const isDuplicate = data.some((rule) => {
+      const matches = 
+        rule.instanceId === payload.instanceId &&
+        rule.databaseId === payload.databaseId &&
+        rule.section === categoryLabel &&
+        rule.metricType === payload.metricType;
+      
+      // 디버깅용 (나중에 제거 가능)
+      if (matches) {
+        console.log("중복 발견:", {
+          existing: { instanceId: rule.instanceId, databaseId: rule.databaseId, section: rule.section, metricType: rule.metricType },
+          new: { instanceId: payload.instanceId, databaseId: payload.databaseId, section: categoryLabel, metricType: payload.metricType }
+        });
+      }
+      
+      return matches;
+    });
+
+    if (isDuplicate) {
+      alert("동일한 인스턴스, 데이터베이스, 카테고리, 지표를 가진 알림 규칙이 이미 존재합니다.");
+      return;
+    }
+
     try {
-   
       const serverPayload = toServerCreateJSONB(payload);
     
  
@@ -408,7 +437,14 @@ export default function AlarmRuleList() {
       alert("알림 규칙이 생성되었습니다.");
     } catch (e: any) {
       console.error("Failed to create rule:", e);
-      alert("알림 규칙 생성에 실패했습니다.");
+      
+      // 백엔드에서 중복 에러를 반환한 경우
+      const errorMessage = e?.response?.data?.message || e?.message || "";
+      if (errorMessage.includes("중복") || errorMessage.includes("duplicate") || errorMessage.includes("already exists")) {
+        alert("동일한 인스턴스, 데이터베이스, 카테고리, 지표를 가진 알림 규칙이 이미 존재합니다.");
+      } else {
+        alert(`알림 규칙 생성에 실패했습니다: ${errorMessage || "알 수 없는 오류"}`);
+      }
     }
   };
 

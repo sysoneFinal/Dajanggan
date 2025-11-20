@@ -30,6 +30,16 @@ export type Metric =
 
 export type Aggregation = "latest_avg" | "avg_5m" | "avg_15m" | "p95_15m";
 
+export type Operator = "gt" | "gte" | "lt" | "lte" | "eq";
+
+export const OPERATOR_OPTIONS: { value: Operator; label: string }[] = [
+  { value: "gt", label: "초과 (>)" },
+  { value: "gte", label: "이상 (≥)" },
+  { value: "lt", label: "미만 (<)" },
+  { value: "lte", label: "이하 (≤)" },
+  { value: "eq", label: "같음 (=)" },
+];
+
 // 카테고리별 지표 매핑
 export const METRIC_BY_CATEGORY: Record<MetricCategory, { value: Metric; label: string }[]> = {
   vacuum: [
@@ -81,8 +91,10 @@ export interface AlarmRulePayload {
   enabled: boolean;
   instanceId: number;
   databaseId: number;
+  metricCategory: MetricCategory;
   metricType: Metric;
   aggregationType: Aggregation;
+  operator: Operator;
   levels: {
     notice: RuleThreshold;
     warn: RuleThreshold;
@@ -126,6 +138,7 @@ export default function AlarmRuleModal({
   const [category, setCategory] = useState<MetricCategory>("vacuum");
   const [metric, setMetric] = useState<Metric>("dead_tuples");
   const [aggregation, setAggregation] = useState<Aggregation>("latest_avg");
+  const [operator, setOperator] = useState<Operator>("gt");
   const [levels, setLevels] = useState<AlarmRulePayload["levels"]>({
     notice: { ...emptyLevel },
     warn: { ...emptyLevel },
@@ -137,7 +150,8 @@ export default function AlarmRuleModal({
   const categoryDropdownRef = useRef<HTMLDivElement>(null);
   const metricDropdownRef = useRef<HTMLDivElement>(null);
   const aggregationDropdownRef = useRef<HTMLDivElement>(null);
-  const [openDropdown, setOpenDropdown] = useState<"category" | "metric" | "aggregation" | null>(null);
+  const operatorDropdownRef = useRef<HTMLDivElement>(null);
+  const [openDropdown, setOpenDropdown] = useState<"category" | "metric" | "aggregation" | "operator" | null>(null);
 
   // 카테고리 변경 시 첫 번째 지표로 초기화
   useEffect(() => {
@@ -162,6 +176,7 @@ export default function AlarmRuleModal({
         category: categoryDropdownRef,
         metric: metricDropdownRef,
         aggregation: aggregationDropdownRef,
+        operator: operatorDropdownRef,
       } as const;
       const targetRef = refMap[openDropdown];
       if (targetRef.current && !targetRef.current.contains(e.target as Node)) {
@@ -198,9 +213,10 @@ export default function AlarmRuleModal({
       metricCategory: category,
       metricType: metric,
       aggregationType: aggregation,
+      operator,
       levels,
     }),
-    [enabled, selectedInstance, selectedDatabase, category, metric, aggregation, levels]
+    [enabled, selectedInstance, selectedDatabase, category, metric, aggregation, operator, levels]
   );
 
   const handleSave = async () => {
@@ -229,7 +245,7 @@ export default function AlarmRuleModal({
           <div id="alarm-rule-modal-title" className="amr-modal__title">{title}</div>
         </header>
 
-        <div className="amr-modal__body" style={{ maxHeight: '70vh', overflowY: 'auto' }}>
+        <div className="amr-modal__body" style={{ maxHeight: '73vh', overflowY: 'auto' }}>
           <div className="ar-grid">
             <div>
               <div className="ar-kicker">대상 인스턴스</div>
@@ -378,6 +394,59 @@ export default function AlarmRuleModal({
                 )}
               </div>
             </div>
+
+            <div>
+              <div className="ar-kicker">연산자</div>
+              <div
+                className="dropdown-wrapper"
+                ref={operatorDropdownRef}
+                style={{ position: "relative" }}
+              >
+                <button
+                  type="button"
+                  className="header-btn"
+                  onClick={() =>
+                    setOpenDropdown((prev) => (prev === "operator" ? null : "operator"))
+                  }
+                  style={{
+                    width: "100%",
+                    justifyContent: "space-between",
+                    padding: "10px 14px",
+                  }}
+                >
+                  <span className="header-btn-text" style={{ fontWeight: 400 }}>
+                    {OPERATOR_OPTIONS.find((opt) => opt.value === operator)?.label ?? "연산자 선택"}
+                  </span>
+                  <span className="dropdown-arrow">▼</span>
+                </button>
+                {openDropdown === "operator" && (
+                  <div
+                    className="dropdown-menu"
+                    style={{
+                      position: "absolute",
+                      top: "calc(100% + 8px)",
+                      left: 0,
+                      width: "100%",
+                      zIndex: 20,
+                    }}
+                  >
+                    {OPERATOR_OPTIONS.map((opt) => (
+                      <button
+                        key={opt.value}
+                        className={`dropdown-item ${operator === opt.value ? "active" : ""}`}
+                        style={{ fontWeight: 400 }}
+                        onClick={() => {
+                          setOperator(opt.value);
+                          setOpenDropdown(null);
+                        }}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
 
           <div className="ar-tablewrap" style={{ marginTop: '24px' }}>
@@ -403,6 +472,14 @@ export default function AlarmRuleModal({
                       <td><input className="ar-input" type="number" min={0} step={1}
                             value={levels.danger.threshold ?? ""}
                         onChange={(e) => updateLevel("danger", "threshold", e.target.value)} /></td>
+                  <td className="ar-right"></td>
+                </tr>
+
+                <tr className="ar-row">
+                  <td className="ar-td-strong">연산자</td>
+                      <td colSpan={3} style={{ textAlign: "center", padding: "10px" }}>
+                        {OPERATOR_OPTIONS.find((opt) => opt.value === operator)?.label ?? operator}
+                      </td>
                   <td className="ar-right"></td>
                 </tr>
 
