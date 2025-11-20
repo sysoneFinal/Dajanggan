@@ -1,5 +1,21 @@
+export interface SidebarMenuItem {
+  label: string;
+  path?: string;
+  children?: SidebarMenuItem[];
+}
+
+const FALLBACK_BREADCRUMB: string[] = ["Database", "Session", "Dashboard"];
+
+const EXTRA_PATH_MAP: Record<string, string[]> = {
+  "/instance-management": ["Instance Management"],
+  "/alarm": ["Alarm Settings"],
+  "/database/vacuum/overview": ["Database", "Vacuum", "Overview"],
+  "/database/vacuum/detail": ["Database", "Vacuum", "Detail"],
+  "/database/vacuum/bloat-detail": ["Database", "Vacuum", "Bloat Detail"],
+};
+
 export const findBreadcrumbPath = (
-  menu: MenuItem[],
+  menu: SidebarMenuItem[],
   targetPath: string
 ): string[] | null => {
   for (const item of menu) {
@@ -23,13 +39,13 @@ export const findBreadcrumbPath = (
     }
   }
 
-  // ✅ 사이드바에 없는 예외 (footer용)
-  switch (targetPath) {
-    case "/alarm":
-      return ["Alarm Settings"];
-    case "/instance-management":
-      return ["Instance Management"];
-    default:
-      return null;
-  }
+  // ✅ 메뉴에 없는 예외 경로 (footer 등)
+  return EXTRA_PATH_MAP[targetPath] ?? null;
+};
+
+export const getBreadcrumbOrFallback = (
+  menu: SidebarMenuItem[],
+  targetPath: string
+): string[] => {
+  return EXTRA_PATH_MAP[targetPath] ?? findBreadcrumbPath(menu, targetPath) ?? FALLBACK_BREADCRUMB;
 };

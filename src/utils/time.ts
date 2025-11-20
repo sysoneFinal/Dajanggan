@@ -1,6 +1,5 @@
-// src/utils/time.ts
 export const intervalToMs = (interval: string): number => {
-  console.log('intervalToMs 호출됨:', interval); // 디버깅용
+ // console.log('intervalToMs 호출됨:', interval); // 디버깅용
   
   if (!interval) return 0;
   
@@ -21,6 +20,6 @@ export const intervalToMs = (interval: string): number => {
     default: result = 0;
   }
   
-  console.log('변환 결과:', interval, '->', result);
+  //console.log('변환 결과:', interval, '->', result);
   return result;
 };

@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from "react";
-import { useLocation } from "react-router-dom";
+import {  useMatch } from "react-router-dom";
 import "../../styles/layout/header.css";
 import { createPortal } from "react-dom";
 import { useDashboard } from "../../context/DashboardContext";
@@ -14,7 +14,7 @@ interface HeaderProps {
 }
 
 const Header = ({ breadcrumb }: HeaderProps) => {
-  const location = useLocation();
+  const isOverviewPage = useMatch("/overview");
 
   /** === Contexts === */
   const { isEditing, setIsEditing, handleSaveEdit, handleCancelEdit } = useDashboard();
@@ -83,6 +83,8 @@ const Header = ({ breadcrumb }: HeaderProps) => {
           top: dropdownPos.top,
           left: dropdownPos.left,
           minWidth: dropdownPos.width,
+          maxWidth: "300px",
+          width: "auto",
           zIndex: 9999,
         }}
       >
@@ -195,23 +197,26 @@ const Header = ({ breadcrumb }: HeaderProps) => {
           !selectedInstance
         )}
         {renderDropdown(["1m", "5m", "10m", "30m"], refreshInterval, "interval")}
+        {/*  overview 페이지에서만 보이게끔   */}
+        {isOverviewPage && (
+          <div className="header-controls">
+            {isEditing ? (
+              <>
+                <button className="header-btn header-btn-save" onClick={handleSaveEdit}>
+                  Save
+                </button>
+                <button className="header-btn header-btn-cancel" onClick={handleCancelEdit}>
+                  Cancel
+                </button>
+              </>
+            ) : (
+              <button className="header-btn header-btn-edit" onClick={() => setIsEditing(true)}>
+                <span className="header-btn-text">Edit Dashboard</span>
+              </button>
+            )}
+          </div>
+        )}
 
-        <div className="header-controls">
-          {isEditing ? (
-            <>
-              <button className="header-btn header-btn-save" onClick={handleSaveEdit}>
-                Save
-              </button>
-              <button className="header-btn header-btn-cancel" onClick={handleCancelEdit}>
-                Cancel
-              </button>
-            </>
-          ) : (
-            <button className="header-btn header-btn-edit" onClick={() => setIsEditing(true)}>
-              <span className="header-btn-text">Edit Dashboard</span>
-            </button>
-          )}
-        </div>
 
         <button className="header-notification-btn" onClick={() => setSelectedAlert(demoAlert)}>
           🔔

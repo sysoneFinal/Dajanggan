@@ -28,7 +28,6 @@ interface DashboardContextType {
   handleCancelEdit: () => void;
   metricMap: Record<string, any>;
   setMetricMap: Dispatch<SetStateAction<Record<string, any>>>;
-  saveDefaultLayout: () => Promise<void>; 
 }
 
 const DashboardContext = createContext<DashboardContextType | null>(null);
@@ -56,26 +55,34 @@ export const DashboardProvider = ({ children }: DashboardProviderProps) => {
     const cacheKey = `metricMapCache_${selectedInstance.instanceId}`;
     const cached = localStorage.getItem(cacheKey);
 
-    // 캐시가 있으면 즉시 로드
+    // 캐시가 있으면 즉시 로드 (하지만 API도 호출하여 최신 데이터로 업데이트)
     if (cached) {
       try {
         const parsed = JSON.parse(cached);
+        console.log(">>>>> 캐시에서 metricMap 로드:", parsed);
+
         setMetricMap(parsed);
-        return;
       } catch (err) {
         console.warn("metricMap 캐시 파싱 실패:", err);
       }
     }
 
-    // 캐시가 없으면 API 호출
+    // API 호출 (캐시가 있어도 최신 데이터로 업데이트)
     const fetchMetricMap = async () => {
       try {
         const res = await apiClient.get(`/metric/list`, {
           params: { instanceId: selectedInstance.instanceId },
         });
 
+        console.log("지표 정보 불러오기 :", res.data);
+
         const parsed = res.data.reduce((acc: Record<string, any>, item: any) => {
           const key = `${item.category}.${item.name}`;
+          
+          const availableCharts = Array.isArray(item.availableChart) 
+            ? item.availableChart.map((c: string) => c.toLowerCase())
+            : [];
+                    
           acc[key] = {
             title: item.description,
             unit: item.unit,
@@ -83,7 +90,7 @@ export const DashboardProvider = ({ children }: DashboardProviderProps) => {
             column: item.columnName,
             category: item.category,
             level: item.level,
-            available_charts: item.availableChart.map((c: string) => c.toLowerCase()),
+            available_charts: availableCharts,
             default_chart: item.defaultChartType?.toLowerCase(),
             description: item.description,
           };
@@ -92,12 +99,14 @@ export const DashboardProvider = ({ children }: DashboardProviderProps) => {
 
         setMetricMap(parsed);
         localStorage.setItem(cacheKey, JSON.stringify(parsed));
-        console.log(`metricMap API 로드 및 캐시 저장 (${Object.keys(parsed).length}개)`);
+        console.log(`metricMap API 로드 및 캐시 저장 완료 (${Object.keys(parsed).length}개)`);
+        
       } catch (err) {
         console.error("metricMap 로드 실패:", err);
       }
     };
 
+    // 항상 API 호출 (캐시가 있어도 최신 데이터로 업데이트)
     fetchMetricMap();
   }, [selectedInstance?.instanceId]);
 
@@ -130,7 +139,7 @@ export const DashboardProvider = ({ children }: DashboardProviderProps) => {
     console.log(`[Dashboard] ${key} 기본 테마로 초기화`);
   }, [selectedInstance?.instanceId]);
 
-
+  /** 편집 모드 시작  */
   const handleStartEdit = () => {
     setBackupLayout(layout);
     setIsEditing(true);
@@ -179,7 +188,7 @@ const saveLayoutInternal = async (layoutToSave: DashboardLayout[]) => {
     title: item.title ?? metricInfos[0]?.title ?? "Untitled Widget",
     databases: dbs,
     
-    // ✅ metrics: 메트릭 이름만 (카테고리 없이)
+    // metrics: 메트릭 이름만 (카테고리 없이)
     metrics: metricNames,  // ["total_sessions"]
     
     chartType: item.type || "line",
@@ -230,39 +239,6 @@ const handleSaveEdit = async () => {
   }
 };
 
-/** 디폴트 레이아웃 저장 */
-const saveDefaultLayout = async () => {
-  try {
-    if (!selectedInstance) {
-      console.warn("인스턴스가 선택되지 않음");
-      return;
-    }
-
-    const defaultLayout = (defaultThemes.default.layout ?? []).map((item: any) => ({
-      i: item.id,
-      x: item.x,
-      y: item.y,
-      w: item.w,
-      h: item.h,
-      title: item.title ?? "Untitled Widget",
-      type: item.type || "line",
-      metricType: item.metricType,
-      databases: [],
-    }));
-
-    // 공통 저장 로직 재사용
-    await saveLayoutInternal(defaultLayout);
-    
-    // 상태 업데이트
-    setLayout(defaultLayout);
-
-    console.log("디폴트 레이아웃 저장 완료");
-  } catch (error) {
-    console.error("디폴트 레이아웃 저장 실패:", error);
-    throw error;
-  }
-};
-
   const handleCancelEdit = () => {
     if (backupLayout) setLayout(backupLayout);
     setIsEditing(false);
@@ -283,7 +259,6 @@ const saveDefaultLayout = async () => {
         handleCancelEdit,
         metricMap,
         setMetricMap,
-        saveDefaultLayout,
       }}
     >
       {children}

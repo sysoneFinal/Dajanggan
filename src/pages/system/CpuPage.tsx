@@ -37,42 +37,42 @@ function timeToSeconds(timeStr: string): number {
  */
 function sampleLast60Seconds<T extends { time: string }>(history: T[]): T[] {
     if (history.length === 0) return [];
-    
+
     const sampled: T[] = [];
     let lastSelectedSeconds: number | null = null;
-    
+
     // 마지막 데이터부터 역순으로 순회
     for (let i = history.length - 1; i >= 0; i--) {
         const item = history[i];
         const itemSeconds = timeToSeconds(item.time);
-        
+
         // 첫 번째 데이터는 무조건 선택 (가장 최근 데이터)
         if (lastSelectedSeconds === null) {
             sampled.push(item);
             lastSelectedSeconds = itemSeconds;
             continue;
         }
-        
+
         // 이전에 선택한 데이터와의 시간 차이 계산
         let timeDiff = lastSelectedSeconds - itemSeconds;
-        
+
         // 하루 경계 처리 (23:59:59 -> 00:00:00)
         if (timeDiff < 0) {
             timeDiff = lastSelectedSeconds - itemSeconds + 86400;
         }
-        
+
         // 5초 이상 차이나는 데이터만 선택
         if (timeDiff >= 5) {
             sampled.push(item);
             lastSelectedSeconds = itemSeconds;
-            
+
             // 12개를 모으면 중단 (1분 = 12개 포인트)
             if (sampled.length >= 12) {
                 break;
             }
         }
     }
-    
+
     // 역순으로 정렬 (오래된 순서부터)
     return sampled.reverse();
 }
@@ -150,6 +150,9 @@ interface CpuDashboardData {
             categories: string[];
             data: number[];
         };
+        idleCpu: number;
+        contextSwitches: number;
+        postgresqlBackendCpu: number;
     };
 }
 
@@ -170,7 +173,7 @@ export default function CPUPage() {
     // 실시간 데이터 상태 (위젯용)
     const [realtimeCpu, setRealtimeCpu] = useState<number | null>(null);
     const [realtimeLoadAverage, setRealtimeLoadAverage] = useState<number[] | null>(null);
-    
+
     // TanStack Query 캐시에서 히스토리 데이터 읽기 (페이지 이동해도 유지됨)
     const realtimeCpuHistory = useRealtimeCpuHistory(selectedInstance?.instanceId);
     const realtimeLoadAverageHistory = useRealtimeLoadAverageHistory(selectedInstance?.instanceId);
@@ -214,7 +217,7 @@ export default function CPUPage() {
                 parallelWorker: data.widgets.backendProcesses.parallelWorker,
             });
         }
-        
+
         // Backend 유형별 추이 차트 데이터 확인
         if (data?.charts?.backendTypeTrend24h) {
             const chartData = data.charts.backendTypeTrend24h;
@@ -362,8 +365,8 @@ export default function CPUPage() {
                 <WidgetCard title="OS CPU 사용률 추이 (실시간)" span={4}>
                     <Chart
                         type="line"
-                        series={[{ 
-                            name: "CPU 사용률", 
+                        series={[{
+                            name: "CPU 사용률",
                             data: (() => {
                                 const sampled = sampleLast60Seconds(realtimeCpuHistory);
                                 return sampled.map((item: { time: string; value: number }) => item.value);

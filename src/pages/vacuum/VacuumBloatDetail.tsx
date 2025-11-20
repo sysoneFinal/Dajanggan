@@ -64,7 +64,7 @@ export default function BloatDetailPage({ onToggle, expanded = true }: Props) {
   // 📌 테이블 목록 조회 (Database 변경 시)
   // ========================================
   useEffect(() => {
-    if (!selectedDatabase) {
+    if (!selectedInstance || !selectedDatabase) {
       setTableList([]);
       setSelectedTable("");
       return;
@@ -74,14 +74,20 @@ export default function BloatDetailPage({ onToggle, expanded = true }: Props) {
       try {
         setTableListLoading(true);
         const databaseId = selectedDatabase.databaseId;
+        const instanceId = selectedInstance.instanceId;
         
         console.log('🔍 Fetching table list for database:', {
+          instanceId,
+          instanceName: selectedInstance.instanceName,
           databaseId,
-          databaseName: selectedDatabase.databaseName
+          databaseName: selectedDatabase.databaseName,
         });
         
         const response = await apiClient.get<string[]>('/vacuum/bloat/detail/tables', {
-          params: { databaseId: Number(databaseId) }
+          params: { 
+            databaseId: Number(databaseId),
+            instanceId: Number(instanceId)
+          }
         });
         
         console.log('✅ Table list response:', response.data);
@@ -113,7 +119,7 @@ export default function BloatDetailPage({ onToggle, expanded = true }: Props) {
     };
 
     fetchTableList();
-  }, [selectedDatabase]); // Database 변경 시마다 테이블 목록 새로 조회
+  }, [selectedInstance, selectedDatabase]); // Instance와 Database 변경 시마다 테이블 목록 새로 조회
 
   // ========================================
   // 📌 대시보드 데이터 조회 (테이블 선택 시)
@@ -132,9 +138,10 @@ export default function BloatDetailPage({ onToggle, expanded = true }: Props) {
         setError(null);
         
         const databaseId = selectedDatabase.databaseId;
+        const instanceId = selectedInstance.instanceId;
         
         console.log('🔍 Fetching bloat detail dashboard...', {
-          instanceId: selectedInstance.instanceId,
+          instanceId,
           instanceName: selectedInstance.instanceName,
           databaseId,
           databaseName: selectedDatabase.databaseName,
@@ -146,6 +153,7 @@ export default function BloatDetailPage({ onToggle, expanded = true }: Props) {
           {
             params: {
               databaseId: Number(databaseId),
+              instanceId: Number(instanceId),
               tableName: selectedTable
             }
           }
@@ -233,6 +241,8 @@ export default function BloatDetailPage({ onToggle, expanded = true }: Props) {
             테이블 목록을 불러오는 중...
           </div>
           <div style={{ fontSize: '14px', color: '#9CA3AF' }}>
+            Instance: <strong>{selectedInstance.instanceName}</strong>
+            {' / '}
             Database: <strong>{selectedDatabase.databaseName}</strong>
           </div>
         </div>
@@ -252,7 +262,10 @@ export default function BloatDetailPage({ onToggle, expanded = true }: Props) {
             ⚠️ 테이블이 없습니다
           </p>
           <p style={{ fontSize: '14px', marginTop: '8px' }}>
-            Database "<strong>{selectedDatabase.databaseName}</strong>"에서 최근 30일 내 데이터가 있는 테이블을 찾을 수 없습니다.
+            Instance "<strong>{selectedInstance.instanceName}</strong>"
+            {' / '}
+            Database "<strong>{selectedDatabase.databaseName}</strong>"에서 
+            최근 30일 내 데이터가 있는 테이블을 찾을 수 없습니다.
           </p>
         </div>
       )}
@@ -271,6 +284,8 @@ export default function BloatDetailPage({ onToggle, expanded = true }: Props) {
             Loading bloat detail data for <strong>{selectedTable}</strong>...
           </div>
           <div style={{ fontSize: '14px', color: '#9CA3AF' }}>
+            Instance: <strong>{selectedInstance.instanceName}</strong>
+            {' / '}
             Database: <strong>{selectedDatabase.databaseName}</strong>
           </div>
         </div>
@@ -290,7 +305,9 @@ export default function BloatDetailPage({ onToggle, expanded = true }: Props) {
           </p>
           <p style={{ fontSize: '14px', marginTop: '8px' }}>{error}</p>
           <p style={{ fontSize: '12px', marginTop: '16px', color: '#7F1D1D' }}>
-            Instance: {selectedInstance.instanceName} / Database: {selectedDatabase.databaseName}
+            Instance: {selectedInstance.instanceName} 
+            {' / '}
+            Database: {selectedDatabase.databaseName}
             {selectedTable && ` / Table: ${selectedTable}`}
           </p>
         </div>
@@ -307,17 +324,14 @@ export default function BloatDetailPage({ onToggle, expanded = true }: Props) {
             <SummaryCard
               label="Bloat %"
               value={data.kpi.bloatPct}
-              diff={3}
             />
             <SummaryCard
               label="Table Size"
               value={data.kpi.tableSize}
-              diff={3}
             />
             <SummaryCard
               label="Wasted Space"
               value={data.kpi.wastedSpace}
-              diff={3}
             />
           </div>
 

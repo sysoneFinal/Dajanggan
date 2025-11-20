@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useLocation } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { AppRoutes } from "./routes";
@@ -6,32 +6,53 @@ import Sidebar from "./components/layout/Sidebar";
 import Header from "./components/layout/Header";
 import { DashboardProvider } from "./context/DashboardContext";
 import { InstanceProvider } from "./context/InstanceContext";
+import { SIDEBAR_MENU } from "./components/layout/SidebarMenu";
+import { getBreadcrumbOrFallback } from "./components/layout/FindBreadcrumb";
+import { LoaderProvider } from "./context/LoaderContext";
 import { OsMetricSseProvider } from "./context/OsMetricSseContext";
 
-const queryClient = new QueryClient({
+
+export const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 5 * 60 * 1000,
-      gcTime: 10 * 60 * 1000,
+      // 모든 쿼리를 즉시 stale 처리 → 항상 최신 데이터 fetch
+      staleTime: 0,
+
+      // 컴포넌트 unmount 시 캐시 즉시 삭제
+      gcTime: 0,
+      // 화면 focus나 reconnect 시 자동 refetch 방지
       refetchOnWindowFocus: false,
       refetchOnReconnect: false,
+
+      // 실패 시 재시도 횟수
       retry: 1,
+
+      // fetch 시 기본 로딩 상태 유지 (optional)
+      refetchInterval: 0,
     },
   },
 });
+
 
 function App() {
   const location = useLocation();
   const noLayoutRoutes = ["/"];
   const hideLayout = noLayoutRoutes.includes(location.pathname);
 
-  const [breadcrumb, setBreadcrumb] = useState([
-    "Database",
-    "Session",
-    "Dashboard",
-  ]);
+  const [breadcrumb, setBreadcrumb] = useState(() =>
+    getBreadcrumbOrFallback(SIDEBAR_MENU, location.pathname)
+  );
+
+  useEffect(() => {
+    if (hideLayout) return;
+    const next = getBreadcrumbOrFallback(SIDEBAR_MENU, location.pathname);
+    setBreadcrumb((prev) =>
+      prev.join("›") === next.join("›") ? prev : next
+    );
+  }, [hideLayout, location.pathname]);
 
   return (
+  <LoaderProvider>
     <QueryClientProvider client={queryClient}>
       <InstanceProvider>
         <OsMetricSseProvider>
@@ -54,6 +75,7 @@ function App() {
         </OsMetricSseProvider>
       </InstanceProvider>
     </QueryClientProvider>
+  </LoaderProvider>
   );
 }
 

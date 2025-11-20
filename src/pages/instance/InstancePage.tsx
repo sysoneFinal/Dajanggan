@@ -117,7 +117,7 @@ export const mapInstance = (i: InstanceDto): InstanceRow => {
     host: i.host,
     port: Number(i.port),
     version: i.version ?? "-",
-    status: i.status,
+    status: i.status ?? "inactive",
     uptimeMs: Date.now() - Date.parse(i.createdAt),
     updatedAt: i.updatedAt ?? i.createdAt ?? new Date().toISOString(),
     createdAt: i.createdAt,    
@@ -133,7 +133,6 @@ const InstancePage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [menuOpenId, setMenuOpenId] = useState<number | null>(null);
-  const [deleteTarget, setDeleteTarget] = useState<InstanceRow | null>(null);
   const [openNewInstance, setOpenNewInstance] = useState(false);
   
   // 편집 모달 상태 추가
@@ -218,6 +217,35 @@ const InstancePage: React.FC = () => {
     setOpenNewInstance(true);
   };
 
+  // 인스턴스 등록 핸들러 (중복 체크 포함)
+  const handleNewInstanceSubmit = async (form: NewInstance) => {
+    // 중복 체크: 동일한 host + port 조합이 이미 존재하는지 확인
+    const isDuplicate = rows.some((row) => {
+      return (
+        row.host.toLowerCase().trim() === form.host.toLowerCase().trim() &&
+        row.port === Number(form.port)
+      );
+    });
+
+    if (isDuplicate) {
+      alert("동일한 Host와 Port를 가진 인스턴스가 이미 존재합니다.");
+      return;
+    }
+
+    // 중복이 없으면 정상 등록 진행
+    const payload = {
+      host: form.host,
+      instanceName: form.instance,
+      port: Number(form.port),
+      userName: form.userName,
+      secretRef: form.password,
+    };
+    
+    const res = await apiClient.post("/instances", payload);
+    alert(`등록 성공! ID: ${res.data?.instanceId ?? "unknown"}`);
+    await fetchInstances(); // 목록 새로고침
+  };
+
   const visibleRows = useMemo(() => rows, [rows]);
 
   useEffect(() => {
@@ -241,9 +269,23 @@ const InstancePage: React.FC = () => {
     setOpenEditInstance(true);
   };
 
-  const handleDelete = (row: InstanceRow) => {
-    setDeleteTarget(row);
+  const handleDelete = async (row: InstanceRow) => {
     setMenuOpenId(null);
+    
+    const confirmed = window.confirm(
+      `${row.instanceName}을(를) 삭제하시겠습니까?\n\n이 작업은 되돌릴 수 없습니다.`
+    );
+    
+    if (!confirmed) return;
+    
+    try {
+      await apiClient.delete(`/instances/${row.instanceId}`);
+      alert("삭제되었습니다.");
+      setRows(prev => prev.filter(r => r.instanceId !== row.instanceId));
+    } catch (error) {
+      console.error(error);
+      alert("삭제 중 오류가 발생했습니다.");
+    }
   };
 
   // 편집 제출 핸들러
@@ -331,40 +373,6 @@ const InstancePage: React.FC = () => {
               </div>
             </div>
 
-            {deleteTarget && (
-              <div className="il-modal">
-                <div className="il-modal-card">
-                  <div className="il-modal-header">
-                    <h3>인스턴스 삭제</h3>
-                  </div>
-                  <div className="il-modal-body">
-                    <p>
-                      <b>{deleteTarget.instanceName}</b> 를(을) 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.
-                    </p>
-                  </div>
-                  <div className="il-modal-footer">
-                    <button onClick={() => setDeleteTarget(null)}>취소</button>
-                    <button
-                      className="danger"
-                      onClick={async() => {
-                        try {
-                          await apiClient.delete(`/instances/${deleteTarget.instanceId}`);
-                          alert("삭제되었습니다.");
-                          setDeleteTarget(null);
-                          setRows(prev => prev.filter(r => r.instanceId !== deleteTarget.instanceId));
-                        } catch (error) {
-                          console.error(error);
-                          alert("삭제 중 오류가 발생했습니다.");
-                        }
-                      }}
-                    >
-                      삭제
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
-
             {r.databases && r.databases.length > 0 && expanded[r.instanceId] && (
               <div className="il-db">
                 <div className="il-db-title">Database</div>
@@ -397,8 +405,9 @@ const InstancePage: React.FC = () => {
         open={openNewInstance}
         onClose={() => {
           setOpenNewInstance(false);
-          fetchInstances(); 
         }}
+        onSubmit={handleNewInstanceSubmit}
+        mode="create"
       />
 
       {/* 인스턴스 편집 모달 */}

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState, useEffect } from "react";
 import { useInstanceContext } from "../../context/InstanceContext";
 import { useDashboard } from "../../context/DashboardContext";
 import MultiSelectDropdown from "../../components/util/MultiSelectDropdown";
@@ -35,8 +35,8 @@ import card9Icon from "@/assets/icon/9card.svg";
 import card9ActiveIcon from "@/assets/icon/9card-active.svg";
 
 interface DashboardEditorPanelProps {
-  currentTheme: string;
-  onThemeChange: (id: string) => void;
+  currentTheme?: string;
+  onThemeChange?: (id: string) => void;
 }
 
 export default function DashboardEditorPanel({
@@ -45,6 +45,15 @@ export default function DashboardEditorPanel({
 }: DashboardEditorPanelProps) {
   const { databases, selectedInstance } = useInstanceContext();
 const { metricMap } = useDashboard();
+
+  // metricMap 디버깅
+  useEffect(() => {
+    console.log("🗺️ DashboardEditor - metricMap 업데이트:", metricMap);
+    console.log("📊 metricMap keys:", Object.keys(metricMap));
+    if (Object.keys(metricMap).length > 0) {
+      const firstKey = Object.keys(metricMap)[0];
+    }
+  }, [metricMap]);
 
   const [selectedChart, setSelectedChart] = useState("");
   const [selectedMetric, setSelectedMetric] = useState("");
@@ -82,11 +91,17 @@ const { metricMap } = useDashboard();
   const handleMetricChange = (metricKey: string) => {
     setSelectedMetric(metricKey);
     const info = metricMap[metricKey];
-    if (!info) return;
+    console.log("📋 선택된 지표 정보:", info);
+    
+    if (!info) {
+      console.warn("metricMap에서 정보를 찾을 수 없음:", metricKey);
+      return;
+    }
 
     const charts = info.available_charts ?? [];
     setAvailableCharts(charts);
     setSelectedChart(info.default_chart || charts[0] || "");
+    console.log("설정된 차트:", info.default_chart || charts[0] || "");
   };
 
   /* 
@@ -95,6 +110,7 @@ const { metricMap } = useDashboard();
   const visibleCharts = availableCharts.length
     ? chartTypes.filter((chart) => availableCharts.includes(chart.id))
     : [];
+  
   const selectedChartData = chartTypes.find((chart) => chart.id === selectedChart);
   const isCustom = currentTheme === "custom";
   const isTemplate = currentTheme.startsWith("card_");
@@ -123,15 +139,10 @@ const { metricMap } = useDashboard();
       instanceId: selectedInstance?.instanceId ?? null,
     };
 
-    console.log("📦 드래그 전송 데이터:", payload);
+    console.log(">>>> 드래그 전송 데이터:", payload);
     e.dataTransfer.effectAllowed = "copy";
     e.dataTransfer.setData("application/json", JSON.stringify(payload));
   };
-
-  const metricOptions = Object.entries(metricMap).map(([key, value]) => ({
-  value: key,  // "SESSION.total_sessions"
-  label: value.title  // "활성 세션 수"
-}));
 
   /* 
    * 렌더링
@@ -195,10 +206,21 @@ const { metricMap } = useDashboard();
           />
           <MultiSelectDropdown
             label="Select Metric"
-            options={Object.values(metricMap).map((m: any) => m.title)}
-            onChange={(value) => {
-              const key = Object.entries(metricMap).find(([_, v]) => v.title === value)?.[0];
-              if (key) handleMetricChange(key);
+            options={Object.entries(metricMap).map(([key, value]: [string, any]) => {
+            
+              return value.title;
+            })}
+            onChange={(value) => {              
+              // metricMap의 모든 항목 상세 정보 출력
+              Object.entries(metricMap).forEach(([key, val]: [string, any]) => {
+              });
+              
+              const key = Object.entries(metricMap).find(([_, v]) => v.title === value)?.[0];              
+              if (key) {
+                handleMetricChange(key);
+              } else {
+                console.warn("metricMap에서 key를 찾을 수 없음!");
+              }
             }}
             multi={false}
             width="80%"

@@ -71,6 +71,7 @@ const VacuumPage: React.FC<{ hours?: number }> = ({ hours = 24 }) => {
 
   useEffect(() => {
     const ac = new AbortController();
+    let cancelled = false; 
 
     (async () => {
       try {

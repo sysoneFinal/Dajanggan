@@ -27,6 +27,7 @@ interface ChartProps {
   isStacked?: boolean;
   xaxisOptions?: ApexXAxis;
   xAxisTickAmount?: number;
+  hideOverlappingXAxisLabels?: boolean;
   yaxisOptions?: ApexYAxis | ApexYAxis[];
   tooltipFormatter?: (value: number) => string;
   showDonutTotal?: boolean;
@@ -40,6 +41,13 @@ interface ChartProps {
     fontSize?: string;
     fontWeight?: number;
   };
+  enableSlidingAnimation?: boolean;
+  slidingAnimationDuration?: number;
+  animationEasing?: "linear" | "easein" | "easeout" | "easeinout";
+  /** 롤링 기능: 시간에 따라 최신 데이터로 자동 스크롤 */
+  enableRolling?: boolean;
+  /** 롤링 윈도우: 표시할 데이터 포인트 수 (기본값: 10) */
+  rollingWindow?: number;
 }
 
 /** 공통 색상 팔레트 */
@@ -69,15 +77,22 @@ export default function Chart({
   isStacked = false,
   xaxisOptions,
   xAxisTickAmount = 6, 
+  hideOverlappingXAxisLabels = false,
   yaxisOptions,
   tooltipFormatter,
   showDonutTotal = true,
   enableDonutShadow = false,
   style,
   donutTitle = "",
-  titleOptions
+  titleOptions,
+  enableSlidingAnimation = true,
+  slidingAnimationDuration = 1000, 
+  animationEasing = "easeinout",
+  enableRolling = false,
+  rollingWindow = 10,
 }: ChartProps) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const chartRef = useRef<any>(null);
 
   // width/height가 퍼센트 문자열인지 확인
   const isPercentHeight = typeof height === 'string' && height.includes('%');
@@ -143,7 +158,8 @@ export default function Chart({
           | "pie"
           | "scatter"
           | "boxPlot");
-        // 방어 코드 
+        
+  // 방어 코드 
   const safeSeries = useMemo(() => {
     if (!Array.isArray(series) || series.length === 0) {
       return [{ name: 'No Data', data: [] }];
@@ -162,18 +178,106 @@ export default function Chart({
     return categories;
   }, [categories]);
 
+  // 롤링 기능: 최신 N개 데이터만 표시 (슬라이딩 애니메이션과 함께)
+  const rollingSeries = useMemo(() => {
+    if (!enableRolling || !Array.isArray(series) || series.length === 0) {
+      return safeSeries;
+    }
+
+    const totalDataPoints = safeCategories.length;
+    if (totalDataPoints <= rollingWindow) {
+      return safeSeries; // 데이터가 윈도우보다 적으면 모두 표시
+    }
+
+    // 최신 N개만 선택 (부드러운 슬라이딩 효과를 위해)
+    const startIndex = totalDataPoints - rollingWindow;
+    
+    return safeSeries.map((s: any) => ({
+      ...s,
+      data: Array.isArray(s.data) ? s.data.slice(startIndex) : [],
+    }));
+  }, [safeSeries, enableRolling, rollingWindow, safeCategories.length]);
+
+  const rollingCategories = useMemo(() => {
+    if (!enableRolling || !Array.isArray(safeCategories) || safeCategories.length === 0) {
+      return safeCategories;
+    }
+
+    const totalDataPoints = safeCategories.length;
+    if (totalDataPoints <= rollingWindow) {
+      return safeCategories;
+    }
+
+    // 최신 N개만 선택
+    const startIndex = totalDataPoints - rollingWindow;
+    return safeCategories.slice(startIndex);
+  }, [safeCategories, enableRolling, rollingWindow]);
+
+  // 슬라이딩 애니메이션을 위한 축 차트 타입 확인
+  const isAxisChart =
+    normalizedType === "line" ||
+    normalizedType === "area" ||
+    normalizedType === "bar" ||
+    normalizedType === "scatter" ||
+    normalizedType === "boxPlot";
+
 
   const baseOptions = useMemo<ApexCharts.ApexOptions>(() => {
     const options: ApexCharts.ApexOptions = {
       chart: {
         type: normalizedType,
-        toolbar: { show: showToolbar },
+        toolbar: { 
+          show: true, // 항상 true로 변경
+          tools: {
+            download: true,  // 다운로드만 기본 활성화
+            selection: false,
+            zoom: false,
+            zoomin: false,
+            zoomout: false,
+            pan: false,
+            reset: false,
+          },
+          export: {
+            csv: {
+              filename: undefined,
+              columnDelimiter: ',',
+              headerCategory: 'category',
+              headerValue: 'value',
+            },
+            svg: {
+              filename: undefined,
+            },
+            png: {
+              filename: undefined,
+            }
+          }
+        },
         background: "transparent",
         fontFamily: FONT_FAMILY,
-        animations: { enabled: false },
+        animations: {
+          enabled: enableSlidingAnimation,
+          easing: animationEasing,
+          speed: slidingAnimationDuration,
+          animateGradually: {
+            enabled: false, // 등장 애니메이션 비활성화
+            delay: 0,
+          },
+          dynamicAnimation: {
+            enabled: enableSlidingAnimation, // 데이터 업데이트 애니메이션만 활성화
+            speed: slidingAnimationDuration,
+          },
+        },
         stacked: isStacked,
         redrawOnParentResize: true,
         redrawOnWindowResize: true,
+        // 롤링 활성화 시 줌 기능 활성화 (자동 스크롤을 위해)
+        ...(enableRolling && {
+          zoom: {
+            enabled: true,
+            type: 'x',
+            autoScaleYaxis: true,
+          },
+        }),
       },
       theme: { mode: "light" },
       colors,
@@ -205,17 +309,17 @@ export default function Chart({
         width: type === "line" || type === "area" ? 2 : 0,
       },
       xaxis: {
-        categories: safeCategories,
+        categories: rollingCategories,
         labels: {
           style: {
             colors: "#6B7280",
             fontFamily: FONT_FAMILY,
-            fontSize: "11px",
+            fontSize: "10px",
           },
-          rotate: -45,  // 라벨 회전
+          rotate: -45,
           rotateAlways: false,
-          hideOverlappingLabels: true,  // 겹치는 라벨 숨기기
-          trim: true,
+          hideOverlappingLabels: hideOverlappingXAxisLabels,
+          trim: false,
           maxHeight: 80,
         },
         tickAmount: xAxisTickAmount,
@@ -253,7 +357,7 @@ export default function Chart({
           options: {
             legend: { show: showLegend },
             title: { style: { fontSize: "13px" } },
-            xaxis: { labels: { show: true, rotate: -30, fontSize: "10px" } },
+            xaxis: { labels: { show: true, rotate: -30, fontSize: "9px" } },
             yaxis: { labels: { show: true, fontSize: "10px" } },
           },
         },
@@ -263,6 +367,7 @@ export default function Chart({
             legend: { show: showLegend },
             chart: { height: 220 },
             title: { style: { fontSize: "12px" } },
+            xaxis: { labels: { fontSize: "8px" } },
           },
         },
       ],
@@ -270,64 +375,65 @@ export default function Chart({
 
     /** 타입별 세부 설정 */
     switch (type) {
-case "bar":
-case "column":
-  options.plotOptions = {
-    bar: {
-      horizontal: type === "bar",
-      borderRadius: 4,
-      columnWidth: "60%",
-      dataLabels: {
-        total: {
-          enabled: isStacked,
-          style: { fontSize: "13px", fontWeight: 600 },
-        },
-      },
-    },
-  };
-  
-  // 줌 기능 추가
-  options.chart = {
-    ...options.chart,
-    zoom: {
-      enabled: true,
-      type: 'x',
-      autoScaleYaxis: true,
-    },
-    toolbar: {
-      show: true,
-      tools: {
-        download: true,
-        selection: true,
-        zoom: true,
-        zoomin: true,
-        zoomout: true,
-        pan: true,
-        reset: true,
-      },
-      autoSelected: 'zoom'
-    }
-  };
-  
-  // x축 라벨 개선
-  options.xaxis = {
-    ...options.xaxis,
-    labels: {
-      ...options.xaxis?.labels,
-      hideOverlappingLabels: true,
-      rotate: -45,
-      rotateAlways: false,
-      trim: true,
-    }
-  };
-  
-  // 막대 위 숫자 끄기 (빽빽할 때)
-  options.dataLabels = {
-    ...options.dataLabels,
-    enabled: false,
-  };
-  
-  break;
+      case "bar":
+      case "column":
+        options.plotOptions = {
+          bar: {
+            horizontal: type === "bar",
+            borderRadius: 4,
+            columnWidth: "60%",
+            dataLabels: {
+              total: {
+                enabled: isStacked,
+                style: { fontSize: "13px", fontWeight: 600 },
+              },
+            },
+          },
+        };
+        
+        // bar/column은 줌 기능도 추가
+        options.chart = {
+          ...options.chart,
+          zoom: {
+            enabled: true,
+            type: 'x',
+            autoScaleYaxis: true,
+          },
+          toolbar: {
+            show: true,
+            tools: {
+              download: true,
+              selection: true,
+              zoom: true,
+              zoomin: true,
+              zoomout: true,
+              pan: true,
+              reset: true,
+            },
+            autoSelected: 'zoom'
+          }
+        };
+        
+        // x축 라벨 개선
+        options.xaxis = {
+          ...options.xaxis,
+          labels: {
+            ...options.xaxis?.labels,
+            hideOverlappingLabels: hideOverlappingXAxisLabels,
+            rotate: -45,
+            rotateAlways: false,
+            trim: false,
+          }
+        };
+        
+        // 막대 위 숫자 끄기
+        options.dataLabels = {
+          ...options.dataLabels,
+          enabled: false,
+        };
+        
+        break;
+
       /** 채워진 선 차트 */
       case "area":
         options.stroke = { curve: "smooth", width: 2 };
@@ -341,19 +447,13 @@ case "column":
             stops: [0, 100],
           },
         };
-        options.markers = {
-          size: 4,
-          strokeWidth: 2,
-          strokeColors: "#fff",
-          hover: { size: 6 },
-        };
         break;
 
       /** 파이 / 도넛 */
       case "pie":
       case "donut":
-      options.labels = safeCategories as string[];      
-      options.plotOptions = {
+        options.labels = safeCategories as string[];      
+        options.plotOptions = {
           pie: {
             donut: {
               size: "55%",
@@ -423,7 +523,18 @@ case "column":
         options.chart = {
           ...options.chart,
           type: "boxPlot",
-          toolbar: { show: false },
+          toolbar: { 
+            show: true,
+            tools: {
+              download: true,
+              selection: false,
+              zoom: false,
+              zoomin: false,
+              zoomout: false,
+              pan: false,
+              reset: false,
+            },
+          },
         };
         options.plotOptions = {
           boxPlot: {
@@ -444,40 +555,49 @@ case "column":
         options.stroke = { width: 1 };
         break;
     }
-      let mergedYaxis = options.yaxis;
 
-      if (customOptions?.yaxis) {
-          // 둘 중 하나라도 배열이면 => 배열로 합쳐서 넘기기
-          if (Array.isArray(options.yaxis) || Array.isArray(customOptions.yaxis)) {
-              const baseArr = Array.isArray(options.yaxis)
-                  ? options.yaxis
-                  : options.yaxis
-                      ? [options.yaxis]
-                      : [];
-              const customArr = Array.isArray(customOptions.yaxis)
-                  ? customOptions.yaxis
-                  : [customOptions.yaxis];
+    let mergedYaxis = options.yaxis;
 
-              mergedYaxis = [...baseArr, ...customArr];
-          } else {
-              // 둘 다 객체면 기존 옵션에 custom만 덮어쓰기
-              mergedYaxis = {
-                  ...(options.yaxis as ApexYAxis),
-                  ...(customOptions.yaxis as ApexYAxis),
-              };
-          }
+    if (customOptions?.yaxis) {
+      // 둘 중 하나라도 배열이면 => 배열로 합쳐서 넘기기
+      if (Array.isArray(options.yaxis) || Array.isArray(customOptions.yaxis)) {
+        const baseArr = Array.isArray(options.yaxis)
+          ? options.yaxis
+          : options.yaxis
+            ? [options.yaxis]
+            : [];
+        const customArr = Array.isArray(customOptions.yaxis)
+          ? customOptions.yaxis
+          : [customOptions.yaxis];
+
+        mergedYaxis = [...baseArr, ...customArr];
+      } else {
+        // 둘 다 객체면 기존 옵션에 custom만 덮어쓰기
+        mergedYaxis = {
+          ...(options.yaxis as ApexYAxis),
+          ...(customOptions.yaxis as ApexYAxis),
+        };
       }
+    }
+
     /** 사용자 옵션 병합 */
     return {
       ...options,
       ...customOptions,
-      chart: { ...options.chart, ...customOptions?.chart },
+      chart: {
+        ...options.chart,
+        ...customOptions?.chart,
+        animations: {
+          ...(options.chart?.animations ?? {}),
+          ...(customOptions?.chart?.animations ?? {}),
+        },
+      },
       plotOptions: { ...options.plotOptions, ...customOptions?.plotOptions },
       fill: { ...options.fill, ...customOptions?.fill },
       stroke: { ...options.stroke, ...customOptions?.stroke },
       grid: { ...options.grid, ...customOptions?.grid },
-        xaxis: { ...options.xaxis, ...customOptions?.xaxis },
-        yaxis: mergedYaxis,
+      xaxis: { ...options.xaxis, ...customOptions?.xaxis },
+      yaxis: mergedYaxis,
     };
   }, [
     type,
@@ -485,10 +605,10 @@ case "column":
     categories,
     showGrid,
     showLegend,
-    showToolbar,
     tooltipFormatter,
     xaxisOptions,
     xAxisTickAmount,
+    hideOverlappingXAxisLabels,
     yaxisOptions,
     customOptions,
     isStacked,
@@ -496,7 +616,29 @@ case "column":
     enableDonutShadow,
     donutTitle,
     titleOptions,
+    enableSlidingAnimation,
+    slidingAnimationDuration,
+    animationEasing,
+    isAxisChart,
+    safeCategories,
+    rollingCategories,
+    enableRolling,
+    rollingWindow,
   ]);
+
+  // 데이터 업데이트 시 부드러운 전환을 위한 effect
+  useEffect(() => {
+    if (chartRef.current && enableSlidingAnimation) {
+      try {
+        // 롤링이 활성화된 경우 롤링된 시리즈 사용, 아니면 원본 시리즈 사용
+        const seriesToUpdate = enableRolling ? rollingSeries : safeSeries;
+        // ApexCharts의 updateSeries 메서드 사용
+        chartRef.current.chart?.updateSeries(seriesToUpdate, true);
+      } catch (error) {
+        console.warn('Chart update failed:', error);
+      }
+    }
+  }, [safeSeries, rollingSeries, enableSlidingAnimation, enableRolling]);
 
   // 최종적으로 사용할 width/height 결정
   const finalWidth = isPercentWidth ? calculatedWidth : width;
@@ -525,8 +667,9 @@ case "column":
       </style>
       {(finalHeight && finalWidth) && (
         <ReactApexChart
+          ref={chartRef}
           options={baseOptions}
-          series={safeSeries}
+          series={enableRolling ? rollingSeries : safeSeries}
           type={normalizedType}
           width={finalWidth}
           height={finalHeight}

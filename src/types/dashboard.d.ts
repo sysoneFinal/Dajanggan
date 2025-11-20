@@ -4,6 +4,9 @@ export interface DashboardLayout extends Layout {
   /** 지표 */
   metricType: string;
 
+  /** 단위 */
+  unit?: string | null;
+
   /** 차트 제목 (UI 표시용) */
   title: string;
 

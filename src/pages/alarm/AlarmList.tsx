@@ -8,6 +8,7 @@ import {
   flexRender,
   type ColumnDef,
   type SortingState,
+  type FilterFn,
 } from "@tanstack/react-table";
 import Pagination from "../../components/util/Pagination";
 import CsvButton from "../../components/util/CsvButton";
@@ -15,7 +16,8 @@ import SlackSettingsModal from "./SlackSetting";
 import AlarmRuleModal from "./AlarmRuleModal";
 import AlarmRuleEditModal from "./AlarmRuleEditModal";
 import AlarmRuleDetailModal from "../alarm/AlarmRuleDetailModal";
-import type { Metric, Aggregation, AlarmRulePayload } from "./AlarmRuleModal";
+import type { Metric, Aggregation, MetricCategory, AlarmRulePayload } from "./AlarmRuleModal";
+import { CATEGORY_LABELS } from "./AlarmRuleModal";
 import "/src/styles/alarm/alarm-list.css";
 import apiClient from "../../api/apiClient";
 import { useInstanceContext } from "../../context/InstanceContext";
@@ -25,10 +27,10 @@ import { useInstanceContext } from "../../context/InstanceContext";
 /* ============================== */
 
 type RuleThreshold = {
-  threshold: number;
-  minDurationMin: number;
-  occurCount: number;
-  windowMin: number;
+  threshold: number | null;
+  minDurationMin: number | null;
+  occurCount: number | null;
+  windowMin: number | null;
 };
 
 type ServerCreatePayload = {
@@ -47,7 +49,10 @@ type ServerCreatePayload = {
 
 type ServerUpdatePayload = {
   alarmRuleId?: number; // 서버가 path param으로 받으면 생략 가능
+  metricCategory?: MetricCategory;
+  metricType?: Metric;
   aggregationType: Aggregation;
+  operator?: "gt" | "gte" | "lt" | "lte" | "eq";
   enabled: boolean;
   levels: {
     notice: RuleThreshold;
@@ -63,7 +68,7 @@ function toServerCreateJSONB(p: AlarmRulePayload): ServerCreatePayload {
     databaseId: p.databaseId,
     metricType: p.metricType,
     aggregationType: p.aggregationType,
-    operator: "gt",
+    operator: p.operator || "gt",
     enabled: p.enabled,
     levels: {
       notice: p.levels.notice,
@@ -84,7 +89,10 @@ function toServerUpdateJSONB(p: any): ServerUpdatePayload {
 
   return {
     alarmRuleId: p.alarmRuleId,
+    metricCategory: p.metricCategory,
+    metricType: p.metricType,
     aggregationType: p.aggregationType,
+    operator: p.operator,
     enabled: p.enabled,
     levels: hasServerKeys
       ? {
@@ -121,6 +129,7 @@ export default function AlarmRuleList() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [sorting, setSorting] = useState<SortingState>([]);
+  const [globalFilter, setGlobalFilter] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 15;
   const [openSlack, setOpenSlack] = useState(false);
@@ -269,25 +278,52 @@ export default function AlarmRuleList() {
     []
   );
 
+  const globalFilterFn = useMemo<FilterFn<AlarmRuleRow>>(
+    () => (row, _columnId, filterValue) => {
+      const keyword = String(filterValue ?? "").trim().toLowerCase();
+      if (!keyword) return true;
+
+      const values = [
+        row.original.instanceName,
+        row.original.databaseName,
+        row.original.section,
+        row.original.metricType,
+        row.original.enabled ? "활성화" : "비활성화",
+      ]
+        .filter(Boolean)
+        .map((v) => String(v).toLowerCase());
+
+      return values.some((v) => v.includes(keyword));
+    },
+    []
+  );
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [globalFilter]);
+
   const table = useReactTable({
     data,
     columns,
     state: {
       sorting,
+      globalFilter,
       pagination: {
         pageIndex: currentPage - 1,
         pageSize,
       },
     },
     onSortingChange: setSorting,
+    onGlobalFilterChange: setGlobalFilter,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
+    globalFilterFn,
     manualPagination: false,
   });
 
-  const totalPages = Math.ceil(data.length / pageSize);
+  const totalPages = Math.ceil(table.getFilteredRowModel().rows.length / pageSize);
 
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
@@ -344,8 +380,34 @@ export default function AlarmRuleList() {
 
   // 생성
   const handleCreateRule = async (payload: AlarmRulePayload) => {
+    // 중복 체크: 동일한 instance, database, 카테고리, 지표 조합이 이미 존재하는지 확인
+    // try 블록 밖에서 먼저 체크
+    const categoryLabel = CATEGORY_LABELS[payload.metricCategory];
+    
+    const isDuplicate = data.some((rule) => {
+      const matches = 
+        rule.instanceId === payload.instanceId &&
+        rule.databaseId === payload.databaseId &&
+        rule.section === categoryLabel &&
+        rule.metricType === payload.metricType;
+      
+      // 디버깅용 (나중에 제거 가능)
+      if (matches) {
+        console.log("중복 발견:", {
+          existing: { instanceId: rule.instanceId, databaseId: rule.databaseId, section: rule.section, metricType: rule.metricType },
+          new: { instanceId: payload.instanceId, databaseId: payload.databaseId, section: categoryLabel, metricType: payload.metricType }
+        });
+      }
+      
+      return matches;
+    });
+
+    if (isDuplicate) {
+      alert("동일한 인스턴스, 데이터베이스, 카테고리, 지표를 가진 알림 규칙이 이미 존재합니다.");
+      return;
+    }
+
     try {
-   
       const serverPayload = toServerCreateJSONB(payload);
     
  
@@ -375,7 +437,14 @@ export default function AlarmRuleList() {
       alert("알림 규칙이 생성되었습니다.");
     } catch (e: any) {
       console.error("Failed to create rule:", e);
-      alert("알림 규칙 생성에 실패했습니다.");
+      
+      // 백엔드에서 중복 에러를 반환한 경우
+      const errorMessage = e?.response?.data?.message || e?.message || "";
+      if (errorMessage.includes("중복") || errorMessage.includes("duplicate") || errorMessage.includes("already exists")) {
+        alert("동일한 인스턴스, 데이터베이스, 카테고리, 지표를 가진 알림 규칙이 이미 존재합니다.");
+      } else {
+        alert(`알림 규칙 생성에 실패했습니다: ${errorMessage || "알 수 없는 오류"}`);
+      }
     }
   };
 
@@ -461,7 +530,23 @@ export default function AlarmRuleList() {
             알림 규칙 생성
           </button>
         </div>
-        <div className="alarm-page__filters">
+        <div className="filter-right" style={{ display: "flex", gap: "12px", alignItems: "center" }}>
+          <div className="al-search" style={{ position: "relative" }}>
+            <input
+              type="text"
+              value={globalFilter}
+              onChange={(e) => setGlobalFilter(e.target.value)}
+              placeholder="규칙/지표 검색"
+              aria-label="알람 규칙 검색"
+              style={{
+                border: "1px solid #E5E7EB",
+                borderRadius: "8px",
+                padding: "8px 12px",
+                fontSize: "0.9rem",
+                minWidth: "220px",
+              }}
+            />
+          </div>
           <CsvButton onClick={handleExportCSV} tooltip="CSV 파일 저장" />
         </div>
       </section>

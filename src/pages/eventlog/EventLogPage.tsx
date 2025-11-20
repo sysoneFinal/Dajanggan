@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useMemo, useCallback } from "react";
+import React, { useState, useMemo, useCallback, useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
 import {
   useReactTable,
   getCoreRowModel,
@@ -10,6 +11,7 @@ import {
 } from "@tanstack/react-table";
 import apiClient from "../../api/apiClient";
 import { useInstanceContext } from "../../context/InstanceContext";
+import { useLoader } from "../../context/LoaderContext";
 
 import "../../styles/event/event-log.css";
 import Pagination from "../../components/util/Pagination";
@@ -17,6 +19,8 @@ import CsvButton from "../../components/util/CsvButton";
 import MultiSelectDropdown from "../../components/util/MultiSelectDropdown";
 import SummaryCard from "../../components/util/SummaryCard";
 import { formatDateTime } from "../../utils/formatDateTime";
+import { intervalToMs } from "../../utils/time";
+import { formatRuntime } from "../../utils/formatRunTime";
 
 interface EventLog {
   eventId: number;
@@ -33,7 +37,8 @@ interface EventLog {
 }
 
 const EventLogPage = () => {
-  const { selectedInstance } = useInstanceContext();
+  const { selectedInstance, refreshInterval } = useInstanceContext();
+  const { showLoader, hideLoader } = useLoader();
 
   /** 상태 관리 */
   const [selectedDBs, setSelectedDBs] = useState<string[]>([]);
@@ -42,123 +47,137 @@ const EventLogPage = () => {
   const [selectedTime, setSelectedTime] = useState<string>("오늘");
   const [page, setPage] = useState(1);
   const [sorting, setSorting] = useState<SortingState>([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [eventLogs, setEventLogs] = useState<EventLog[]>([]);
-  const [totalCount, setTotalCount] = useState(0);
 
-  // 요약카드 상태
-  const [summary, setSummary] = useState({
+  const pageSize = 14;
+
+  /** 필터 옵션 조회 - React Query */
+  const { data: filterOptions } = useQuery({
+    queryKey: ["eventFilterOptions", selectedInstance?.instanceId],
+    queryFn: async () => {
+      const res = await apiClient.get("/event/filter-options", {
+        params: { instanceId: selectedInstance?.instanceId },
+      });
+      return {
+        databases: res.data.databases || [],
+        categories: res.data.categories || [],
+        levels: res.data.levels || [],
+      };
+    },
+    enabled: !!selectedInstance?.instanceId,
+    staleTime: 3 * 60 * 1000,
+    gcTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: true,
+    refetchOnMount: true,
+  });
+
+  /** 이벤트 로그 조회 - React Query */
+  const {
+    data: eventLogsData, isLoading: isEventLogsLoading,} = useQuery({
+    queryKey: [
+      "eventLogs",
+      selectedInstance?.instanceId,
+      page,
+      selectedDBs.join(","),
+      selectedCategories.join(","),
+      selectedLevels.join(","),
+      selectedTime,
+    ],
+    queryFn: async () => {
+      const params: any = {
+        instanceId: selectedInstance?.instanceId,
+        page,
+        size: pageSize,
+        selectedTime,
+      };
+
+      if (selectedDBs.length) params.dbNames = selectedDBs.join(",");
+      if (selectedCategories.length) params.category = selectedCategories.join(",");
+      if (selectedLevels.length) params.level = selectedLevels.join(",");
+
+      const res = await apiClient.get("/event/list", { params });
+
+      const mapped = res.data.data.map((e: any) => ({
+        eventId: e.eventId,
+        time: formatDateTime(e.detectedAt),
+        instance: e.instanceName,
+        db: e.databaseName,
+        category: e.category,
+        eventType: e.eventType,
+        resource: e.resourceType,
+        user: e.userName,
+        level: e.level,
+        duration: e.duration,
+        message: e.description,
+      }));
+
+      return {
+        data: mapped,
+        totalCount: res.data.totalCount ?? mapped.length,
+      };
+    },
+    enabled: !!selectedInstance?.instanceId,
+    staleTime: 20 * 1000,
+    gcTime: 3 * 60 * 1000,
+    refetchOnWindowFocus: true,
+    refetchOnMount: true,
+    refetchInterval: intervalToMs(refreshInterval)
+  });
+
+  /** 요약 카드 데이터 조회 - React Query */
+  const { data: summaryData } = useQuery({
+    queryKey: ["eventSummary", selectedInstance?.instanceId],
+    queryFn: async () => {
+      const res = await apiClient.get("/event/summary", {
+        params: { instanceId: selectedInstance?.instanceId },
+      });
+      console.log('event summary', res.data);
+      return {
+        infoCount: res.data.infocount ?? 0,
+        warnCount: res.data.warncount ?? 0,
+        errorCount: res.data.errorcount ?? 0,
+        totalCount: res.data.totalcount ?? 0,
+      };
+    },
+    enabled: !!selectedInstance?.instanceId,
+    staleTime: 10 * 1000,
+    gcTime: 60 * 1000,
+    refetchInterval: intervalToMs(refreshInterval),
+    refetchOnWindowFocus: true,
+    refetchOnMount: true,
+  });
+
+  /** === 로딩 상태 관리 === */
+  useEffect(() => {
+    if (isEventLogsLoading) {
+      showLoader('이벤트 로그를 불러오는 중...');
+    } else {
+      hideLoader();
+    }
+  }, [isEventLogsLoading, showLoader, hideLoader]);
+
+  // 선택한 인스턴스 변경 시 필터 초기화
+  useEffect(() => {
+    setSelectedDBs([]);
+    setSelectedCategories([]);
+    setSelectedLevels([]);
+    setSelectedTime("오늘");
+    setPage(1);
+  }, [selectedInstance?.instanceId]);
+
+  const eventLogs = eventLogsData?.data || [];
+  const totalCount = eventLogsData?.totalCount || 0;
+  const totalPages = Math.ceil(totalCount / pageSize);
+
+  const dbOptions = filterOptions?.databases || []; 
+  const categoryOptions = filterOptions?.categories || [];
+  const levelOptions = filterOptions?.levels || [];
+
+  const summary = summaryData || {
     infoCount: 0,
     warnCount: 0,
     errorCount: 0,
     totalCount: 0,
-  });
-
-  // 필터 옵션 상태
-  const [dbOptions, setDbOptions] = useState<string[]>([]);
-  const [categoryOptions, setCategoryOptions] = useState<string[]>([]);
-  const [levelOptions, setLevelOptions] = useState<string[]>([]);
-
-  const pageSize = 14;
-  const totalPages = Math.ceil(totalCount / pageSize);
-
-  /** 필터 옵션 조회 */
-  useEffect(() => {
-    if (!selectedInstance?.instanceId) return;
-
-    const fetchFilterOptions = async () => {
-      try {
-        const res = await apiClient.get("/event/filter-options", {
-          params: { instanceId: selectedInstance.instanceId },
-        });
-        setDbOptions(res.data.databases || []);
-        setCategoryOptions(res.data.categories || []);
-        setLevelOptions(res.data.levels || []);
-      } catch (err) {
-        console.error("필터 옵션 조회 실패:", err);
-      }
-    };
-
-    fetchFilterOptions();
-  }, [selectedInstance?.instanceId]);
-
-  /** 이벤트 로그 조회 */
-  useEffect(() => {
-    if (!selectedInstance?.instanceId) return;
-
-    const fetchEventLogs = async () => {
-      setIsLoading(true);
-      try {
-        const params: any = {
-          instanceId: selectedInstance.instanceId,
-          page,
-          size: pageSize,
-          selectedTime,
-        };
-
-        if (selectedDBs.length) params.dbNames = selectedDBs.join(",");
-        if (selectedCategories.length) params.category = selectedCategories.join(",");
-        if (selectedLevels.length) params.level = selectedLevels.join(",");
-
-        const res = await apiClient.get("/event/list", { params });
-
-        const mapped = res.data.data.map((e: any) => ({
-          eventId: e.eventId,
-          time: formatDateTime(e.detectedAt),
-          instance: e.instanceName,
-          db: e.databaseName,
-          category: e.category,
-          eventType: e.eventType,
-          resource: e.resourceType,
-          user: e.userName,
-          level: e.level,
-          duration: e.duration,
-          message: e.description,
-        }));
-
-        setEventLogs(mapped);
-        setTotalCount(res.data.totalCount ?? mapped.length);
-      } catch (err) {
-        console.error("이벤트 로그 조회 실패:", err);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchEventLogs();
-  }, [
-    selectedInstance?.instanceId,
-    selectedDBs.join(","),
-    selectedLevels.join(","),
-    selectedCategories.join(","),
-    selectedTime,
-    page,
-  ]);
-
-  /** 요약 카드 데이터 조회 */
-  useEffect(() => {
-    if (!selectedInstance?.instanceId) return;
-
-    const fetchSummary = async () => {
-      try {
-        const res = await apiClient.get("/event/summary", {
-          params: { instanceId: selectedInstance.instanceId },
-        });
-        setSummary({
-          infoCount: res.data.infoCount ?? 0,
-          warnCount: res.data.warnCount ?? 0,
-          errorCount: res.data.errorCount ?? 0,
-          totalCount: res.data.total_count ?? 0,
-        });
-      } catch (err) {
-        console.error("요약 카드 조회 실패:", err);
-      }
-    };
-
-    fetchSummary();
-    const interval = setInterval(fetchSummary, 60 * 1000);
-    return () => clearInterval(interval);
-  }, [selectedInstance?.instanceId]);
+  };
 
   /** 테이블 컬럼 정의 */
   const columns = useMemo<ColumnDef<EventLog>[]>(
@@ -172,22 +191,20 @@ const EventLogPage = () => {
       { accessorKey: "user", header: "사용자명" },
       {
         accessorKey: "level",
-        header: "Level",
+        header: "레벨",
         cell: (info) => {
           const level = String(info.getValue() || "").toUpperCase();
           return <span className={level.toLowerCase()}>{level}</span>;
         },
       },
-          // 초단위 추가 
       {
         accessorKey: "duration",
         header: "지속시간",
         cell: (info) => {
-          const value = info.getValue();
-          return value !== null && value !== undefined ? `${value}s` : "-";
+          const value = info.getValue<number>();
+          return value !== null && value !== undefined ? formatRuntime(value) : "-";
         },
       },
-        // 메세지는 툴팁 적용 
       {
         accessorKey: "message",
         header: "내용",
@@ -254,9 +271,6 @@ const EventLogPage = () => {
     setSelectedTime(Array.isArray(v) ? v[0] : v);
     setPage(1);
   }, []);
-
-  /** 로딩 상태 */
-  if (isLoading) return <div className="loading">이벤트 로그 불러오는 중...</div>;
 
   return (
     <main className="event-log">
