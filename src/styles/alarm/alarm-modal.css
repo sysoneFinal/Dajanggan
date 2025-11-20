@@ -90,7 +90,9 @@
 .am-card__header h3{ margin:0; font-size:14px; }
 .am-dim{ color:#9ca3af; font-weight:500; }
 
-.am-chart{ padding:8px 10px 14px; }
+.am-chart{ padding:8px 10px 14px;   height: 520px; /* 예: 기본 380~400px 정도에서 줄이기 */
+  max-width: 1000px; }
+
 
 .am-tablewrap{ overflow:auto; }
 .am-table{ width:100%; border-collapse:collapse; font-size:14px; }

@@ -6,9 +6,11 @@ import {
   CATEGORY_LABELS,
   METRIC_BY_CATEGORY,
   AGGREGATION_OPTIONS,
+  OPERATOR_OPTIONS,
   type Metric,
   type Aggregation,
   type MetricCategory,
+  type Operator,
 } from "./AlarmRuleModal";
 
 export interface RuleThreshold {
@@ -36,6 +38,7 @@ export default function AlarmRuleDetailModal({
   const [category, setCategory] = useState<MetricCategory | null>(null);
   const [metric, setMetric] = useState<Metric | null>(null);
   const [aggregation, setAggregation] = useState<Aggregation | null>(null);
+  const [operator, setOperator] = useState<Operator>("gt");
   const emptyLevel: RuleThreshold = { threshold: null, minDurationMin: null, occurCount: null, windowMin: null };
 
   const [levels, setLevels] = useState<{
@@ -100,6 +103,7 @@ export default function AlarmRuleDetailModal({
         const metricType = detail.metricType as Metric;
         setMetric(metricType);
         setAggregation(detail.aggregationType as Aggregation);
+        setOperator((detail.operator as Operator) || "gt");
         
         // 카테고리 찾기
         const detectedCategory = detail.metricCategory
@@ -214,6 +218,13 @@ export default function AlarmRuleDetailModal({
                     {getAggregationLabel(aggregation)}
                   </div>
                 </div>
+
+                <div>
+                  <div className="ar-kicker">연산자</div>
+                  <div className="ar-select" style={{ backgroundColor: '#F9FAFB', padding: '10px 12px', border: '1px solid #E5E7EB', borderRadius: '6px' }}>
+                    {OPERATOR_OPTIONS.find((opt) => opt.value === operator)?.label ?? operator}
+                  </div>
+                </div>
               </div>
 
               <div className="ar-tablewrap" style={{ marginTop: '24px' }}>
@@ -233,6 +244,14 @@ export default function AlarmRuleDetailModal({
                       <td>{formatValue(levels.notice.threshold, true)}</td>
                       <td>{formatValue(levels.warning.threshold, true)}</td>
                       <td>{formatValue(levels.critical.threshold, true)}</td>
+                      <td className="ar-right"></td>
+                    </tr>
+
+                    <tr className="ar-row">
+                      <td className="ar-td-strong">연산자</td>
+                      <td colSpan={3} style={{ textAlign: "center", padding: "10px" }}>
+                        {OPERATOR_OPTIONS.find((opt) => opt.value === operator)?.label ?? operator}
+                      </td>
                       <td className="ar-right"></td>
                     </tr>
 

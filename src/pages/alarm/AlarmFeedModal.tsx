@@ -58,10 +58,9 @@ type AlarmListItem = {
 type Props = {
   open: boolean;
   onClose: () => void;
-  onAcknowledge?: (id: number) => void;
 };
 
-export default function AlarmDetailModal({ open, onClose, onAcknowledge }: Props) {
+export default function AlarmDetailModal({ open, onClose }: Props) {
   const { selectedInstance, selectedDatabase } = useInstanceContext();
   const dlgRef = useRef<HTMLDivElement>(null);
   const [alarms, setAlarms] = useState<AlarmListItem[]>([]);
@@ -121,8 +120,20 @@ export default function AlarmDetailModal({ open, onClose, onAcknowledge }: Props
 
       setCurrentData(alarmDetail);
 
-      // 읽음 표시(클라이언트 상태)
-      setAlarms((prev) => prev.map((a) => (a.id === id ? { ...a, isRead: true } : a)));
+      // 읽음 처리: 서버에 반영하고 클라이언트 상태 업데이트
+      const currentAlarm = alarms.find((a) => a.id === id);
+      if (currentAlarm && !currentAlarm.isRead) {
+        try {
+          await apiClient.patch(`/alarms/feeds/${id}/read`);
+          setAlarms((prev) => prev.map((a) => (a.id === id ? { ...a, isRead: true } : a)));
+        } catch (e: any) {
+          console.error("Failed to mark as read:", e);
+          // 읽음 처리 실패해도 상세는 표시
+        }
+      } else {
+        // 이미 읽음 상태면 클라이언트 상태만 업데이트
+        setAlarms((prev) => prev.map((a) => (a.id === id ? { ...a, isRead: true } : a)));
+      }
     } catch (e: any) {
       if (e?.name === "CanceledError" || e?.code === "ERR_CANCELED") {
         // 요청 취소는 정상
@@ -132,7 +143,7 @@ export default function AlarmDetailModal({ open, onClose, onAcknowledge }: Props
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [alarms]);
 
   /** 알림 목록 조회 */
   useEffect(() => {
@@ -214,27 +225,8 @@ export default function AlarmDetailModal({ open, onClose, onAcknowledge }: Props
       if (currentData?.id === id) setCurrentData(null);
     } catch (e: any) {
       console.error("Failed to delete alarm:", e);
-      alert("알림 삭제에 실패했습니다.");
-    }
-  };
-
-  const handleMarkAsRead = async (id: number) => {
-    try {
-      await apiClient.patch(`/alarms/feeds/${id}/read`);
-      setAlarms((prev) => prev.map((a) => (a.id === id ? { ...a, isRead: !a.isRead } : a)));
-    } catch (e: any) {
-      console.error("Failed to mark as read:", e);
-    }
-  };
-
-  const handleAcknowledge = async (id: number) => {
-    try {
-      await apiClient.patch(`/alarms/feeds/${id}/acknowledge`);
-      onAcknowledge?.(id);
-      alert("알림이 확인 처리되었습니다.");
-    } catch (e: any) {
-      console.error("Failed to acknowledge alarm:", e);
-      alert("알림 확인 처리에 실패했습니다.");
+      const errorMessage = e?.response?.data?.message || e?.message || "알 수 없는 오류";
+      alert(`알림 삭제에 실패했습니다: ${errorMessage}`);
     }
   };
 
@@ -278,7 +270,7 @@ export default function AlarmDetailModal({ open, onClose, onAcknowledge }: Props
           <aside className="am-alarms-list">
             <header className="am-alarms-list__header">
               <h3>알림 내역</h3>
-              <span className="am-alarms-count">{alarms.length}</span>
+              <span className="am-alarms-count">{alarms.filter((a) => !a.isRead).length}</span>
             </header>
 
             <div className="am-alarms-list__body">
@@ -299,16 +291,6 @@ export default function AlarmDetailModal({ open, onClose, onAcknowledge }: Props
                         {alarm.severity || "INFO"}
                       </span>
                       <div className="am-alarm-item__actions">
-                        <button
-                          className="am-alarm-action-btn"
-                          title={alarm.isRead ? "읽지 않음으로 표시" : "읽음으로 표시"}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleMarkAsRead(alarm.id);
-                          }}
-                        >
-                          {alarm.isRead ? "○" : "●"}
-                        </button>
                         <button
                           className="am-alarm-action-btn am-alarm-action-btn--delete"
                           title="삭제"
@@ -336,7 +318,7 @@ export default function AlarmDetailModal({ open, onClose, onAcknowledge }: Props
             <div className="am-modal__content">
               <div className="am-modal__grid">
                 {/* 차트 */}
-                <section className="am-card am-chart">
+                <section className="am-card am-chart" style={{ maxHeight: "420px", overflow: "hidden" }}>
                   <header className="am-card__header">
                     <h3>
                       latency Trend <span className="am-dim">(24h)</span>
@@ -353,7 +335,7 @@ export default function AlarmDetailModal({ open, onClose, onAcknowledge }: Props
                       showToolbar={false}
                       colors={["#6366F1"]}
                       customOptions={{
-                        chart: { redrawOnParentResize: true, redrawOnWindowResize: true },
+                        chart: { redrawOnParentResize: false, redrawOnWindowResize: false },
                         stroke: { width: 2, curve: "smooth" },
                         grid: { borderColor: "#E5E7EB", strokeDashArray: 4 },
                         markers: { size: 3 },
@@ -409,9 +391,6 @@ export default function AlarmDetailModal({ open, onClose, onAcknowledge }: Props
                       <dt>지속시간</dt>
                       <dd>{currentData.summary.duration}</dd>
                     </dl>
-                    <button className="am-btn am-btn--primary" onClick={() => handleAcknowledge(currentData.id)}>
-                      Acknowledge
-                    </button>
                   </div>
                 </aside>
               </div>
