@@ -77,7 +77,7 @@ export default function Chart({
   isStacked = false,
   xaxisOptions,
   xAxisTickAmount = 6, 
-  hideOverlappingXAxisLabels = false, // 기본적으로 모든 레이블 표시
+  hideOverlappingXAxisLabels = false,
   yaxisOptions,
   tooltipFormatter,
   showDonutTotal = true,
@@ -85,7 +85,7 @@ export default function Chart({
   style,
   donutTitle = "",
   titleOptions,
-  enableSlidingAnimation = true, // 기본값을 true로 변경
+  enableSlidingAnimation = true,
   slidingAnimationDuration = 1000, 
   animationEasing = "easeinout",
   enableRolling = false,
@@ -158,7 +158,8 @@ export default function Chart({
           | "pie"
           | "scatter"
           | "boxPlot");
-        // 방어 코드 
+        
+  // 방어 코드 
   const safeSeries = useMemo(() => {
     if (!Array.isArray(series) || series.length === 0) {
       return [{ name: 'No Data', data: [] }];
@@ -220,14 +221,37 @@ export default function Chart({
     normalizedType === "scatter" ||
     normalizedType === "boxPlot";
 
-  // 도넛/파이 차트인지 확인
-  const isCircularChart = normalizedType === "donut" || normalizedType === "pie";
 
   const baseOptions = useMemo<ApexCharts.ApexOptions>(() => {
     const options: ApexCharts.ApexOptions = {
       chart: {
         type: normalizedType,
-        toolbar: { show: showToolbar },
+        toolbar: { 
+          show: true, // 항상 true로 변경
+          tools: {
+            download: true,  // 다운로드만 기본 활성화
+            selection: false,
+            zoom: false,
+            zoomin: false,
+            zoomout: false,
+            pan: false,
+            reset: false,
+          },
+          export: {
+            csv: {
+              filename: undefined,
+              columnDelimiter: ',',
+              headerCategory: 'category',
+              headerValue: 'value',
+            },
+            svg: {
+              filename: undefined,
+            },
+            png: {
+              filename: undefined,
+            }
+          }
+        },
         background: "transparent",
         fontFamily: FONT_FAMILY,
         animations: {
@@ -290,12 +314,12 @@ export default function Chart({
           style: {
             colors: "#6B7280",
             fontFamily: FONT_FAMILY,
-            fontSize: "10px", // 폰트 크기 약간 줄임
+            fontSize: "10px",
           },
           rotate: -45,
           rotateAlways: false,
-          hideOverlappingLabels: hideOverlappingXAxisLabels, // props로 제어 가능하도록
-          trim: false, // trim을 false로 변경
+          hideOverlappingLabels: hideOverlappingXAxisLabels,
+          trim: false,
           maxHeight: 80,
         },
         tickAmount: xAxisTickAmount,
@@ -333,7 +357,7 @@ export default function Chart({
           options: {
             legend: { show: showLegend },
             title: { style: { fontSize: "13px" } },
-            xaxis: { labels: { show: true, rotate: -30, fontSize: "9px" } }, // 작은 화면에서 폰트 더 작게
+            xaxis: { labels: { show: true, rotate: -30, fontSize: "9px" } },
             yaxis: { labels: { show: true, fontSize: "10px" } },
           },
         },
@@ -343,7 +367,7 @@ export default function Chart({
             legend: { show: showLegend },
             chart: { height: 220 },
             title: { style: { fontSize: "12px" } },
-            xaxis: { labels: { fontSize: "8px" } }, // 모바일에서 더 작게
+            xaxis: { labels: { fontSize: "8px" } },
           },
         },
       ],
@@ -367,7 +391,7 @@ export default function Chart({
           },
         };
         
-        // 줌 기능 추가
+        // bar/column은 줌 기능도 추가
         options.chart = {
           ...options.chart,
           zoom: {
@@ -499,7 +523,18 @@ export default function Chart({
         options.chart = {
           ...options.chart,
           type: "boxPlot",
-          toolbar: { show: false },
+          toolbar: { 
+            show: true,
+            tools: {
+              download: true,
+              selection: false,
+              zoom: false,
+              zoomin: false,
+              zoomout: false,
+              pan: false,
+              reset: false,
+            },
+          },
         };
         options.plotOptions = {
           boxPlot: {
@@ -570,7 +605,6 @@ export default function Chart({
     categories,
     showGrid,
     showLegend,
-    showToolbar,
     tooltipFormatter,
     xaxisOptions,
     xAxisTickAmount,
@@ -605,10 +639,6 @@ export default function Chart({
       }
     }
   }, [safeSeries, rollingSeries, enableSlidingAnimation, enableRolling]);
-
-  // 롤링 기능: 데이터가 업데이트될 때마다 최신 N개로 자동 업데이트
-  // (데이터 필터링이 이미 rollingSeries에서 처리되므로, 
-  //  슬라이딩 애니메이션이 자동으로 적용됨)
 
   // 최종적으로 사용할 width/height 결정
   const finalWidth = isPercentWidth ? calculatedWidth : width;

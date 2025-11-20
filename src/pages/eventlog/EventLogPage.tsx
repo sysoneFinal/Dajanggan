@@ -72,9 +72,7 @@ const EventLogPage = () => {
 
   /** 이벤트 로그 조회 - React Query */
   const {
-    data: eventLogsData,
-    isLoading: isEventLogsLoading,
-  } = useQuery({
+    data: eventLogsData, isLoading: isEventLogsLoading,} = useQuery({
     queryKey: [
       "eventLogs",
       selectedInstance?.instanceId,
@@ -170,7 +168,7 @@ const EventLogPage = () => {
   const totalCount = eventLogsData?.totalCount || 0;
   const totalPages = Math.ceil(totalCount / pageSize);
 
-  const dbOptions = filterOptions?.databases || [];
+  const dbOptions = filterOptions?.databases || []; 
   const categoryOptions = filterOptions?.categories || [];
   const levelOptions = filterOptions?.levels || [];
 
