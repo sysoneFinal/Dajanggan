@@ -1,678 +1,576 @@
 import Chart from "../../components/chart/ChartComponent";
-import GaugeChart from "../../components/chart/GaugeChart";
 import SummaryCard from "../../components/util/SummaryCard";
 import WidgetCard from "../../components/util/WidgetCard";
 import ChartGridLayout from "../../components/layout/ChartGridLayout";
 import "../../styles/system/disk.css";
 import apiClient from "../../api/apiClient";
-import {useQuery} from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { useInstanceContext } from "../../context/InstanceContext";
+import { useOsMetricSse, type RealtimeOsMetrics, useRealtimeDiskIoHistory, useRealtimeDiskUsageHistory } from "../../context/OsMetricSseContext";
+import { useEffect, useState } from "react";
 
-// API 응답 전체 구조
-interface DiskIOData {
-    diskUsage: {
-        value: number;
-        iopsRead: number;
-        iopsWrite: number;
-    };
-    processIO: {
-        categories: string[];
-        series: Array<{
-            name: string;
-            data: number[];
-        }>;
-    };
-    queueDepth: {
-        categories: string[];
-        queueLength: number[];
-        average: number;
-    };
-    ioLatency: {
-        categories: string[];
-        readLatency: number[];
-        writeLatency: number[];
-        avgRead: number;
-        avgWrite: number;
-    };
-    throughput: {
-        categories: string[];
-        iops: number[];
-        throughputMB: number[];
-    };
-    evictions: {
-        categories: string[];
-        evictionRate: number[];
-        average: number;
-    };
-    walBytes: {
-        categories: string[];
-        walBytes: number[];
-        average: number;
-    };
-    recentStats?: {
-        diskQueueLength: number;
-        iopsSaturation: number;
-        avgLatency: number;
-        walBottleneck: number;
-        bufferEvictionRate: number;
-    };
+/**
+ * 시간 문자열(HH:MM:SS)을 초 단위로 변환
+ */
+function timeToSeconds(timeStr: string): number {
+    const [hours, minutes, seconds] = timeStr.split(':').map(Number);
+    return hours * 3600 + minutes * 60 + seconds;
 }
 
-const getDiskUtilizationColor = (value: number): string => {
-    if (value < 70) return "#8E79FF";
-    if (value < 85) return "#FFD66B";
-    return "#FEA29B";
-};
+/**
+ * 최근 1분 동안 5초 간격으로 12개 데이터 포인트를 샘플링
+ * @param history 히스토리 데이터 배열 (time 속성을 가진 객체)
+ * @returns 5초 간격으로 샘플링된 최대 12개 데이터 (오래된 순서부터)
+ */
+function sampleLast60Seconds<T extends { time: string }>(history: T[]): T[] {
+    if (history.length === 0) return [];
+    
+    const sampled: T[] = [];
+    let lastSelectedSeconds: number | null = null;
+    
+    // 마지막 데이터부터 역순으로 순회
+    for (let i = history.length - 1; i >= 0; i--) {
+        const item = history[i];
+        const itemSeconds = timeToSeconds(item.time);
+        
+        // 첫 번째 데이터는 무조건 선택 (가장 최근 데이터)
+        if (lastSelectedSeconds === null) {
+            sampled.push(item);
+            lastSelectedSeconds = itemSeconds;
+            continue;
+        }
+        
+        // 이전에 선택한 데이터와의 시간 차이 계산
+        let timeDiff = lastSelectedSeconds - itemSeconds;
+        
+        // 하루 경계 처리 (23:59:59 -> 00:00:00)
+        if (timeDiff < 0) {
+            timeDiff = lastSelectedSeconds - itemSeconds + 86400;
+        }
+        
+        // 5초 이상 차이나는 데이터만 선택
+        if (timeDiff >= 5) {
+            sampled.push(item);
+            lastSelectedSeconds = itemSeconds;
+            
+            // 12개를 모으면 중단 (1분 = 12개 포인트)
+            if (sampled.length >= 12) {
+                break;
+            }
+        }
+    }
+    
+    // 역순으로 정렬 (오래된 순서부터)
+    return sampled.reverse();
+}
 
-/** API 요청 - apiClient 사용 - instanceId 추가 */
+// ========================================
+// 백엔드 API 응답 타입 정의
+// ========================================
+
+interface DiskIODashboardResponse {
+    osDiskUsage: {
+        usagePercent: number;
+        trend: string;
+        status: string;
+        totalGB: number;
+        usedGB: number;
+        availableGB: number;
+    };
+    diskIoThroughput: {
+        readMBps: number;
+        writeMBps: number;
+        totalMBps: number;
+        readTrend: string;
+        writeTrend: string;
+        readChangePct: number;
+        writeChangePct: number;
+    };
+    bufferCacheHit: {
+        hitRatio: number;
+        status: string;
+        cacheHits: number;
+        physicalReads: number;
+    };
+    backendFsync: {
+        fsyncRate: number;
+        status: string;
+        totalFsyncs: number;
+        message: string;
+    };
+    diskLatency: {
+        avgReadLatency: number;
+        avgWriteLatency: number;
+        status: string;
+        maxLatency: number;
+    };
+
+    // 차트 데이터
+    osDiskIoChart1h: { categories: string[]; readMBps: number[]; writeMBps: number[] };
+    bufferCacheChart1h: { categories: string[]; hitRatio: number[]; warningThreshold: number; normalThreshold: number };
+    ioLatencyChart6h: { categories: string[]; readLatency: number[]; writeLatency: number[] };
+
+    diskUsageChart24h: { categories: string[]; usagePercent: number[]; warningThreshold: number; dangerThreshold: number };
+    checkpointChart24h: { categories: string[]; checkpointBuffers: number[]; cleanBuffers: number[]; backendBuffers: number[] };
+    backendFsyncChart24h: { categories: string[]; fsyncRate: number[]; warningThreshold: number };
+    physicalCacheChart24h: { categories: string[]; physicalReads: number[]; cacheHits: number[] };
+    throughputChart24h: { categories: string[]; readMBps: number[]; writeMBps: number[] };
+}
+
+// API 요청
 async function fetchDiskIOData(instanceId: number) {
-    const response = await apiClient.get<DiskIOData>("/system/diskio", {
-        params: { instanceId }
-    });
+    const response = await apiClient.get<DiskIODashboardResponse>("/system/diskio", { params: { instanceId } });
     return response.data;
 }
 
-// 메인 컴포넌트
 export default function DiskPage() {
     const { selectedInstance } = useInstanceContext();
+
+    const [realtimeDiskUsage, setRealtimeDiskUsage] = useState<number | null>(null);
+    const [realtimeDiskTotalGB, setRealtimeDiskTotalGB] = useState<number | null>(null);
+    const [realtimeDiskUsedGB, setRealtimeDiskUsedGB] = useState<number | null>(null);
+    const [realtimeDiskAvailableGB, setRealtimeDiskAvailableGB] = useState<number | null>(null);
+    const [realtimeDiskRead, setRealtimeDiskRead] = useState<number | null>(null);
+    const [realtimeDiskWrite, setRealtimeDiskWrite] = useState<number | null>(null);
+    
+    // TanStack Query 캐시에서 히스토리 데이터 읽기 (페이지 이동해도 유지됨)
+    const realtimeDiskIoHistory = useRealtimeDiskIoHistory(selectedInstance?.instanceId);
+    const realtimeDiskUsageHistory = useRealtimeDiskUsageHistory(selectedInstance?.instanceId);
 
     const { data, isLoading, isError, error } = useQuery({
         queryKey: ["diskioDashboard", selectedInstance?.instanceId],
         queryFn: () => fetchDiskIOData(selectedInstance!.instanceId),
         retry: 1,
+        refetchInterval: 60000,
         enabled: !!selectedInstance,
     });
 
-    // 인스턴스가 선택되지 않은 경우
+    // 전역 SSE 연결 구독
+    const { subscribe } = useOsMetricSse();
+    
+    // 전역 SSE 연결 구독 (히스토리는 Context에서 자동으로 캐시에 저장됨)
+    useEffect(() => {
+        if (!selectedInstance) {
+            setRealtimeDiskUsage(null);
+            setRealtimeDiskTotalGB(null);
+            setRealtimeDiskUsedGB(null);
+            setRealtimeDiskAvailableGB(null);
+            setRealtimeDiskRead(null);
+            setRealtimeDiskWrite(null);
+            return;
+        }
+
+        // 전역 SSE 구독 (히스토리는 Context에서 TanStack Query 캐시에 자동 저장됨)
+        const unsubscribe = subscribe((metrics: RealtimeOsMetrics) => {
+            // 위젯용 실시간 값만 업데이트 (히스토리는 Context에서 자동 처리)
+            if (metrics.diskUsage !== null && metrics.diskUsage !== undefined) {
+                console.log('[DiskPage] SSE 디스크 사용률 업데이트:', metrics.diskUsage);
+                setRealtimeDiskUsage(metrics.diskUsage);
+            }
+            if (metrics.diskTotalGB !== null && metrics.diskTotalGB !== undefined) {
+                setRealtimeDiskTotalGB(metrics.diskTotalGB);
+            }
+            if (metrics.diskUsedGB !== null && metrics.diskUsedGB !== undefined) {
+                setRealtimeDiskUsedGB(metrics.diskUsedGB);
+            }
+            if (metrics.diskAvailableGB !== null && metrics.diskAvailableGB !== undefined) {
+                setRealtimeDiskAvailableGB(metrics.diskAvailableGB);
+            }
+            if (metrics.diskRead !== null && metrics.diskRead !== undefined) {
+                setRealtimeDiskRead(metrics.diskRead);
+            }
+            if (metrics.diskWrite !== null && metrics.diskWrite !== undefined) {
+                setRealtimeDiskWrite(metrics.diskWrite);
+            }
+        });
+
+        return () => {
+            unsubscribe();
+        };
+    }, [selectedInstance?.instanceId, subscribe]);
+
+    // 인스턴스 선택 안됨
     if (!selectedInstance) {
         return (
             <div className="disk-page">
-                <div style={{
-                    display: 'flex',
-                    justifyContent: 'center',
-                    alignItems: 'center',
-                    height: '400px',
-                    fontSize: '18px',
-                    color: '#6B7280'
-                }}>
-                    인스턴스를 선택해주세요.
-                </div>
+                <div className="center-text">인스턴스를 선택해주세요.</div>
             </div>
         );
     }
 
-    // 로딩 중
-    if (isLoading) {
-        return (
-            <div className="bgwriter-page">
-                <div style={{
-                    display: 'flex',
-                    justifyContent: 'center',
-                    alignItems: 'center',
-                    height: '400px',
-                    fontSize: '18px',
-                    color: '#6B7280'
-                }}>
-                    데이터를 불러오는 중...
-                </div>
-            </div>
-        );
-    }
-
-    // 에러 발생
-    if (isError) {
-        return (
-            <div className="bgwriter-page">
-                <div style={{
-                    display: 'flex',
-                    flexDirection: 'column',
-                    justifyContent: 'center',
-                    alignItems: 'center',
-                    height: '400px',
-                    fontSize: '18px',
-                    color: '#EF4444'
-                }}>
-                    <p>데이터를 불러오는데 실패했습니다.</p>
-                    <p style={{ fontSize: '14px', color: '#6B7280', marginTop: '8px' }}>
-                        {error instanceof Error ? error.message : '알 수 없는 오류가 발생했습니다.'}
-                    </p>
-                    <button
-                        onClick={() => window.location.reload()}
-                        style={{
-                            marginTop: '16px',
-                            padding: '8px 16px',
-                            backgroundColor: '#3B82F6',
-                            color: 'white',
-                            border: 'none',
-                            borderRadius: '4px',
-                            cursor: 'pointer'
-                        }}
-                    >
-                        새로고침
-                    </button>
-                </div>
-            </div>
-        );
-    }
-
-    // 데이터가 없는 경우
-    if (!data) {
-        return (
-            <div className="bgwriter-page">
-                <div style={{
-                    display: 'flex',
-                    justifyContent: 'center',
-                    alignItems: 'center',
-                    height: '400px',
-                    fontSize: '18px',
-                    color: '#6B7280'
-                }}>
-                    데이터가 없습니다.
-                </div>
-            </div>
-        );
-    }
-
-    const dashboard = data;
-    const DiskUtilizationColor = getDiskUtilizationColor(dashboard.diskUsage.value);
-
-    const recentStats = dashboard.recentStats || {
-        diskQueueLength: 0,
-        iopsSaturation: 0,
-        avgLatency: 0,
-        walBottleneck: 0,
-        bufferEvictionRate: 0,
+    // 백엔드 데이터가 없을 때 기본값 설정 (실시간 차트는 항상 표시하기 위해)
+    const dashboard: DiskIODashboardResponse = data || {
+        osDiskUsage: {
+            usagePercent: 0,
+            trend: "stable",
+            status: "normal",
+            totalGB: 0,
+            usedGB: 0,
+            availableGB: 0,
+        },
+        diskIoThroughput: {
+            readMBps: 0,
+            writeMBps: 0,
+            totalMBps: 0,
+            readTrend: "stable",
+            writeTrend: "stable",
+            readChangePct: 0,
+            writeChangePct: 0,
+        },
+        bufferCacheHit: {
+            hitRatio: 0,
+            status: "normal",
+            cacheHits: 0,
+            physicalReads: 0,
+        },
+        backendFsync: {
+            fsyncRate: 0,
+            status: "normal",
+            totalFsyncs: 0,
+            message: "",
+        },
+        diskLatency: {
+            avgReadLatency: 0,
+            avgWriteLatency: 0,
+            status: "normal",
+            maxLatency: 0,
+        },
+        osDiskIoChart1h: { categories: [], readMBps: [], writeMBps: [] },
+        bufferCacheChart1h: { categories: [], hitRatio: [], warningThreshold: 85, normalThreshold: 95 },
+        ioLatencyChart6h: { categories: [], readLatency: [], writeLatency: [] },
+        diskUsageChart24h: { categories: [], usagePercent: [], warningThreshold: 80, dangerThreshold: 90 },
+        checkpointChart24h: { categories: [], checkpointBuffers: [], cleanBuffers: [], backendBuffers: [] },
+        backendFsyncChart24h: { categories: [], fsyncRate: [], warningThreshold: 10 },
+        physicalCacheChart24h: { categories: [], physicalReads: [], cacheHits: [] },
+        throughputChart24h: { categories: [], readMBps: [], writeMBps: [] },
     };
 
-    const summaryCards = [
-        {
-            label: "디스크 대기열 길이",
-            value: recentStats.diskQueueLength.toFixed(2),
-            desc: "최근 5분 평균",
-            status: recentStats.diskQueueLength > 2 ? ("warning" as const) : ("info" as const),
-        },
-        {
-            label: "IOPS 포화도",
-            value: `${recentStats.iopsSaturation.toFixed(1)}%`,
-            desc: "최근 5분 평균",
-            status: recentStats.iopsSaturation > 90 ? ("warning" as const) : ("info" as const),
-        },
-        {
-            label: "평균 응답 시간",
-            value: `${recentStats.avgLatency.toFixed(1)}ms`,
-            desc: "최근 5분 평균",
-            status: recentStats.avgLatency > 10 ? ("warning" as const) : ("info" as const),
-        },
-        {
-            label: "WAL 병목 여부",
-            value: `${recentStats.walBottleneck.toFixed(1)}%`,
-            desc: "최근 5분 평균",
-            status: recentStats.walBottleneck > 15 ? ("warning" as const) : ("info" as const),
-        },
-        {
-            label: "버퍼 교체 빈도",
-            value: `${recentStats.bufferEvictionRate.toFixed(0)}/sec`,
-            desc: "최근 5분 평균",
-            status: recentStats.bufferEvictionRate > 100 ? ("warning" as const) : ("info" as const),
-        },
-    ];
+    // Slice 유틸 (프론트 임시 조정)
+    const recent10m = (arr: any[]) => arr.slice(-10);
+    const recent15m = (arr: any[]) => arr.slice(-15);
+    const recent1h = (arr: any[]) => arr.slice(-60);
+
+    // SSE 우선
+    const displayUsage = realtimeDiskUsage ?? dashboard.osDiskUsage.usagePercent;
+    const displayTotalGB = realtimeDiskTotalGB ?? dashboard.osDiskUsage.totalGB;
+    const displayUsedGB = realtimeDiskUsedGB ?? dashboard.osDiskUsage.usedGB;
+    const displayAvailableGB = realtimeDiskAvailableGB ?? dashboard.osDiskUsage.availableGB;
+    const displayRead = realtimeDiskRead ?? dashboard.diskIoThroughput.readMBps;
+    const displayWrite = realtimeDiskWrite ?? dashboard.diskIoThroughput.writeMBps;
 
     return (
-        <div className="bgwriter-page">
-            {/* Summary Cards */}
-            <section className="disk-summary-cards">
-                {summaryCards.map((card, index) => (
-                    <SummaryCard
-                        key={index}
-                        label={card.label}
-                        value={card.value}
-                        desc={card.desc}
-                        status={card.status}
-                    />
-                ))}
-            </section>
+        <div className="disk-page">
+            {/* ===== 위젯 5개 ===== */}
+            <div style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(4, 1fr)",
+                gap: "1rem",
+                marginBottom: "1.5rem"
+            }}>
+                <SummaryCard
+                    label="디스크 사용률"
+                    value={`${displayUsage.toFixed(1)}%`}
+                    desc={`사용: ${Math.round(displayUsedGB)}GB / ${Math.round(displayTotalGB)}GB`}
+                    status={dashboard.osDiskUsage.status === "danger" ? "warning" : "info"}
+                />
 
-            {/* 첫 번째 행: 게이지 차트 + 프로세스별 I/O 차트 */}
+                <SummaryCard
+                    label="I/O 처리량"
+                    value={`${(displayRead + displayWrite).toFixed(1)} MB/s`}
+                    desc={`읽기 ${displayRead.toFixed(1)} / 쓰기 ${displayWrite.toFixed(1)}`}
+                    status="info"
+                />
+
+                <SummaryCard
+                    label="Backend Fsync"
+                    value={`${dashboard.backendFsync.fsyncRate.toFixed(1)}/s`}
+                    desc={dashboard.backendFsync.message}
+                    status={dashboard.backendFsync.status === "warning" ? "warning" : "info"}
+                />
+
+                <SummaryCard
+                    label="평균 Latency"
+                    value={`${dashboard.diskLatency.maxLatency.toFixed(2)} ms`}
+                    desc={`읽기 ${dashboard.diskLatency.avgReadLatency} / 쓰기 ${dashboard.diskLatency.avgWriteLatency}`}
+                    status={dashboard.diskLatency.status === "danger" ? "warning" : "info"}
+                />
+            </div>
+
+            {/* ===== 차트 1: OS Disk IO (최근 5분) - SSE 실시간 데이터 ===== */}
             <ChartGridLayout>
-                <WidgetCard title="디스크 사용률" span={2}>
-                    <div style={{
-                        display: 'flex',
-                        flexDirection: 'column',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        height: '100%',
-                        width: '100%',
-                        marginTop: '18px',
-                    }}>
-                        <GaugeChart
-                            value={dashboard.diskUsage.value}
-                            color={DiskUtilizationColor}
-                            type="semi-circle"
-                            radius={100}
-                            strokeWidth={20}
-                            height={200}
-                            flattenRatio={0.89}
-                        />
-                        <div className="cpu-gauge-details">
-                            <div className="cpu-detail-item">
-                                <span className="cpu-detail-label">IOPS Read</span>
-                                <span className="cpu-detail-value">{(dashboard.diskUsage.iopsRead / 1000).toFixed(1)}K</span>
-                            </div>
-                            <div className="cpu-detail-divider"></div>
-                            <div className="cpu-detail-item">
-                                <span className="cpu-detail-label">IOPS Write</span>
-                                <span className="cpu-detail-value">{(dashboard.diskUsage.iopsWrite / 1000).toFixed(1)}K</span>
-                            </div>
-                        </div>
-                    </div>
-                </WidgetCard>
 
-                <WidgetCard title="프로세스별 I/O 활동" span={5}>
-                    <Chart
-                        type="line"
-                        series={dashboard.processIO.series.map(s => ({
-                            name: s.name,
-                            data: s.data
-                        }))}
-                        categories={dashboard.processIO.categories}
-                        height={250}
-                        colors={["#8E79FF", "#60A5FA", "#FBBF24", "#34D399", "#F87171"]}
-                        showLegend={true}
-                        showGrid={true}
-                        xaxisOptions={{
-                            title: { text: "시간", style: { fontSize: "12px", color: "#6B7280" } },
-                        }}
-                        yaxisOptions={{
-                            title: { text: "I/O 횟수", style: { fontSize: "12px", color: "#6B7280" } },
-                            labels: {
-                                formatter: (val: number) => `${(val / 1000).toFixed(1)}K`,
-                            },
-                        }}
-                    />
-                </WidgetCard>
-                <WidgetCard title="I/O Latency 추이" span={5}>
+                <WidgetCard title="Disk 사용률 (실시간)" span={4}>
                     <Chart
                         type="line"
                         series={[
-                            { name: "읽기 지연", data: dashboard.ioLatency.readLatency },
-                            { name: "쓰기 지연", data: dashboard.ioLatency.writeLatency },
-                        ]}
-                        categories={dashboard.ioLatency.categories}
-                        height={250}
-                        colors={["#8E79FF", "#FEA29B"]}
-                        showLegend={true}
-                        showGrid={true}
-                        xaxisOptions={{
-                            title: { text: "시간", style: { fontSize: "12px", color: "#6B7280" } },
-                        }}
-                        yaxisOptions={{
-                            title: { text: "지연시간 (ms)", style: { fontSize: "12px", color: "#6B7280" } },
-                            labels: { formatter: (val: number) => `${val.toFixed(1)}ms` },
-                        }}
-                        tooltipFormatter={(value: number) => `${value.toFixed(2)}ms`}
-                        customOptions={{
-                            annotations: {
-                                yaxis: [
-                                    {
-                                        y: 5,
-                                        borderColor: "#60A5FA",
-                                        strokeDashArray: 4,
-                                        opacity: 0.6,
-                                        label: {
-                                            borderColor: "#60A5FA",
-                                            style: {
-                                                color: "#fff",
-                                                background: "#60A5FA",
-                                                fontSize: "11px",
-                                                fontWeight: 500,
-                                            },
-                                            text: "정상: 5ms",
-                                            position: "right",
-                                        },
-                                    },
-                                    {
-                                        y: 10,
-                                        borderColor: "#FBBF24",
-                                        strokeDashArray: 4,
-                                        opacity: 0.7,
-                                        label: {
-                                            borderColor: "#FBBF24",
-                                            style: {
-                                                color: "#fff",
-                                                background: "#FBBF24",
-                                                fontSize: "11px",
-                                                fontWeight: 500,
-                                            },
-                                            text: "주의: 10ms",
-                                            position: "right",
-                                        },
-                                    },
-                                    {
-                                        y: 20,
-                                        borderColor: "#FEA29B",
-                                        strokeDashArray: 4,
-                                        opacity: 0.7,
-                                        label: {
-                                            borderColor: "#FEA29B",
-                                            style: {
-                                                color: "#fff",
-                                                background: "#FEA29B",
-                                                fontSize: "11px",
-                                                fontWeight: 500,
-                                            },
-                                            text: "경고: 20ms",
-                                            position: "right",
-                                        },
-                                    },
-                                ],
-                            },
-                            yaxis: {
-                                labels: {
-                                    style: {
-                                        colors: "#6B7280",
-                                        fontFamily: 'var(--font-family, "Pretendard", sans-serif)'
-                                    },
-                                    formatter: (val: number) => `${val}ms`,
-                                },
-                                min: 0,
-                                max: 25,
-                            },
-                        }}
-                    />
-                </WidgetCard>
-            </ChartGridLayout>
-
-            {/* 두 번째 행 */}
-            <ChartGridLayout>
-                <WidgetCard title="Throughput (IOPS / 처리량 (MB/s))" span={6}>
-                    <Chart
-                        type="line"
-                        series={[
-                            { name: "IOPS", data: dashboard.throughput.iops },
-                            { name: "처리량 (MB/s)", data: dashboard.throughput.throughputMB },
-                        ]}
-                        categories={dashboard.throughput.categories}
-                        height={250}
-                        colors={["#8E79FF", "#FEA29B"]}
-                        showLegend={true}
-                        showGrid={true}
-                        xaxisOptions={{
-                            title: { text: "시간", style: { fontSize: "12px", color: "#6B7280" } },
-                        }}
-                        yaxisOptions={[
                             {
-                                title: {
-                                    text: "IOPS",
-                                    style: { fontSize: "12px", color: "#6B7280" },
-                                },
-                                labels: {
-                                    formatter: (val: number) => `${val}K`,
-                                },
-                            },
-                            {
-                                opposite: true,
-                                title: {
-                                    text: "MB/s",
-                                    style: { fontSize: "12px", color: "#6B7280" },
-                                },
-                                labels: {
-                                    formatter: (val: number) => `${val}MB`,
-                                },
+                                name: "사용률 (%)",
+                                data: realtimeDiskUsageHistory.length > 0
+                                    ? (() => {
+                                        const sampled = sampleLast60Seconds(realtimeDiskUsageHistory);
+                                        return sampled.map(item => item.usagePercent);
+                                    })()
+                                    : recent1h(dashboard.diskUsageChart24h.usagePercent)
                             },
                         ]}
-                    />
-                </WidgetCard>
-
-                <WidgetCard title="WAL Bytes 추이" span={6}>
-                    <Chart
-                        type="line"
-                        series={[
-                            { name: "WAL Bytes/sec", data: dashboard.walBytes.walBytes },
-                        ]}
-                        categories={dashboard.walBytes.categories}
+                        categories={
+                            realtimeDiskUsageHistory.length > 0
+                                ? (() => {
+                                    const sampled = sampleLast60Seconds(realtimeDiskUsageHistory);
+                                    return sampled.map(item => {
+                                        // HH:MM 형식으로 시간 표시 (최근 1분, 5초 간격 12개 데이터 포인트)
+                                        return item.time.substring(0, 5);
+                                    });
+                                })()
+                                : recent1h(dashboard.diskUsageChart24h.categories)
+                        }
                         height={250}
                         colors={["#8E79FF"]}
-                        showLegend={false}
-                        showGrid={true}
+                        showGrid
                         xaxisOptions={{
-                            title: { text: "시간", style: { fontSize: "12px", color: "#6B7280" } },
+                            title: {
+                                text: "시간",
+                                style: { fontSize: "12px", color: "#6B7280" },
+                            },
+                            labels: {
+                                rotate: 0,
+                                style: { fontSize: "11px", colors: "#6B7280" },
+                            },
                         }}
                         yaxisOptions={{
-                            title: { text: "WAL Bytes/sec", style: { fontSize: "12px", color: "#6B7280" } },
-                            labels: {
-                                formatter: (val: number) => {
-                                    if (val >= 1000000) {
-                                        return `${(val / 1000000).toFixed(1)}M`;
-                                    } else if (val >= 1000) {
-                                        return `${(val / 1000).toFixed(1)}K`;
+                            title: {
+                                text: "사용률 (%)",
+                                style: { fontSize: "12px", color: "#6B7280" },
+                            },
+                            labels: { formatter: (val: number) => `${val.toFixed(1)}%` },
+                            min: 0,
+                            max: 100,
+                        }}
+                        customOptions={{
+                            xaxis: {
+                                tickAmount: 6,
+                                labels: {
+                                    showDuplicates: false,
+                                    rotate: 0, // 라벨을 수평으로 표시
+                                    style: {
+                                        fontSize: "11px",
+                                        colors: "#6B7280"
                                     }
-                                    return `${val.toFixed(0)}`;
-                                }
+                                },
                             },
-                        }}
-                        tooltipFormatter={(value: number) => {
-                            if (value >= 1000000) {
-                                return `${(value / 1000000).toFixed(2)}MB/s`;
-                            } else if (value >= 1000) {
-                                return `${(value / 1000).toFixed(2)}KB/s`;
-                            }
-                            return `${value.toFixed(0)}B/s`;
-                        }}
-                        customOptions={{
-                            annotations: {
-                                yaxis: (() => {
-                                    const maxValue = Math.max(...dashboard.walBytes.walBytes);
-                                    const normalThreshold = Math.max(4000000, maxValue * 0.4);
-                                    const warningThreshold = Math.max(7000000, maxValue * 0.7);
-
-                                    return [
-                                        {
-                                            y: normalThreshold,
-                                            borderColor: "#60A5FA",
-                                            strokeDashArray: 4,
-                                            opacity: 0.6,
-                                            label: {
-                                                borderColor: "#60A5FA",
-                                                style: {
-                                                    color: "#fff",
-                                                    background: "#60A5FA",
-                                                    fontSize: "11px",
-                                                    fontWeight: 500,
-                                                },
-                                                text: `정상: ${(normalThreshold / 1000000).toFixed(1)}MB/s`,
-                                                position: "right",
-                                            },
-                                        },
-                                        {
-                                            y: warningThreshold,
-                                            borderColor: "#FBBF24",
-                                            strokeDashArray: 4,
-                                            opacity: 0.7,
-                                            label: {
-                                                borderColor: "#FBBF24",
-                                                style: {
-                                                    color: "#fff",
-                                                    background: "#FBBF24",
-                                                    fontSize: "11px",
-                                                    fontWeight: 500,
-                                                },
-                                                text: `주의: ${(warningThreshold / 1000000).toFixed(1)}MB/s`,
-                                                position: "right",
-                                            },
-                                        },
-                                    ];
-                                })(),
-                            },
-                            yaxis: {
-                                labels: {
-                                    style: {
-                                        colors: "#6B7280",
-                                        fontFamily: 'var(--font-family, "Pretendard", sans-serif)'
-                                    },
-                                    formatter: (val: number) => {
-                                        if (val >= 1000000) {
-                                            return `${(val / 1000000).toFixed(1)}M`;
-                                        } else if (val >= 1000) {
-                                            return `${(val / 1000).toFixed(1)}K`;
+                            tooltip: {
+                                x: {
+                                    formatter: (val: any, opts: any) => {
+                                        // 히스토리 데이터에서 time 속성 사용 (최근 1분)
+                                        if (realtimeDiskUsageHistory.length > 0 && opts.seriesIndex === 0) {
+                                            const sampled = sampleLast60Seconds(realtimeDiskUsageHistory);
+                                            const dataPoint = sampled[opts.dataPointIndex];
+                                            return dataPoint ? dataPoint.time : val;
                                         }
-                                        return `${val.toFixed(0)}`;
+                                        return val;
                                     },
                                 },
-                                min: 0,
-                                max: (() => {
-                                    const maxValue = Math.max(...dashboard.walBytes.walBytes);
-                                    return Math.ceil(maxValue * 1.2);
-                                })(),
                             },
                         }}
+                    />
+                </WidgetCard>
+
+                <WidgetCard title="OS Disk I/O 추이 (실시간)" span={4}>
+                    <Chart
+                        type="line"
+                        series={[
+                            { 
+                                name: "읽기 (MB/s)", 
+                                data: realtimeDiskIoHistory.length > 0 
+                                    ? (() => {
+                                        const sampled = sampleLast60Seconds(realtimeDiskIoHistory);
+                                        return sampled.map(item => item.readMBps);
+                                    })()
+                                    : recent10m(dashboard.osDiskIoChart1h.readMBps).slice(-5)
+                            },
+                            { 
+                                name: "쓰기 (MB/s)", 
+                                data: realtimeDiskIoHistory.length > 0
+                                    ? (() => {
+                                        const sampled = sampleLast60Seconds(realtimeDiskIoHistory);
+                                        return sampled.map(item => item.writeMBps);
+                                    })()
+                                    : recent10m(dashboard.osDiskIoChart1h.writeMBps).slice(-5)
+                            },
+                        ]}
+                        categories={
+                            realtimeDiskIoHistory.length > 0
+                                ? (() => {
+                                    const sampled = sampleLast60Seconds(realtimeDiskIoHistory);
+                                    return sampled.map(item => {
+                                        // HH:MM 형식으로 시간 표시 (최근 1분, 5초 간격 12개 데이터 포인트)
+                                        return item.time.substring(0, 5);
+                                    });
+                                })()
+                                : recent10m(dashboard.osDiskIoChart1h.categories).slice(-5)
+                        }
+                        height={250}
+                        colors={["#8E79FF", "#6FCF97"]}
+                        showLegend
+                        showGrid
+                        xaxisOptions={{
+                            title: {
+                                text: "시간",
+                                style: { fontSize: "12px", color: "#6B7280" },
+                            },
+                            labels: {
+                                rotate: 0,
+                                style: { fontSize: "11px", colors: "#6B7280" },
+                            },
+                        }}
+                        yaxisOptions={{
+                            title: {
+                                text: "I/O 속도 (MB/s)",
+                                style: { fontSize: "12px", color: "#6B7280" },
+                            },
+                            labels: { formatter: (val: number) => `${val.toFixed(2)}` },
+                        }}
+                        customOptions={{
+                            xaxis: {
+                                tickAmount: 6,
+                                labels: {
+                                    showDuplicates: false,
+                                    rotate: 0, // 라벨을 수평으로 표시
+                                    style: {
+                                        fontSize: "11px",
+                                        colors: "#6B7280"
+                                    }
+                                },
+                            },
+                            tooltip: {
+                                x: {
+                                    formatter: (val: any, opts: any) => {
+                                        // 히스토리 데이터에서 time 속성 사용 (전체 HH:MM:SS 표시, 최근 1분)
+                                        if (realtimeDiskIoHistory.length > 0 && opts.seriesIndex !== undefined) {
+                                            const sampled = sampleLast60Seconds(realtimeDiskIoHistory);
+                                            const dataPoint = sampled[opts.dataPointIndex];
+                                            return dataPoint ? dataPoint.time : val;
+                                        }
+                                        return val;
+                                    },
+                                },
+                            },
+                        }}
+                    />
+                </WidgetCard>
+
+
+                {/* ===== 차트 3: IO Latency (최근 15분) ===== */}
+                <WidgetCard title="I/O Latency 추이 (최근 15분)" span={4}>
+                    <Chart
+                        type="line"
+                        series={[
+                            { name: "읽기(ms)", data: recent15m(dashboard.ioLatencyChart6h.readLatency) },
+                            { name: "쓰기(ms)", data: recent15m(dashboard.ioLatencyChart6h.writeLatency) },
+                        ]}
+                        categories={recent15m(dashboard.ioLatencyChart6h.categories)}
+                        height={250}
+                        colors={["#8E79FF", "#6FCF97"]}
+                        showLegend
+                        showGrid
                     />
                 </WidgetCard>
             </ChartGridLayout>
 
-            {/* 세 번째 행 */}
+            {/* ===== 차트 4: Disk 사용률 (최근 5분) - SSE 실시간 데이터 ===== */}
             <ChartGridLayout>
-                <WidgetCard title="Disk Queue Depth 추이" span={6}>
+
+
+                {/* ===== 차트 5: Backend Fsync (최근 1시간) ===== */}
+                <WidgetCard title="Backend Fsync Rate (최근 1시간)" span={4}>
+                    <Chart
+                        type="line"
+                        series={[{ name: "Fsync/s", data: recent1h(dashboard.backendFsyncChart24h.fsyncRate) }]}
+                        categories={recent1h(dashboard.backendFsyncChart24h.categories)}
+                        height={250}
+                        colors={["#FEA29B"]}
+                        showGrid
+                    />
+                </WidgetCard>
+
+                {/* ===== 차트 6: Checkpoint vs Backend Write ===== */}
+                <WidgetCard title="Checkpoint vs Backend Write (최근 24시간)" span={4}>
                     <Chart
                         type="line"
                         series={[
-                            { name: "Queue Length", data: dashboard.queueDepth.queueLength },
+                            { name: "Checkpoint", data: recent1h(dashboard.checkpointChart24h.checkpointBuffers) },
+                            { name: "Clean", data: recent1h(dashboard.checkpointChart24h.cleanBuffers) },
+                            { name: "Backend", data: recent1h(dashboard.checkpointChart24h.backendBuffers) },
                         ]}
-                        categories={dashboard.queueDepth.categories}
+                        categories={recent1h(dashboard.checkpointChart24h.categories)}
                         height={250}
-                        colors={["#8E79FF"]}
-                        showLegend={false}
-                        showGrid={true}
+                        colors={["#8E79FF", "#6FCF97", "#FEA29B"]}
+                        showLegend
+                        showGrid
                         xaxisOptions={{
-                            title: { text: "시간", style: { fontSize: "12px", color: "#6B7280" } },
+                            title: {
+                                text: "시간",
+                                style: { fontSize: "12px", color: "#6B7280" },
+                            },
+                            labels: {
+                                rotate: 0,
+                                style: { fontSize: "11px", colors: "#6B7280" },
+                            },
                         }}
                         yaxisOptions={{
-                            title: { text: "대기열 길이", style: { fontSize: "12px", color: "#6B7280" } },
-                            labels: { formatter: (val: number) => `${val.toFixed(1)}` },
-                        }}
-                        tooltipFormatter={(value: number) => `${value.toFixed(2)}`}
-                        customOptions={{
-                            annotations: {
-                                yaxis: [
-                                    {
-                                        y: 2,
-                                        borderColor: "#60A5FA",
-                                        strokeDashArray: 4,
-                                        opacity: 0.6,
-                                        label: {
-                                            borderColor: "#60A5FA",
-                                            style: {
-                                                color: "#fff",
-                                                background: "#60A5FA",
-                                                fontSize: "11px",
-                                                fontWeight: 500,
-                                            },
-                                            text: "정상: 2",
-                                            position: "right",
-                                        },
-                                    },
-                                    {
-                                        y: 5,
-                                        borderColor: "#FBBF24",
-                                        strokeDashArray: 4,
-                                        opacity: 0.7,
-                                        label: {
-                                            borderColor: "#FBBF24",
-                                            style: {
-                                                color: "#fff",
-                                                background: "#FBBF24",
-                                                fontSize: "11px",
-                                                fontWeight: 500,
-                                            },
-                                            text: "주의: 5",
-                                            position: "right",
-                                        },
-                                    },
-                                ],
+                            title: {
+                                text: "버퍼 수",
+                                style: { fontSize: "12px", color: "#6B7280" },
                             },
-                            yaxis: {
+                            labels: { formatter: (val: number) => `${val.toLocaleString()}` },
+                        }}
+                        customOptions={{
+                            xaxis: {
+                                tickAmount: 6,
                                 labels: {
-                                    style: {
-                                        colors: "#6B7280",
-                                        fontFamily: 'var(--font-family, "Pretendard", sans-serif)'
-                                    },
-                                    formatter: (val: number) => `${val.toFixed(1)}`,
+                                    showDuplicates: false,
                                 },
-                                min: 0,
-                                max: 8,
                             },
                         }}
                     />
                 </WidgetCard>
-                <WidgetCard title="버퍼 교체(Evictions) 추이" span={6}>
+
+                {/* ===== 차트 8: Disk I/O Throughput ===== */}
+                <WidgetCard title="Disk I/O Throughput (최근 1시간)" span={4}>
                     <Chart
                         type="line"
-                        series={[{ name: "Evictions/sec", data: dashboard.evictions.evictionRate }]}
-                        categories={dashboard.evictions.categories}
+                        series={[
+                            { name: "읽기(MB/s)", data: recent1h(dashboard.throughputChart24h.readMBps) },
+                            { name: "쓰기(MB/s)", data: recent1h(dashboard.throughputChart24h.writeMBps) },
+                        ]}
+                        categories={recent1h(dashboard.throughputChart24h.categories)}
                         height={250}
-                        colors={["#8E79FF"]}
-                        showLegend={false}
-                        showGrid={true}
-                        xaxisOptions={{
-                            title: { text: "시간", style: { fontSize: "12px", color: "#6B7280" } },
-                        }}
-                        yaxisOptions={{
-                            title: { text: "Evictions/sec", style: { fontSize: "12px", color: "#6B7280" } },
-                            labels: { formatter: (val: number) => `${val}` },
-                        }}
-                        tooltipFormatter={(value: number) => `${value}/sec`}
-                        customOptions={{
-                            annotations: {
-                                yaxis: [
-                                    {
-                                        y: 100,
-                                        borderColor: "#60A5FA",
-                                        strokeDashArray: 4,
-                                        opacity: 0.6,
-                                        label: {
-                                            borderColor: "#60A5FA",
-                                            style: {
-                                                color: "#fff",
-                                                background: "#60A5FA",
-                                                fontSize: "11px",
-                                                fontWeight: 500,
-                                            },
-                                            text: "정상: 100/sec",
-                                            position: "right",
-                                        },
-                                    },
-                                    {
-                                        y: 200,
-                                        borderColor: "#FBBF24",
-                                        strokeDashArray: 4,
-                                        opacity: 0.7,
-                                        label: {
-                                            borderColor: "#FBBF24",
-                                            style: {
-                                                color: "#fff",
-                                                background: "#FBBF24",
-                                                fontSize: "11px",
-                                                fontWeight: 500,
-                                            },
-                                            text: "주의: 200/sec",
-                                            position: "right",
-                                        },
-                                    },
-                                ],
-                            },
-                            yaxis: {
-                                labels: {
-                                    style: {
-                                        colors: "#6B7280",
-                                        fontFamily: 'var(--font-family, "Pretendard", sans-serif)'
-                                    },
-                                    formatter: (val: number) => `${val}`,
-                                },
-                                min: 0,
-                                max: 250,
-                            },
-                        }}
+                        colors={["#8E79FF", "#6FCF97"]}
+                        showLegend
+                        showGrid
                     />
                 </WidgetCard>
+            </ChartGridLayout>
+
+            {/* ===== 마지막 행 ===== */}
+            <ChartGridLayout>
+                {/* ===== 차트 7: Physical vs Cache Read ===== */}
+                <WidgetCard title="Physical vs Cache Read (최근 24시간)" span={8}>
+                    <Chart
+                        type="line"
+                        series={[
+                            { name: "물리 읽기", data: recent1h(dashboard.physicalCacheChart24h.physicalReads) },
+                            { name: "캐시 히트", data: recent1h(dashboard.physicalCacheChart24h.cacheHits) },
+                        ]}
+                        categories={recent1h(dashboard.physicalCacheChart24h.categories)}
+                        height={250}
+                        colors={["#FEA29B", "#8E79FF"]}
+                        showLegend
+                        showGrid
+                    />
+                </WidgetCard>
+
+
             </ChartGridLayout>
         </div>
     );

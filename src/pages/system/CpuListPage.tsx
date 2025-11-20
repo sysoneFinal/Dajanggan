@@ -91,7 +91,12 @@ export default function CpuListPage() {
                 },
             });
 
-            setData(response.data.data || []);
+            // 최신 데이터가 먼저 오도록 역순 정렬
+            const sortedData = (response.data.data || []).sort((a, b) => {
+                // time 필드를 기준으로 역순 정렬 (최신이 먼저)
+                return new Date(b.time).getTime() - new Date(a.time).getTime();
+            });
+            setData(sortedData);
         } catch (err) {
             console.error("CPU 리스트 조회 오류:", err);
             setError(err instanceof Error ? err.message : "데이터 조회 중 오류가 발생했습니다.");
@@ -123,42 +128,66 @@ export default function CpuListPage() {
             {
                 accessorKey: "userCPU",
                 header: "User CPU(%)",
-                cell: (info) => info.getValue(),
+                cell: (info) => {
+                    const value = info.getValue() as number;
+                    return typeof value === 'number' ? value.toFixed(2) : value;
+                },
             },
             {
                 accessorKey: "systemCPU",
                 header: "System CPU(%)",
-                cell: (info) => info.getValue(),
+                cell: (info) => {
+                    const value = info.getValue() as number;
+                    return typeof value === 'number' ? value.toFixed(2) : value;
+                },
             },
             {
                 accessorKey: "idleCPU",
                 header: "Idle CPU(%)",
-                cell: (info) => info.getValue(),
+                cell: (info) => {
+                    const value = info.getValue() as number;
+                    return typeof value === 'number' ? value.toFixed(2) : value;
+                },
             },
             {
                 accessorKey: "ioWait",
                 header: "I/O Wait(%)",
-                cell: (info) => info.getValue(),
+                cell: (info) => {
+                    const value = info.getValue() as number;
+                    return typeof value === 'number' ? value.toFixed(2) : value;
+                },
             },
             {
                 accessorKey: "stealCPU",
                 header: "Steal CPU(%)",
-                cell: (info) => info.getValue(),
+                cell: (info) => {
+                    const value = info.getValue() as number;
+                    return typeof value === 'number' ? value.toFixed(2) : value;
+                },
             },
             {
                 accessorKey: "loadAvg1",
                 header: "Load Avg (1m)",
-                cell: (info) => info.getValue(),
+                cell: (info) => {
+                    const value = info.getValue() as number;
+                    return typeof value === 'number' ? value.toFixed(2) : value;
+                },
             },
             {
                 accessorKey: "loadAvg5",
                 header: "Load Avg (5m)",
-                cell: (info) => info.getValue(),
+                cell: (info) => {
+                    const value = info.getValue() as number;
+                    return typeof value === 'number' ? value.toFixed(2) : value;
+                },
             },
             {
                 accessorKey: "loadAvg15",
                 header: "Load Avg (15m)",
-                cell: (info) => info.getValue(),
+                cell: (info) => {
+                    const value = info.getValue() as number;
+                    return typeof value === 'number' ? value.toFixed(2) : value;
+                },
             },
             {
                 accessorKey: "activeSessions",
@@ -178,7 +207,10 @@ export default function CpuListPage() {
             {
                 accessorKey: "workerTime",
                 header: "병렬 워커 시간(ms)",
-                cell: (info) => info.getValue(),
+                cell: (info) => {
+                    const value = info.getValue() as number;
+                    return typeof value === 'number' ? value.toFixed(2) : value;
+                },
             },
             {
                 accessorKey: "contextSwitches",
@@ -204,7 +236,7 @@ export default function CpuListPage() {
                                     />
                                 </div>
                             </div>
-                            <span className="progress-value">{value}%</span>
+                            <span className="progress-value">{typeof value === 'number' ? value.toFixed(2) : value}%</span>
                         </div>
                     );
                 },
@@ -269,19 +301,19 @@ export default function CpuListPage() {
         ];
         const csvData = data.map((row) => [
             row.time,
-            row.totalCPU,
-            row.userCPU,
-            row.systemCPU,
-            row.idleCPU,
-            row.ioWait,
-            row.stealCPU,
-            row.loadAvg1,
-            row.loadAvg5,
-            row.loadAvg15,
+            typeof row.totalCPU === 'number' ? row.totalCPU.toFixed(2) : row.totalCPU,
+            typeof row.userCPU === 'number' ? row.userCPU.toFixed(2) : row.userCPU,
+            typeof row.systemCPU === 'number' ? row.systemCPU.toFixed(2) : row.systemCPU,
+            typeof row.idleCPU === 'number' ? row.idleCPU.toFixed(2) : row.idleCPU,
+            typeof row.ioWait === 'number' ? row.ioWait.toFixed(2) : row.ioWait,
+            typeof row.stealCPU === 'number' ? row.stealCPU.toFixed(2) : row.stealCPU,
+            typeof row.loadAvg1 === 'number' ? row.loadAvg1.toFixed(2) : row.loadAvg1,
+            typeof row.loadAvg5 === 'number' ? row.loadAvg5.toFixed(2) : row.loadAvg5,
+            typeof row.loadAvg15 === 'number' ? row.loadAvg15.toFixed(2) : row.loadAvg15,
             row.activeSessions,
             row.parallelWorkers,
             row.waitingSessions,
-            row.workerTime,
+            typeof row.workerTime === 'number' ? row.workerTime.toFixed(2) : row.workerTime,
             row.contextSwitches,
             row.status,
         ]);

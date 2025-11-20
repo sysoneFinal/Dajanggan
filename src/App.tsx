@@ -9,6 +9,7 @@ import { InstanceProvider } from "./context/InstanceContext";
 import { SIDEBAR_MENU } from "./components/layout/SidebarMenu";
 import { getBreadcrumbOrFallback } from "./components/layout/FindBreadcrumb";
 import { LoaderProvider } from "./context/LoaderContext";
+import { OsMetricSseProvider } from "./context/OsMetricSseContext";
 
 
 export const queryClient = new QueryClient({
@@ -18,7 +19,7 @@ export const queryClient = new QueryClient({
       staleTime: 0,
 
       // 컴포넌트 unmount 시 캐시 즉시 삭제
-      gcTime: 0, 
+      gcTime: 0,
       // 화면 focus나 reconnect 시 자동 refetch 방지
       refetchOnWindowFocus: false,
       refetchOnReconnect: false,
@@ -54,8 +55,9 @@ function App() {
   <LoaderProvider>
     <QueryClientProvider client={queryClient}>
       <InstanceProvider>
-        <DashboardProvider>
-          <div className="app-background">
+        <OsMetricSseProvider>
+          <DashboardProvider>
+            <div className="app-background">
             {hideLayout ? (
               <AppRoutes />
             ) : (
@@ -69,7 +71,8 @@ function App() {
               </div>
             )}
           </div>
-        </DashboardProvider>
+          </DashboardProvider>
+        </OsMetricSseProvider>
       </InstanceProvider>
     </QueryClientProvider>
   </LoaderProvider>

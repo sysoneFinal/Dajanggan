@@ -34,7 +34,7 @@
     -webkit-overflow-scrolling: touch;
 }
 
-/* 16개 컬럼 - 화면에 맞춰 늘어나도록 설정 */
+/* 16개 컬럼 - 화면에 맞춰 늘어나도록 설정 (CPU List Page용) */
 .cpu-table-header,
 .cpu-table-row {
     display: grid;
@@ -61,6 +61,36 @@
     align-items: center;
     font-size: 0.9rem;
     gap: 0.5rem;
+}
+
+/* 7개 컬럼 - Memory List Page용 (낮은 캐시 히트율 테이블) */
+.memory-cache-hit-table .cpu-table-header,
+.memory-cache-hit-table .cpu-table-row {
+    grid-template-columns:
+        minmax(80px, 1fr)     /* 순위 */
+        minmax(150px, 2fr)    /* 테이블명 */
+        minmax(120px, 1.5fr)  /* 데이터베이스 */
+        minmax(140px, 1.8fr)  /* Cache Hit 비율(%) */
+        minmax(140px, 1.8fr)  /* Physical Reads */
+        minmax(140px, 1.8fr)  /* Cache Hits */
+        minmax(100px, 1.2fr); /* 상태 */
+    min-width: 100%;
+    width: 100%;
+}
+
+/* 7개 컬럼 - Disk List Page용 (낮은 Cache Hit Ratio 시간대) */
+.disk-cache-hit-table .cpu-table-header,
+.disk-cache-hit-table .cpu-table-row {
+    grid-template-columns:
+        minmax(150px, 2fr)    /* 시간 */
+        minmax(120px, 1.5fr)  /* Backend 타입 */
+        minmax(120px, 1.5fr)  /* 데이터베이스 */
+        minmax(140px, 1.8fr)  /* Buffer Hit Ratio(%) */
+        minmax(140px, 1.8fr)  /* Physical Reads */
+        minmax(140px, 1.8fr)  /* Cache Hits */
+        minmax(100px, 1.2fr); /* 상태 */
+    min-width: 100%;
+    width: 100%;
 }
 
 .cpu-table-header {
