@@ -159,9 +159,8 @@ export default function DatabaseDashboard() {
 
   // 로딩/선택 안내
   const loading = !selectedDBId || metricsLoading || !data ;
-
   if (!selectedDBId) return <div className="loading">Database를 선택해주세요.</div>;
-  if (loading) return <div className="loading">Loading...</div>;
+  if (loading) return <div className="loading"></div>;
 
   return (
     <div className="database-dashboard">

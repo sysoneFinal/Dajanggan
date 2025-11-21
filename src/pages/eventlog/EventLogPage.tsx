@@ -44,7 +44,7 @@ const EventLogPage = () => {
   const [selectedDBs, setSelectedDBs] = useState<string[]>([]);
   const [selectedLevels, setSelectedLevels] = useState<string[]>([]);
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
-  const [selectedTime, setSelectedTime] = useState<string>("오늘");
+  const [selectedTime, setSelectedTime] = useState<string>("최근 15분");
   const [page, setPage] = useState(1);
   const [sorting, setSorting] = useState<SortingState>([]);
 
@@ -160,7 +160,7 @@ const EventLogPage = () => {
     setSelectedDBs([]);
     setSelectedCategories([]);
     setSelectedLevels([]);
-    setSelectedTime("오늘");
+    setSelectedTime("최근 15분");
     setPage(1);
   }, [selectedInstance?.instanceId]);
 

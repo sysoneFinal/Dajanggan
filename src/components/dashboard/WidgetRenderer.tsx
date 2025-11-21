@@ -63,10 +63,6 @@ export default function WidgetRenderer({
     .join(", ");
   const cardSubtitle = databaseLabel || undefined;
   
-  // 디버깅 로그
-  console.log("🔍 WidgetRenderer - databases prop:", databases);
-  console.log("🔍 WidgetRenderer - databaseLabel:", databaseLabel);
-  console.log("🔍 WidgetRenderer - cardSubtitle:", cardSubtitle);
 
   // 에러가 있는 경우
   if (error) {
