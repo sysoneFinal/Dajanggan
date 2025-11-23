@@ -6,7 +6,7 @@ import SummaryCard from "../../components/util/SummaryCard";
 import VacuumTableMenu from "./VacuumTableMenu";
 import apiClient from "../../api/apiClient";
 import { useInstanceContext } from "../../context/InstanceContext";
-import "../../styles/vacuum/VacuumPage.css";
+import "../../styles/vacuum/vacuumPage.css";
 
 type Props = {
   expanded?: boolean;

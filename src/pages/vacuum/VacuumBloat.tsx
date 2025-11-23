@@ -3,7 +3,7 @@ import Chart from "../../components/chart/ChartComponent";
 import WidgetCard from "../../components/util/WidgetCard";
 import SummaryCard from "../../components/util/SummaryCard";
 import BloatDetailPage from "./VacuumBloatDetail"; // 임포트 추가
-import "../../styles/vacuum/VacuumPage.css";
+import "../../styles/vacuum/vacuumPage.css";
 import apiClient from "../../api/apiClient";
 import { useInstanceContext } from "../../context/InstanceContext";
 

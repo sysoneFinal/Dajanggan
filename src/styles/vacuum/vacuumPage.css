@@ -144,7 +144,7 @@
 }
 
 
-/* VacuumPage.css에 추가 */
+/* vacuumPage.css에 추가 */
 .vd-main-layout {
   display: grid;
   grid-template-columns: 1fr 2fr;  /* 좌측:우측 비율 조정 */
