@@ -3,7 +3,7 @@ import { Responsive, WidthProvider, type Layout } from "react-grid-layout";
 import { useQuery } from "@tanstack/react-query";
 import "react-grid-layout/css/styles.css";
 import "react-resizable/css/styles.css";
-import "../../styles/dashboard/Layout.css";
+import "../../styles/dashboard/layout.css";
 import apiClient from "../../api/apiClient";
 import WidgetRenderer from "../../components/dashboard/WidgetRenderer";
 import DashboardEditorPanel from "../../components/dashboard/DashboardEditor";
