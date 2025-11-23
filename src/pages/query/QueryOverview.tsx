@@ -27,7 +27,7 @@ import {
   type SlowQueryListDto,
   type QueryAgg1mDto
 } from "../../api/queryagg";
-import "/src/styles/query/query-overview.css";
+import "../../styles/query/query-overview.css";
 
 /**
  * 쿼리 오버뷰 통합 대시보드

@@ -12,7 +12,7 @@ import {
 import Pagination from "../../components/util/Pagination";
 import CsvButton from "../../components/util/CsvButton";
 import apiClient from "../../api/apiClient";
-import "/src/styles/engine/hottablelist.css";
+import "../../styles/engine/hottablelist.css";
 import { useInstanceContext } from "../../context/InstanceContext";
 
 // 데이터 타입 정의

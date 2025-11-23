@@ -13,7 +13,7 @@ import Pagination from "../../components/util/Pagination";
 import CsvButton from "../../components/util/CsvButton";
 import MultiSelectDropdown from "../../components/util/MultiSelectDropdown";
 import apiClient from "../../api/apiClient";
-import "/src/styles/engine/checkpointlist.css";
+import "../../styles/engine/checkpointlist.css";
 import { useInstanceContext } from "../../context/InstanceContext";
 
 interface CheckpointData {

@@ -16,7 +16,7 @@ import {
   postExplainAnalyze,
   getHourlyDistribution
 } from "../../api/query";
-import "/src/styles/query/execution-status.css";
+import "../../styles/query/execution-status.css";
 
 /**
  * 쿼리 실행 상태 페이지

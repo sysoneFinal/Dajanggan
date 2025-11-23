@@ -18,7 +18,7 @@ import AlarmRuleEditModal from "./AlarmRuleEditModal";
 import AlarmRuleDetailModal from "../alarm/AlarmRuleDetailModal";
 import type { Metric, Aggregation, MetricCategory, AlarmRulePayload } from "./AlarmRuleModal";
 import { CATEGORY_LABELS } from "./AlarmRuleModal";
-import "/src/styles/alarm/alarm-list.css";
+import "../../styles/alarm/alarm-list.css";
 import apiClient from "../../api/apiClient";
 import { useInstanceContext } from "../../context/InstanceContext";
 

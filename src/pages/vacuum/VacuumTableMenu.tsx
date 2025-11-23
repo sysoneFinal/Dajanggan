@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import "/src/styles/vacuum/VacuumPage.css";
+import "../../styles/vacuum/VacuumPage.css";
 
 function TableDropdown({
   tables,

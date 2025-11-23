@@ -4,7 +4,7 @@ import { useInstanceContext } from "../../context/InstanceContext";
 import Chart from "../../components/chart/ChartComponent";
 import ChartGridLayout from "../../components/layout/ChartGridLayout";
 import WidgetCard from "../../components/util/WidgetCard";
-import "/src/styles/vacuum/VacuumPage.css";
+import "../../styles/vacuum/VacuumPage.css";
 import apiClient from "../../api/apiClient";
 
 /* ---------- 서버 DTO와 맞춘 타입 ---------- */

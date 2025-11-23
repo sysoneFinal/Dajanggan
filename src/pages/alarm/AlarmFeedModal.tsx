@@ -2,7 +2,7 @@
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { createPortal } from "react-dom";
 import Chart from "../../components/chart/ChartComponent";
-import "/src/styles/alarm/alarm-modal.css";
+import "../../styles/alarm/alarm-modal.css";
 import apiClient from "../../api/apiClient";
 import { useInstanceContext } from "../../context/InstanceContext";
 import {

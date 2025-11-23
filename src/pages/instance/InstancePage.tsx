@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import "/src/styles/instance/instance-register.css";
-import instanceDots from "/src/assets/icon/instance-dots.svg";
+import "../../styles/instance/instance-register.css";
+import instanceDots from "../../assets/icon/instance-dots.svg";
 import apiClient from "../../api/apiClient";
 import NewInstanceModal from "./InstanceRegister";
 import type { NewInstance } from "./InstanceRegister";

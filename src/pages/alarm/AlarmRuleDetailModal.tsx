@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
-import "/src/styles/alarm/alarm-rule.css";
-import "/src/styles/alarm/alarm-modal-root.css";
+import "../../styles/alarm/alarm-rule.css";
+import "../../styles/alarm/alarm-modal-root.css";
 import apiClient from "../../api/apiClient";
 import {
   CATEGORY_LABELS,

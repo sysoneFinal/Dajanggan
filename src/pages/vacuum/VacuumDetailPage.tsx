@@ -2,7 +2,7 @@ import { useMemo, useEffect, useState } from "react";
 import Chart from "../../components/chart/ChartComponent";
 import apiClient from "../../api/apiClient";
 import { useInstanceContext } from "../../context/InstanceContext";
-import "/src/styles/vacuum/VacuumPage.css";
+import "../../styles/vacuum/VacuumPage.css";
 
 /* ---------- 타입 정의 ---------- */
 type VacuumDetail = {

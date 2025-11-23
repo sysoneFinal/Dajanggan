@@ -11,7 +11,7 @@ import {
 } from "@tanstack/react-table";
 import Pagination from "../../components/util/Pagination";
 import CsvButton from "../../components/util/CsvButton";
-import "/src/styles/engine/hotindexlist.css";
+import "../../styles/engine/hotindexlist.css";
 import apiClient from "../../api/apiClient";
 import { useInstanceContext } from "../../context/InstanceContext";
 

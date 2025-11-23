@@ -13,7 +13,7 @@ import Pagination from "../../components/util/Pagination";
 import CsvButton from "../../components/util/CsvButton";
 import MultiSelectDropdown from "../../components/util/MultiSelectDropdown";
 import apiClient from "../../api/apiClient";
-import "/src/styles/engine/bgwriterlist.css";
+import "../../styles/engine/bgwriterlist.css";
 import { useInstanceContext } from "../../context/InstanceContext";
 
 interface BGWriterData {

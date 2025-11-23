@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import "/src/styles/alarm/alarm-rule.css";
-import "/src/styles/alarm/alarm-modal-root.css";
+import "../../styles/alarm/alarm-rule.css";
+import "../../styles/alarm/alarm-modal-root.css";
 import { useInstanceContext } from "../../context/InstanceContext";
 
 // 카테고리 타입

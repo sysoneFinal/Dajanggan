@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import "/src/styles/alarm/slack.css"; 
+import "../../styles/alarm/slack.css"; 
 /**
  * Slack 연동 설정 모달 (sl-* 스타일 재사용)
  * - Props: open, onClose, onSave, instances, initialValue

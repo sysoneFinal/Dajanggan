@@ -16,7 +16,7 @@ import CsvButton from "../../components/util/CsvButton";
 import MultiSelectDropdown from "../../components/util/MultiSelectDropdown";
 import apiClient from "../../api/apiClient";
 import { useInstanceContext } from "../../context/InstanceContext";
-import "/src/styles/vacuum/VacuumHistory-list.css";
+import "../../styles/vacuum/VacuumHistory-list.css";
 
 /* ---------- 타입 정의 ---------- */
 type VacuumHistoryRow = {

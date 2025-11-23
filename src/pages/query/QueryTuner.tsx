@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useLoader } from "../../context/LoaderContext";
-import "/src/styles/query/query-tuner.css";
+import "../../styles/query/query-tuner.css";
 
 /**
  * Query Analysis 페이지

@@ -1,4 +1,4 @@
-import "/src/styles/layout/gaugeChart.css";
+import "../../styles/layout/gaugeChart.css";
 
 export type GaugeType = "semi-circle" | "bar";
 export type GaugeStatus = "info" | "warning" | "critical";

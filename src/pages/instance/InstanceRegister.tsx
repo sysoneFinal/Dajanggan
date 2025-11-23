@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import "/src/styles/instance/instance.css";
-import "/src/styles/instance/instance-register.css";
-import "/src/styles/instance/instance-modal.css";
+import "../../styles/instance/instance.css";
+import "../../styles/instance/instance-register.css";
+import "../../styles/instance/instance-modal.css";
 
 import apiClient from "../../api/apiClient";
 
