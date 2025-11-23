@@ -16,8 +16,6 @@ import type { ApexOptions } from "apexcharts";
 import { useLoader } from '../../context/LoaderContext';
 
 
-
-
 /** 시간 포맷 변환 함수 */
 const formatTime = (isoString: string) => {
   const date = new Date(isoString);
@@ -45,7 +43,7 @@ const transformApiData = (apiData: any) => {
         topUsers: { data: [], categories: [] },
         deadlockTrend: { data: [], categories: [] },
       },
-      connection: { usage: 0, max: 0, current: 0 },
+      connection: { usage: 0, max: 0, current: 0, status: "info" as const },
       connectionTrend: [],
       recentDeadlocks: [],
     };
@@ -62,38 +60,110 @@ const transformApiData = (apiData: any) => {
   const deadLockTrend = Array.isArray(apiData.deadLockTrend) ? apiData.deadLockTrend : [];
   const connectionUsageTrend = Array.isArray(apiData.connectionUsageTrend) ? apiData.connectionUsageTrend : [];
 
+  //  상태 판단 헬퍼 함수
+  const getStatus = (value: number, thresholds: { info: number; warning: number; critical: number }) => {
+    if (value >= thresholds.critical) return "critical" as const;
+    if (value >= thresholds.warning) return "warning" as const;
+    if (value >= thresholds.info) return "info" as const;
+    return "info" as const;
+  };
+
+  //  더 심각한 상태 반환
+  const getMoreSevereStatus = (status1: "info" | "warning" | "critical", status2: "info" | "warning" | "critical") => {
+    const priority = { info: 0, warning: 1, critical: 2 };
+    return priority[status1] > priority[status2] ? status1 : status2;
+  };
+
+  // 전체 세션 수 계산
+  const totalSessions = (sessionSummary.activeSessions || 0) + 
+                       (sessionSummary.idleSessions || 0) + 
+                       (sessionSummary.waitingSessions || 0);
+
   const summary = [
     {
       label: "쿼리 처리 중 세션",
       value: sessionSummary.activeSessions || 0,
       desc: "최근 5분 평균 기준",
-      status: "info" as const,
+      //  Active 세션: 절대값 + 비율 조합
+      status: (() => {
+        const activeCount = sessionSummary.activeSessions || 0;
+        const activeRatio = totalSessions > 0 ? activeCount / totalSessions : 0;
+        
+        // 절대값 기준 (20개, 40개, 60개)
+        const statusByCount = getStatus(activeCount, {
+          info: 20,
+          warning: 40,
+          critical: 60
+        });
+        
+        // 비율 기준 (60%, 80%, 90%)
+        const statusByRatio = getStatus(activeRatio, {
+          info: 0.60,
+          warning: 0.80,
+          critical: 0.90
+        });
+        
+        // 더 심각한 상태 반환
+        return getMoreSevereStatus(statusByCount, statusByRatio);
+      })(),
     },
     {
       label: "대기 중인 트랜잭션",
       value: sessionSummary.idleSessions || 0,
       desc: "최근 5분 평균 기준",
-      status: "info" as const,
+      status: "info" as const, // Idle은 정상 상태
     },
     {
       label: "대기 중인 세션",
       value: sessionSummary.waitingSessions || 0,
       desc: "최근 5분 평균 기준",
-      status: "info" as const,
+      //  대기 세션: 절대값 + 비율 조합
+      status: (() => {
+        const waitingCount = sessionSummary.waitingSessions || 0;
+        const waitingRatio = totalSessions > 0 ? waitingCount / totalSessions : 0;
+        
+        // 절대값 기준 (5개, 10개, 20개)
+        const statusByCount = getStatus(waitingCount, {
+          info: 5,
+          warning: 10,
+          critical: 20
+        });
+        
+        // 비율 기준 (20%, 40%, 60%)
+        const statusByRatio = getStatus(waitingRatio, {
+          info: 0.20,
+          warning: 0.40,
+          critical: 0.60
+        });
+        
+        // 더 심각한 상태 반환
+        return getMoreSevereStatus(statusByCount, statusByRatio);
+      })(),
     },
     {
       label: "평균 트랜잭션 시간",
       value: sessionSummary.avgTxDurationSec 
-        ? `${(sessionSummary.avgTxDurationSec ).toFixed(1)}s`
+        ? `${(sessionSummary.avgTxDurationSec).toFixed(1)}s`
         : "0s",
       desc: "최근 5분 평균 기준",
-      status: (sessionSummary.avgTxDurationSec || 0) > 5000 ? "critical" as const : "info" as const,
+      //  트랜잭션 시간 임계치: 10초, 30초, 60초
+      status: getStatus(sessionSummary.avgTxDurationSec || 0, {
+        info: 10,
+        warning: 30,
+        critical: 60
+      }),
     },
     {
       label: "DeadLocks",
       value: deadlockCounts.deadlockCount || 0,
       desc: "최근 10분 이내 발생",
-      status: (deadlockCounts.deadlockCount || 0) > 0 ? "warning" as const : "info" as const,
+      //  데드락: 1개 이상이면 warning, 3개 이상이면 critical
+      status: (() => {
+        const count = deadlockCounts.deadlockCount || 0;
+        if (count >= 3) return "critical" as const;
+        if (count >= 1) return "warning" as const;
+        return "info" as const;
+      })(),
     },
   ];
 
@@ -153,33 +223,28 @@ const transformApiData = (apiData: any) => {
     ),
   };
 
-const topUsers = (() => {
-  
-  const users = [
-    { name: topUserSessions.topUser1, sessions: topUserSessions.topUser1Sessions },
-    { name: topUserSessions.topUser2, sessions: topUserSessions.topUser2Sessions },
-    { name: topUserSessions.topUser3, sessions: topUserSessions.topUser3Sessions },
-    { name: topUserSessions.topUser4, sessions: topUserSessions.topUser4Sessions },
-  ];
-  
-  console.log("🔍 users 배열 (필터 전):", users);
-  
-  const filteredUsers = users.filter(user => 
-    user.name != null && 
-    user.name !== "" && 
-    user.sessions != null && 
-    user.sessions > 0
-  );
-
-  
-  const result = {
-    data: filteredUsers.map(u => u.sessions),
-    categories: filteredUsers.map(u => u.name),
-  };
-  
-  return result;
-})();
-
+  const topUsers = (() => {
+    const users = [
+      { name: topUserSessions.topUser1, sessions: topUserSessions.topUser1Sessions },
+      { name: topUserSessions.topUser2, sessions: topUserSessions.topUser2Sessions },
+      { name: topUserSessions.topUser3, sessions: topUserSessions.topUser3Sessions },
+      { name: topUserSessions.topUser4, sessions: topUserSessions.topUser4Sessions },
+    ];
+    
+    const filteredUsers = users.filter(user => 
+      user.name != null && 
+      user.name !== "" && 
+      user.sessions != null && 
+      user.sessions > 0
+    );
+    
+    const result = {
+      data: filteredUsers.map(u => u.sessions),
+      categories: filteredUsers.map(u => u.name),
+    };
+    
+    return result;
+  })();
 
   const deadlockTrend = {
     data: deadLockTrend.map((item: any) => item.deadlockCount || 0),
@@ -197,16 +262,25 @@ const topUsers = (() => {
     deadlockTrend,
   };
 
+  // 커넥션 사용률 상태 계산
   const maxConnections = connectionUsage?.maxConnections || 100;
   const usedConnections = connectionUsage?.usedConnections || 0;
   const usagePercent = maxConnections > 0 
     ? Math.round((usedConnections / maxConnections) * 100) 
     : 0;
 
+  // 커넥션 사용률 임계치: 70%, 80%, 90%
+  const connectionStatus = getStatus(usagePercent, {
+    info: 70,
+    warning: 80,
+    critical: 90
+  });
+
   const connection = {
     usage: usagePercent,
     max: maxConnections,
     current: usedConnections,
+    status: connectionStatus,
   };
 
   const connectionTrend = connectionUsageTrend.map((item: any) => item.usedConnections || 0);
@@ -231,14 +305,12 @@ export default function SessionDashboard() {
   const { showLoader, hideLoader } = useLoader();
 
   /** API 요청 */
-  
   const fetchSessionDashboard = async() => {
     if (!selectedInstance?.instanceId || !selectedDatabase?.databaseId) {
       console.warn('인스턴스나 데이터베이스 선택이 필요합니다.');
       return null; 
     }
     try {
-      
       const res = await apiClient.get("/session/details", {
         params: {
           instanceId: selectedInstance.instanceId,
@@ -256,7 +328,7 @@ export default function SessionDashboard() {
   /** 데드락 상세 정보 조회 */
   const handleDeadlockClick = async (deadlock: any) => {
     setIsLoadingDeadlock(true);
-      console.log("clicked deadlock:", deadlock);
+    console.log("clicked deadlock:", deadlock);
 
     try {
       const res = await apiClient.get("/session/details/deadLock", {
@@ -295,13 +367,14 @@ export default function SessionDashboard() {
     }
   };
 
-    //  기본 대시보드 데이터 로드
+  // 기본 대시보드 데이터 로드
   const { data, isLoading, isError } = useQuery({
     queryKey: ["sessionDashboard", selectedInstance?.instanceId, selectedDatabase?.databaseId],
     queryFn: fetchSessionDashboard,
     enabled: !!selectedInstance?.instanceId && !!selectedDatabase?.databaseId,
     refetchInterval: intervalToMs(refreshInterval),
   });
+
   /** === 로딩 상태 관리 === */
   useEffect(() => {
     if (isLoading) {
@@ -310,7 +383,6 @@ export default function SessionDashboard() {
       hideLoader();
     }
   }, [isLoading, showLoader, hideLoader]);
-
 
   const dashboard = transformApiData(data);
 
@@ -387,7 +459,6 @@ export default function SessionDashboard() {
             yaxisOptions={createYAxisOptions("이벤트 발생 수 (개)")}
             tooltipFormatter={createTooltipFormatter("개")}
             height={260}      
-
           />
         </WidgetCard>
 
@@ -396,13 +467,7 @@ export default function SessionDashboard() {
             <div className="session-db-connection-chart">
                 <GaugeChart
                   value={dashboard.connection?.usage || 0}
-                  status={
-                    (dashboard.connection?.usage || 0) >= 90
-                      ? "critical"
-                      : (dashboard.connection?.usage || 0) >= 70
-                      ? "warning"
-                      : "info"
-                  }
+                  status={dashboard.connection?.status || "info"}
                   type="semi-circle"
                   radius={45}       
                   strokeWidth={8}  
@@ -497,7 +562,6 @@ export default function SessionDashboard() {
               <div className="loading-indicator">Loading...</div>
             )}
 
-            {/* 데드락 없을 때 표시 */}
             {!isLoadingDeadlock && (!dashboard.recentDeadlocks || dashboard.recentDeadlocks.length === 0) && (
               <div className="no-data">최근 데드락이 없습니다.</div>
             )}

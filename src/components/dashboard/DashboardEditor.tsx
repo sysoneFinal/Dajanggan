@@ -1,4 +1,6 @@
 import { useState, useEffect } from "react";
+import Joyride, { STATUS } from "react-joyride";
+import type { CallBackProps, Step } from "react-joyride";
 import { useInstanceContext } from "../../context/InstanceContext";
 import { useDashboard } from "../../context/DashboardContext";
 import MultiSelectDropdown from "../../components/util/MultiSelectDropdown";
@@ -59,6 +61,9 @@ const { metricMap } = useDashboard();
   const [selectedMetric, setSelectedMetric] = useState("");
   const [availableCharts, setAvailableCharts] = useState<string[]>([]);
   const [selectedDbNames, setSelectedDbNames] = useState<string[]>([]);
+  
+  // Joyride 관련 상태
+  const [runTour, setRunTour] = useState(false);
 
   /* 
    * Theme 목록
@@ -113,7 +118,80 @@ const { metricMap } = useDashboard();
   
   const selectedChartData = chartTypes.find((chart) => chart.id === selectedChart);
   const isCustom = currentTheme === "custom";
-  const isTemplate = currentTheme.startsWith("card_");
+  const isTemplate = currentTheme?.startsWith("card_") ?? false;
+
+  // 가이드 시작 핸들러
+  const handleStartTour = () => {
+    setRunTour(true);
+  };
+
+  // Joyride 콜백
+  const handleJoyrideCallback = (data: CallBackProps) => {
+    const { status } = data;
+    if (status === STATUS.FINISHED || status === STATUS.SKIPPED) {
+      setRunTour(false);
+    }
+  };
+
+  // Joyride 스텝 정의
+  const steps: Step[] = [
+    {
+      target: ".theme-grid",
+      content: (
+        <div>
+          <h3>1번 테마를 선택하세요</h3>
+          <p>
+            <strong>커스텀 모드</strong>를 실행 시, 위젯을 자유롭게 추가할 수 있습니다.
+            <br />
+            <strong>테마를 선택</strong>할 경우, 위젯의 개수는 고정됩니다. 지표만 추가 가능합니다.
+          </p>
+        </div>
+      ),
+      placement: "right",
+      disableBeacon: true,
+    },
+    {
+      target: ".metric-selectors",
+      content: (
+        <div>
+          <h3>2번 데이터베이스를 선택하세요</h3>
+          <p>비교할 데이터베이스를 선택한 후, 지표와 차트를 선택하여 위젯을 추가할 수 있습니다.</p>
+        </div>
+      ),
+      placement: "right",
+      disableBeacon: true,
+    },
+    {
+      target: ".chart-section",
+      content: (
+        <div>
+          <h3>3번 차트를 선택하세요</h3>
+          <p>
+            지표를 선택하면 사용 가능한 차트 유형이 표시됩니다.
+            <br />
+            원하는 차트 타입을 클릭하여 선택할 수 있습니다.
+          </p>
+        </div>
+      ),
+      placement: "right",
+      disableBeacon: true,
+    },
+    {
+      target: ".card-preview-single",
+      content: (
+        <div>
+          <h3>4번 Preview를 드래그앤드롭하세요</h3>
+          <p>
+            선택한 지표와 차트의 미리보기가 여기에 표시됩니다.
+            <br />
+            이 Preview 카드를 드래그하여 대시보드에 위젯을 추가할 수 있습니다.
+          </p>
+        </div>
+      ),
+      placement: "left",
+      disableBeacon: true,
+    },
+  ];
 
   /* 
    * Preview 드래그
@@ -148,7 +226,84 @@ const { metricMap } = useDashboard();
    * 렌더링
    * */
   return (
-    <aside className="editor-panel">
+    <>
+      <Joyride
+        steps={steps}
+        run={runTour}
+        continuous
+        showProgress
+        showSkipButton
+        callback={handleJoyrideCallback}
+        disableOverlayClose={false}
+        styles={{
+          options: {
+            primaryColor: "#7B61FF",
+            zIndex: 10000,
+          },
+          tooltip: {
+            borderRadius: 12,
+            padding: 20,
+            backgroundColor: "#ffffff",
+            color: "#111827",
+            border: "1px solid #e5e7eb",
+            boxShadow: "0 10px 30px rgba(0, 0, 0, 0.08)",
+          },
+          tooltipContainer: {
+            textAlign: "left",
+          },
+          tooltipTitle: {
+            color: "#111827",
+            fontSize: "18px",
+            fontWeight: 700,
+            marginBottom: "8px",
+          },
+          tooltipContent: {
+            color: "#6b7280",
+            fontSize: "14px",
+            lineHeight: "1.5",
+          },
+          buttonNext: {
+            backgroundColor: "#7B61FF",
+            borderRadius: 8,
+            padding: "10px 20px",
+            fontSize: "14px",
+            fontWeight: 600,
+            color: "#ffffff",
+            border: "none",
+            cursor: "pointer",
+          },
+          buttonBack: {
+            color: "#6b7280",
+            marginRight: 10,
+            fontSize: "14px",
+            fontWeight: 600,
+          },
+          buttonSkip: {
+            color: "#6b7280",
+            fontSize: "14px",
+            fontWeight: 600,
+          },
+          overlay: {
+            backgroundColor: "rgba(0, 0, 0, 0.3)",
+          },
+          spotlight: {
+            borderRadius: 12,
+          },
+        }}
+        locale={{
+          back: "이전",
+          close: "닫기",
+          last: "완료",
+          next: "다음",
+          skip: "건너뛰기",
+        }}
+      />
+      <aside className="editor-panel">
+      {/* === 가이드 버튼 === */}
+      <button className="guide-help-btn" onClick={handleStartTour} title="사용 가이드 보기">
+        <i className="ri-question-line"></i>
+      </button>
+
       {/* === 상단 안내 === */}
       <div className="editor-guide">
         {isCustom ? (
@@ -296,5 +451,6 @@ const { metricMap } = useDashboard();
         )}
       </section>
     </aside>
+    </>
   );
 }
