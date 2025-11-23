@@ -8,7 +8,7 @@ import SummaryCard from "../../components/util/SummaryCard";
 import apiClient from "../../api/apiClient";
 import { useInstanceContext } from "../../context/InstanceContext";
 
-import "../../styles/vacuum/VacuumPage.css";
+import "../../styles/vacuum/vacuumPage.css";
 
 /* ---------- 타입 정의 ---------- */
 type VacuumSession = {
