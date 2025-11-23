@@ -23,7 +23,6 @@ export interface QuerySummaryDto {
   insertCount: number;
   updateCount: number;
   deleteCount: number;
-  // 🆕 리소스 사용률 추가
   currentCpuUsagePercent?: number;
   currentMemoryUsagePercent?: number;
   currentDiskIoUsagePercent?: number;
@@ -67,13 +66,11 @@ export interface QueryAgg1mDto {
   totalIoBlocks: number;
   avgIoBlocks: number;
   slowQueryCount: number;
-  // 🆕 리소스 사용률 관련 필드
   avgCpuUsagePercent?: number;
   avgMemoryUsageMb?: number;
   maxCpuUsagePercent?: number;
   maxMemoryUsageMb?: number;
   createdAt: string;
-  // 🆕 Top Query 조회용 필드 추가
   queryMetricId?: number;
   queryText?: string;
   shortQuery?: string;
@@ -106,6 +103,9 @@ export interface SlowQueryListDto {
   executionTimeMs: number;
   username: string;
   queryType: string;
+  cpuUsagePercent?: number;
+  memoryUsageMb?: number;
+  ioBlocks?: number;
 }
 
 export interface ApiResponse<T> {

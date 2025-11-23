@@ -1,5 +1,6 @@
 import apiClient from './apiClient';
 import type { AxiosResponse } from 'axios';
+import type { QueryAnalysisRequest, QueryAnalysisResponse, QuerySuggestion } from './suggestion';
 
 /**
  * Query Metrics API 클라이언트
@@ -66,6 +67,9 @@ export interface ExplainAnalyzeResult {
   executionMode: string;
   executionTimeMs: number | null;
   planningTimeMs: number | null;
+  memoryUsageMb?: number | null;      // 메모리 사용량 (MB)
+  ioBlocks?: number | null;            // I/O 블록 수
+  cpuUsagePercent?: number | null; 
 }
 
 /**
@@ -319,5 +323,51 @@ export const getQueryTrend = async (
 ): Promise<AxiosResponse<ApiResponse<QueryOverviewTrendDto>>> => {
   return apiClient.get(`/query-agg-1m/trend`, {
     params: { instanceId, databaseId, hours }
+  });
+};
+
+/* ---------- AI 쿼리 분석 API ---------- */
+
+/**
+ * AI 기반 쿼리 분석 실행
+ * POST /query-metrics/analyze-with-ai
+ * 
+ * - EXPLAIN ANALYZE 실행
+ * - OpenAI 기반 최적화 제안 생성
+ * - query_suggestion 테이블에 저장
+ */
+export const analyzeQueryWithAI = async (
+  databaseId: number,
+  query: string
+): Promise<AxiosResponse<ApiResponse<QueryAnalysisResponse>>> => {
+  return apiClient.post('/query-metrics/analyze-with-ai', {
+    databaseId,
+    query
+  });
+};
+
+/**
+ * 저장된 제안 조회
+ * GET /query-suggestions/recent?databaseId={databaseId}&hours={hours}
+ */
+export const getRecentSuggestions = async (
+  databaseId: number,
+  hours: number = 24
+): Promise<AxiosResponse<ApiResponse<QuerySuggestion[]>>> => {
+  return apiClient.get('/query-suggestions/recent', {
+    params: { databaseId, hours }
+  });
+};
+
+/**
+ * 특정 쿼리 해시의 제안 조회
+ * GET /query-suggestions/{queryHash}?databaseId={databaseId}
+ */
+export const getSuggestionsByQueryHash = async (
+  queryHash: string,
+  databaseId: number
+): Promise<AxiosResponse<ApiResponse<QuerySuggestion[]>>> => {
+  return apiClient.get(`/query-suggestions/${queryHash}`, {
+    params: { databaseId }
   });
 };

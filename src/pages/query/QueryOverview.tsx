@@ -53,9 +53,12 @@ type TopQueryItem = {
   value: number;
   unit: string;
   query: string;
+  fullQuery: string; 
   callCount: number;
   avgTime: string;
-  detail?: string;
+  cpuUsagePercent?: number;
+  memoryUsageMb?: number;
+  ioBlocks?: number;
 };
 
 type SlowQueryItem = {
@@ -66,6 +69,9 @@ type SlowQueryItem = {
   suggestion: string;
   executionTime: string;
   occurredAt: string;
+  cpuUsagePercent?: number;
+  memoryUsageMb?: number;
+  ioBlocks?: number;
 };
 
 type SortOption = "최근 발생순" | "실행시간 느린순" | "실행시간 빠른순";
@@ -142,7 +148,7 @@ export default function QueryOverview() {
   const [slowQueries, setSlowQueries] = useState<SlowQueryItem[]>([]);
   const [error, setError] = useState<string | null>(null);
 
-  // 📌 슬로우 쿼리 Top 5
+  // 슬로우 쿼리 Top 5
   const [slowQueriesTop5, setSlowQueriesTop5] = useState<SlowQueryItem[]>([]);
 
   // 요약 카드 메트릭 상태
@@ -153,7 +159,7 @@ export default function QueryOverview() {
     { label: "평균 응답 시간", value: "0ms", status: "info", desc: "최근 5분 평균 기준" },
   ]);
 
-  // 🕐 시간 카테고리 (12시간, 고정값)
+  // 시간 카테고리 (12시간)
   const timeCategories = useMemo(() => {
     const now = new Date();
     const baseTime = new Date(now);
@@ -185,7 +191,7 @@ export default function QueryOverview() {
   );
 
   /**
-   * 🎨 리소스 사용률 색상 결정
+   * 리소스 사용률 색상 결정
    */
   const getResourceColor = (resourceName: string, value: number) => {
     switch (resourceName) {
@@ -234,18 +240,20 @@ export default function QueryOverview() {
 
     return {
       rank: index + 1,
-       id: item.queryMetricId ? `#${item.queryMetricId}` : `#${index + 1}`,
-    value,
-    unit,
-    // 🔧 수정: shortQuery 사용
-    query: item.shortQuery || item.queryText?.substring(0, 50) || "N/A",
-    // 🔧 수정: executionCount 사용
-    callCount: item.executionCount || 0,
-    avgTime: `${item.avgExecutionTimeMs || 0}ms`,
+      id: item.queryMetricId ? `#${item.queryMetricId}` : `#${index + 1}`,
+      value,
+      unit,
+      query: item.shortQuery || item.queryText?.substring(0, 50) || "N/A",
+      fullQuery: item.queryText || "",
+      callCount: item.executionCount || 0,
+      avgTime: `${item.avgExecutionTimeMs || 0}ms`,
+      cpuUsagePercent: item.avgCpuUsagePercent || 0,
+      memoryUsageMb: item.avgMemoryUsageMb || 0,
+      ioBlocks: item.avgIoBlocks || 0,
     };
   };
 
-  // 🔄 초기 데이터 로드 (React Query로 자동 새로고침)
+  // 초기 데이터 로드 (React Query로 자동 새로고침)
   const { data: queryOverviewData, isLoading, error: queryError } = useQuery({
     queryKey: ["query-overview", selectedInstance?.instanceId, databaseId],
     queryFn: async () => {
@@ -255,41 +263,29 @@ export default function QueryOverview() {
 
       const instanceId = selectedInstance.instanceId;
 
-      // ===================================================
       // Step 1: 집계 API로 요약 데이터 조회
-      // ===================================================
       const summaryResponse = await getQuerySummary(instanceId, databaseId);
-
       let summary: QuerySummaryDto | null = null;
       if (summaryResponse.data.success && summaryResponse.data.data) {
         summary = summaryResponse.data.data;
       }
 
-      // ===================================================
       // Step 2: 트렌드 데이터 조회 (TPS/QPS 차트용)
-      // ===================================================
       const trendResponse = await getQueryTrend(instanceId, databaseId, 12);
-
       let trend: QueryOverviewTrendDto | null = null;
       if (trendResponse.data.success && trendResponse.data.data) {
         trend = trendResponse.data.data;
       }
 
-      // ===================================================
       // Step 3: Top Query 데이터 로드 (집계 API 사용)
-      // ===================================================
       const topQueryResponse = await getTopQueries(instanceId, databaseId, 'memory', 5);
-      
       let topQueriesData: QueryAgg1mDto[] = [];
       if (topQueryResponse.data.success && topQueryResponse.data.data) {
         topQueriesData = topQueryResponse.data.data;
       }
 
-      // ===================================================
       // Step 4: 슬로우 쿼리 조회 (집계 API)
-      // ===================================================
       const slowResponse = await getSlowQueryList(instanceId, databaseId, 50);
-
       let slowQueriesData: SlowQueryListDto[] = [];
       if (slowResponse.data.success && slowResponse.data.data) {
         slowQueriesData = slowResponse.data.data;
@@ -303,13 +299,12 @@ export default function QueryOverview() {
       };
     },
     enabled: !!databaseId && !!selectedInstance?.instanceId,
-    refetchInterval: intervalToMs(refreshInterval), // ** 중요 ** 새로고침 주기 적용
+    refetchInterval: intervalToMs(refreshInterval),
   });
 
   // 데이터 처리 및 상태 업데이트
   useEffect(() => {
     if (!queryOverviewData) {
-      // 초기화
       setTopQueries([]);
       setSlowQueries([]);
       setSlowQueriesTop5([]);
@@ -366,7 +361,6 @@ export default function QueryOverview() {
           disk: summary.currentDiskIoUsagePercent || 0,
         });
         
-        // 애니메이션을 위해 약간의 지연 후 마운트 상태 변경
         setTimeout(() => setIsResourceMounted(true), 100);
       }
     }
@@ -376,13 +370,11 @@ export default function QueryOverview() {
       let tpsData = trend.trendData.map(d => d.tps);
       let qpsData = trend.trendData.map(d => d.qps);
       
-      // 데이터가 12개보다 적으면 앞쪽을 0으로 채움
       while (tpsData.length < 12) {
         tpsData.unshift(0);
         qpsData.unshift(0);
       }
       
-      // 데이터가 12개보다 많으면 최근 12개만 사용
       if (tpsData.length > 12) {
         tpsData = tpsData.slice(-12);
         qpsData = qpsData.slice(-12);
@@ -410,6 +402,9 @@ export default function QueryOverview() {
           suggestion: "인덱스 최적화 권장",
           executionTime: `${executionTimeSec}초`,
           occurredAt: formatDate(item.collectedAt),
+          cpuUsagePercent: item.cpuUsagePercent || 0,
+          memoryUsageMb: item.memoryUsageMb || 0,
+          ioBlocks: item.ioBlocks || 0,
         };
       });
       
@@ -441,9 +436,7 @@ export default function QueryOverview() {
     }
   }, [queryError]);
 
-  // ===================================================
-  // 🔄 리소스 타입 변경 시 적절한 API 호출 (React Query로 자동 새로고침)
-  // ===================================================
+  // 리소스 타입 변경 시 적절한 API 호출
   const { data: topQueriesByResource } = useQuery({
     queryKey: ["top-queries-by-resource", selectedInstance?.instanceId, databaseId, resourceType],
     queryFn: async () => {
@@ -474,7 +467,7 @@ export default function QueryOverview() {
       return [];
     },
     enabled: !!databaseId && !!selectedInstance?.instanceId,
-    refetchInterval: intervalToMs(refreshInterval), // ** 중요 ** 새로고침 주기 적용
+    refetchInterval: intervalToMs(refreshInterval),
   });
 
   // Top Query 데이터 처리
@@ -485,14 +478,8 @@ export default function QueryOverview() {
     }
   }, [topQueriesByResource, resourceType]);
 
-  const handleExport = () => {
-    console.log("Exporting slow queries...");
-  };
-
-  // Top Query 클릭
- 
   /**
-   * ✅ Top Query 클릭 핸들러 - 실제 EXPLAIN ANALYZE 실행
+   * Top Query 클릭 핸들러
    */
   const handleTopQueryClick = async (query: TopQueryItem) => {
     if (!databaseId) {
@@ -500,7 +487,6 @@ export default function QueryOverview() {
       return;
     }
 
-    // 1️⃣ 먼저 로딩 상태의 모달을 표시
     const isModifyingQuery = query.query.toUpperCase().includes("UPDATE") || 
                             query.query.toUpperCase().includes("INSERT") || 
                             query.query.toUpperCase().includes("DELETE");
@@ -510,10 +496,10 @@ export default function QueryOverview() {
       status: "🔄 실행 계획 분석 중...",
       avgExecutionTime: query.avgTime,
       totalCalls: query.callCount,
-      memoryUsage: `${query.value.toFixed(1)}${query.unit}`,
-      ioUsage: query.detail || "계산 중...",
-      cpuUsagePercent: 0,
-      sqlQuery: query.query,
+      memoryUsage: `${query.memoryUsageMb?.toFixed(2) || 0} MB`,
+      ioUsage: `${query.ioBlocks?.toLocaleString() || 0} blocks`,
+      cpuUsagePercent: query.cpuUsagePercent || 0,
+      sqlQuery: query.fullQuery,
       explainResult: "분석 중입니다...",
       stats: {
         min: "계산 중...",
@@ -522,37 +508,37 @@ export default function QueryOverview() {
         stdDev: "계산 중...",
         totalTime: "계산 중..."
       },
-      isModifyingQuery
+      isModifyingQuery,
+      databaseId: databaseId,
+      isSlowQuery: parseFloat(query.avgTime) > 1000
     };
 
     setSelectedQueryDetail(loadingDetail);
     setIsModalOpen(true);
 
-    // 2️⃣ EXPLAIN ANALYZE 실행
+    // EXPLAIN ANALYZE 실행
     try {
       showLoader("실행 계획 분석 중...");
-      console.log('🔍 EXPLAIN ANALYZE 요청 시작', { databaseId, query: query.query });
 
-      const { data } = await postExplainAnalyze(databaseId, query.query);
+      const { data } = await postExplainAnalyze(databaseId, query.fullQuery);
 
       if (!data?.success || !data?.data) {
         throw new Error(data?.message || "EXPLAIN ANALYZE 실패");
       }
 
-      console.log('✅ EXPLAIN ANALYZE 응답:', data.data);
-
       const result = data.data;
 
-      // 3️⃣ 결과로 모달 업데이트
+      // ✅ 결과로 모달 업데이트 - 리소스 정보는 loadingDetail에서 유지
       const updatedDetail: QueryDetail = {
         queryId: `Query ${query.id}`,
         status: result.executionMode === "ANALYZE" ? "실제 실행" : "안전 모드",
         avgExecutionTime: query.avgTime,
         totalCalls: query.callCount,
-        memoryUsage: `${query.value.toFixed(1)}${query.unit}`,
-        ioUsage: query.detail || "N/A",
-        cpuUsagePercent: 0, // CPU 정보는 pg_stat_statements에서 가져오기
-        sqlQuery: query.query,
+        // ✅ loadingDetail의 값 유지 (쿼리의 실제 수집된 데이터)
+        memoryUsage: loadingDetail.memoryUsage,
+        ioUsage: loadingDetail.ioUsage,
+        cpuUsagePercent: loadingDetail.cpuUsagePercent,
+        sqlQuery: query.fullQuery,
         suggestion: result.executionTimeMs && result.executionTimeMs > 1000 ? {
           priority: result.executionTimeMs > 5000 ? "필수" : "권장",
           description: "실행 시간이 느립니다. 인덱스 최적화를 고려하세요.",
@@ -566,7 +552,9 @@ export default function QueryOverview() {
           stdDev: "N/A",
           totalTime: result.executionTimeMs ? `${result.executionTimeMs.toFixed(2)}ms` : "N/A"
         },
-        isModifyingQuery
+        isModifyingQuery,
+        databaseId: databaseId,
+        isSlowQuery: loadingDetail.isSlowQuery
       };
 
       setSelectedQueryDetail(updatedDetail);
@@ -574,7 +562,6 @@ export default function QueryOverview() {
     } catch (error: any) {
       console.error('❌ EXPLAIN ANALYZE 실패:', error);
 
-      // 4️⃣ 에러 시 에러 메시지 표시
       const errorDetail: QueryDetail = {
         ...loadingDetail,
         status: "⚠️ 분석 실패",
@@ -595,7 +582,7 @@ export default function QueryOverview() {
   };
 
   /**
-   * ✅ Slow Query 클릭 핸들러 - 실제 EXPLAIN ANALYZE 실행
+   * Slow Query 클릭 핸들러
    */
   const handleSlowQueryClick = async (slowQuery: SlowQueryItem) => {
     if (!databaseId) {
@@ -603,7 +590,6 @@ export default function QueryOverview() {
       return;
     }
 
-    // 1️⃣ 먼저 로딩 상태의 모달을 표시
     const isModifyingQuery = slowQuery.fullQuery.toUpperCase().includes("UPDATE") || 
                             slowQuery.fullQuery.toUpperCase().includes("INSERT") || 
                             slowQuery.fullQuery.toUpperCase().includes("DELETE");
@@ -613,9 +599,13 @@ export default function QueryOverview() {
       status: "🔄 실행 계획 분석 중...",
       avgExecutionTime: slowQuery.executionTime,
       totalCalls: 1,
-      memoryUsage: "계산 중...",
-      ioUsage: "계산 중...",
-      cpuUsagePercent: 0,
+      memoryUsage: slowQuery.memoryUsageMb 
+        ? `${slowQuery.memoryUsageMb.toFixed(2)} MB` 
+        : "N/A",
+      ioUsage: slowQuery.ioBlocks 
+        ? `${slowQuery.ioBlocks.toLocaleString()} blocks` 
+        : "N/A",
+      cpuUsagePercent: slowQuery.cpuUsagePercent || 0,
       sqlQuery: slowQuery.fullQuery,
       explainResult: "분석 중입니다...",
       stats: {
@@ -625,16 +615,17 @@ export default function QueryOverview() {
         stdDev: "계산 중...",
         totalTime: slowQuery.executionTime
       },
-      isModifyingQuery
+      isModifyingQuery,
+      databaseId: databaseId,
+      isSlowQuery: true
     };
 
     setSelectedQueryDetail(loadingDetail);
     setIsModalOpen(true);
 
-    // 2️⃣ EXPLAIN ANALYZE 실행
+    // EXPLAIN ANALYZE 실행
     try {
       showLoader("실행 계획 분석 중...");
-      console.log('🔍 EXPLAIN ANALYZE 요청 시작', { databaseId, query: slowQuery.fullQuery });
 
       const { data } = await postExplainAnalyze(databaseId, slowQuery.fullQuery);
 
@@ -642,19 +633,18 @@ export default function QueryOverview() {
         throw new Error(data?.message || "EXPLAIN ANALYZE 실패");
       }
 
-      console.log('✅ EXPLAIN ANALYZE 응답:', data.data);
-
       const result = data.data;
 
-      // 3️⃣ 결과로 모달 업데이트
+      // ✅ 결과로 모달 업데이트 - 리소스 정보는 loadingDetail에서 유지
       const updatedDetail: QueryDetail = {
         queryId: `Query ${slowQuery.id}`,
         status: result.executionMode === "ANALYZE" ? "실제 실행" : "안전 모드",
         avgExecutionTime: slowQuery.executionTime,
         totalCalls: 1,
-        memoryUsage: "N/A",
-        ioUsage: "N/A",
-        cpuUsagePercent: 0,
+        // ✅ loadingDetail의 값 유지 (쿼리의 실제 수집된 데이터)
+        memoryUsage: loadingDetail.memoryUsage,
+        ioUsage: loadingDetail.ioUsage,
+        cpuUsagePercent: loadingDetail.cpuUsagePercent,
         sqlQuery: slowQuery.fullQuery,
         suggestion: {
           priority: slowQuery.severity === "HIGH" ? "필수" : "권장",
@@ -669,7 +659,9 @@ export default function QueryOverview() {
           stdDev: "N/A",
           totalTime: result.executionTimeMs ? `${result.executionTimeMs.toFixed(2)}ms` : slowQuery.executionTime
         },
-        isModifyingQuery
+        isModifyingQuery,
+        databaseId: databaseId,
+        isSlowQuery: loadingDetail.isSlowQuery
       };
 
       setSelectedQueryDetail(updatedDetail);
@@ -677,7 +669,6 @@ export default function QueryOverview() {
     } catch (error: any) {
       console.error('❌ EXPLAIN ANALYZE 실패:', error);
 
-      // 4️⃣ 에러 시 에러 메시지 표시
       const errorDetail: QueryDetail = {
         ...loadingDetail,
         status: "⚠️ 분석 실패",
@@ -884,7 +875,7 @@ export default function QueryOverview() {
                     }}
                   ></div>
                 </div>
-               <div className="qo-resource-value">{resourceUsage.disk.toFixed(1)}%</div>
+                <div className="qo-resource-value">{resourceUsage.disk.toFixed(1)}%</div>
               </div>
             </div>
           )}
@@ -936,7 +927,7 @@ export default function QueryOverview() {
         <div className="qo-slow-top5-card">
           <div className="qo-widget-header">
             <div className="qo-card__title">슬로우 쿼리 TOP 5</div>
-            <CsvButton onClick={handleExport} />
+            <CsvButton onClick={() => console.log("Exporting slow queries...")} />
           </div>
 
           <div className="qo-query-list-wrapper-top5">
@@ -974,7 +965,7 @@ export default function QueryOverview() {
                   />
                 ))}
               </div>
-              <CsvButton onClick={handleExport} />
+              <CsvButton onClick={() => console.log("Exporting slow queries...")} />
             </div>
           </div>
 

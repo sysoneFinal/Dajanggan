@@ -580,4 +580,256 @@
   .query-modal__metrics {
     grid-template-columns: 1fr;
   }
+  /* 🆕 AI 개선 제안 섹션 */
+.query-modal__ai-section {
+  margin-top: 1.5rem;
+  padding: 1.5rem;
+  background: linear-gradient(135deg, #f8faff 0%, #f0f4ff 100%);
+  border-radius: 12px;
+  border: 1px solid #e0e7ff;
+}
+
+.query-modal__ai-section .query-modal__section-title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: #1e40af;
+  margin-bottom: 1rem;
+}
+
+.query-modal__cache-badge {
+  font-size: 0.75rem;
+  padding: 0.25rem 0.5rem;
+  background: #dbeafe;
+  color: #1e40af;
+  border-radius: 6px;
+  font-weight: 500;
+}
+
+/* AI 로딩 상태 */
+.query-modal__ai-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem 1rem;
+  gap: 1rem;
+  color: #64748b;
+}
+
+/* AI 에러 상태 */
+.query-modal__ai-error {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 8px;
+  color: #dc2626;
+}
+
+.query-modal__ai-error .query-modal__error-icon {
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+}
+
+/* AI 제안이 없을 때 */
+.query-modal__ai-empty {
+  padding: 2rem;
+  text-align: center;
+  color: #64748b;
+  font-size: 0.875rem;
+}
+
+/* AI 제안 카드 목록 */
+.query-modal__ai-suggestions {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+/* AI 제안 카드 */
+.query-modal__ai-suggestion-card {
+  padding: 1.25rem;
+  background: #ffffff;
+  border-radius: 10px;
+  border: 1px solid #e2e8f0;
+  transition: all 0.2s ease;
+}
+
+.query-modal__ai-suggestion-card:hover {
+  border-color: #cbd5e1;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  transform: translateY(-1px);
+}
+
+/* 높음 레벨 */
+.query-modal__ai-suggestion-card--high {
+  border-left: 4px solid #ef4444;
+  background: linear-gradient(to right, #fef2f2, #ffffff);
+}
+
+/* 경고 레벨 */
+.query-modal__ai-suggestion-card--medium {
+  border-left: 4px solid #f59e0b;
+  background: linear-gradient(to right, #fffbeb, #ffffff);
+}
+
+/* 정보 레벨 */
+.query-modal__ai-suggestion-card--low {
+  border-left: 4px solid #3b82f6;
+  background: linear-gradient(to right, #eff6ff, #ffffff);
+}
+
+/* AI 제안 헤더 */
+.query-modal__ai-suggestion-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+  flex-wrap: wrap;
+}
+
+/* 레벨 배지 */
+.query-modal__ai-level-badge {
+  font-size: 0.75rem;
+  padding: 0.25rem 0.625rem;
+  border-radius: 6px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.025em;
+}
+
+.query-modal__ai-level-badge--high {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+.query-modal__ai-level-badge--medium {
+  background: #fef3c7;
+  color: #d97706;
+}
+
+.query-modal__ai-level-badge--low {
+  background: #dbeafe;
+  color: #2563eb;
+}
+
+/* 타입 배지 */
+.query-modal__ai-type-badge {
+  font-size: 0.75rem;
+  padding: 0.25rem 0.625rem;
+  background: #f1f5f9;
+  color: #475569;
+  border-radius: 6px;
+  font-weight: 500;
+}
+
+/* 개선율 배지 */
+.query-modal__ai-improvement-badge {
+  font-size: 0.75rem;
+  padding: 0.25rem 0.625rem;
+  background: #dcfce7;
+  color: #16a34a;
+  border-radius: 6px;
+  font-weight: 600;
+}
+
+/* AI 제안 제목 */
+.query-modal__ai-suggestion-title {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: #1e293b;
+  margin: 0 0 0.5rem 0;
+  line-height: 1.4;
+}
+
+/* AI 제안 설명 */
+.query-modal__ai-suggestion-desc {
+  font-size: 0.875rem;
+  color: #475569;
+  line-height: 1.6;
+  margin: 0 0 0.75rem 0;
+}
+
+/* AI 제안 SQL */
+.query-modal__ai-suggestion-sql {
+  margin-top: 0.75rem;
+  padding: 1rem;
+  background: #f8fafc;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+}
+
+.query-modal__ai-sql-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #64748b;
+  margin-bottom: 0.5rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.query-modal__ai-sql-code {
+  font-family: "Fira Code", "Consolas", "Monaco", "Courier New", monospace;
+  font-size: 0.8125rem;
+  line-height: 1.6;
+  color: #334155;
+  margin: 0;
+  overflow-x: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* AI 모델 정보 */
+.query-modal__ai-info {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid #e2e8f0;
+  font-size: 0.75rem;
+  color: #64748b;
+}
+
+.query-modal__ai-model,
+.query-modal__ai-tokens {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+/* 슬로우 쿼리 배지 */
+.query-modal__slow-badge {
+  display: inline-block;
+  margin-left: 0.5rem;
+  font-size: 0.75rem;
+  padding: 0.25rem 0.5rem;
+  background: #fef3c7;
+  color: #d97706;
+  border-radius: 6px;
+  font-weight: 600;
+}
+
+.query-modal__metric-value--slow {
+  color: #dc2626;
+  font-weight: 600;
+}
+
+/* 반응형 */
+@media (max-width: 768px) {
+  .query-modal__ai-suggestion-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  
+  .query-modal__ai-info {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+}
 }

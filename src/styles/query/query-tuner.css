@@ -136,3 +136,146 @@
 .qt-right-column .qt-card:nth-child(1) { animation-delay: 0.15s; }
 .qt-right-column .qt-card:nth-child(2) { animation-delay: 0.25s; }
 .qt-right-column .qt-card:nth-child(3) { animation-delay: 0.35s; }
+
+/* ========================================
+   query-tuner.css에 추가할 스타일
+   ======================================== */
+
+/* 에러 메시지 */
+.qt-error-message {
+  margin-top: 12px;
+  padding: 12px 16px;
+  background-color: #FEE2E2;
+  border-left: 4px solid #EF4444;
+  border-radius: 4px;
+  color: #991B1B;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+/* 제안 없음 메시지 */
+.qt-no-suggestions {
+  padding: 32px;
+  text-align: center;
+  color: #6B7280;
+}
+
+.qt-no-suggestions p {
+  margin: 8px 0;
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+.qt-no-suggestions p:first-child {
+  font-size: 18px;
+  font-weight: 600;
+  color: #10B981;
+  margin-bottom: 12px;
+}
+
+/* 버튼 비활성화 상태 */
+.qt-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  background-color: #D1D5DB;
+}
+
+.qt-btn--primary:disabled {
+  background-color: #9CA3AF;
+}
+
+/* 로딩 상태 표시 (선택사항) */
+.qt-loading-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(255, 255, 255, 0.9);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+
+.qt-loading-spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid #E5E7EB;
+  border-top-color: #3B82F6;
+  border-radius: 50%;
+  animation: qt-spin 1s linear infinite;
+}
+
+@keyframes qt-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* 메트릭 그리드 반응형 개선 */
+@media (max-width: 768px) {
+  .qt-metrics-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  
+  .qt-main-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* 실행 계획 스크롤 개선 */
+.qt-explain-plan {
+  max-height: 500px;
+  overflow-y: auto;
+}
+
+.qt-explain-plan::-webkit-scrollbar {
+  width: 8px;
+}
+
+.qt-explain-plan::-webkit-scrollbar-track {
+  background: #F3F4F6;
+  border-radius: 4px;
+}
+
+.qt-explain-plan::-webkit-scrollbar-thumb {
+  background: #D1D5DB;
+  border-radius: 4px;
+}
+
+.qt-explain-plan::-webkit-scrollbar-thumb:hover {
+  background: #9CA3AF;
+}
+
+/* 제안 카드 호버 효과 */
+.qt-suggestion-card {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.qt-suggestion-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+/* 복사 버튼 (선택사항) */
+.qt-suggestion-code {
+  position: relative;
+}
+
+.qt-suggestion-code-copy {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  padding: 4px 8px;
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid #E5E7EB;
+  border-radius: 4px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.qt-suggestion-code-copy:hover {
+  background: white;
+}
