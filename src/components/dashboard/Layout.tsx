@@ -4,7 +4,7 @@ import type { Layout, Layouts } from "react-grid-layout";
 
 import "react-resizable/css/styles.css";
 import "react-grid-layout/css/styles.css";
-import "../../styles/dashboard/Layout.css";
+import "../../styles/dashboard/layout.css";
 
 
 /** * * @param basic-7card 
