@@ -169,14 +169,24 @@ export const getTotalCount = async (): Promise<AxiosResponse<ApiResponse<number>
 
 /**
  * 🆕 ExecutionStatus용 쿼리별 집계 통계
- * GET /query-metrics/execution-stats?databaseId={databaseId}&days={days}
+ * GET /query-metrics/execution-stats?databaseId={databaseId}&hours={hours}
  */
 export const getExecutionStats = async (
   databaseId: number,
-  days: number = 1
+  hours: number = 1
 ): Promise<AxiosResponse<ApiResponse<QueryExecutionStatDto[]>>> => {
   return apiClient.get('/query-metrics/execution-stats', {
-    params: { databaseId, days }
+    params: { databaseId, hours }
+  });
+};
+
+/**
+ * 🆕 시간대별 쿼리 수 분포 조회
+ * GET /api/query-metrics/hourly-distribution?databaseId={databaseId}&hours={hours}
+ */
+export const getHourlyDistribution = (databaseId: number, hours: number = 5) => {
+  return apiClient.get('/query-metrics/hourly-distribution', {
+    params: { databaseId, hours }
   });
 };
 
