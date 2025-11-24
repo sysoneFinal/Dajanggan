@@ -39,6 +39,7 @@
     "react-apexcharts": "^1.4.0",
     "react-dom": "^18.2.0",
     "react-grid-layout": "^1.4.4",
+    "react-joyride": "^2.9.3",
     "react-router-dom": "^6.27.0"
   }
 }

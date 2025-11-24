@@ -24,7 +24,7 @@ dist-ssr
 *.sw?
 
 # 환경변수 
-.env
+.env.*
 
 # Local config files (Vite / ESLint / Prettier cache)
 .eslintcache
