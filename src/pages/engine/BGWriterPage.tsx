@@ -10,11 +10,6 @@ import { useInstanceContext } from "../../context/InstanceContext";
 
 /** BGWriter API 응답 타입 */
 interface BGWriterData {
-    backendFlushRatio: {
-        value: number;
-        buffersClean: number;
-        buffersBackend: number;
-    };
     cleanRate: {
         categories: string[];
         data: number[];
@@ -53,9 +48,7 @@ interface BGWriterData {
         bgwriterActivityRate?: number;
         cleanBufferReuseRate: number;
         backendFsyncCount?: number;
-        bufferPoolUsageRate: number;
         checkpointInterruptionCount: number;
-        dirtyBufferAccumulationRate: number;
     };
 }
 
@@ -182,39 +175,63 @@ export default function BGWriterPage() {
         );
     }
 
-    const dashboard = data;
-    const gaugeStatus = getBackendFlushGaugeStatus(dashboard.backendFlushRatio.value);
+    // data가 없거나 일부 속성이 누락된 경우 기본값 사용
+    const defaultDashboard = {
+        cleanRate: { categories: [], data: [], average: 0, max: 0, min: 0 },
+        bufferFlushRatio: { categories: [], backend: [], clean: [], backendTotal: 0, cleanTotal: 0 },
+        maxwrittenClean: { categories: [], data: [], average: 0, total: 0 },
+        bgwriterVsCheckpoint: { categories: [], bgwriter: [], checkpoint: [], bgwriterTotal: 0, checkpointTotal: 0 },
+        bufferReuseRate: { categories: [], data: [], average: 0, max: 0, min: 0 },
+        recentStats: {
+            bgwriterActivityRate: 0,
+            cleanBufferReuseRate: 0,
+            backendFsyncCount: 0,
+            checkpointInterruptionCount: 0,
+        }
+    };
+
+    // data가 없거나 각 속성이 null/undefined인 경우 기본값 사용
+    const dashboard = {
+        cleanRate: data?.cleanRate || defaultDashboard.cleanRate,
+        bufferFlushRatio: {
+            categories: data?.bufferFlushRatio?.categories || defaultDashboard.bufferFlushRatio.categories,
+            backend: data?.bufferFlushRatio?.backend || defaultDashboard.bufferFlushRatio.backend,
+            clean: data?.bufferFlushRatio?.clean || defaultDashboard.bufferFlushRatio.clean,
+            backendTotal: data?.bufferFlushRatio?.backendTotal || defaultDashboard.bufferFlushRatio.backendTotal,
+            cleanTotal: data?.bufferFlushRatio?.cleanTotal || defaultDashboard.bufferFlushRatio.cleanTotal,
+        },
+        maxwrittenClean: data?.maxwrittenClean || defaultDashboard.maxwrittenClean,
+        bgwriterVsCheckpoint: {
+            categories: data?.bgwriterVsCheckpoint?.categories || defaultDashboard.bgwriterVsCheckpoint.categories,
+            bgwriter: data?.bgwriterVsCheckpoint?.bgwriter || defaultDashboard.bgwriterVsCheckpoint.bgwriter,
+            checkpoint: data?.bgwriterVsCheckpoint?.checkpoint || defaultDashboard.bgwriterVsCheckpoint.checkpoint,
+            bgwriterTotal: data?.bgwriterVsCheckpoint?.bgwriterTotal || defaultDashboard.bgwriterVsCheckpoint.bgwriterTotal,
+            checkpointTotal: data?.bgwriterVsCheckpoint?.checkpointTotal || defaultDashboard.bgwriterVsCheckpoint.checkpointTotal,
+        },
+        bufferReuseRate: data?.bufferReuseRate || defaultDashboard.bufferReuseRate,
+        recentStats: data?.recentStats || defaultDashboard.recentStats,
+    };
 
     const recentStats = dashboard.recentStats || {
         bgwriterActivityRate: 0,
         cleanBufferReuseRate: 0,
         backendFsyncCount: 0,
-        bufferPoolUsageRate: 0,
         checkpointInterruptionCount: 0,
-        dirtyBufferAccumulationRate: 0,
     };
 
     const summaryCards = [
         {
             label: "BGWriter 활동률",
             value: `${recentStats.bgwriterActivityRate}%`,
-            desc: "최근 5분 평균",
+            desc: "최근 15분 평균",
             status: (recentStats.bgwriterActivityRate || 0) < 50
                 ? "warning"
                 : "info"
         },
         {
-            label: "Buffer Pool 사용률",
-            value: `${recentStats.bufferPoolUsageRate}%`,
-            desc: "최근 5분 평균",
-            status: recentStats.bufferPoolUsageRate < 85
-                ? ("warning" as const)
-                : ("info" as const),
-        },
-        {
             label: "Checkpoint에 의한 BGWriter 중단",
             value: `${recentStats.checkpointInterruptionCount}회`,
-            desc: "최근 1시간",
+            desc: "최근 15분",
             status: recentStats.checkpointInterruptionCount > 20
                 ? ("warning" as const)
                 : ("info" as const),
@@ -222,23 +239,15 @@ export default function BGWriterPage() {
         {
             label: "Clean Buffer 재사용률",
             value: `${recentStats.cleanBufferReuseRate}%`,
-            desc: "최근 5분 평균",
+            desc: "최근 15분 평균",
             status: recentStats.cleanBufferReuseRate > 70
                 ? ("info" as const)
                 : ("warning" as const),
         },
         {
-            label: "Dirty Buffer 누적률",
-            value: `${recentStats.dirtyBufferAccumulationRate}%`,
-            desc: "최근 5분 평균",
-            status: recentStats.dirtyBufferAccumulationRate > 30
-                ? ("warning" as const)
-                : ("info" as const),
-        },
-        {
             label: "Backend Fsync 발생",
             value: `${recentStats.backendFsyncCount}회`,
-            desc: "최근 1시간",
+            desc: "최근 15분",
             status: (recentStats.backendFsyncCount || 0) > 10
                 ? ("warning" as const)
                 : ("info" as const),
@@ -255,51 +264,14 @@ export default function BGWriterPage() {
                         label={card.label}
                         value={card.value}
                         desc={card.desc}
-                        status={card.status}
                     />
                 ))}
             </div>
 
             {/* Charts */}
             <ChartGridLayout>
-                {/* Backend Flush 비율 게이지 */}
-                <WidgetCard title="Backend Flush 비율" span={2}>
-                    <div style={{
-                        display: 'flex',
-                        flexDirection: 'column',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        height: '100%',
-                        width: '100%',
-                        marginTop: '18px',
-                    }}>
-                        <GaugeChart
-                            value={dashboard.backendFlushRatio.value}
-                            status={gaugeStatus}
-                            type="semi-circle"
-                            radius={100}
-                            strokeWidth={20}
-                            height={200}
-                            flattenRatio={0.89}
-                        />
-                        <div className="cpu-gauge-details">
-                            <div className="cpu-detail-item">
-                                <span className="cpu-detail-label">Clean</span>
-                                <span className="cpu-detail-value">{dashboard.backendFlushRatio.buffersClean.toLocaleString()}</span>
-                            </div>
-                            <div className="cpu-detail-divider"></div>
-                            <div className="cpu-detail-item">
-                                <span className="cpu-detail-label">Backend</span>
-                                <span className="cpu-detail-value">{dashboard.backendFlushRatio.buffersBackend.toLocaleString()}</span>
-                            </div>
-                        </div>
-                    </div>
-                </WidgetCard>
-
-
-
-                {/* Buffer Flush 비율 비교 */}
-                <WidgetCard title="Buffer Flush 비율 (Backend vs Clean)" span={5}>
+                {/* Buffer Flush 비율 비교 - 최근 15분 */}
+                <WidgetCard title="Buffer Flush 비율 비교 (최근 15분)" span={4}>
                     <Chart
                         type="line"
                         series={[
@@ -310,12 +282,22 @@ export default function BGWriterPage() {
                         colors={["#8E79FF", "#FEA29B"]}
                         height={250}
                         xaxisOptions={{
-                            title: { text: "시간", style: { fontSize: "12px", color: "#6B7280" } }
+                            title: { text: "시간", style: { fontSize: "12px", color: "#6B7280" } },
+                            labels: {
+                                rotate: 0,
+                                style: { fontSize: "11px", colors: "#6B7280" },
+                            },
                         }}
                         yaxisOptions={{
                             title: { text: "Buffer 수", style: { fontSize: "12px", color: "#6B7280" } }
                         }}
                         customOptions={{
+                            xaxis: {
+                                labels: {
+                                    rotate: 0,
+                                    style: { fontSize: "11px", colors: "#6B7280" },
+                                },
+                            },
                             annotations: {
                                 yaxis: [
                                     {
@@ -367,8 +349,8 @@ export default function BGWriterPage() {
                     />
                 </WidgetCard>
 
-                {/* BGWriter vs Checkpoint - 24시간 유지 */}
-                <WidgetCard title="BGWriter vs Checkpoint (최근 24시간)" span={5}>
+                {/* BGWriter vs Checkpoint - 최근 15분 */}
+                <WidgetCard title="BGWriter vs Checkpoint (최근 15분)" span={4}>
                     <Chart
                         type="line"
                         series={[
@@ -379,18 +361,19 @@ export default function BGWriterPage() {
                         colors={["#8E79FF", "#FEA29B"]}
                         height={250}
                         xaxisOptions={{
-                            title: { text: "시간", style: { fontSize: "12px", color: "#6B7280" } }
+                            title: { text: "시간", style: { fontSize: "12px", color: "#6B7280" } },
+                            labels: {
+                                rotate: 0,
+                                style: { fontSize: "11px", colors: "#6B7280" },
+                            },
                         }}
                         yaxisOptions={{
                             title: { text: "Buffer 수", style: { fontSize: "12px", color: "#6B7280" } }
                         }}
                     />
                 </WidgetCard>
-
-            </ChartGridLayout>
-            <ChartGridLayout>
-                {/* Clean Rate - 24시간 유지 */}
-                <WidgetCard title="Clean Rate (최근 24시간)" span={4}>
+                {/* Clean Rate - 최근 15분 */}
+                <WidgetCard title="Clean Rate 추이 (최근 15분)" span={4}>
                     <Chart
                         type="line"
                         series={[{ name: "Clean Rate", data: dashboard.cleanRate.data }]}
@@ -398,7 +381,11 @@ export default function BGWriterPage() {
                         colors={["#8E79FF", "#FEA29B"]}
                         height={250}
                         xaxisOptions={{
-                            title: { text: "시간", style: { fontSize: "12px", color: "#6B7280" } }
+                            title: { text: "시간", style: { fontSize: "12px", color: "#6B7280" } },
+                            labels: {
+                                rotate: 0,
+                                style: { fontSize: "11px", colors: "#6B7280" },
+                            },
                         }}
                         yaxisOptions={{
                             title: { text: "Clean Rate", style: { fontSize: "12px", color: "#6B7280" } },
@@ -409,8 +396,11 @@ export default function BGWriterPage() {
                     />
                 </WidgetCard>
 
-                {/* Maxwritten Clean 발생 횟수 - 24시간 유지 */}
-                <WidgetCard title="Clean 스캔 상한 도달 추이 (최근 24시간)" span={4}>
+            </ChartGridLayout>
+            <ChartGridLayout>
+
+                {/* Maxwritten Clean 발생 횟수 - 최근 15분 */}
+                <WidgetCard title="Maxwritten Clean 추이 (최근 15분)" span={4}>
                     <Chart
                         type="line"
                         series={[{ name: "Maxwritten Clean", data: dashboard.maxwrittenClean.data }]}
@@ -418,7 +408,11 @@ export default function BGWriterPage() {
                         colors={["#8E79FF"]}
                         height={250}
                         xaxisOptions={{
-                            title: { text: "시간", style: { fontSize: "12px", color: "#6B7280" } }
+                            title: { text: "시간", style: { fontSize: "12px", color: "#6B7280" } },
+                            labels: {
+                                rotate: 0,
+                                style: { fontSize: "11px", colors: "#6B7280" },
+                            },
                         }}
                         yaxisOptions={{
                             title: { text: "Maxwritten Clean (회)", style: { fontSize: "12px", color: "#6B7280" } },
@@ -427,6 +421,12 @@ export default function BGWriterPage() {
                             },
                         }}
                         customOptions={{
+                            xaxis: {
+                                labels: {
+                                    rotate: 0,
+                                    style: { fontSize: "11px", colors: "#6B7280" },
+                                },
+                            },
                             annotations: {
                                 yaxis: [
                                     {
@@ -495,8 +495,8 @@ export default function BGWriterPage() {
                     />
                 </WidgetCard>
 
-                {/* Buffer 재사용률 - 24시간 유지 */}
-                <WidgetCard title="Buffer 재사용률 (최근 24시간)" span={4}>
+                {/* Buffer 재사용률 - 최근 15분 */}
+                <WidgetCard title="Buffer 재사용률 (최근 15분)" span={4}>
                     <Chart
                         type="line"
                         series={[{ name: "Buffer Reuse Rate", data: dashboard.bufferReuseRate.data }]}
@@ -504,13 +504,23 @@ export default function BGWriterPage() {
                         colors={["#8E79FF"]}
                         height={250}
                         xaxisOptions={{
-                            title: { text: "시간", style: { fontSize: "12px", color: "#6B7280" } }
+                            title: { text: "시간", style: { fontSize: "12px", color: "#6B7280" } },
+                            labels: {
+                                rotate: 0,
+                                style: { fontSize: "11px", colors: "#6B7280" },
+                            },
                         }}
                         yaxisOptions={{
                             title: { text: "재사용률 (%)", style: { fontSize: "12px", color: "#6B7280" } }
                         }}
 
                         customOptions={{
+                            xaxis: {
+                                labels: {
+                                    rotate: 0,
+                                    style: { fontSize: "11px", colors: "#6B7280" },
+                                },
+                            },
                             annotations: {
                                 yaxis: [
                                     {
