@@ -53,8 +53,8 @@
 .vd-chip__sub{ margin-left:6px; color:var(--muted); font-weight:600; font-size:12px; }
 
 .vd-tablewrap{ width:100%; overflow:auto; }
-.vd-table{ width:100%; border-collapse:collapse; font-size:14px; }
-.vd-table thead th{ text-align:left; color:var(--muted); font-weight:700; font-size:12px; padding:10px 8px; border-bottom:1px solid #eef0f3; }
+.vd-table{ width:100%; border-collapse:collapse; font-size:15px; }
+.vd-table thead th{ text-align:left; color:var(--muted); font-weight:700; font-size:15px; padding:10px 8px; border-bottom:1px solid #eef0f3; }
 .vd-table tbody tr {
   transition: background-color 0.2s ease;
   cursor: pointer;

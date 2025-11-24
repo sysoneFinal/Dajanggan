@@ -10,14 +10,8 @@ export type MetricCategory = "vacuum" | "session" | "query";
 export type Metric = 
   // Vacuum
   | "autovacuum_worker_utilization"
-  | "blockers_per_hour"
   | "transaction_age"
-  | "block_duration"
   | "wraparound_progress"
-  | "total_table_bloat"
-  | "bloat_percent"
-  | "dead_tuples"
-  | "table_size"
   // Session
   | "long_running_queries"
   | "lock_waits"
@@ -44,14 +38,8 @@ export const OPERATOR_OPTIONS: { value: Operator; label: string }[] = [
 export const METRIC_BY_CATEGORY: Record<MetricCategory, { value: Metric; label: string }[]> = {
   vacuum: [
     { value: "autovacuum_worker_utilization", label: "Autovacuum Worker 사용률" },
-    { value: "blockers_per_hour", label: "시간당 블로커 수" },
     { value: "transaction_age", label: "트랜잭션 나이" },
-    { value: "block_duration", label: "블록 지속 시간" },
     { value: "wraparound_progress", label: "Wraparound 진행률" },
-    { value: "total_table_bloat", label: "전체 테이블 Bloat" },
-    { value: "bloat_percent", label: "Bloat 비율" },
-    { value: "dead_tuples", label: "Dead Tuples" },
-    { value: "table_size", label: "테이블 크기" },
   ],
   session: [
     { value: "long_running_queries", label: "장기 실행 쿼리" },
@@ -85,6 +73,9 @@ export interface RuleThreshold {
   minDurationMin: number | null;
   occurCount: number | null;
   windowMin: number | null;
+  resolveThreshold: number | null;
+  resolveDurationMin: number | null;
+  cooldownMin: number | null;
 }
 
 export interface AlarmRulePayload {
@@ -96,7 +87,7 @@ export interface AlarmRulePayload {
   aggregationType: Aggregation;
   operator: Operator;
   levels: {
-    notice: RuleThreshold;
+    info: RuleThreshold;
     warn: RuleThreshold;
     danger: RuleThreshold;
   };
@@ -113,8 +104,8 @@ export interface ServerCreatePayload {
   operator: "gt" | "gte" | "lt" | "lte" | "eq";
   enabled: boolean;
   levels: {
-    notice: RuleThreshold;
-    warning: RuleThreshold;
+    info: RuleThreshold;
+    warn: RuleThreshold;
     critical: RuleThreshold;
   };
 }
@@ -132,15 +123,23 @@ export default function AlarmRuleModal({
 }) {
   const { selectedInstance, selectedDatabase } = useInstanceContext();
 
-  const emptyLevel: RuleThreshold = { threshold: null, minDurationMin: null, occurCount: null, windowMin: null };
+  const emptyLevel: RuleThreshold = { 
+    threshold: null, 
+    minDurationMin: null, 
+    occurCount: null, 
+    windowMin: null,
+    resolveThreshold: null,
+    resolveDurationMin: null,
+    cooldownMin: null
+  };
 
   const [enabled, setEnabled] = useState<boolean>(true);
   const [category, setCategory] = useState<MetricCategory>("vacuum");
-  const [metric, setMetric] = useState<Metric>("dead_tuples");
+  const [metric, setMetric] = useState<Metric>("transaction_age");
   const [aggregation, setAggregation] = useState<Aggregation>("latest_avg");
   const [operator, setOperator] = useState<Operator>("gt");
   const [levels, setLevels] = useState<AlarmRulePayload["levels"]>({
-    notice: { ...emptyLevel },
+    info: { ...emptyLevel },
     warn: { ...emptyLevel },
     danger: { ...emptyLevel },
   });
@@ -245,7 +244,7 @@ export default function AlarmRuleModal({
           <div id="alarm-rule-modal-title" className="amr-modal__title">{title}</div>
         </header>
 
-        <div className="amr-modal__body" style={{ maxHeight: '73vh', overflowY: 'auto' }}>
+        <div className="amr-modal__body" style={{ maxHeight: '85vh', overflowY: 'auto' }}>
           <div className="ar-grid">
             <div>
               <div className="ar-kicker">대상 인스턴스</div>
@@ -464,8 +463,8 @@ export default function AlarmRuleModal({
                 <tr className="ar-row">
                   <td className="ar-td-strong">임계치</td>
                       <td><input className="ar-input" type="number" min={0} step={1}
-                            value={levels.notice.threshold ?? ""}
-                        onChange={(e) => updateLevel("notice", "threshold", e.target.value)} /></td>
+                            value={levels.info.threshold ?? ""}
+                        onChange={(e) => updateLevel("info", "threshold", e.target.value)} /></td>
                       <td><input className="ar-input" type="number" min={0} step={1}
                             value={levels.warn.threshold ?? ""}
                         onChange={(e) => updateLevel("warn", "threshold", e.target.value)} /></td>
@@ -486,8 +485,8 @@ export default function AlarmRuleModal({
                 <tr className="ar-row">
                   <td className="ar-td-strong">지속 시간</td>
                       <td><input className="ar-input" type="number" min={0} step={1}
-                            value={levels.notice.minDurationMin ?? ""}
-                        onChange={(e) => updateLevel("notice", "minDurationMin", e.target.value)} /></td>
+                            value={levels.info.minDurationMin ?? ""}
+                        onChange={(e) => updateLevel("info", "minDurationMin", e.target.value)} /></td>
                       <td><input className="ar-input" type="number" min={0} step={1}
                             value={levels.warn.minDurationMin ?? ""}
                         onChange={(e) => updateLevel("warn", "minDurationMin", e.target.value)} /></td>
@@ -500,8 +499,8 @@ export default function AlarmRuleModal({
                 <tr className="ar-row">
                   <td className="ar-td-strong">발생 횟수</td>
                       <td><input className="ar-input" type="number" min={0} step={1}
-                            value={levels.notice.occurCount ?? ""}
-                        onChange={(e) => updateLevel("notice", "occurCount", e.target.value)} /></td>
+                            value={levels.info.occurCount ?? ""}
+                        onChange={(e) => updateLevel("info", "occurCount", e.target.value)} /></td>
                       <td><input className="ar-input" type="number" min={0} step={1}
                             value={levels.warn.occurCount ?? ""}
                         onChange={(e) => updateLevel("warn", "occurCount", e.target.value)} /></td>
@@ -514,14 +513,56 @@ export default function AlarmRuleModal({
                 <tr className="ar-row">
                   <td className="ar-td-strong">윈도우</td>
                       <td><input className="ar-input" type="number" min={1} step={1}
-                            value={levels.notice.windowMin ?? ""}
-                        onChange={(e) => updateLevel("notice", "windowMin", e.target.value)} /></td>
+                            value={levels.info.windowMin ?? ""}
+                        onChange={(e) => updateLevel("info", "windowMin", e.target.value)} /></td>
                       <td><input className="ar-input" type="number" min={1} step={1}
                             value={levels.warn.windowMin ?? ""}
                         onChange={(e) => updateLevel("warn", "windowMin", e.target.value)} /></td>
                       <td><input className="ar-input" type="number" min={1} step={1}
                             value={levels.danger.windowMin ?? ""}
                         onChange={(e) => updateLevel("danger", "windowMin", e.target.value)} /></td>
+                  <td className="ar-right">분</td>
+                </tr>
+
+                <tr className="ar-row">
+                  <td className="ar-td-strong">복구 임계치</td>
+                      <td><input className="ar-input" type="number" min={0} step={0.01}
+                            value={levels.info.resolveThreshold ?? ""}
+                        onChange={(e) => updateLevel("info", "resolveThreshold", e.target.value)} /></td>
+                      <td><input className="ar-input" type="number" min={0} step={0.01}
+                            value={levels.warn.resolveThreshold ?? ""}
+                        onChange={(e) => updateLevel("warn", "resolveThreshold", e.target.value)} /></td>
+                      <td><input className="ar-input" type="number" min={0} step={0.01}
+                            value={levels.danger.resolveThreshold ?? ""}
+                        onChange={(e) => updateLevel("danger", "resolveThreshold", e.target.value)} /></td>
+                  <td className="ar-right"></td>
+                </tr>
+
+                <tr className="ar-row">
+                  <td className="ar-td-strong">복구 지속 시간</td>
+                      <td><input className="ar-input" type="number" min={0} step={1}
+                            value={levels.info.resolveDurationMin ?? ""}
+                        onChange={(e) => updateLevel("info", "resolveDurationMin", e.target.value)} /></td>
+                      <td><input className="ar-input" type="number" min={0} step={1}
+                            value={levels.warn.resolveDurationMin ?? ""}
+                        onChange={(e) => updateLevel("warn", "resolveDurationMin", e.target.value)} /></td>
+                      <td><input className="ar-input" type="number" min={0} step={1}
+                            value={levels.danger.resolveDurationMin ?? ""}
+                        onChange={(e) => updateLevel("danger", "resolveDurationMin", e.target.value)} /></td>
+                  <td className="ar-right">분</td>
+                </tr>
+
+                <tr className="ar-row">
+                  <td className="ar-td-strong">쿨다운</td>
+                      <td><input className="ar-input" type="number" min={0} step={1}
+                            value={levels.info.cooldownMin ?? ""}
+                        onChange={(e) => updateLevel("info", "cooldownMin", e.target.value)} /></td>
+                      <td><input className="ar-input" type="number" min={0} step={1}
+                            value={levels.warn.cooldownMin ?? ""}
+                        onChange={(e) => updateLevel("warn", "cooldownMin", e.target.value)} /></td>
+                      <td><input className="ar-input" type="number" min={0} step={1}
+                            value={levels.danger.cooldownMin ?? ""}
+                        onChange={(e) => updateLevel("danger", "cooldownMin", e.target.value)} /></td>
                   <td className="ar-right">분</td>
                 </tr>
               </tbody>

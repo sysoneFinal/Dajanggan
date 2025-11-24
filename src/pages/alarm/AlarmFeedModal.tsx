@@ -427,7 +427,7 @@ export default function AlarmDetailModal({ open, onClose }: Props) {
                                       : r.level === "경고"
                                       ? "warn"
                                       : r.level === "주의"
-                                      ? "caution"
+                                      ? "info"
                                       : "ok"
                                   }`}
                                 >

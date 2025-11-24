@@ -78,6 +78,7 @@ type VacuumTableMenuProps = {
 
   onToggle?: () => void;
   expanded?: boolean;
+  loading?: boolean;   
 };
 
 export default function VacuumTableMenu({

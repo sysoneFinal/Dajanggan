@@ -1,11 +1,14 @@
 // src/pages/vacuum/VacuumPage.tsx
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { useInstanceContext } from "../../context/InstanceContext";
 import Chart from "../../components/chart/ChartComponent";
 import ChartGridLayout from "../../components/layout/ChartGridLayout";
 import WidgetCard from "../../components/util/WidgetCard";
 import "/src/styles/vacuum/VacuumPage.css";
 import apiClient from "../../api/apiClient";
+import { useLoader } from "../../context/LoaderContext";
+import { intervalToMs } from "../../utils/time";
 
 /* ---------- 서버 DTO와 맞춘 타입 ---------- */
 type ChartDto = { data: number[][]; labels: string[] };
@@ -56,110 +59,124 @@ const formatK = (n?: number) => {
   return `${v}`;
 };
 
+type VacuumRiskData = {
+  blockers: ChartDto | null;
+  wraparound: ChartDto | null;
+  bloat: TopBloatTableDto[];
+  vacuumblockers: VacuumBlockerDto[];
+  scatterPoints: number[][];
+};
+
 const VacuumPage: React.FC<{ hours?: number }> = ({ hours = 24 }) => {
-  const { selectedInstance, selectedDatabase } = useInstanceContext();
+  const { selectedInstance, selectedDatabase, databases, refreshInterval } = useInstanceContext();
+  const { showLoader, hideLoader } = useLoader();
   const databaseId = selectedDatabase?.databaseId ?? null;
 
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  // API 호출 (React Query로 자동 새로고침)
+  const { data, isLoading: loading, error: queryError } = useQuery<VacuumRiskData>({
+    queryKey: ["vacuum-risk", databaseId, hours, databases],
+    queryFn: async () => {
+      // hours → startTime/endTime 변환 (백엔드 파라미터 이름에 맞춤)
+      const end = new Date();
+      const start = new Date(end.getTime() - Math.max(hours, 1) * 3600 * 1000);
+      const endISO = end.toISOString();
+      const startISO = start.toISOString();
 
-  const [blockers, setBlockers] = useState<ChartDto | null>(null);
-  const [wraparound, setWraparound] = useState<ChartDto | null>(null);
-  const [bloat, setBloat] = useState<TopBloatTableDto[]>([]);
-  const [vacuumblockers, setVacuumblockers] = useState<VacuumBlockerDto[]>([]);
-  const [scatterPoints, setScatterPoints] = useState<number[][]>([]); // [[x,y], ...]
+      const baseParams: any = { startTime: startISO, endTime: endISO };
+      if (databaseId) baseParams.databaseId = databaseId;
 
+      // 5개 엔드포인트 병렬 호출 (risk 네임스페이스로 통일)
+      const [
+        blockersRes,
+        bloatRes,
+        blockersDetailRes,
+        wrapRes,
+        scatterRes,
+      ] = await Promise.all([
+        apiClient.get<BlockersPerHourRaw[]>("/vacuum/risk/blockers-per-hour", {
+          params: baseParams,
+        }),
+        apiClient.get<TopBloatRaw[]>("/vacuum/risk/top-bloat", {
+          params: { ...baseParams, limit: 5 },
+        }),
+        apiClient.get<VacuumBlockerDetailRaw[]>("/vacuum/risk/blockers", {
+          params: baseParams,
+        }),
+        apiClient.get<WraparoundProgressRaw[]>("/vacuum/risk/wraparound", {
+          params: baseParams,
+        }),
+        apiClient.get<ScatterRes>("/vacuum/risk/tx-scatter", {
+          params: baseParams,
+        }),
+      ]);
+
+      // Blockers per hour → ChartDto
+      const blockersLabels = blockersRes.data.map(d => d.hourLabel);
+      const blockersSeries = blockersRes.data.map(d => d.blockersCount);
+      const blockers: ChartDto = { labels: blockersLabels, data: [blockersSeries] };
+
+      // Wraparound → ChartDto
+      // Database ID → Database Name 매핑 생성
+      const databaseMap = new Map<number, string>();
+      databases.forEach(db => {
+        databaseMap.set(db.databaseId, db.databaseName);
+      });
+      
+      // Database ID를 Database Name으로 변환
+      const wrapLabels = wrapRes.data.map(d => {
+        const dbName = databaseMap.get(d.databaseId) || `DB ${d.databaseId}`;
+        return dbName;
+      });
+      const wrapSeries = wrapRes.data.map(d => d.wraparoundProgressPct);
+      const wraparound: ChartDto = { labels: wrapLabels, data: [wrapSeries] };
+
+      // Top bloat rows
+      const bloat = bloatRes.data.map(b => ({
+        table: b.tableName,
+        bloat: formatPct(b.bloatRatio),
+        deadTuple: formatK(b.deadTuples),
+      }));
+
+      // Vacuum blockers rows
+      const vacuumblockers = blockersDetailRes.data.map(v => ({
+        table: v.tableName,
+        pid: String(v.pid),
+        lockType: v.lockType,
+        txAge: secondsToHuman(v.transactionAge),
+        blocked_seconds: secondsToHuman(v.blockDuration),
+        status: v.queryState,
+      }));
+
+      // Scatter points
+      const scatterPoints = scatterRes.data.data ?? [];
+
+      return {
+        blockers,
+        wraparound,
+        bloat,
+        vacuumblockers,
+        scatterPoints,
+      };
+    },
+    enabled: !!selectedInstance && !!selectedDatabase,
+    refetchInterval: intervalToMs(refreshInterval), // ** 중요 ** 새로고침 주기 적용
+  });
+
+  /** === 로딩 상태 관리 === */
   useEffect(() => {
-    const ac = new AbortController();
-    let cancelled = false; 
+    if (loading) {
+      showLoader('Vacuum Risk 데이터를 불러오는 중...');
+    } else {
+      hideLoader();
+    }
+  }, [loading, showLoader, hideLoader]);
 
-    (async () => {
-      try {
-        setLoading(true);
-        setError(null);
-
-        // hours → startTime/endTime 변환 (백엔드 파라미터 이름에 맞춤)
-        const end = new Date();
-        const start = new Date(end.getTime() - Math.max(hours, 1) * 3600 * 1000);
-        const endISO = end.toISOString();
-        const startISO = start.toISOString();
-
-        const baseParams: any = { startTime: startISO, endTime: endISO };
-        if (databaseId) baseParams.databaseId = databaseId;
-
-        // 5개 엔드포인트 병렬 호출 (risk 네임스페이스로 통일)
-        const [
-          blockersRes,
-          bloatRes,
-          blockersDetailRes,
-          wrapRes,
-          scatterRes,
-        ] = await Promise.all([
-          apiClient.get<BlockersPerHourRaw[]>("/vacuum/risk/blockers-per-hour", {
-            params: baseParams, signal: ac.signal,
-          }),
-          apiClient.get<TopBloatRaw[]>("/vacuum/risk/top-bloat", {
-            params: { ...baseParams, limit: 3 }, signal: ac.signal,
-          }),
-          apiClient.get<VacuumBlockerDetailRaw[]>("/vacuum/risk/blockers", {
-            params: baseParams, signal: ac.signal,
-          }),
-          apiClient.get<WraparoundProgressRaw[]>("/vacuum/risk/wraparound", {
-            params: baseParams, signal: ac.signal,
-          }),
-          apiClient.get<ScatterRes>("/vacuum/risk/tx-scatter", {
-            params: baseParams, signal: ac.signal,
-          }),
-        ]);
-
-        // Blockers per hour → ChartDto
-        const blockersLabels = blockersRes.data.map(d => d.hourLabel);
-        const blockersSeries = blockersRes.data.map(d => d.blockersCount);
-        setBlockers({ labels: blockersLabels, data: [blockersSeries] });
-
-        // Wraparound → ChartDto
-        const wrapLabels = wrapRes.data.map(d => `DB ${d.databaseId}`);
-        const wrapSeries = wrapRes.data.map(d => d.wraparoundProgressPct);
-        setWraparound({ labels: wrapLabels, data: [wrapSeries] });
-
-        // Top bloat rows
-        setBloat(
-          bloatRes.data.map(b => ({
-            table: b.tableName,
-            bloat: formatPct(b.bloatRatio),
-            deadTuple: formatK(b.deadTuples),
-          }))
-        );
-
-        // Vacuum blockers rows
-        setVacuumblockers(
-          blockersDetailRes.data.map(v => ({
-            table: v.tableName,
-            pid: String(v.pid),
-            lockType: v.lockType,
-            txAge: secondsToHuman(v.transactionAge),
-            blocked_seconds: secondsToHuman(v.blockDuration),
-            status: v.queryState,
-          }))
-        );
-
-        // Scatter points (그대로 전달)
-        setScatterPoints(scatterRes.data.data ?? []);
-      } catch (e: any) {
-        if (e?.code === "ERR_CANCELED" || e?.name === "CanceledError") return;
-        setError(e?.response?.data?.message ?? e?.message ?? "데이터를 불러오지 못했습니다.");
-        setBlockers(null);
-        setWraparound(null);
-        setBloat([]);
-        setVacuumblockers([]);
-        setScatterPoints([]);
-      } finally {
-        setLoading(false);
-      }
-    })();
-
-    return () => ac.abort();
-  }, [databaseId, hours]);
+  const blockers = data?.blockers ?? null;
+  const wraparound = data?.wraparound ?? null;
+  const bloat = data?.bloat ?? [];
+  const vacuumblockers = data?.vacuumblockers ?? [];
+  const scatterPoints = data?.scatterPoints ?? [];
+  const error = queryError ? (queryError instanceof Error ? queryError.message : "데이터를 불러오지 못했습니다.") : null;
 
   /* ---------- 차트 시리즈 ---------- */
   const blockersSeries = useMemo(() => {
@@ -209,21 +226,23 @@ const VacuumPage: React.FC<{ hours?: number }> = ({ hours = 24 }) => {
         <>
           <ChartGridLayout>
             {/* Blockers per Hour */}
-            <WidgetCard title={`시간당 차단 발생 건수 (${hours}h)`} span={4}>
+            <WidgetCard title={`시간당 차단 발생 건수 (최근 ${hours}시간 내)`} span={4}>
               <Chart
                 type="line"
                 series={blockersSeries}
                 categories={blockers?.labels ?? []}
                 width="100%"
+                height="300px"
               />
             </WidgetCard>
 
             {/* Transaction Age vs Block Duration (scatter) */}
-            <WidgetCard title="트랜잭션 경과 시간 vs 차단 지속 시간" span={4}>
+            <WidgetCard title={`트랜잭션 경과 시간 vs 차단 지속 시간 (최근 ${hours}시간 내)`} span={4}>
               <Chart
                 type="scatter"
                 series={txScatterSeries}
                 width="100%"
+                height="300px"
                 customOptions={{
                   chart: { zoom: { enabled: true }, toolbar: { show: false } },
                   xaxis: { title: { text: "Transaction Age (sec)" } },
@@ -239,7 +258,7 @@ const VacuumPage: React.FC<{ hours?: number }> = ({ hours = 24 }) => {
             </WidgetCard>
 
             {/* Wraparound Progress */}
-            <WidgetCard title="Wraparound Progress" span={4}>
+            <WidgetCard title={`Wraparound Progress (최근 ${hours}시간 내)`} span={4}>
               <div style={{ paddingBottom: "12px" }}>
                 <div style={{ display: "flex", gap: "16px", marginBottom: "2px", fontSize: "12px", flexWrap: "wrap" }}>
                   <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
@@ -271,7 +290,16 @@ const VacuumPage: React.FC<{ hours?: number }> = ({ hours = 24 }) => {
                       style: { fontSize: "12px", colors: ["#fff"] },
                     },
                     grid: { borderColor: "#E5E7EB", strokeDashArray: 4 },
-                    xaxis: { min: 0, max: 100, labels: { formatter: (val: number) => `${val}%` } },
+                    xaxis: { 
+                      min: 0, 
+                      max: 100, 
+                      labels: { 
+                        formatter: (value: string) => {
+                          const num = parseFloat(value);
+                          return isNaN(num) ? value : `${num}%`;
+                        }
+                      } 
+                    },
                     legend: { show: false },
                     tooltip: {
                       y: { formatter: (val: number) => `${Number(val ?? 0).toFixed(1)}%`,
@@ -288,7 +316,7 @@ const VacuumPage: React.FC<{ hours?: number }> = ({ hours = 24 }) => {
             {/* Top Bloat */}
             <section className="vd-card">
               <header className="vd-card__header">
-                <h3>Top-3 Bloat Tables</h3>
+                <h3>Top 5 Bloat Tables</h3>
               </header>
               <div className="vd-tablewrap">
                 <table className="vd-table2">
