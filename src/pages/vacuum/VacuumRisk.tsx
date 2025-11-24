@@ -1,5 +1,5 @@
 // src/pages/vacuum/VacuumPage.tsx
-import { useMemo } from "react";
+import { useMemo, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useInstanceContext } from "../../context/InstanceContext";
 import Chart from "../../components/chart/ChartComponent";
@@ -7,6 +7,7 @@ import ChartGridLayout from "../../components/layout/ChartGridLayout";
 import WidgetCard from "../../components/util/WidgetCard";
 import "/src/styles/vacuum/VacuumPage.css";
 import apiClient from "../../api/apiClient";
+import { useLoader } from "../../context/LoaderContext";
 import { intervalToMs } from "../../utils/time";
 
 /* ---------- 서버 DTO와 맞춘 타입 ---------- */
@@ -68,6 +69,7 @@ type VacuumRiskData = {
 
 const VacuumPage: React.FC<{ hours?: number }> = ({ hours = 24 }) => {
   const { selectedInstance, selectedDatabase, databases, refreshInterval } = useInstanceContext();
+  const { showLoader, hideLoader } = useLoader();
   const databaseId = selectedDatabase?.databaseId ?? null;
 
   // API 호출 (React Query로 자동 새로고침)
@@ -159,6 +161,15 @@ const VacuumPage: React.FC<{ hours?: number }> = ({ hours = 24 }) => {
     enabled: !!selectedInstance && !!selectedDatabase,
     refetchInterval: intervalToMs(refreshInterval), // ** 중요 ** 새로고침 주기 적용
   });
+
+  /** === 로딩 상태 관리 === */
+  useEffect(() => {
+    if (loading) {
+      showLoader('Vacuum Risk 데이터를 불러오는 중...');
+    } else {
+      hideLoader();
+    }
+  }, [loading, showLoader, hideLoader]);
 
   const blockers = data?.blockers ?? null;
   const wraparound = data?.wraparound ?? null;

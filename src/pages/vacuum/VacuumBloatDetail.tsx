@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import Chart from "../../components/chart/ChartComponent";
 import ChartGridLayout from "../../components/layout/ChartGridLayout";
@@ -7,6 +7,7 @@ import SummaryCard from "../../components/util/SummaryCard";
 import VacuumTableMenu from "./VacuumTableMenu";
 import apiClient from "../../api/apiClient";
 import { useInstanceContext } from "../../context/InstanceContext";
+import { useLoader } from "../../context/LoaderContext";
 import { intervalToMs } from "../../utils/time";
 import "/src/styles/vacuum/VacuumPage.css";
 
@@ -97,6 +98,7 @@ const severityToStatus = (severity: "NORMAL" | "WARNING" | "CRITICAL"): "info" |
 /* ---------- 페이지 컴포넌트 ---------- */
 export default function BloatDetailPage({ onToggle, expanded = true }: Props) {
   const { selectedInstance, selectedDatabase, refreshInterval } = useInstanceContext();
+  const { showLoader, hideLoader } = useLoader();
   const [selectedTable, setSelectedTable] = useState<string>("");
 
   // ========================================
@@ -204,6 +206,15 @@ export default function BloatDetailPage({ onToggle, expanded = true }: Props) {
     enabled: !!selectedInstance && !!selectedDatabase && !!selectedTable,
     refetchInterval: intervalToMs(refreshInterval), // ** 중요 ** 새로고침 주기 적용
   });
+
+  /** === 로딩 상태 관리 === */
+  useEffect(() => {
+    if (loading || tableListLoading) {
+      showLoader('Vacuum Bloat Detail 데이터를 불러오는 중...');
+    } else {
+      hideLoader();
+    }
+  }, [loading, tableListLoading, showLoader, hideLoader]);
 
   const error = queryError ? (queryError instanceof Error ? queryError.message : "대시보드 로딩 실패") : null;
 

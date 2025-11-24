@@ -1,8 +1,9 @@
-import { useMemo } from "react";
+import { useMemo, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import Chart from "../../components/chart/ChartComponent";
 import apiClient from "../../api/apiClient";
 import { useInstanceContext } from "../../context/InstanceContext";
+import { useLoader } from "../../context/LoaderContext";
 import { intervalToMs } from "../../utils/time";
 import "/src/styles/vacuum/VacuumPage.css";
 
@@ -54,6 +55,7 @@ type Props = {
 /* ---------- 페이지 ---------- */
 export default function VacuumDetailPage({ tableName: propTableName }: Props) {
   const { selectedInstance, selectedDatabase, refreshInterval } = useInstanceContext();
+  const { showLoader, hideLoader } = useLoader();
 
   // URL state 또는 props에서 테이블명 가져오기
   const tableName = propTableName || 
@@ -94,6 +96,15 @@ export default function VacuumDetailPage({ tableName: propTableName }: Props) {
     enabled: !!selectedInstance && !!selectedDatabase && !!tableName,
     refetchInterval: intervalToMs(refreshInterval), // ** 중요 ** 새로고침 주기 적용
   });
+
+  /** === 로딩 상태 관리 === */
+  useEffect(() => {
+    if (loading) {
+      showLoader('Vacuum Detail 데이터를 불러오는 중...');
+    } else {
+      hideLoader();
+    }
+  }, [loading, showLoader, hideLoader]);
 
   const error = queryError ? (queryError instanceof Error ? queryError.message : "데이터 로딩 실패") : null;
 

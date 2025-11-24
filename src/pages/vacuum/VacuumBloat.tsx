@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useRef } from "react";
+import React, { useMemo, useState, useRef, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import Chart from "../../components/chart/ChartComponent";
 import WidgetCard from "../../components/util/WidgetCard";
@@ -7,6 +7,7 @@ import BloatDetailPage from "./VacuumBloatDetail";
 import "/src/styles/vacuum/VacuumPage.css";
 import apiClient from "../../api/apiClient";
 import { intervalToMs } from "../../utils/time";
+import { useLoader } from "../../context/LoaderContext";
 import { useInstanceContext } from "../../context/InstanceContext";
 
 // ====== 서버 DTO 타입 ======
@@ -20,11 +21,11 @@ type Kpi = {
   tableBloat: string;
   criticalTable: number;
   bloatGrowth: string;
-  // ✅ 추가된 필드
+  // 추가된 필드
   tableBloatSeverity: "NORMAL" | "WARNING" | "CRITICAL";
   criticalTableSeverity: "NORMAL" | "WARNING" | "CRITICAL";
   bloatGrowthSeverity: "NORMAL" | "WARNING" | "CRITICAL";
-  // ✅ 메타데이터 (필요시 사용)
+  // 메타데이터 (필요시 사용)
   totalDatabaseSizeBytes?: number;
   totalTableCount?: number;
 };
@@ -40,7 +41,7 @@ const WARN_M = 4;
 const ALERT_M = 6;
 
 // ====== Severity 유틸 함수 ======
-// ✅ Severity를 SummaryCard status로 변환
+// Severity를 SummaryCard status로 변환
 const severityToStatus = (severity: "NORMAL" | "WARNING" | "CRITICAL"): "info" | "warning" | "critical" => {
   switch (severity) {
     case "CRITICAL":
@@ -57,6 +58,7 @@ const severityToStatus = (severity: "NORMAL" | "WARNING" | "CRITICAL"): "info" |
 
 const VacuumBloatPage: React.FC = () => {
   const { selectedInstance, selectedDatabase, refreshInterval } = useInstanceContext();
+  const { showLoader, hideLoader } = useLoader();
   
   // 드릴다운 상태 추가
   const [expanded, setExpanded] = useState(true);
@@ -142,6 +144,15 @@ const VacuumBloatPage: React.FC = () => {
     refetchInterval: intervalToMs(refreshInterval), // ** 중요 ** 새로고침 주기 적용
   });
 
+  /** === 로딩 상태 관리 === */
+  useEffect(() => {
+    if (loading) {
+      showLoader('Vacuum Bloat 데이터를 불러오는 중...');
+    } else {
+      hideLoader();
+    }
+  }, [loading, showLoader, hideLoader]);
+
   const error = queryError ? (queryError instanceof Error ? queryError.message : "대시보드 로딩 실패") : null;
 
   // ====== 차트 시리즈 ======
@@ -171,6 +182,7 @@ const VacuumBloatPage: React.FC = () => {
       { name: `Alert Threshold (${ALERT_M}m)`, data: alert },
     ];
   }, [resp?.xminHorizonMonitor]);
+  
 
   const bloatTrendSeries = useMemo(() => {
     if (!resp?.bloatTrend?.data?.length) {

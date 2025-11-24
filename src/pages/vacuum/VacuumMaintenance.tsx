@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 
@@ -8,6 +8,7 @@ import WidgetCard from "../../components/util/WidgetCard"
 import SummaryCard from "../../components/util/SummaryCard";
 import apiClient from "../../api/apiClient";
 import { useInstanceContext } from "../../context/InstanceContext";
+import { useLoader } from "../../context/LoaderContext";
 import { intervalToMs } from "../../utils/time";
 
 import "/src/styles/vacuum/VacuumPage.css";
@@ -268,6 +269,7 @@ const severityToStatus = (severity: "NORMAL" | "WARNING" | "CRITICAL"): "info" |
 export default function VacuumPage() {
   const navigate = useNavigate();
   const { selectedInstance, selectedDatabase, refreshInterval } = useInstanceContext();
+  const { showLoader, hideLoader } = useLoader();
 
   // API 호출 (React Query로 자동 새로고침)
   const { data: rawData, isLoading: loading, error: queryError } = useQuery<ApiResponse>({
@@ -300,6 +302,15 @@ export default function VacuumPage() {
     enabled: !!selectedInstance && !!selectedDatabase,
     refetchInterval: intervalToMs(refreshInterval), // ** 중요 ** 새로고침 주기 적용
   });
+
+  /** === 로딩 상태 관리 === */
+  useEffect(() => {
+    if (loading) {
+      showLoader('Vacuum Maintenance 데이터를 불러오는 중...');
+    } else {
+      hideLoader();
+    }
+  }, [loading, showLoader, hideLoader]);
 
   const data = useMemo(() => {
     if (!rawData) return emptyData;

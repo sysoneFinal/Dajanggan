@@ -21,6 +21,7 @@ import { CATEGORY_LABELS } from "./AlarmRuleModal";
 import "/src/styles/alarm/alarm-list.css";
 import apiClient from "../../api/apiClient";
 import { useInstanceContext } from "../../context/InstanceContext";
+import { useLoader } from "../../context/LoaderContext";
 
 /* ============================== */
 /*  서버 전송용 타입 & 매핑 함수   */
@@ -128,6 +129,7 @@ type AlarmRuleRow = {
 
 export default function AlarmRuleList() {
   const { selectedInstance, selectedDatabase } = useInstanceContext();
+  const { showLoader, hideLoader } = useLoader();
   const [data, setData] = useState<AlarmRuleRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -188,6 +190,15 @@ export default function AlarmRuleList() {
 
     return () => ac.abort();
   }, [selectedInstance, selectedDatabase]);
+
+  /** === 로딩 상태 관리 === */
+  useEffect(() => {
+    if (loading) {
+      showLoader('알람 규칙 목록을 불러오는 중...');
+    } else {
+      hideLoader();
+    }
+  }, [loading, showLoader, hideLoader]);
 
   const onEdit = (id: number) => {
     setEditingRuleId(id);
