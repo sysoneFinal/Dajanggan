@@ -3,7 +3,7 @@ import type { AxiosResponse } from 'axios';
 import type { QueryAnalysisRequest, QueryAnalysisResponse, QuerySuggestion } from './suggestion';
 
 /**
- * Query Metrics API 클라이언트
+ * 쿼리 메트릭스 API 클라이언트
  * - 쿼리 메트릭스 관련 API 호출 함수들
  * 
  * @author 이해든
@@ -15,7 +15,7 @@ export const getRecentQueryMetrics = (databaseId: number, minutes: number = 5) =
   });
 };
 
-/* ---------- 타입 정의 ---------- */
+/* 타입 정의 */
 export interface QueryMetricsRawDto {
   queryMetricId: number;
   databaseId: number;
@@ -67,27 +67,27 @@ export interface ExplainAnalyzeResult {
   executionMode: string;
   executionTimeMs: number | null;
   planningTimeMs: number | null;
-  memoryUsageMb?: number | null;      // 메모리 사용량 (MB)
-  ioBlocks?: number | null;            // I/O 블록 수
+  memoryUsageMb?: number | null;
+  ioBlocks?: number | null;
   cpuUsagePercent?: number | null; 
 }
 
 /**
- * 🆕 쿼리 실행 통계 DTO
+ * 쿼리 실행 통계 DTO
  */
 export interface QueryExecutionStatDto {
-  queryHash: string;           // 쿼리 고유 ID (MD5)
-  shortQuery: string;          // 짧은 쿼리문
-  fullQuery: string;           // 전체 쿼리문
-  executionCount: number;      // 실행 횟수
-  avgTimeMs: number;           // 평균 실행 시간 (ms)
-  totalTimeMs: number;         // 총 실행 시간 (ms)
-  callCount: number;           // 호출 수
-  queryType: string;           // 쿼리 타입
-  lastExecutedAt: string;      // 마지막 실행 시간
+  queryHash: string;
+  shortQuery: string;
+  fullQuery: string;
+  executionCount: number;
+  avgTimeMs: number;
+  totalTimeMs: number;
+  callCount: number;
+  queryType: string;
+  lastExecutedAt: string;
 }
 
-/* ---------- API 함수들 ---------- */
+/* API 함수들 */
 
 /**
  * 헬스 체크
@@ -172,7 +172,7 @@ export const getTotalCount = async (): Promise<AxiosResponse<ApiResponse<number>
 };
 
 /**
- * 🆕 ExecutionStatus용 쿼리별 집계 통계
+ * ExecutionStatus용 쿼리별 집계 통계
  * GET /query-metrics/execution-stats?databaseId={databaseId}&hours={hours}
  */
 export const getExecutionStats = async (
@@ -185,7 +185,7 @@ export const getExecutionStats = async (
 };
 
 /**
- * 🆕 시간대별 쿼리 수 분포 조회
+ * 시간대별 쿼리 수 분포 조회
  * GET /api/query-metrics/hourly-distribution?databaseId={databaseId}&hours={hours}
  */
 export const getHourlyDistribution = (databaseId: number, hours: number = 5) => {
@@ -208,7 +208,7 @@ export const postExplainAnalyze = async (
   });
 };
 
-/* ---------- Helper 함수들 ---------- */
+/* Helper 함수들 */
 
 /**
  * 실행 시간을 밀리초에서 초로 변환
@@ -218,7 +218,7 @@ export const msToSeconds = (ms: number | string): number => {
 };
 
 /**
- * 날짜 포맷팅 
+ * 날짜 포맷팅
  */
 export const formatDate = (dateString: string): string => {
   const date = new Date(dateString);
@@ -261,11 +261,10 @@ export const isModifyingQuery = (queryText: string): boolean => {
          upperQuery.startsWith('DELETE');
 };
 
-/* ---------- 집계 API (1분/5분) ---------- */
+/* 집계 API (1분/5분) */
 
 /**
- * 요약 데이터 조회 (집계 테이블 사용)
- * GET /api/query-agg-1m/summary
+ * 요약 데이터 DTO
  */
 export interface QuerySummaryDto {
   instanceId: number;
@@ -284,6 +283,10 @@ export interface QuerySummaryDto {
   createdAt?: string;
 }
 
+/**
+ * 요약 데이터 조회 (집계 테이블 사용)
+ * GET /api/query-agg-1m/summary
+ */
 export const getQuerySummary = async (
   instanceId: number,
   databaseId: number
@@ -294,8 +297,7 @@ export const getQuerySummary = async (
 };
 
 /**
- * 트렌드 데이터 조회 (집계 테이블 사용)
- * GET /api/query-agg-1m/trend
+ * 트렌드 데이터 포인트
  */
 export interface TrendDataPoint {
   timestamp: string;
@@ -306,6 +308,9 @@ export interface TrendDataPoint {
   slowQueryCount: number;
 }
 
+/**
+ * 쿼리 오버뷰 트렌드 DTO
+ */
 export interface QueryOverviewTrendDto {
   instanceId: number;
   databaseId: number;
@@ -316,6 +321,10 @@ export interface QueryOverviewTrendDto {
   avgExecutionTimeMs: number;
 }
 
+/**
+ * 트렌드 데이터 조회 (집계 테이블 사용)
+ * GET /api/query-agg-1m/trend
+ */
 export const getQueryTrend = async (
   instanceId: number,
   databaseId: number,
@@ -326,7 +335,7 @@ export const getQueryTrend = async (
   });
 };
 
-/* ---------- AI 쿼리 분석 API ---------- */
+/* AI 쿼리 분석 API */
 
 /**
  * AI 기반 쿼리 분석 실행

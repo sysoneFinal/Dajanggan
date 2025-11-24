@@ -227,7 +227,7 @@ export default function QueryTuner() {
             {/* 에러 메시지 */}
             {error && (
               <div className="qt-error-message">
-                ⚠️ {error}
+                 {error}
               </div>
             )}
           </section>
@@ -302,7 +302,7 @@ export default function QueryTuner() {
               {/* 안전모드 경고 */}
               {executionMode === "안전 모드" && (
                 <div className="qt-safety-warning">
-                  <div className="qt-safety-warning-icon">⚠️</div>
+                  <div className="qt-safety-warning-icon"></div>
                   <div className="qt-safety-warning-content">
                     <div className="qt-safety-warning-title">
                       데이터 변경 명령이 포함되어 있어 실제 실행 없이 추정치만 표시됩니다.

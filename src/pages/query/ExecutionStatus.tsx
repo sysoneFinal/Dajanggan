@@ -53,7 +53,7 @@ const parseTimeMs = (timeStr: string): number => {
 };
 
 /**
- * ✅ 쿼리 텍스트에서 타입 추출 (queryType이 없을 경우 대비)
+ *  쿼리 텍스트에서 타입 추출 (queryType이 없을 경우 대비)
  */
 const extractQueryType = (queryText: string): string => {
   if (!queryText) return "UNKNOWN";
@@ -95,18 +95,18 @@ export default function ExecutionStatus() {
   const [allRawMetrics, setAllRawMetrics] = useState<QueryMetricsRawDto[]>([]);
 
   /**
-   * ✅ 시간대별 쿼리 수 분포 조회 (최근 5시간)
+   *  시간대별 쿼리 수 분포 조회 (최근 5시간)
    */
   const { data: hourlyDistributionData } = useQuery({
     queryKey: ["hourly-distribution", databaseId],
     queryFn: async () => {
       if (!databaseId) return null;
 
-      console.log("📊 시간대별 분포 데이터 로딩 시작...");
+      console.log(" 시간대별 분포 데이터 로딩 시작...");
       const response = await getHourlyDistribution(databaseId, 5);
       
       if (response.data.success && response.data.data) {
-        console.log(`✅ 시간대별 데이터: ${response.data.data.length}개`);
+        console.log(` 시간대별 데이터: ${response.data.data.length}개`);
         return response.data.data;
       }
       
@@ -117,7 +117,7 @@ export default function ExecutionStatus() {
   });
 
   /**
-   * ✅ 시간대별 차트 데이터 변환
+   *  시간대별 차트 데이터 변환
    */
   const hourlyChartData = useMemo(() => {
     if (!hourlyDistributionData || hourlyDistributionData.length === 0) {
@@ -151,18 +151,18 @@ export default function ExecutionStatus() {
   };
 
   /**
-   * ✅ 쿼리 타입별 분포 계산 (개선)
+   *  쿼리 타입별 분포 계산 (개선)
    * - queryType이 없으면 fullQuery에서 직접 추출
    * - 데이터가 없으면 빈 배열 반환
    */
   const calculateQueryTypeDistribution = (data: QueryExecutionStatDto[]): { labels: string[]; data: number[] } => {
-    console.log('📊 쿼리 타입 분포 계산 시작:', {
+    console.log(' 쿼리 타입 분포 계산 시작:', {
       dataLength: data.length,
       sampleData: data.slice(0, 3)
     });
 
     if (!data || data.length === 0) {
-      console.warn('⚠️ 집계 데이터가 비어있습니다');
+      console.warn(' 집계 데이터가 비어있습니다');
       return { labels: [], data: [] };
     }
 
@@ -182,7 +182,7 @@ export default function ExecutionStatus() {
       typeCount[normalizedType] = (typeCount[normalizedType] || 0) + count;
     });
 
-    console.log('📊 집계된 타입별 개수:', typeCount);
+    console.log(' 집계된 타입별 개수:', typeCount);
 
     // 상위 6개만 선택
     const sortedTypes = Object.entries(typeCount)
@@ -194,7 +194,7 @@ export default function ExecutionStatus() {
       data: sortedTypes.map(([, count]) => count)
     };
 
-    console.log('✅ 차트 데이터 생성 완료:', result);
+    console.log(' 차트 데이터 생성 완료:', result);
 
     return result;
   };
@@ -210,7 +210,7 @@ export default function ExecutionStatus() {
   };
 
   /**
-   * ✅ 집계 데이터만 먼저 로드 (최근 1시간)
+   *  집계 데이터만 먼저 로드 (최근 1시간)
    */
   const { data: executionData, isLoading, error: queryError } = useQuery({
     queryKey: ["execution-status", databaseId],
@@ -220,7 +220,7 @@ export default function ExecutionStatus() {
       }
 
       console.log("==========================================");
-      console.log("📊 Execution Stats 데이터 로딩 시작...");
+      console.log(" Execution Stats 데이터 로딩 시작...");
       console.log(`  - Database ID: ${databaseId}`);
       console.log(`  - 조회 기간: 최근 1시간`);
 
@@ -232,17 +232,17 @@ export default function ExecutionStatus() {
       }
 
       const aggregatedStats = aggregatedResponse.data.data;
-      console.log(`  ✅ 집계된 쿼리 수: ${aggregatedStats.length}개`);
+      console.log(`   집계된 쿼리 수: ${aggregatedStats.length}개`);
       
-      // 🔍 디버깅: queryType 확인
+      //  디버깅: queryType 확인
       const typeCounts = aggregatedStats.reduce((acc: any, stat: any) => {
         const type = stat.queryType || 'NULL';
         acc[type] = (acc[type] || 0) + 1;
         return acc;
       }, {});
-      console.log('  📊 queryType 분포:', typeCounts);
+      console.log('   queryType 분포:', typeCounts);
       
-      console.log("  ✅ 데이터 로딩 완료");
+      console.log("   데이터 로딩 완료");
       console.log("==========================================");
 
       return {
@@ -255,7 +255,7 @@ export default function ExecutionStatus() {
   });
 
   /**
-   * ✅ 원시 메트릭은 백그라운드에서 별도로 로드
+   *  원시 메트릭은 백그라운드에서 별도로 로드
    */
   const { data: rawMetricsData } = useQuery({
     queryKey: ["raw-metrics", databaseId],
@@ -267,7 +267,7 @@ export default function ExecutionStatus() {
       const rawMetricsResponse = await getQueryMetricsByDatabaseId(databaseId);
       
       if (rawMetricsResponse.data.success && rawMetricsResponse.data.data) {
-        console.log(`  ✅ 원시 메트릭 수: ${rawMetricsResponse.data.data.length}개`);
+        console.log(`   원시 메트릭 수: ${rawMetricsResponse.data.data.length}개`);
         return rawMetricsResponse.data.data;
       }
       
@@ -297,7 +297,7 @@ export default function ExecutionStatus() {
     const stats = aggregatedStats.map(convertToQueryStat);
     const queryTypeDistribution = calculateQueryTypeDistribution(aggregatedStats);
 
-    console.log('📊 최종 대시보드 데이터:', {
+    console.log(' 최종 대시보드 데이터:', {
       statsCount: stats.length,
       queryTypeLabels: queryTypeDistribution.labels,
       queryTypeData: queryTypeDistribution.data,
@@ -364,7 +364,7 @@ export default function ExecutionStatus() {
   const executeExplainAnalyze = async (databaseId: number, query: string) => {
     try {
       showLoader("실행 계획 분석 중...");
-      console.log('🔍 EXPLAIN ANALYZE 요청 시작', { databaseId, query });
+      console.log(' EXPLAIN ANALYZE 요청 시작', { databaseId, query });
 
       const { data } = await postExplainAnalyze(databaseId, query);
 
@@ -372,10 +372,10 @@ export default function ExecutionStatus() {
         throw new Error(data?.message || "EXPLAIN ANALYZE 실패");
       }
 
-      console.log('✅ EXPLAIN ANALYZE 응답:', data);
+      console.log(' EXPLAIN ANALYZE 응답:', data);
       return data;
     } catch (error) {
-      console.error('❌ EXPLAIN ANALYZE 실패:', error);
+      console.error(' EXPLAIN ANALYZE 실패:', error);
       throw error;
     } finally {
       hideLoader();
@@ -384,7 +384,7 @@ export default function ExecutionStatus() {
 
   const onRowClick = async (row: QueryStat) => {
     if (!databaseId) {
-      console.error('❌ Database ID가 없습니다');
+      console.error(' Database ID가 없습니다');
       return;
     }
 
@@ -405,7 +405,7 @@ export default function ExecutionStatus() {
 
     const rawMetricData = matchingRawMetrics.length > 0 ? matchingRawMetrics[0] : null;
 
-    console.log('🔍 매칭된 원시 메트릭:', {
+    console.log(' 매칭된 원시 메트릭:', {
       queryHash: row.id,
       found: !!rawMetricData,
       count: matchingRawMetrics.length,
@@ -490,14 +490,14 @@ export default function ExecutionStatus() {
       };
       
       setSelectedQueryDetail(updatedDetail);
-      console.log('✅ EXPLAIN ANALYZE 결과로 모달 업데이트 완료');
+      console.log(' EXPLAIN ANALYZE 결과로 모달 업데이트 완료');
 
     } catch (error: any) {
-      console.error('❌ EXPLAIN ANALYZE 실행 실패:', error);
+      console.error(' EXPLAIN ANALYZE 실행 실패:', error);
       
       const errorDetail: QueryDetail = {
         ...loadingDetail,
-        status: "⚠️ 분석 실패",
+        status: " 분석 실패",
         explainResult: `실행 계획을 가져오지 못했습니다.\n오류: ${error?.response?.data?.message || error?.message || '알 수 없는 오류'}\n\n기본 통계 정보:\n- 평균 실행 시간: ${row.avgTime}\n- 총 실행 횟수: ${aggregatedData.executionCount || 0}회\n- 총 실행 시간: ${row.totalTime}`,
         stats: {
           min: "N/A",

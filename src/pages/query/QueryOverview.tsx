@@ -72,6 +72,15 @@ type SlowQueryItem = {
   cpuUsagePercent?: number;
   memoryUsageMb?: number;
   ioBlocks?: number;
+  // 그룹화 집계 정보 추가
+  executionCount?: number;          // 실행 횟수
+  avgExecutionTimeMs?: number;      // 평균 실행 시간
+  maxExecutionTimeMs?: number;      // 최대 실행 시간
+  minExecutionTimeMs?: number;      // 최소 실행 시간
+  totalIoBlocks?: number;           // 총 I/O 블록
+  firstSeenAt?: string;             // 최초 실행 시간
+  lastSeenAt?: string;              // 최근 실행 시간
+  queryHash?: string;               // 쿼리 해시
 };
 
 type SortOption = "최근 발생순" | "실행시간 느린순" | "실행시간 빠른순";
@@ -184,8 +193,8 @@ export default function QueryOverview() {
   // TPS/QPS 차트 시리즈
   const trendChartSeries = useMemo(
     () => [
-      { name: "TPS", data: tpsQpsData.tps },
-      { name: "QPS", data: tpsQpsData.qps },
+       { name: "QPS", data: tpsQpsData.qps },  
+    { name: "TPS", data: tpsQpsData.tps },  
     ],
     [tpsQpsData]
   );
@@ -405,6 +414,15 @@ export default function QueryOverview() {
           cpuUsagePercent: item.cpuUsagePercent || 0,
           memoryUsageMb: item.memoryUsageMb || 0,
           ioBlocks: item.ioBlocks || 0,
+          // 그룹화 집계 정보
+          executionCount: item.executionCount,
+          avgExecutionTimeMs: item.avgExecutionTimeMs,
+          maxExecutionTimeMs: item.maxExecutionTimeMs,
+          minExecutionTimeMs: item.minExecutionTimeMs,
+          totalIoBlocks: item.totalIoBlocks,
+          firstSeenAt: item.firstSeenAt ? formatDate(item.firstSeenAt) : undefined,
+          lastSeenAt: item.lastSeenAt ? formatDate(item.lastSeenAt) : undefined,
+          queryHash: item.queryHash,
         };
       });
       
@@ -483,7 +501,7 @@ export default function QueryOverview() {
    */
   const handleTopQueryClick = async (query: TopQueryItem) => {
     if (!databaseId) {
-      console.error('❌ Database ID가 없습니다');
+      console.error(' Database ID가 없습니다');
       return;
     }
 
@@ -528,13 +546,13 @@ export default function QueryOverview() {
 
       const result = data.data;
 
-      // ✅ 결과로 모달 업데이트 - 리소스 정보는 loadingDetail에서 유지
+      //  결과로 모달 업데이트 - 리소스 정보는 loadingDetail에서 유지
       const updatedDetail: QueryDetail = {
         queryId: `Query ${query.id}`,
         status: result.executionMode === "ANALYZE" ? "실제 실행" : "안전 모드",
         avgExecutionTime: query.avgTime,
         totalCalls: query.callCount,
-        // ✅ loadingDetail의 값 유지 (쿼리의 실제 수집된 데이터)
+        //  loadingDetail의 값 유지 (쿼리의 실제 수집된 데이터)
         memoryUsage: loadingDetail.memoryUsage,
         ioUsage: loadingDetail.ioUsage,
         cpuUsagePercent: loadingDetail.cpuUsagePercent,
@@ -560,11 +578,11 @@ export default function QueryOverview() {
       setSelectedQueryDetail(updatedDetail);
 
     } catch (error: any) {
-      console.error('❌ EXPLAIN ANALYZE 실패:', error);
+      console.error(' EXPLAIN ANALYZE 실패:', error);
 
       const errorDetail: QueryDetail = {
         ...loadingDetail,
-        status: "⚠️ 분석 실패",
+        status: " 분석 실패",
         explainResult: `실행 계획을 가져오지 못했습니다.\n오류: ${error?.response?.data?.message || error?.message || '알 수 없는 오류'}`,
         stats: {
           min: "N/A",
@@ -586,7 +604,7 @@ export default function QueryOverview() {
    */
   const handleSlowQueryClick = async (slowQuery: SlowQueryItem) => {
     if (!databaseId) {
-      console.error('❌ Database ID가 없습니다');
+      console.error(' Database ID가 없습니다');
       return;
     }
 
@@ -635,13 +653,13 @@ export default function QueryOverview() {
 
       const result = data.data;
 
-      // ✅ 결과로 모달 업데이트 - 리소스 정보는 loadingDetail에서 유지
+      //  결과로 모달 업데이트 - 리소스 정보는 loadingDetail에서 유지
       const updatedDetail: QueryDetail = {
         queryId: `Query ${slowQuery.id}`,
         status: result.executionMode === "ANALYZE" ? "실제 실행" : "안전 모드",
         avgExecutionTime: slowQuery.executionTime,
         totalCalls: 1,
-        // ✅ loadingDetail의 값 유지 (쿼리의 실제 수집된 데이터)
+        //  loadingDetail의 값 유지 (쿼리의 실제 수집된 데이터)
         memoryUsage: loadingDetail.memoryUsage,
         ioUsage: loadingDetail.ioUsage,
         cpuUsagePercent: loadingDetail.cpuUsagePercent,
@@ -667,11 +685,11 @@ export default function QueryOverview() {
       setSelectedQueryDetail(updatedDetail);
 
     } catch (error: any) {
-      console.error('❌ EXPLAIN ANALYZE 실패:', error);
+      console.error(' EXPLAIN ANALYZE 실패:', error);
 
       const errorDetail: QueryDetail = {
         ...loadingDetail,
-        status: "⚠️ 분석 실패",
+        status: " 분석 실패",
         explainResult: `실행 계획을 가져오지 못했습니다.\n오류: ${error?.response?.data?.message || error?.message || '알 수 없는 오류'}`,
         stats: {
           min: "N/A",
@@ -764,7 +782,7 @@ export default function QueryOverview() {
               type="line"
               series={trendChartSeries}
               categories={timeCategories}
-              colors={["#7B61FF", "#FF928A"]}
+              colors={["#FF928A", "#7B61FF"]}
               height={260}
               showLegend={false}
               showToolbar={false}
@@ -784,7 +802,7 @@ export default function QueryOverview() {
                 stroke: { curve: "smooth", width: 3 },
                 markers: {
                   size: 4,
-                  colors: ["#7B61FF", "#FF928A"],
+                  colors: ["#FF928A", "#7B61FF"],
                   strokeColors: "#fff",
                   strokeWidth: 2,
                   hover: { size: 6 }
@@ -986,8 +1004,18 @@ export default function QueryOverview() {
                     </div>
                     <div className="qo-slow-card-suggestion">{sq.suggestion}</div>
                     <div className="qo-slow-card-footer">
-                      <span className="qo-slow-card-time">실행: {sq.executionTime}</span>
-                      <span className="qo-slow-card-occurred">발생: {sq.occurredAt}</span>
+                      <span className="qo-slow-card-time">
+                        {sq.executionCount && sq.executionCount > 1 
+                          ? `최대: ${sq.executionTime} | 평균: ${(sq.avgExecutionTimeMs! / 1000).toFixed(1)}초`
+                          : `실행: ${sq.executionTime}`
+                        }
+                      </span>
+                      <span className="qo-slow-card-occurred">
+                        {sq.firstSeenAt && sq.lastSeenAt && sq.firstSeenAt !== sq.lastSeenAt
+                          ? `최초: ${sq.firstSeenAt} | 최근: ${sq.lastSeenAt}`
+                          : `발생: ${sq.occurredAt}`
+                        }
+                      </span>
                     </div>
                   </div>
                 ))

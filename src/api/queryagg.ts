@@ -2,13 +2,13 @@ import apiClient from './apiClient';
 import type { AxiosResponse } from 'axios';
 
 /**
- * Query Aggregation API 클라이언트
+ * 쿼리 집계 API 클라이언트
  * - 1분/5분 집계 데이터 조회
  * 
  * @author 이해든
  */
 
-/* ---------- 타입 정의 ---------- */
+/* 타입 정의 */
 
 export interface QuerySummaryDto {
   instanceId: number;
@@ -48,7 +48,7 @@ export interface QueryOverviewTrendDto {
 }
 
 /**
- * 🆕 Top Query DTO (리소스별)
+ * Top Query DTO (리소스별)
  */
 export interface QueryAgg1mDto {
   instanceId: number;
@@ -78,7 +78,9 @@ export interface QueryAgg1mDto {
   executionCount?: number;
 }
 
-// 🆕 5분 집계 타입
+/**
+ * 5분 집계 타입
+ */
 export interface TopSlowQueryDto {
   instanceId: number;
   databaseId: number;
@@ -106,6 +108,14 @@ export interface SlowQueryListDto {
   cpuUsagePercent?: number;
   memoryUsageMb?: number;
   ioBlocks?: number;
+  queryHash?: string;
+  executionCount?: number;
+  avgExecutionTimeMs?: number;
+  maxExecutionTimeMs?: number;
+  minExecutionTimeMs?: number;
+  totalIoBlocks?: number;
+  firstSeenAt?: string;
+  lastSeenAt?: string;
 }
 
 export interface ApiResponse<T> {
@@ -114,7 +124,7 @@ export interface ApiResponse<T> {
   message: string;
 }
 
-/* ---------- API 함수들 ---------- */
+/* API 함수들 */
 
 /**
  * 1분 집계 헬스 체크
@@ -156,7 +166,7 @@ export const getQueryTrend = async (
 };
 
 /**
- * 🆕 Top Query 조회 (리소스별)
+ * Top Query 조회 (리소스별)
  * GET /api/query-agg-1m/top-queries
  * 
  * @param instanceId - 인스턴스 ID
@@ -219,7 +229,7 @@ export const getTopQueriesByExecutionTime = async (
   return getTopQueries(instanceId, databaseId, 'execution_time', limit);
 };
 
-/* ---------- 🆕 5분 집계 API ---------- */
+/* 5분 집계 API */
 
 /**
  * 5분 집계 헬스 체크

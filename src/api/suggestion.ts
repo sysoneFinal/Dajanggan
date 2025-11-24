@@ -24,10 +24,9 @@ export interface QuerySuggestion {
   transactionId?: number;
   createdAt: string;
   
-  // AI 캐싱 관련 필드
-  aiModel?: string;           // 사용된 AI 모델 (예: gpt-4)
-  tokenUsed?: number;         // 사용된 토큰 수
-  isFromCache?: boolean;      // 캐시에서 가져온 제안인지 여부
+  aiModel?: string;
+  tokenUsed?: number;
+  isFromCache?: boolean;
 }
 
 /**
