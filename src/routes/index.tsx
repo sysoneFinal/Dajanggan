@@ -15,7 +15,7 @@ import CheckpointPage from "../pages/engine/CheckPointPage";
 import SessionDashboard from "../pages/session/SessionDashboard";
 import DatabaseDashboard from "../pages/dashboard/DatabaseOverview";
 import SessionListPage from "../pages/session/SessionListPage";
-
+import SetupGuide from "../pages/guide/SetUpGuide";
 import LayoutBuilder from "../components/dashboard/Layout";
 import DashboardEditor from "../components/dashboard/DashboardEditor";
 import ExecutionStatus from "../pages/query/ExecutionStatus";
@@ -44,7 +44,8 @@ export const AppRoutes = ({ isEditing = false }: AppRoutesProps) => {
 
 const routeList = [
   // 헤더 없는 초기 페이지
-  { path: "/", element: <Home /> },
+  { path: "/", element: <SetupGuide /> },
+ { path: "/home", element: <Home /> },
 
   // 대시보드 메인
   { path: "/overview", element: <Overview/> },

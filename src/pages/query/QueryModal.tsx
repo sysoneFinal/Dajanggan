@@ -1,9 +1,11 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
+import { analyzeQueryWithAI } from "../../api/query";
+import type { QuerySuggestion } from "../../api/suggestion";
 import "../../styles/query/query-modal.css";
 
 export type QueryDetail = {
   queryId: string;
-  status: "안전 모드" | "실제 실행" | "추정치 (파라미터 없음)" | "추정치 (실행 불가)" | "시스템 통계 조회" | "분석 불가" | "🔄 실행 계획 분석 중..." | "⚠️ 분석 실패" | string;
+  status: "안전 모드" | "실제 실행" | "추정치 (파라미터 없음)" | "추정치 (실행 불가)" | "시스템 통계 조회" | "분석 불가" | "🔄 실행 계획 분석 중..." | " 분석 실패" | string;
   avgExecutionTime: string;
   totalCalls: number;
   memoryUsage: string;
@@ -24,7 +26,8 @@ export type QueryDetail = {
     totalTime: string;
   };
   isModifyingQuery?: boolean;
-  isSlowQuery?: boolean; // 슬로우 쿼리 여부 추가
+  isSlowQuery?: boolean;
+  databaseId?: number;
 };
 
 type Props = {
@@ -36,6 +39,11 @@ type Props = {
 export default function QueryModal({ open, onClose, detail }: Props) {
   const dialogRef = useRef<HTMLDivElement>(null);
   const closeBtnRef = useRef<HTMLButtonElement>(null);
+  
+  // AI 제안 상태
+  const [aiSuggestions, setAiSuggestions] = useState<QuerySuggestion[]>([]);
+  const [isLoadingAI, setIsLoadingAI] = useState(false);
+  const [aiError, setAiError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!open) return;
@@ -52,12 +60,67 @@ export default function QueryModal({ open, onClose, detail }: Props) {
     };
   }, [open, onClose]);
 
+  // 슬로우 쿼리 판단 및 AI 분석 자동 실행
+  useEffect(() => {
+    if (!open || !detail.databaseId) {
+      setAiSuggestions([]);
+      setAiError(null);
+      return;
+    }
+
+    const avgTimeStr = detail.avgExecutionTime;
+    let avgTimeMs = parseFloat(avgTimeStr.replace(/[^0-9.]/g, ""));
+    
+    if (avgTimeStr.includes("초")) {
+      avgTimeMs = avgTimeMs * 1000;
+    }
+    
+    const isSlowQuery = detail.isSlowQuery || avgTimeMs > 1000;
+
+    if (!isSlowQuery) {
+      setAiSuggestions([]);
+      setAiError(null);
+      return;
+    }
+
+    const fetchAISuggestions = async () => {
+      setIsLoadingAI(true);
+      setAiError(null);
+      setAiSuggestions([]);
+      
+      try {
+        const response = await analyzeQueryWithAI(detail.databaseId!, detail.sqlQuery);
+
+        if (response.data.success && response.data.data) {
+          const suggestions = response.data.data.suggestions || [];
+          setAiSuggestions(suggestions);
+        } else {
+          throw new Error("AI 분석 응답이 올바르지 않습니다.");
+        }
+      } catch (error: any) {
+        setAiError(error.response?.data?.message || "AI 분석에 실패했습니다.");
+      } finally {
+        setIsLoadingAI(false);
+      }
+    };
+
+    fetchAISuggestions();
+  }, [open, detail.databaseId, detail.sqlQuery, detail.avgExecutionTime, detail.isSlowQuery]);
+
   if (!open) return null;
 
-  // 로딩 상태 확인
   const isLoading = detail.status.includes("분석 중");
   const isError = detail.status.includes("분석 실패");
   const isUnable = detail.status === "분석 불가";
+
+  const avgTimeStr = detail.avgExecutionTime;
+  let avgTimeMs = parseFloat(avgTimeStr.replace(/[^0-9.]/g, ''));
+  
+  if (avgTimeStr.includes("초")) {
+    avgTimeMs = avgTimeMs * 1000;
+  }
+  
+  const isSlowQuery = detail.isSlowQuery || avgTimeMs > 1000;
 
   return (
     <div
@@ -73,7 +136,6 @@ export default function QueryModal({ open, onClose, detail }: Props) {
         aria-labelledby="query-modal-title"
         ref={dialogRef}
       >
-        {/* 헤더 */}
         <header className="query-modal__header">
           <h2 id="query-modal-title" className="query-modal__title">
             {detail.queryId}
@@ -102,16 +164,18 @@ export default function QueryModal({ open, onClose, detail }: Props) {
         <div className="query-modal__content">
           {/* 왼쪽 섹션 */}
           <section className="query-modal__left-section">
-            {/* 개요 */}
             <div className="query-modal__section">
               <h3 className="query-modal__section-title">쿼리 정보</h3>
               <div className="query-modal__section-content">
                 <div className="query-modal__metrics">
                   <div className="query-modal__metric-card">
                     <div className="query-modal__metric-label">평균 실행시간</div>
-                    <div className="query-modal__metric-value">
+                    <div className={`query-modal__metric-value ${isSlowQuery ? 'query-modal__metric-value--slow' : ''}`}>
                       {detail.avgExecutionTime}
                     </div>
+                    {isSlowQuery && (
+                      <span className="query-modal__slow-badge-modern"> SLOW</span>
+                    )}
                   </div>
                   <div className="query-modal__metric-card">
                     <div className="query-modal__metric-label">총 호출 횟수</div>
@@ -127,9 +191,7 @@ export default function QueryModal({ open, onClose, detail }: Props) {
                   </div>
                   <div className="query-modal__metric-card">
                     <div className="query-modal__metric-label">I/O 사용</div>
-                    <div className="query-modal__metric-value">
-                      {detail.ioUsage}
-                    </div>
+                    <div className="query-modal__metric-value">{detail.ioUsage}</div>
                   </div>
                 </div>
 
@@ -143,19 +205,18 @@ export default function QueryModal({ open, onClose, detail }: Props) {
                       />
                     </div>
                     <div className="query-modal__cpu-percent">
-                      {detail.cpuUsagePercent}%
+                      {detail.cpuUsagePercent.toFixed(1)}%
                     </div>
                   </div>
                 </div>
 
                 <div className="query-modal__sql-section">
-                  <h4 className="query-modal__sql-title">전체 SQL</h4>
+                  <h4 className="query-modal__sql-title">SQL 쿼리</h4>
                   <pre className="query-modal__sql-box">{detail.sqlQuery}</pre>
                 </div>
               </div>
             </div>
 
-            {/* 안전 모드 경고 - 전체 SQL 바로 밑, EXPLAIN 안 되는 경우 */}
             {(detail.status === "안전 모드" || detail.isModifyingQuery || isUnable) && !isLoading && (
               <div className="query-modal__warning-box">
                 <svg className="query-modal__warning-icon" viewBox="0 0 24 24" fill="none">
@@ -178,37 +239,6 @@ export default function QueryModal({ open, onClose, detail }: Props) {
               </div>
             )}
 
-            {/* 개선 제안 - 슬로우 쿼리일 때만 표시 (안전 모드 경고 밑 또는 전체 SQL 밑) */}
-            {detail.isSlowQuery && detail.suggestion && !isLoading && !isError && (
-              <div className="query-modal__suggestion-section">
-                <h3 className="query-modal__section-title">개선 제안</h3>
-                <div
-                  className={`query-modal__suggestion-box ${
-                    detail.suggestion.priority === "필수"
-                      ? "query-modal__suggestion-box--required"
-                      : "query-modal__suggestion-box--recommended"
-                  }`}
-                >
-                  <div
-                    className={`query-modal__suggestion-badge ${
-                      detail.suggestion.priority === "필수"
-                        ? "query-modal__suggestion-badge--required"
-                        : "query-modal__suggestion-badge--recommended"
-                    }`}
-                  >
-                    {detail.suggestion.priority}
-                  </div>
-                  <div className="query-modal__suggestion-desc">
-                    {detail.suggestion.description}
-                  </div>
-                  <div className="query-modal__suggestion-code">
-                    {detail.suggestion.code}
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* 파라미터 치환 안내 */}
             {detail.status.includes("추정치") && !isLoading && !isUnable && (
               <div className="query-modal__info-box">
                 <svg className="query-modal__info-icon" viewBox="0 0 24 24" fill="none">
@@ -298,10 +328,91 @@ export default function QueryModal({ open, onClose, detail }: Props) {
                 )}
               </div>
             </div>
+
+            {/*  AI 개선 제안 - 오른쪽으로 이동 */}
+            {isSlowQuery && !isLoading && !isError && (
+              <div className="query-modal__ai-section-right">
+                <h3 className="query-modal__ai-section-title">
+                  🤖 AI 성능 개선 제안
+                </h3>
+                
+                {isLoadingAI ? (
+                  <div className="query-modal__ai-loading">
+                    <div className="query-modal__loading-spinner"></div>
+                    <p>AI가 쿼리를 분석하고 있습니다...</p>
+                  </div>
+                ) : aiError ? (
+                  <div className="query-modal__ai-error">
+                     {aiError}
+                  </div>
+                ) : aiSuggestions.length > 0 ? (
+                  <div className="query-modal__ai-cards">
+                    {aiSuggestions.map((suggestion, index) => (
+                      <div 
+                        key={suggestion.suggestionId || index} 
+                        className={`query-modal__ai-card ${
+                          suggestion.suggestionLevel === "높음" 
+                            ? "query-modal__ai-card--high" 
+                            : suggestion.suggestionLevel === "경고" 
+                            ? "query-modal__ai-card--warning" 
+                            : "query-modal__ai-card--info"
+                        }`}
+                      >
+                        <div className="query-modal__ai-card-header">
+                          <div className="query-modal__ai-card-badges">
+                            <span className={`query-modal__ai-badge query-modal__ai-badge--${
+                              suggestion.suggestionLevel === "높음" ? "high" :
+                              suggestion.suggestionLevel === "경고" ? "warning" : "info"
+                            }`}>
+                              {suggestion.suggestionLevel === "높음" ? "🔴 필수" :
+                               suggestion.suggestionLevel === "경고" ? "🟡 경고" : "🟢 권장"}
+                            </span>
+                            <span className="query-modal__ai-type">
+                              {suggestion.suggestionType}
+                            </span>
+                          </div>
+                          {suggestion.expectedImprovementPercent && (
+                            <span className="query-modal__ai-improvement">
+                              🟢 {suggestion.expectedImprovementPercent}% 개선예상
+                            </span>
+                          )}
+                        </div>
+                        
+                        <h4 className="query-modal__ai-card-title">
+                          {suggestion.suggestionTitle}
+                        </h4>
+                        
+                        <p className="query-modal__ai-card-desc">
+                          {suggestion.suggestionDescription}
+                        </p>
+                        
+                        {suggestion.suggestionSql && suggestion.suggestionSql !== "N/A" && (
+                          <div className="query-modal__ai-sql">
+                            <div className="query-modal__ai-sql-header">
+                              <span>개선된 쿼리</span>
+                              <button 
+                                className="query-modal__ai-copy"
+                                onClick={() => navigator.clipboard.writeText(suggestion.suggestionSql!)}
+                              >
+                                📋 복사
+                              </button>
+                            </div>
+                            <pre className="query-modal__ai-sql-code">{suggestion.suggestionSql}</pre>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="query-modal__ai-empty">
+                    AI가 이 쿼리에 대한 최적화 제안을 생성하지 못했습니다.
+                  </div>
+                )}
+              </div>
+            )}
           </section>
         </div>
 
-        {/* 푸터 - 원래대로 복원 */}
         <footer className="query-modal__footer">
           <button
             ref={closeBtnRef}
