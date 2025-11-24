@@ -7,7 +7,7 @@ import apiClient from "../../api/apiClient";
 import { useQuery } from "@tanstack/react-query";
 import { useInstanceContext } from "../../context/InstanceContext";
 import { useOsMetricSse, type RealtimeOsMetrics, useRealtimeDiskIoHistory, useRealtimeDiskUsageHistory } from "../../context/OsMetricSseContext";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 
 /**
  * 시간 문자열(HH:MM:SS)을 초 단위로 변환
@@ -24,42 +24,42 @@ function timeToSeconds(timeStr: string): number {
  */
 function sampleLast60Seconds<T extends { time: string }>(history: T[]): T[] {
     if (history.length === 0) return [];
-    
+
     const sampled: T[] = [];
     let lastSelectedSeconds: number | null = null;
-    
+
     // 마지막 데이터부터 역순으로 순회
     for (let i = history.length - 1; i >= 0; i--) {
         const item = history[i];
         const itemSeconds = timeToSeconds(item.time);
-        
+
         // 첫 번째 데이터는 무조건 선택 (가장 최근 데이터)
         if (lastSelectedSeconds === null) {
             sampled.push(item);
             lastSelectedSeconds = itemSeconds;
             continue;
         }
-        
+
         // 이전에 선택한 데이터와의 시간 차이 계산
         let timeDiff = lastSelectedSeconds - itemSeconds;
-        
+
         // 하루 경계 처리 (23:59:59 -> 00:00:00)
         if (timeDiff < 0) {
             timeDiff = lastSelectedSeconds - itemSeconds + 86400;
         }
-        
+
         // 5초 이상 차이나는 데이터만 선택
         if (timeDiff >= 5) {
             sampled.push(item);
             lastSelectedSeconds = itemSeconds;
-            
+
             // 12개를 모으면 중단 (1분 = 12개 포인트)
             if (sampled.length >= 12) {
                 break;
             }
         }
     }
-    
+
     // 역순으로 정렬 (오래된 순서부터)
     return sampled.reverse();
 }
@@ -132,11 +132,31 @@ export default function DiskPage() {
     const [realtimeDiskAvailableGB, setRealtimeDiskAvailableGB] = useState<number | null>(null);
     const [realtimeDiskRead, setRealtimeDiskRead] = useState<number | null>(null);
     const [realtimeDiskWrite, setRealtimeDiskWrite] = useState<number | null>(null);
-    
+
     // TanStack Query 캐시에서 히스토리 데이터 읽기 (페이지 이동해도 유지됨)
     const realtimeDiskIoHistory = useRealtimeDiskIoHistory(selectedInstance?.instanceId);
     const realtimeDiskUsageHistory = useRealtimeDiskUsageHistory(selectedInstance?.instanceId);
 
+    // 실시간 Disk I/O 히스토리 데이터 샘플링 (최근 60개만, 5초 간격 = 5분)
+    const sampledDiskIoHistory = useMemo(() => {
+        const maxPoints = 60; // 최대 60개 포인트 (5분)
+        if (realtimeDiskIoHistory.length <= maxPoints) {
+            return realtimeDiskIoHistory;
+        }
+        // 최근 데이터만 선택
+        return realtimeDiskIoHistory.slice(-maxPoints);
+    }, [realtimeDiskIoHistory]);
+
+    // 실시간 Disk Usage 히스토리 데이터 샘플링
+    const sampledDiskUsageHistory = useMemo(() => {
+        const maxPoints = 60;
+        if (realtimeDiskUsageHistory.length <= maxPoints) {
+            return realtimeDiskUsageHistory;
+        }
+        return realtimeDiskUsageHistory.slice(-maxPoints);
+    }, [realtimeDiskUsageHistory]);
+
+    // 백엔드 API 호출 - SSE가 아닌 위젯/차트 데이터를 받기 위해 필요
     const { data, isLoading, isError, error } = useQuery({
         queryKey: ["diskioDashboard", selectedInstance?.instanceId],
         queryFn: () => fetchDiskIOData(selectedInstance!.instanceId),
@@ -146,8 +166,8 @@ export default function DiskPage() {
     });
 
     // 전역 SSE 연결 구독
-    const { subscribe } = useOsMetricSse();
-    
+    const { subscribe, isConnected } = useOsMetricSse();
+
     // 전역 SSE 연결 구독 (히스토리는 Context에서 자동으로 캐시에 저장됨)
     useEffect(() => {
         if (!selectedInstance) {
@@ -168,18 +188,23 @@ export default function DiskPage() {
                 setRealtimeDiskUsage(metrics.diskUsage);
             }
             if (metrics.diskTotalGB !== null && metrics.diskTotalGB !== undefined) {
+                console.log('[DiskPage] SSE 디스크 총량:', metrics.diskTotalGB);
                 setRealtimeDiskTotalGB(metrics.diskTotalGB);
             }
             if (metrics.diskUsedGB !== null && metrics.diskUsedGB !== undefined) {
+                console.log('[DiskPage] SSE 디스크 사용량:', metrics.diskUsedGB);
                 setRealtimeDiskUsedGB(metrics.diskUsedGB);
             }
             if (metrics.diskAvailableGB !== null && metrics.diskAvailableGB !== undefined) {
+                console.log('[DiskPage] SSE 디스크 사용 가능량:', metrics.diskAvailableGB);
                 setRealtimeDiskAvailableGB(metrics.diskAvailableGB);
             }
             if (metrics.diskRead !== null && metrics.diskRead !== undefined) {
+                console.log('[DiskPage] SSE 디스크 읽기:', metrics.diskRead);
                 setRealtimeDiskRead(metrics.diskRead);
             }
             if (metrics.diskWrite !== null && metrics.diskWrite !== undefined) {
+                console.log('[DiskPage] SSE 디스크 쓰기:', metrics.diskWrite);
                 setRealtimeDiskWrite(metrics.diskWrite);
             }
         });
@@ -198,7 +223,61 @@ export default function DiskPage() {
         );
     }
 
-    // 백엔드 데이터가 없을 때 기본값 설정 (실시간 차트는 항상 표시하기 위해)
+    // 로딩 중
+    if (isLoading) {
+        return (
+            <div className="disk-page">
+                <div style={{
+                    display: 'flex',
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    height: '400px',
+                    fontSize: '18px',
+                    color: '#6B7280'
+                }}>
+                    데이터를 불러오는 중...
+                </div>
+            </div>
+        );
+    }
+
+    // 에러 발생
+    if (isError) {
+        return (
+            <div className="disk-page">
+                <div style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    height: '400px',
+                    fontSize: '18px',
+                    color: '#EF4444'
+                }}>
+                    <p>데이터를 불러오는데 실패했습니다.</p>
+                    <p style={{ fontSize: '14px', color: '#6B7280', marginTop: '8px' }}>
+                        {error instanceof Error ? error.message : '알 수 없는 오류가 발생했습니다.'}
+                    </p>
+                    <button
+                        onClick={() => window.location.reload()}
+                        style={{
+                            marginTop: '16px',
+                            padding: '8px 16px',
+                            backgroundColor: '#3B82F6',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: '4px',
+                            cursor: 'pointer'
+                        }}
+                    >
+                        새로고침
+                    </button>
+                </div>
+            </div>
+        );
+    }
+
+    // 데이터가 없는 경우 기본값 사용
     const dashboard: DiskIODashboardResponse = data || {
         osDiskUsage: {
             usagePercent: 0,
@@ -250,13 +329,19 @@ export default function DiskPage() {
     const recent15m = (arr: any[]) => arr.slice(-15);
     const recent1h = (arr: any[]) => arr.slice(-60);
 
+
     // SSE 우선
     const displayUsage = realtimeDiskUsage ?? dashboard.osDiskUsage.usagePercent;
     const displayTotalGB = realtimeDiskTotalGB ?? dashboard.osDiskUsage.totalGB;
     const displayUsedGB = realtimeDiskUsedGB ?? dashboard.osDiskUsage.usedGB;
     const displayAvailableGB = realtimeDiskAvailableGB ?? dashboard.osDiskUsage.availableGB;
-    const displayRead = realtimeDiskRead ?? dashboard.diskIoThroughput.readMBps;
-    const displayWrite = realtimeDiskWrite ?? dashboard.diskIoThroughput.writeMBps;
+    // I/O 처리량: SSE 데이터 우선 사용 (0도 유효한 값이므로 null/undefined 체크만)
+    const displayRead = realtimeDiskRead !== null && realtimeDiskRead !== undefined 
+        ? realtimeDiskRead 
+        : dashboard.diskIoThroughput.readMBps;
+    const displayWrite = realtimeDiskWrite !== null && realtimeDiskWrite !== undefined 
+        ? realtimeDiskWrite 
+        : dashboard.diskIoThroughput.writeMBps;
 
     return (
         <div className="disk-page">
@@ -284,14 +369,14 @@ export default function DiskPage() {
                 <SummaryCard
                     label="Backend Fsync"
                     value={`${dashboard.backendFsync.fsyncRate.toFixed(1)}/s`}
-                    desc={dashboard.backendFsync.message}
+                    desc={`최근 15분 평균`}
                     status={dashboard.backendFsync.status === "warning" ? "warning" : "info"}
                 />
 
                 <SummaryCard
                     label="평균 Latency"
                     value={`${dashboard.diskLatency.maxLatency.toFixed(2)} ms`}
-                    desc={`읽기 ${dashboard.diskLatency.avgReadLatency} / 쓰기 ${dashboard.diskLatency.avgWriteLatency}`}
+                    desc={`최근 15분 평균`}
                     status={dashboard.diskLatency.status === "danger" ? "warning" : "info"}
                 />
             </div>
@@ -305,24 +390,24 @@ export default function DiskPage() {
                         series={[
                             {
                                 name: "사용률 (%)",
-                                data: realtimeDiskUsageHistory.length > 0
+                                data: sampledDiskUsageHistory.length > 0
                                     ? (() => {
-                                        const sampled = sampleLast60Seconds(realtimeDiskUsageHistory);
+                                        const sampled = sampleLast60Seconds(sampledDiskUsageHistory);
                                         return sampled.map(item => item.usagePercent);
                                     })()
-                                    : recent1h(dashboard.diskUsageChart24h.usagePercent)
+                                    : recent15m(dashboard.diskUsageChart24h.usagePercent)
                             },
                         ]}
                         categories={
-                            realtimeDiskUsageHistory.length > 0
+                            sampledDiskUsageHistory.length > 0
                                 ? (() => {
-                                    const sampled = sampleLast60Seconds(realtimeDiskUsageHistory);
+                                    const sampled = sampleLast60Seconds(sampledDiskUsageHistory);
                                     return sampled.map(item => {
                                         // HH:MM 형식으로 시간 표시 (최근 1분, 5초 간격 12개 데이터 포인트)
                                         return item.time.substring(0, 5);
                                     });
                                 })()
-                                : recent1h(dashboard.diskUsageChart24h.categories)
+                                : recent15m(dashboard.diskUsageChart24h.categories)
                         }
                         height={250}
                         colors={["#8E79FF"]}
@@ -362,8 +447,8 @@ export default function DiskPage() {
                                 x: {
                                     formatter: (val: any, opts: any) => {
                                         // 히스토리 데이터에서 time 속성 사용 (최근 1분)
-                                        if (realtimeDiskUsageHistory.length > 0 && opts.seriesIndex === 0) {
-                                            const sampled = sampleLast60Seconds(realtimeDiskUsageHistory);
+                                        if (sampledDiskUsageHistory.length > 0 && opts.seriesIndex === 0) {
+                                            const sampled = sampleLast60Seconds(sampledDiskUsageHistory);
                                             const dataPoint = sampled[opts.dataPointIndex];
                                             return dataPoint ? dataPoint.time : val;
                                         }
@@ -379,29 +464,29 @@ export default function DiskPage() {
                     <Chart
                         type="line"
                         series={[
-                            { 
-                                name: "읽기 (MB/s)", 
-                                data: realtimeDiskIoHistory.length > 0 
+                            {
+                                name: "읽기 (MB/s)",
+                                data: sampledDiskIoHistory.length > 0
                                     ? (() => {
-                                        const sampled = sampleLast60Seconds(realtimeDiskIoHistory);
+                                        const sampled = sampleLast60Seconds(sampledDiskIoHistory);
                                         return sampled.map(item => item.readMBps);
                                     })()
                                     : recent10m(dashboard.osDiskIoChart1h.readMBps).slice(-5)
                             },
-                            { 
-                                name: "쓰기 (MB/s)", 
-                                data: realtimeDiskIoHistory.length > 0
+                            {
+                                name: "쓰기 (MB/s)",
+                                data: sampledDiskIoHistory.length > 0
                                     ? (() => {
-                                        const sampled = sampleLast60Seconds(realtimeDiskIoHistory);
+                                        const sampled = sampleLast60Seconds(sampledDiskIoHistory);
                                         return sampled.map(item => item.writeMBps);
                                     })()
                                     : recent10m(dashboard.osDiskIoChart1h.writeMBps).slice(-5)
                             },
                         ]}
                         categories={
-                            realtimeDiskIoHistory.length > 0
+                            sampledDiskIoHistory.length > 0
                                 ? (() => {
-                                    const sampled = sampleLast60Seconds(realtimeDiskIoHistory);
+                                    const sampled = sampleLast60Seconds(sampledDiskIoHistory);
                                     return sampled.map(item => {
                                         // HH:MM 형식으로 시간 표시 (최근 1분, 5초 간격 12개 데이터 포인트)
                                         return item.time.substring(0, 5);
@@ -446,8 +531,8 @@ export default function DiskPage() {
                                 x: {
                                     formatter: (val: any, opts: any) => {
                                         // 히스토리 데이터에서 time 속성 사용 (전체 HH:MM:SS 표시, 최근 1분)
-                                        if (realtimeDiskIoHistory.length > 0 && opts.seriesIndex !== undefined) {
-                                            const sampled = sampleLast60Seconds(realtimeDiskIoHistory);
+                                        if (sampledDiskIoHistory.length > 0 && opts.seriesIndex !== undefined) {
+                                            const sampled = sampleLast60Seconds(sampledDiskIoHistory);
                                             const dataPoint = sampled[opts.dataPointIndex];
                                             return dataPoint ? dataPoint.time : val;
                                         }
@@ -460,20 +545,143 @@ export default function DiskPage() {
                 </WidgetCard>
 
 
-                {/* ===== 차트 3: IO Latency (최근 15분) ===== */}
-                <WidgetCard title="I/O Latency 추이 (최근 15분)" span={4}>
-                    <Chart
-                        type="line"
-                        series={[
-                            { name: "읽기(ms)", data: recent15m(dashboard.ioLatencyChart6h.readLatency) },
-                            { name: "쓰기(ms)", data: recent15m(dashboard.ioLatencyChart6h.writeLatency) },
-                        ]}
-                        categories={recent15m(dashboard.ioLatencyChart6h.categories)}
-                        height={250}
-                        colors={["#8E79FF", "#6FCF97"]}
-                        showLegend
-                        showGrid
-                    />
+                {/*/!* ===== 차트 3: IO Latency (최근 15분) ===== *!/*/}
+                {/*<WidgetCard title="I/O Latency 추이 (최근 15분)" span={4}>*/}
+                {/*    {(() => {*/}
+                {/*        // 데이터 존재 여부 확인*/}
+                {/*        const readLatency = dashboard?.ioLatencyChart6h?.readLatency || [];*/}
+                {/*        const writeLatency = dashboard?.ioLatencyChart6h?.writeLatency || [];*/}
+                {/*        const hasData = readLatency.some(val => val > 0) || writeLatency.some(val => val > 0);*/}
+
+                {/*        // 데이터가 없거나 모두 0인 경우 안내 메시지 표시*/}
+                {/*        if (!hasData) {*/}
+                {/*            return (*/}
+                {/*                <div style={{*/}
+                {/*                    height: '250px',*/}
+                {/*                    display: 'flex',*/}
+                {/*                    flexDirection: 'column',*/}
+                {/*                    justifyContent: 'center',*/}
+                {/*                    alignItems: 'center',*/}
+                {/*                    color: '#6B7280',*/}
+                {/*                    textAlign: 'center',*/}
+                {/*                    padding: '20px'*/}
+                {/*                }}>*/}
+                {/*                    <svg*/}
+                {/*                        style={{ width: '64px', height: '64px', marginBottom: '16px', opacity: 0.5 }}*/}
+                {/*                        fill="none"*/}
+                {/*                        stroke="currentColor"*/}
+                {/*                        viewBox="0 0 24 24"*/}
+                {/*                    >*/}
+                {/*                        <path*/}
+                {/*                            strokeLinecap="round"*/}
+                {/*                            strokeLinejoin="round"*/}
+                {/*                            strokeWidth={2}*/}
+                {/*                            d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"*/}
+                {/*                        />*/}
+                {/*                    </svg>*/}
+                {/*                    <div style={{ fontSize: '16px', fontWeight: '500', marginBottom: '8px', color: '#7B61FF' }}>*/}
+                {/*                        I/O Latency가 측정되지 않고 있습니다*/}
+                {/*                    </div>*/}
+                {/*                    <div style={{ fontSize: '14px', color: '#9CA3AF' }}>*/}
+                {/*                        현재 디스크 읽기/쓰기 지연이 매우 낮거나, <br/>*/}
+                {/*                        I/O 활동이 최소화되어 있습니다*/}
+                {/*                    </div>*/}
+                {/*                </div>*/}
+                {/*            );*/}
+                {/*        }*/}
+
+                {/*        // 데이터가 있는 경우 차트 표시*/}
+                {/*        return (*/}
+                {/*            <Chart*/}
+                {/*                type="line"*/}
+                {/*                series={[*/}
+                {/*                    { name: "읽기(ms)", data: recent15m(readLatency) },*/}
+                {/*                    { name: "쓰기(ms)", data: recent15m(writeLatency) },*/}
+                {/*                ]}*/}
+                {/*                categories={recent15m(dashboard.ioLatencyChart6h.categories)}*/}
+                {/*                height={250}*/}
+                {/*                colors={["#8E79FF", "#6FCF97"]}*/}
+                {/*                showLegend*/}
+                {/*                showGrid*/}
+                {/*                xaxisOptions={{*/}
+                {/*                    title: { text: "시간", style: { fontSize: "12px", color: "#6B7280" } },*/}
+                {/*                    labels: {*/}
+                {/*                        rotate: 0,*/}
+                {/*                        style: { fontSize: "11px", colors: "#6B7280" },*/}
+                {/*                    },*/}
+                {/*                }}*/}
+                {/*            />*/}
+                {/*        );*/}
+                {/*    })()}*/}
+                {/*</WidgetCard>*/}
+                {/* ===== 차트 8: Disk I/O Throughput (최근 15분) ===== */}
+                <WidgetCard title="Disk I/O Throughput (최근 15분)" span={4}>
+                    {(() => {
+                        // 데이터 존재 여부 확인
+                        const readMBps = dashboard?.throughputChart24h?.readMBps || [];
+                        const writeMBps = dashboard?.throughputChart24h?.writeMBps || [];
+                        const hasData = readMBps.some(val => val > 0) || writeMBps.some(val => val > 0);
+
+                        // 데이터가 없거나 모두 0인 경우 안내 메시지 표시
+                        if (!hasData) {
+                            return (
+                                <div style={{
+                                    height: '250px',
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    justifyContent: 'center',
+                                    alignItems: 'center',
+                                    color: '#6B7280',
+                                    textAlign: 'center',
+                                    padding: '20px'
+                                }}>
+                                    <svg
+                                        style={{ width: '64px', height: '64px', marginBottom: '16px', opacity: 0.5 }}
+                                        fill="none"
+                                        stroke="currentColor"
+                                        viewBox="0 0 24 24"
+                                    >
+                                        <path
+                                            strokeLinecap="round"
+                                            strokeLinejoin="round"
+                                            strokeWidth={2}
+                                            d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                                        />
+                                    </svg>
+                                    <div style={{ fontSize: '16px', fontWeight: '500', marginBottom: '8px', color: '#7B61FF' }}>
+                                        디스크 I/O 처리량이 발생하지 않고 있습니다
+                                    </div>
+                                    <div style={{ fontSize: '14px', color: '#9CA3AF' }}>
+                                        현재 디스크 읽기/쓰기 활동이 매우 낮거나, <br/>
+                                        모든 데이터가 메모리 캐시에서 처리되고 있습니다
+                                    </div>
+                                </div>
+                            );
+                        }
+
+                        // 데이터가 있는 경우 차트 표시
+                        return (
+                            <Chart
+                                type="line"
+                                series={[
+                                    { name: "읽기(MB/s)", data: recent15m(readMBps) },
+                                    { name: "쓰기(MB/s)", data: recent15m(writeMBps) },
+                                ]}
+                                categories={recent15m(dashboard.throughputChart24h.categories)}
+                                height={250}
+                                colors={["#8E79FF", "#6FCF97"]}
+                                showLegend
+                                showGrid
+                                xaxisOptions={{
+                                    title: { text: "시간", style: { fontSize: "12px", color: "#6B7280" } },
+                                    labels: {
+                                        rotate: 0,
+                                        style: { fontSize: "11px", colors: "#6B7280" },
+                                    },
+                                }}
+                            />
+                        );
+                    })()}
                 </WidgetCard>
             </ChartGridLayout>
 
@@ -481,97 +689,166 @@ export default function DiskPage() {
             <ChartGridLayout>
 
 
-                {/* ===== 차트 5: Backend Fsync (최근 1시간) ===== */}
-                <WidgetCard title="Backend Fsync Rate (최근 1시간)" span={4}>
-                    <Chart
-                        type="line"
-                        series={[{ name: "Fsync/s", data: recent1h(dashboard.backendFsyncChart24h.fsyncRate) }]}
-                        categories={recent1h(dashboard.backendFsyncChart24h.categories)}
-                        height={250}
-                        colors={["#FEA29B"]}
-                        showGrid
-                    />
+                {/* ===== 차트 5: Backend Fsync (최근 15분) ===== */}
+                <WidgetCard title="Backend Fsync Rate (최근 15분)" span={4}>
+                    {(() => {
+                        // 데이터 존재 여부 확인
+                        const fsyncRate = dashboard?.backendFsyncChart24h?.fsyncRate || [];
+                        const hasData = fsyncRate.some(val => val > 0);
+
+                        // 데이터가 없거나 모두 0인 경우 안내 메시지 표시
+                        if (!hasData) {
+                            return (
+                                <div style={{
+                                    height: '250px',
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    justifyContent: 'center',
+                                    alignItems: 'center',
+                                    color: '#6B7280',
+                                    textAlign: 'center',
+                                    padding: '20px'
+                                }}>
+                                    <svg
+                                        style={{ width: '64px', height: '64px', marginBottom: '16px', opacity: 0.5 }}
+                                        fill="none"
+                                        stroke="currentColor"
+                                        viewBox="0 0 24 24"
+                                    >
+                                        <path
+                                            strokeLinecap="round"
+                                            strokeLinejoin="round"
+                                            strokeWidth={2}
+                                            d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                                        />
+                                    </svg>
+                                    <div style={{ fontSize: '16px', fontWeight: '500', marginBottom: '8px', color: '#7B61FF' }}>
+                                        Backend Fsync 활동이 발생하지 않고 있습니다
+                                    </div>
+                                    <div style={{ fontSize: '14px', color: '#9CA3AF' }}>
+                                        현재 데이터베이스가 정상적으로 운영되고 있으며, <br/>
+                                        백엔드 프로세스의 동기화 작업이 최소화되고 있습니다
+                                    </div>
+                                </div>
+                            );
+                        }
+
+                        // 데이터가 있는 경우 차트 표시
+                        return (
+                            <Chart
+                                type="line"
+                                series={[{ name: "Fsync/s", data: recent15m(fsyncRate) }]}
+                                categories={recent15m(dashboard.backendFsyncChart24h.categories)}
+                                height={250}
+                                colors={["#FEA29B"]}
+                                showGrid
+                                xaxisOptions={{
+                                    title: { text: "시간", style: { fontSize: "12px", color: "#6B7280" } },
+                                    labels: {
+                                        rotate: 0,
+                                        style: { fontSize: "11px", colors: "#6B7280" },
+                                    },
+                                }}
+                            />
+                        );
+                    })()}
                 </WidgetCard>
 
-                {/* ===== 차트 6: Checkpoint vs Backend Write ===== */}
-                <WidgetCard title="Checkpoint vs Backend Write (최근 24시간)" span={4}>
-                    <Chart
-                        type="line"
-                        series={[
-                            { name: "Checkpoint", data: recent1h(dashboard.checkpointChart24h.checkpointBuffers) },
-                            { name: "Clean", data: recent1h(dashboard.checkpointChart24h.cleanBuffers) },
-                            { name: "Backend", data: recent1h(dashboard.checkpointChart24h.backendBuffers) },
-                        ]}
-                        categories={recent1h(dashboard.checkpointChart24h.categories)}
-                        height={250}
-                        colors={["#8E79FF", "#6FCF97", "#FEA29B"]}
-                        showLegend
-                        showGrid
-                        xaxisOptions={{
-                            title: {
-                                text: "시간",
-                                style: { fontSize: "12px", color: "#6B7280" },
-                            },
-                            labels: {
-                                rotate: 0,
-                                style: { fontSize: "11px", colors: "#6B7280" },
-                            },
-                        }}
-                        yaxisOptions={{
-                            title: {
-                                text: "버퍼 수",
-                                style: { fontSize: "12px", color: "#6B7280" },
-                            },
-                            labels: { formatter: (val: number) => `${val.toLocaleString()}` },
-                        }}
-                        customOptions={{
-                            xaxis: {
-                                tickAmount: 6,
-                                labels: {
-                                    showDuplicates: false,
-                                },
-                            },
-                        }}
-                    />
+                {/* ===== 차트 6: Checkpoint vs Backend Write (최근 15분) ===== */}
+                <WidgetCard title="Checkpoint vs Backend Write (최근 15분)" span={4}>
+                    {(() => {
+                        // 데이터 존재 여부 확인
+                        const checkpointBuffers = dashboard?.checkpointChart24h?.checkpointBuffers || [];
+                        const cleanBuffers = dashboard?.checkpointChart24h?.cleanBuffers || [];
+                        const backendBuffers = dashboard?.checkpointChart24h?.backendBuffers || [];
+                        const hasData = checkpointBuffers.some(val => val > 0) ||
+                            cleanBuffers.some(val => val > 0) ||
+                            backendBuffers.some(val => val > 0);
+
+                        // 데이터가 없거나 모두 0인 경우 안내 메시지 표시
+                        if (!hasData) {
+                            return (
+                                <div style={{
+                                    height: '250px',
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    justifyContent: 'center',
+                                    alignItems: 'center',
+                                    color: '#6B7280',
+                                    textAlign: 'center',
+                                    padding: '20px'
+                                }}>
+                                    <svg
+                                        style={{ width: '64px', height: '64px', marginBottom: '16px', opacity: 0.5 }}
+                                        fill="none"
+                                        stroke="currentColor"
+                                        viewBox="0 0 24 24"
+                                    >
+                                        <path
+                                            strokeLinecap="round"
+                                            strokeLinejoin="round"
+                                            strokeWidth={2}
+                                            d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                                        />
+                                    </svg>
+                                    <div style={{ fontSize: '16px', fontWeight: '500', marginBottom: '8px', color: '#7B61FF' }}>
+                                        버퍼 쓰기 활동이 발생하지 않고 있습니다
+                                    </div>
+                                    <div style={{ fontSize: '14px', color: '#9CA3AF' }}>
+                                        현재 데이터베이스가 안정적으로 운영되고 있으며, <br/>
+                                        Checkpoint와 Backend 버퍼 쓰기가 최소화되고 있습니다
+                                    </div>
+                                </div>
+                            );
+                        }
+
+                        // 데이터가 있는 경우 차트 표시
+                        return (
+                            <Chart
+                                type="line"
+                                series={[
+                                    { name: "Checkpoint", data: recent15m(checkpointBuffers) },
+                                    { name: "Clean", data: recent15m(cleanBuffers) },
+                                    { name: "Backend", data: recent15m(backendBuffers) },
+                                ]}
+                                categories={recent15m(dashboard.checkpointChart24h.categories)}
+                                height={250}
+                                colors={["#8E79FF", "#6FCF97", "#FEA29B"]}
+                                showLegend
+                                showGrid
+                                xaxisOptions={{
+                                    title: {
+                                        text: "시간",
+                                        style: { fontSize: "12px", color: "#6B7280" },
+                                    },
+                                    labels: {
+                                        rotate: 0,
+                                        style: { fontSize: "11px", colors: "#6B7280" },
+                                    },
+                                }}
+                                yaxisOptions={{
+                                    title: {
+                                        text: "버퍼 수",
+                                        style: { fontSize: "12px", color: "#6B7280" },
+                                    },
+                                    labels: { formatter: (val: number) => `${val.toLocaleString()}` },
+                                }}
+                                customOptions={{
+                                    xaxis: {
+                                        tickAmount: 6,
+                                        labels: {
+                                            showDuplicates: false,
+                                        },
+                                    },
+                                }}
+                            />
+                        );
+                    })()}
                 </WidgetCard>
 
-                {/* ===== 차트 8: Disk I/O Throughput ===== */}
-                <WidgetCard title="Disk I/O Throughput (최근 1시간)" span={4}>
-                    <Chart
-                        type="line"
-                        series={[
-                            { name: "읽기(MB/s)", data: recent1h(dashboard.throughputChart24h.readMBps) },
-                            { name: "쓰기(MB/s)", data: recent1h(dashboard.throughputChart24h.writeMBps) },
-                        ]}
-                        categories={recent1h(dashboard.throughputChart24h.categories)}
-                        height={250}
-                        colors={["#8E79FF", "#6FCF97"]}
-                        showLegend
-                        showGrid
-                    />
-                </WidgetCard>
+
             </ChartGridLayout>
 
-            {/* ===== 마지막 행 ===== */}
-            <ChartGridLayout>
-                {/* ===== 차트 7: Physical vs Cache Read ===== */}
-                <WidgetCard title="Physical vs Cache Read (최근 24시간)" span={8}>
-                    <Chart
-                        type="line"
-                        series={[
-                            { name: "물리 읽기", data: recent1h(dashboard.physicalCacheChart24h.physicalReads) },
-                            { name: "캐시 히트", data: recent1h(dashboard.physicalCacheChart24h.cacheHits) },
-                        ]}
-                        categories={recent1h(dashboard.physicalCacheChart24h.categories)}
-                        height={250}
-                        colors={["#FEA29B", "#8E79FF"]}
-                        showLegend
-                        showGrid
-                    />
-                </WidgetCard>
-
-
-            </ChartGridLayout>
         </div>
     );
 }

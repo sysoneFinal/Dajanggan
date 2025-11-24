@@ -28,14 +28,23 @@ interface LowCacheHitItem {
     databaseName: string;
 }
 
+// API 응답 타입
+interface DiskIoListResponse {
+    lowCacheHitList: LowCacheHitItem[];
+    totalCount: number;
+    page: number;
+    size: number;
+    totalPages: number;
+}
+
 /** 낮은 Cache Hit 리스트 API 요청 */
 async function fetchLowCacheHitList(instanceId: number, timeRange: string, statusFilter: string) {
-    const params: any = { instanceId, timeRange };
+    const params: any = { instanceId, timeRange, page: 0, size: 10000 }; // 충분히 큰 size로 전체 조회
     if (statusFilter) {
         params.status = statusFilter;
     }
-    const response = await apiClient.get<LowCacheHitItem[]>("/system/diskio/list/low-cache-hit", { params });
-    return response.data;
+    const response = await apiClient.get<DiskIoListResponse>("/system/diskio/list/low-cache-hit", { params });
+    return response.data.lowCacheHitList || []; // lowCacheHitList 필드에서 데이터 추출
 }
 
 export default function DiskListPage() {
