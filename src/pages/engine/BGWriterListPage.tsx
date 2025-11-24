@@ -278,15 +278,12 @@ export default function BGWriterListPage() {
                         "최근 24시간",
                         "최근 7일",
                     ]}
-                    selectedValues={selectedTimeRange}
+                    value={selectedTimeRange}
+                    multi={false}
                     onChange={(values) => {
-                        // 시간 선택은 단일 선택만 허용 - 마지막 선택값만 유지
-                        if (values.length > 0) {
-                            const lastSelected = values[values.length - 1];
-                            setSelectedTimeRange([lastSelected]);
-                        } else {
-                            setSelectedTimeRange([]);
-                        }
+                        // 시간 선택은 단일 선택만 허용
+                        const value = Array.isArray(values) ? values[0] : values;
+                        setSelectedTimeRange(value ? [value] : []);
                     }}
                 />
                 <MultiSelectDropdown
@@ -296,8 +293,8 @@ export default function BGWriterListPage() {
                         "주의",
                         "위험",
                     ]}
-                    selectedValues={selectedStatus}
-                    onChange={(values) => setSelectedStatus(values)}
+                    value={selectedStatus}
+                    onChange={(values) => setSelectedStatus(Array.isArray(values) ? values : [values])}
                 />
                 <CsvButton tooltip="CSV 파일 저장" onClick={handleExportCSV} />
             </section>

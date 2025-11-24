@@ -39,6 +39,9 @@ interface CPUData {
 interface CPUListResponse {
     data: CPUData[];
     total: number;
+    page: number;
+    size: number;
+    totalPages: number;
 }
 
 export default function CpuListPage() {
@@ -48,9 +51,11 @@ export default function CpuListPage() {
     const [error, setError] = useState<string | null>(null);
     const [sorting, setSorting] = useState<SortingState>([]);
     const [currentPage, setCurrentPage] = useState(1);
-    const [selectedTimeRange, setSelectedTimeRange] = useState<string[]>(["최근 7일"]);
+    const [selectedTimeRange, setSelectedTimeRange] = useState<string[]>(["최근 24시간"]);
     const [selectedStatus, setSelectedStatus] = useState<string[]>([]);
-    const pageSize = 10;
+    const [totalPages, setTotalPages] = useState(1);
+    const [totalCount, setTotalCount] = useState(0);
+    const pageSize = 20;
 
     // 시간 범위 매핑 (한글 -> API 파라미터)
     const timeRangeMap: { [key: string]: string } = {
@@ -82,16 +87,20 @@ export default function CpuListPage() {
                 ? selectedStatus.join(",")
                 : undefined;
 
-            // apiClient 사용하여 API 호출 - instanceId 추가
+            // apiClient 사용하여 API 호출 - instanceId, 페이징 파라미터 추가
             const response = await apiClient.get<CPUListResponse>('/system/cpu/list', {
                 params: {
                     instanceId: selectedInstance.instanceId,
                     timeRange,
                     status: statusParam,
+                    page: currentPage - 1, // 0부터 시작
+                    size: pageSize,
                 },
             });
 
             setData(response.data.data || []);
+            setTotalPages(response.data.totalPages || 1);
+            setTotalCount(response.data.total || 0);
         } catch (err) {
             console.error("CPU 리스트 조회 오류:", err);
             setError(err instanceof Error ? err.message : "데이터 조회 중 오류가 발생했습니다.");
@@ -110,8 +119,12 @@ export default function CpuListPage() {
 
     // 초기 로드 및 필터 변경 시 데이터 조회
     useEffect(() => {
-        fetchData();
+        setCurrentPage(1); // 필터 변경 시 첫 페이지로 리셋
     }, [selectedTimeRange, selectedStatus, selectedInstance]);
+
+    useEffect(() => {
+        fetchData();
+    }, [selectedTimeRange, selectedStatus, selectedInstance, currentPage]);
 
     const columns = useMemo<ColumnDef<CPUData>[]>(
         () => [
@@ -123,42 +136,66 @@ export default function CpuListPage() {
             {
                 accessorKey: "userCPU",
                 header: "User CPU(%)",
-                cell: (info) => info.getValue(),
+                cell: (info) => {
+                    const value = info.getValue() as number;
+                    return typeof value === 'number' ? value.toFixed(2) : value;
+                },
             },
             {
                 accessorKey: "systemCPU",
                 header: "System CPU(%)",
-                cell: (info) => info.getValue(),
+                cell: (info) => {
+                    const value = info.getValue() as number;
+                    return typeof value === 'number' ? value.toFixed(2) : value;
+                },
             },
             {
                 accessorKey: "idleCPU",
                 header: "Idle CPU(%)",
-                cell: (info) => info.getValue(),
+                cell: (info) => {
+                    const value = info.getValue() as number;
+                    return typeof value === 'number' ? value.toFixed(2) : value;
+                },
             },
             {
                 accessorKey: "ioWait",
                 header: "I/O Wait(%)",
-                cell: (info) => info.getValue(),
+                cell: (info) => {
+                    const value = info.getValue() as number;
+                    return typeof value === 'number' ? value.toFixed(2) : value;
+                },
             },
             {
                 accessorKey: "stealCPU",
                 header: "Steal CPU(%)",
-                cell: (info) => info.getValue(),
+                cell: (info) => {
+                    const value = info.getValue() as number;
+                    return typeof value === 'number' ? value.toFixed(2) : value;
+                },
             },
             {
                 accessorKey: "loadAvg1",
                 header: "Load Avg (1m)",
-                cell: (info) => info.getValue(),
+                cell: (info) => {
+                    const value = info.getValue() as number;
+                    return typeof value === 'number' ? value.toFixed(2) : value;
+                },
             },
             {
                 accessorKey: "loadAvg5",
                 header: "Load Avg (5m)",
-                cell: (info) => info.getValue(),
+                cell: (info) => {
+                    const value = info.getValue() as number;
+                    return typeof value === 'number' ? value.toFixed(2) : value;
+                },
             },
             {
                 accessorKey: "loadAvg15",
                 header: "Load Avg (15m)",
-                cell: (info) => info.getValue(),
+                cell: (info) => {
+                    const value = info.getValue() as number;
+                    return typeof value === 'number' ? value.toFixed(2) : value;
+                },
             },
             {
                 accessorKey: "activeSessions",
@@ -178,7 +215,10 @@ export default function CpuListPage() {
             {
                 accessorKey: "workerTime",
                 header: "병렬 워커 시간(ms)",
-                cell: (info) => info.getValue(),
+                cell: (info) => {
+                    const value = info.getValue() as number;
+                    return typeof value === 'number' ? value.toFixed(2) : value;
+                },
             },
             {
                 accessorKey: "contextSwitches",
@@ -204,7 +244,7 @@ export default function CpuListPage() {
                                     />
                                 </div>
                             </div>
-                            <span className="progress-value">{value}%</span>
+                            <span className="progress-value">{typeof value === 'number' ? value.toFixed(2) : value}%</span>
                         </div>
                     );
                 },
@@ -249,10 +289,9 @@ export default function CpuListPage() {
         getSortedRowModel: getSortedRowModel(),
         getFilteredRowModel: getFilteredRowModel(),
         getPaginationRowModel: getPaginationRowModel(),
-        manualPagination: false,
+        manualPagination: true, // 백엔드 페이징 사용
+        pageCount: totalPages,
     });
-
-    const totalPages = Math.ceil(data.length / pageSize);
 
     const handlePageChange = (page: number) => {
         setCurrentPage(page);
@@ -269,19 +308,19 @@ export default function CpuListPage() {
         ];
         const csvData = data.map((row) => [
             row.time,
-            row.totalCPU,
-            row.userCPU,
-            row.systemCPU,
-            row.idleCPU,
-            row.ioWait,
-            row.stealCPU,
-            row.loadAvg1,
-            row.loadAvg5,
-            row.loadAvg15,
+            typeof row.totalCPU === 'number' ? row.totalCPU.toFixed(2) : row.totalCPU,
+            typeof row.userCPU === 'number' ? row.userCPU.toFixed(2) : row.userCPU,
+            typeof row.systemCPU === 'number' ? row.systemCPU.toFixed(2) : row.systemCPU,
+            typeof row.idleCPU === 'number' ? row.idleCPU.toFixed(2) : row.idleCPU,
+            typeof row.ioWait === 'number' ? row.ioWait.toFixed(2) : row.ioWait,
+            typeof row.stealCPU === 'number' ? row.stealCPU.toFixed(2) : row.stealCPU,
+            typeof row.loadAvg1 === 'number' ? row.loadAvg1.toFixed(2) : row.loadAvg1,
+            typeof row.loadAvg5 === 'number' ? row.loadAvg5.toFixed(2) : row.loadAvg5,
+            typeof row.loadAvg15 === 'number' ? row.loadAvg15.toFixed(2) : row.loadAvg15,
             row.activeSessions,
             row.parallelWorkers,
             row.waitingSessions,
-            row.workerTime,
+            typeof row.workerTime === 'number' ? row.workerTime.toFixed(2) : row.workerTime,
             row.contextSwitches,
             row.status,
         ]);
@@ -406,6 +445,11 @@ export default function CpuListPage() {
                     totalPages={totalPages}
                     onPageChange={handlePageChange}
                 />
+            )}
+            {totalCount > 0 && (
+                <div style={{ textAlign: 'center', marginTop: '10px', color: '#666' }}>
+                    총 {totalCount.toLocaleString()}개 중 {((currentPage - 1) * pageSize + 1).toLocaleString()} - {Math.min(currentPage * pageSize, totalCount).toLocaleString()}개 표시
+                </div>
             )}
         </main>
     );
