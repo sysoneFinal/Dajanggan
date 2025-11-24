@@ -196,7 +196,7 @@ const Header = ({ breadcrumb }: HeaderProps) => {
           "database",
           !selectedInstance
         )}
-        {renderDropdown(["1m", "5m", "10m", "30m"], refreshInterval, "interval")}
+        {renderDropdown(["30s", "1m", "5m", "10m", "30m"], refreshInterval, "interval")}
         {/*  overview 페이지에서만 보이게끔   */}
         {isOverviewPage && (
           <div className="header-controls">

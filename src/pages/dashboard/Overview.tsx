@@ -42,7 +42,7 @@ export default function OverviewPage() {
         params: { instanceId: selectedInstance.instanceId },
       });
       
-      console.log('API 호출 완료:', new Date().toLocaleTimeString(), res.data);
+      console.log('API 호출 완료:', new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', hour12: false }), res.data);
       return res.data;
     },
     refetchInterval: isEditing ? false : intervalToMs(refreshInterval), // 편집 모드면 새로고침 중단
@@ -101,9 +101,28 @@ export default function OverviewPage() {
   /** === 테마 변경 === */
   const handleThemeChange = (id: string) => {
     const theme = defaultThemes.themes.find((t) => t.id === id);
+    const isCurrentCustom = themeId === "custom";
+    const isNewCustom = id === "custom";
+    const isCurrentTheme = themeId === "card_7_layout" || themeId === "card_9_layout";
+    const isNewTheme = id === "card_7_layout" || id === "card_9_layout";
+
+    // 테마 변경 시 (테마 ↔ 올커스텀, 테마 ↔ 테마) 컨펌 다이얼로그 표시
+    if (
+      (isCurrentCustom && isNewTheme) || 
+      (isCurrentTheme && isNewCustom) ||
+      (isCurrentTheme && isNewTheme && themeId !== id)
+    ) {
+      const confirmed = window.confirm(
+        "테마를 변경하면 현재 대시보드의 모든 위젯이 초기화됩니다.\n계속하시겠습니까?"
+      );
+      if (!confirmed) return;
+    }
+
     let selectedLayout: DashboardLayout[] = layout;
 
     if (id === "custom") {
+      // 올커스텀으로 전환 시 빈 화면으로 시작
+      selectedLayout = [];
       setIsEditing(true);
     } else if (id === "card_7_layout" || id === "card_9_layout") {
       selectedLayout = (theme?.layout as DashboardLayout[]) ?? [];

@@ -27,7 +27,7 @@ function formatTimestamp(ts: string): string {
   // "2025-11-15T00:10:00" -> "00:10"
   try {
     const date = new Date(ts);
-    return date.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
+    return date.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', hour12: false });
   } catch {
     return ts;
   }
