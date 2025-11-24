@@ -19,6 +19,7 @@ interface ExecutionResult {
   executionTimeMs: number | null;
   planningTimeMs: number | null;
   rowsReturned?: number | null;
+  ioBlocks?: number | null;
 }
 
 export default function QueryTuner() {
@@ -82,7 +83,8 @@ export default function QueryTuner() {
         setExecutionResult({
           executionTimeMs: data.explainResult.executionTimeMs,
           planningTimeMs: data.explainResult.planningTimeMs,
-          rowsReturned: data.explainResult.rowsReturned
+          rowsReturned: data.explainResult.rowsReturned,
+          ioBlocks: data.explainResult.ioBlocks
         });
         
         // 실행 모드 업데이트 (서버 응답 기준)
@@ -166,11 +168,23 @@ export default function QueryTuner() {
 
   const performance = calculatePerformance();
 
-  // I/O 블록 수 추출 (explainPlan에서 파싱)
+  // I/O 블록 수 추출 (Buffers에서 파싱)
   const extractIOBlocks = (plan: string): number => {
-    // "blocks=1234" 형태 찾기
-    const match = plan.match(/blocks[=\s]+(\d+)/i);
-    return match ? parseInt(match[1]) : 0;
+    // PostgreSQL EXPLAIN (ANALYZE, BUFFERS) 결과 파싱
+    // "Buffers: shared hit=123 read=45 written=10" 형태
+    let total = 0;
+    
+    const sharedHitMatch = plan.match(/shared\s+hit=(\d+)/i);
+    const sharedReadMatch = plan.match(/shared\s+read=(\d+)/i);
+    const sharedWrittenMatch = plan.match(/shared\s+written=(\d+)/i);
+    const sharedDirtiedMatch = plan.match(/shared\s+dirtied=(\d+)/i);
+    
+    if (sharedHitMatch) total += parseInt(sharedHitMatch[1]);
+    if (sharedReadMatch) total += parseInt(sharedReadMatch[1]);
+    if (sharedWrittenMatch) total += parseInt(sharedWrittenMatch[1]);
+    if (sharedDirtiedMatch) total += parseInt(sharedDirtiedMatch[1]);
+    
+    return total;
   };
 
   // 버퍼 히트율 계산
@@ -274,7 +288,7 @@ export default function QueryTuner() {
                 <div className="qt-metric">
                   <div className="qt-metric-label">I/O 읽기</div>
                   <div className="qt-metric-value">
-                    {extractIOBlocks(explainPlan).toLocaleString()}
+                    {(executionResult.ioBlocks ?? extractIOBlocks(explainPlan)).toLocaleString()}
                     <span className="qt-metric-unit">blocks</span>
                   </div>
                 </div>

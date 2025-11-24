@@ -195,21 +195,6 @@ export default function QueryModal({ open, onClose, detail }: Props) {
                   </div>
                 </div>
 
-                <div className="query-modal__cpu-usage">
-                  <div className="query-modal__cpu-label">CPU 사용량</div>
-                  <div className="query-modal__cpu-bar-wrapper">
-                    <div className="query-modal__cpu-bar">
-                      <div
-                        className="query-modal__cpu-bar-fill"
-                        style={{ width: `${detail.cpuUsagePercent}%` }}
-                      />
-                    </div>
-                    <div className="query-modal__cpu-percent">
-                      {detail.cpuUsagePercent.toFixed(1)}%
-                    </div>
-                  </div>
-                </div>
-
                 <div className="query-modal__sql-section">
                   <h4 className="query-modal__sql-title">SQL 쿼리</h4>
                   <pre className="query-modal__sql-box">{detail.sqlQuery}</pre>
