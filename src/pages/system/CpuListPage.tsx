@@ -39,6 +39,9 @@ interface CPUData {
 interface CPUListResponse {
     data: CPUData[];
     total: number;
+    page: number;
+    size: number;
+    totalPages: number;
 }
 
 export default function CpuListPage() {
@@ -48,9 +51,11 @@ export default function CpuListPage() {
     const [error, setError] = useState<string | null>(null);
     const [sorting, setSorting] = useState<SortingState>([]);
     const [currentPage, setCurrentPage] = useState(1);
-    const [selectedTimeRange, setSelectedTimeRange] = useState<string[]>(["최근 7일"]);
+    const [selectedTimeRange, setSelectedTimeRange] = useState<string[]>(["최근 24시간"]);
     const [selectedStatus, setSelectedStatus] = useState<string[]>([]);
-    const pageSize = 10;
+    const [totalPages, setTotalPages] = useState(1);
+    const [totalCount, setTotalCount] = useState(0);
+    const pageSize = 20;
 
     // 시간 범위 매핑 (한글 -> API 파라미터)
     const timeRangeMap: { [key: string]: string } = {
@@ -82,21 +87,20 @@ export default function CpuListPage() {
                 ? selectedStatus.join(",")
                 : undefined;
 
-            // apiClient 사용하여 API 호출 - instanceId 추가
+            // apiClient 사용하여 API 호출 - instanceId, 페이징 파라미터 추가
             const response = await apiClient.get<CPUListResponse>('/system/cpu/list', {
                 params: {
                     instanceId: selectedInstance.instanceId,
                     timeRange,
                     status: statusParam,
+                    page: currentPage - 1, // 0부터 시작
+                    size: pageSize,
                 },
             });
 
-            // 최신 데이터가 먼저 오도록 역순 정렬
-            const sortedData = (response.data.data || []).sort((a, b) => {
-                // time 필드를 기준으로 역순 정렬 (최신이 먼저)
-                return new Date(b.time).getTime() - new Date(a.time).getTime();
-            });
-            setData(sortedData);
+            setData(response.data.data || []);
+            setTotalPages(response.data.totalPages || 1);
+            setTotalCount(response.data.total || 0);
         } catch (err) {
             console.error("CPU 리스트 조회 오류:", err);
             setError(err instanceof Error ? err.message : "데이터 조회 중 오류가 발생했습니다.");
@@ -115,8 +119,12 @@ export default function CpuListPage() {
 
     // 초기 로드 및 필터 변경 시 데이터 조회
     useEffect(() => {
-        fetchData();
+        setCurrentPage(1); // 필터 변경 시 첫 페이지로 리셋
     }, [selectedTimeRange, selectedStatus, selectedInstance]);
+
+    useEffect(() => {
+        fetchData();
+    }, [selectedTimeRange, selectedStatus, selectedInstance, currentPage]);
 
     const columns = useMemo<ColumnDef<CPUData>[]>(
         () => [
@@ -281,10 +289,9 @@ export default function CpuListPage() {
         getSortedRowModel: getSortedRowModel(),
         getFilteredRowModel: getFilteredRowModel(),
         getPaginationRowModel: getPaginationRowModel(),
-        manualPagination: false,
+        manualPagination: true, // 백엔드 페이징 사용
+        pageCount: totalPages,
     });
-
-    const totalPages = Math.ceil(data.length / pageSize);
 
     const handlePageChange = (page: number) => {
         setCurrentPage(page);
@@ -438,6 +445,11 @@ export default function CpuListPage() {
                     totalPages={totalPages}
                     onPageChange={handlePageChange}
                 />
+            )}
+            {totalCount > 0 && (
+                <div style={{ textAlign: 'center', marginTop: '10px', color: '#666' }}>
+                    총 {totalCount.toLocaleString()}개 중 {((currentPage - 1) * pageSize + 1).toLocaleString()} - {Math.min(currentPage * pageSize, totalCount).toLocaleString()}개 표시
+                </div>
             )}
         </main>
     );
