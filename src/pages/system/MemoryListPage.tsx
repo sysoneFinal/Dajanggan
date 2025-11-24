@@ -51,16 +51,14 @@ async function fetchLowCacheHitList(instanceId: number, timeRange: string, statu
 export default function MemoryListPage() {
     const { selectedInstance } = useInstanceContext();
     const [timeRange, setTimeRange] = useState("24h");
-    const [selectedType, setSelectedType] = useState<string[]>([]);
     const [selectedStatus, setSelectedStatus] = useState<string[]>([]);
 
-    const typeFilter = selectedType.length > 0 ? selectedType.join(",") : "";
     const statusFilter = selectedStatus.length > 0 ? selectedStatus.join(",") : "";
 
-    // 낮은 캐시 히트율 리스트 조회
+    // 낮은 캐시 히트율 리스트 조회 (데이터베이스 레벨)
     const { data: lowCacheHitData, isLoading: isLoadingLowCacheHit, isError: isErrorLowCacheHit } = useQuery({
-        queryKey: ["memoryLowCacheHit", selectedInstance?.instanceId, timeRange, statusFilter, typeFilter],
-        queryFn: () => fetchLowCacheHitList(selectedInstance!.instanceId, timeRange, statusFilter, typeFilter),
+        queryKey: ["memoryLowCacheHit", selectedInstance?.instanceId, timeRange, statusFilter],
+        queryFn: () => fetchLowCacheHitList(selectedInstance!.instanceId, timeRange, statusFilter, ""), // typeFilter는 무시됨
         retry: 1,
         refetchInterval: 60000,
         enabled: !!selectedInstance,
@@ -81,7 +79,10 @@ export default function MemoryListPage() {
             {
                 accessorKey: "tableName",
                 header: "테이블명",
-                cell: (info) => info.getValue(),
+                cell: (info) => {
+                    const value = info.getValue() as string | null;
+                    return value || "-"; // 데이터베이스 레벨이므로 "-" 표시
+                },
             },
             {
                 accessorKey: "databaseName",
@@ -228,15 +229,7 @@ export default function MemoryListPage() {
                         }
                     }}
                 />
-                <MultiSelectDropdown
-                    label="타입"
-                    options={["table", "index"]}
-                    value={selectedType}
-                    onChange={(values) => {
-                        const valuesArray = Array.isArray(values) ? values : [values];
-                        setSelectedType(valuesArray);
-                    }}
-                />
+                {/* 타입 필터 제거 - 데이터베이스 레벨이므로 불필요 */}
                 <MultiSelectDropdown
                     label="상태"
                     options={[

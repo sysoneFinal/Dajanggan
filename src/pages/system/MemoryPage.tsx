@@ -7,7 +7,7 @@ import apiClient from "../../api/apiClient";
 import { useQuery } from "@tanstack/react-query";
 import { useInstanceContext } from "../../context/InstanceContext";
 import { useOsMetricSse, type RealtimeOsMetrics, useRealtimeMemoryHistory, useRealtimeMemoryTrendHistory, useRealtimeSwapTrendHistory } from "../../context/OsMetricSseContext";
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useMemo } from "react";
 
 /**
  * 시간 문자열(HH:MM:SS)을 초 단위로 변환
@@ -100,7 +100,7 @@ interface MemoryData {
         message: string;
     };
 
-    // 1시간 차트 (2개)
+    // 1시간 차트 (3개)
     osMemoryChart1h: {
         categories: string[];
         usedGB: number[];
@@ -126,7 +126,7 @@ interface MemoryData {
         writeWaitMs: number[];
     };
 
-    // 24시간 차트 (2개)
+    // 24시간 차트 (4개)
     osMemoryTrend24h: {
         categories: string[];
         usagePercent: number[];
@@ -139,6 +139,11 @@ interface MemoryData {
         swapInRate: number[];
         swapOutRate: number[];
     };
+    topTablesChart24h: {
+        tableNames: string[];
+        bufferCounts: number[];
+        usagePercent: number[];
+    };
 }
 
 
@@ -146,10 +151,20 @@ interface MemoryData {
 // API 요청 함수
 // ========================================
 async function fetchMemoryData(instanceId: number) {
-    const response = await apiClient.get<MemoryData>("/system/memory", {
-        params: { instanceId }
-    });
-    return response.data;
+    try {
+        console.log("[MemoryPage] API 요청 시작 - instanceId:", instanceId);
+        const response = await apiClient.get<MemoryData>("/system/memory", {
+            params: { instanceId }
+        });
+        console.log("[MemoryPage] API 응답 수신:", response.data);
+        console.log("[MemoryPage] 응답 필드 확인:", {
+            hasTopTablesChart24h: !!response.data.topTablesChart24h
+        });
+        return response.data;
+    } catch (error) {
+        console.error("[MemoryPage] API 요청 실패:", error);
+        throw error;
+    }
 }
 
 // ========================================
@@ -157,7 +172,7 @@ async function fetchMemoryData(instanceId: number) {
 // ========================================
 export default function MemoryPage() {
     const { selectedInstance } = useInstanceContext();
-    const { subscribe } = useOsMetricSse();
+    const { subscribe, isConnected } = useOsMetricSse();
 
     // 실시간 메모리 사용률 (SSE)
     const [realtimeMemoryUsage, setRealtimeMemoryUsage] = useState<number | null>(null);
@@ -183,10 +198,36 @@ export default function MemoryPage() {
     const realtimeMemoryTrendHistory = useRealtimeMemoryTrendHistory(selectedInstance?.instanceId);
     const realtimeSwapTrendHistory = useRealtimeSwapTrendHistory(selectedInstance?.instanceId);
 
-    // data를 ref로 저장하여 SSE 콜백에서 최신 값 참조
-    const dataRef = useRef<MemoryData | null>(null);
-    
-    const { data, error } = useQuery({
+    // 실시간 메모리 히스토리 데이터 샘플링 (최근 60개만, 5초 간격 = 5분)
+    const sampledMemoryHistory = useMemo(() => {
+        const maxPoints = 60; // 최대 60개 포인트 (5분)
+        if (realtimeMemoryHistory.length <= maxPoints) {
+            return realtimeMemoryHistory;
+        }
+        // 최근 데이터만 선택
+        return realtimeMemoryHistory.slice(-maxPoints);
+    }, [realtimeMemoryHistory]);
+
+    // 실시간 메모리 트렌드 히스토리 데이터 샘플링
+    const sampledMemoryTrendHistory = useMemo(() => {
+        const maxPoints = 60;
+        if (realtimeMemoryTrendHistory.length <= maxPoints) {
+            return realtimeMemoryTrendHistory;
+        }
+        return realtimeMemoryTrendHistory.slice(-maxPoints);
+    }, [realtimeMemoryTrendHistory]);
+
+    // 실시간 Swap 트렌드 히스토리 데이터 샘플링
+    const sampledSwapTrendHistory = useMemo(() => {
+        const maxPoints = 60;
+        if (realtimeSwapTrendHistory.length <= maxPoints) {
+            return realtimeSwapTrendHistory;
+        }
+        return realtimeSwapTrendHistory.slice(-maxPoints);
+    }, [realtimeSwapTrendHistory]);
+
+    // 백엔드 API 호출 - SSE가 아닌 위젯/차트 데이터를 받기 위해 필요
+    const { data, isLoading, isError, error } = useQuery({
         queryKey: ["memoryDashboard", selectedInstance?.instanceId],
         queryFn: () => {
             console.log("[MemoryPage] API 호출 시작:", selectedInstance?.instanceId);
@@ -196,20 +237,6 @@ export default function MemoryPage() {
         refetchInterval: 60000, // 1분마다 자동 갱신
         enabled: !!selectedInstance,
     });
-    
-    // data가 변경될 때마다 ref 업데이트
-    useEffect(() => {
-        if (data) {
-            dataRef.current = data;
-            console.log("[MemoryPage] API 호출 성공:", data);
-        }
-    }, [data]);
-    
-    useEffect(() => {
-        if (error) {
-            console.error("[MemoryPage] API 호출 실패:", error);
-        }
-    }, [error]);
 
     // 전역 SSE 연결 구독 (히스토리는 Context에서 자동으로 캐시에 저장됨)
     useEffect(() => {
@@ -226,11 +253,16 @@ export default function MemoryPage() {
         const unsubscribe = subscribe((metrics: RealtimeOsMetrics) => {
             // 위젯용 실시간 값만 업데이트 (히스토리는 Context에서 자동 처리)
             if (metrics.memory !== undefined && metrics.memory !== null) {
-                console.log('Memory SSE 데이터 수신:', metrics.memory);
+                console.log('[MemoryPage] SSE 메모리 사용률 수신:', metrics.memory);
                 setRealtimeMemoryUsage(metrics.memory);
                 
                 // Memory 상세 정보 저장 (위젯에서 사용)
                 if (metrics.memoryTotalGB !== null && metrics.memoryTotalGB !== undefined) {
+                    console.log('[MemoryPage] SSE 메모리 상세 정보 수신:', {
+                        totalGB: metrics.memoryTotalGB,
+                        usedGB: metrics.memoryUsedGB,
+                        availableGB: metrics.memoryAvailableGB
+                    });
                     setRealtimeMemoryDetails({
                         totalGB: metrics.memoryTotalGB,
                         usedGB: metrics.memoryUsedGB || 0,
@@ -241,7 +273,13 @@ export default function MemoryPage() {
             
             // Swap 메트릭 데이터 수신
             if (metrics.swapUsage !== undefined && metrics.swapUsage !== null) {
-                console.log('Swap SSE 데이터 수신:', metrics);
+                console.log('[MemoryPage] SSE Swap 데이터 수신:', {
+                    swapUsage: metrics.swapUsage,
+                    totalSwapGB: metrics.swapTotalGB,
+                    usedSwapGB: metrics.swapUsedGB,
+                    swapInPerSec: metrics.swapInPerSec,
+                    swapOutPerSec: metrics.swapOutPerSec
+                });
                 setRealtimeSwapUsage({
                     swapUsagePercent: metrics.swapUsage,
                     totalSwapGB: metrics.swapTotalGB || 0,
@@ -258,27 +296,10 @@ export default function MemoryPage() {
         };
     }, [selectedInstance?.instanceId, subscribe]);
 
-    // 데이터 구조 확인용 디버깅 (조건부 return 이전에 위치)
-    useEffect(() => {
-        if (data) {
-            console.log("[MemoryPage] 데이터 구조 확인:", {
-                osMemoryUsage: memoryData.osMemoryUsage,
-                osMemoryChart1h: {
-                    categoriesCount: memoryData.osMemoryChart1h?.categories?.length || 0,
-                    usedGBCount: memoryData.osMemoryChart1h?.usedGB?.length || 0,
-                },
-                bufferCacheChart1h: {
-                    categoriesCount: memoryData.bufferCacheChart1h?.categories?.length || 0,
-                    hitRatioCount: memoryData.bufferCacheChart1h?.hitRatio?.length || 0,
-                },
-            });
-        }
-    }, [data]);
-
     // 인스턴스가 선택되지 않은 경우
     if (!selectedInstance) {
         return (
-            <div className="disk-page">
+            <div className="memory-page">
                 <div style={{
                     display: 'flex',
                     justifyContent: 'center',
@@ -293,7 +314,61 @@ export default function MemoryPage() {
         );
     }
 
-    // 백엔드 데이터가 없을 때 기본값 설정 (실시간 차트는 항상 표시하기 위해)
+    // 로딩 중
+    if (isLoading) {
+        return (
+            <div className="memory-page">
+                <div style={{
+                    display: 'flex',
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    height: '400px',
+                    fontSize: '18px',
+                    color: '#6B7280'
+                }}>
+                    데이터를 불러오는 중...
+                </div>
+            </div>
+        );
+    }
+
+    // 에러 발생
+    if (isError) {
+        return (
+            <div className="memory-page">
+                <div style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    height: '400px',
+                    fontSize: '18px',
+                    color: '#EF4444'
+                }}>
+                    <p>데이터를 불러오는데 실패했습니다.</p>
+                    <p style={{ fontSize: '14px', color: '#6B7280', marginTop: '8px' }}>
+                        {error instanceof Error ? error.message : '알 수 없는 오류가 발생했습니다.'}
+                    </p>
+                    <button
+                        onClick={() => window.location.reload()}
+                        style={{
+                            marginTop: '16px',
+                            padding: '8px 16px',
+                            backgroundColor: '#3B82F6',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: '4px',
+                            cursor: 'pointer'
+                        }}
+                    >
+                        새로고침
+                    </button>
+                </div>
+            </div>
+        );
+    }
+
+    // 데이터가 없는 경우 기본값 사용
     const memoryData: MemoryData = data || {
         osMemoryUsage: {
             usagePercent: 0,
@@ -359,7 +434,13 @@ export default function MemoryPage() {
             swapInRate: [],
             swapOutRate: [],
         },
+        topTablesChart24h: {
+            tableNames: [],
+            bufferCounts: [],
+            usagePercent: [],
+        },
     };
+
 
     return (
         <div className="memory-page">
@@ -375,25 +456,35 @@ export default function MemoryPage() {
                 <SummaryCard
                     label="Memory 사용률"
                     value={`${(realtimeMemoryUsage ?? memoryData.osMemoryUsage.usagePercent).toFixed(1)}%`}
-                    desc={`사용: ${(realtimeMemoryDetails?.usedGB ?? ((realtimeMemoryUsage ?? memoryData.osMemoryUsage.usagePercent) / 100 * memoryData.osMemoryUsage.totalGB)).toFixed(1)}GB / ${(realtimeMemoryDetails?.totalGB ?? memoryData.osMemoryUsage.totalGB).toFixed(1)}GB`}
+                    desc={`사용: ${(realtimeMemoryDetails?.usedGB ?? memoryData.osMemoryUsage.usedGB).toFixed(1)}GB / ${(realtimeMemoryDetails?.totalGB ?? memoryData.osMemoryUsage.totalGB).toFixed(1)}GB`}
                     status={memoryData.osMemoryUsage.status === "danger" ? "warning" as const : "info" as const}
                 />
 
                 <SummaryCard
                     label="Swap 사용률"
-                    value={`${(realtimeSwapUsage?.swapUsagePercent ?? memoryData.swapUsage.swapUsagePercent).toFixed(1)} %`}
-                    desc={`사용: ${(realtimeSwapUsage?.usedSwapGB ?? memoryData.swapUsage.usedSwapGB).toFixed(1)}GB /  ${(realtimeSwapUsage?.totalSwapGB ?? memoryData.swapUsage.totalSwapGB)}GB`}
-                    status={(realtimeSwapUsage?.swapInPerSec && realtimeSwapUsage.swapInPerSec > 0) || 
-                            (realtimeSwapUsage?.swapOutPerSec && realtimeSwapUsage.swapOutPerSec > 0) ||
-                            (realtimeSwapUsage?.swapUsagePercent && realtimeSwapUsage.swapUsagePercent > 10) ||
-                            (!realtimeSwapUsage && memoryData.swapUsage.status === "danger")
-                            ? "warning" as const : "info" as const}
+                    value={`${(realtimeSwapUsage?.swapUsagePercent ?? memoryData.swapUsage.swapUsagePercent).toFixed(1)}%`}
+                    desc={`사용: ${(realtimeSwapUsage?.usedSwapGB ?? memoryData.swapUsage.usedSwapGB).toFixed(1)}GB / ${(realtimeSwapUsage?.totalSwapGB ?? memoryData.swapUsage.totalSwapGB).toFixed(1)}GB`}
+                    status={(() => {
+                        if (realtimeSwapUsage) {
+                            // SSE 데이터 사용 시: 백엔드 로직과 일치
+                            if (realtimeSwapUsage.swapInPerSec > 0 || realtimeSwapUsage.swapOutPerSec > 0) {
+                                return "critical" as const; // danger
+                            } else if (realtimeSwapUsage.swapUsagePercent > 10) {
+                                return "warning" as const;
+                            }
+                            return "info" as const; // normal
+                        }
+                        // 백엔드 API 사용 시
+                        return memoryData.swapUsage.status === "danger" ? "critical" as const
+                             : memoryData.swapUsage.status === "warning" ? "warning" as const
+                             : "info" as const;
+                    })()}
                 />
 
                 <SummaryCard
                     label={"버퍼 캐시 히트율"}
                     value={`${memoryData.sharedBufferHit.hitRatio}%`}
-                    desc={"최근 1시간"}
+                    desc={"최근 15분"}
                     status={memoryData.sharedBufferHit.status === "danger" ? "warning" as const : "info" as const}
                 />
 
@@ -417,13 +508,13 @@ export default function MemoryPage() {
                             { 
                                 name: "Used GB", 
                                 data: (() => {
-                                    const sampled = sampleLast60Seconds(realtimeMemoryHistory);
+                                    const sampled = sampleLast60Seconds(sampledMemoryHistory);
                                     return sampled.map(item => item.usedGB);
                                 })()
                             },
                         ]}
                         categories={(() => {
-                            const sampled = sampleLast60Seconds(realtimeMemoryHistory);
+                            const sampled = sampleLast60Seconds(sampledMemoryHistory);
                             return sampled.map(item => {
                                 // HH:MM 형식으로 시간 표시 (최근 1분, 5초 간격 12개 데이터 포인트)
                                 return item.time.substring(0, 5);
@@ -460,6 +551,8 @@ export default function MemoryPage() {
                                     }
                                 }
                             },
+
+
                         }}
                     />
                 </WidgetCard>
@@ -470,12 +563,12 @@ export default function MemoryPage() {
                         series={[{
                             name: "Usage %",
                             data: (() => {
-                                const sampled = sampleLast60Seconds(realtimeMemoryTrendHistory);
+                                const sampled = sampleLast60Seconds(sampledMemoryTrendHistory);
                                 return sampled.map(item => item.usagePercent);
                             })()
                         }]}
                         categories={(() => {
-                            const sampled = sampleLast60Seconds(realtimeMemoryTrendHistory);
+                            const sampled = sampleLast60Seconds(sampledMemoryTrendHistory);
                             return sampled.map(item => {
                                 // HH:MM 형식으로 시간 표시 (최근 1분, 5초 간격 12개 데이터 포인트)
                                 return item.time.substring(0, 5);
@@ -547,27 +640,27 @@ export default function MemoryPage() {
                             { 
                                 name: "Swap Usage %", 
                                 data: (() => {
-                                    const sampled = sampleLast60Seconds(realtimeSwapTrendHistory);
+                                    const sampled = sampleLast60Seconds(sampledSwapTrendHistory);
                                     return sampled.map(item => item.swapUsagePercent);
                                 })()
                             },
                             { 
                                 name: "Swap In Rate", 
                                 data: (() => {
-                                    const sampled = sampleLast60Seconds(realtimeSwapTrendHistory);
+                                    const sampled = sampleLast60Seconds(sampledSwapTrendHistory);
                                     return sampled.map(item => item.swapInPerSec);
                                 })()
                             },
                             { 
                                 name: "Swap Out Rate", 
                                 data: (() => {
-                                    const sampled = sampleLast60Seconds(realtimeSwapTrendHistory);
+                                    const sampled = sampleLast60Seconds(sampledSwapTrendHistory);
                                     return sampled.map(item => item.swapOutPerSec);
                                 })()
                             }
                         ]}
                         categories={(() => {
-                            const sampled = sampleLast60Seconds(realtimeSwapTrendHistory);
+                            const sampled = sampleLast60Seconds(sampledSwapTrendHistory);
                             return sampled.map(item => {
                                 // HH:MM 형식으로 시간 표시 (최근 1분, 5초 간격 12개 데이터 포인트)
                                 return item.time.substring(0, 5);
@@ -609,11 +702,11 @@ export default function MemoryPage() {
             </ChartGridLayout>
 
             {/* ========================================
-                3번째 행: 6시간 차트 2개
+                3번째 행: 1시간 차트 2개
                 ======================================== */}
             <ChartGridLayout>
-                {/* 차트 2: Buffer Cache Hit Ratio (1시간) */}
-                <WidgetCard title="버퍼 캐시 히트율 (최근 1시간)" span={4}>
+                {/* 차트 2: Buffer Cache Hit Ratio (15분) */}
+                <WidgetCard title="버퍼 캐시 히트율 (최근 15분)" span={4}>
                     <Chart
                         type="line"
                         series={[{ name: "Hit Ratio %", data: memoryData?.bufferCacheChart1h?.hitRatio || [] }]}
@@ -663,11 +756,11 @@ export default function MemoryPage() {
                                         }
                                     },
                                     {
-                                        y: memoryData?.bufferCacheChart1h?.warningThreshold || 90,
+                                        y: memoryData?.bufferCacheChart1h?.warningThreshold || 85,
                                         borderColor: "#FBBF24",
                                         strokeDashArray: 4,
                                         label: {
-                                            text: `주의: ${memoryData?.bufferCacheChart1h?.warningThreshold || 90}%`,
+                                            text: `주의: ${memoryData?.bufferCacheChart1h?.warningThreshold || 85}%`,
                                             style: { color: "#fff", background: "#FBBF24", fontSize: "11px" }
                                         }
                                     }
@@ -676,84 +769,202 @@ export default function MemoryPage() {
                         }}
                     />
                 </WidgetCard>
-                {/* 차트 4: Temp File Generation (24시간) */}
-                <WidgetCard title="임시 파일 생성 (최근 24시간)" span={4}>
-                    <Chart
-                        type="line"
-                        series={[
-                            { name: "File Count", data: memoryData?.tempFileChart6h?.tempFileCount || [] },
-                            { name: "Size (MB)", data: memoryData?.tempFileChart6h?.tempFileSizeMB || [] }
-                        ]}
-                        categories={memoryData?.tempFileChart6h?.categories || []}
-                        height={250}
-                        colors={["#8B5CF6", "#EC4899"]}
-                        showGrid={true}
-                        showLegend={true}
-                        xaxisOptions={{
-                            title: { text: "시간", style: { fontSize: "12px", color: "#6B7280" } },
-                        }}
-                        yaxisOptions={{
-                            title: { text: "Count / MB", style: { fontSize: "12px", color: "#6B7280" } },
-                            labels: { 
-                                formatter: (val: number) => {
-                                    // File Count는 정수, Size (MB)는 소수점 1자리로 표시
-                                    // 값이 정수에 가까우면 정수로, 아니면 소수점 1자리로
-                                    return val % 1 === 0 ? val.toString() : val.toFixed(1);
-                                }
-                            },
-                        }}
-                        tooltipFormatter={(value: number) => {
-                            // 툴팁에서는 File Count는 정수, Size (MB)는 소수점 2자리
-                            return value % 1 === 0 ? value.toString() : value.toFixed(2);
-                        }}
-                    />
-                </WidgetCard>
+                {/* 차트 4: Temp File Generation (15분) */}
+                {/* 차트 4: Temp File Generation (15분) */}
+                <WidgetCard title="임시 파일 생성 (최근 15분)" span={4}>
+                    {(() => {
+                        // 데이터 존재 여부 확인
+                        const tempFileCount = memoryData?.tempFileChart6h?.tempFileCount || [];
+                        const tempFileSizeMB = memoryData?.tempFileChart6h?.tempFileSizeMB || [];
+                        const hasData = tempFileCount.some(val => val > 0) || tempFileSizeMB.some(val => val > 0);
 
-                {/* 차트 5: I/O Wait Time (6시간) */}
-                <WidgetCard title="I/O 대기 시간 (최근 6시간)" span={4}>
-                    <Chart
-                        type="line"
-                        series={[
-                            { name: "Read Wait (ms)", data: memoryData?.ioWaitTimeChart6h?.readWaitMs || [] },
-                            { name: "Write Wait (ms)", data: memoryData?.ioWaitTimeChart6h?.writeWaitMs || [] }
-                        ]}
-                        categories={memoryData?.ioWaitTimeChart6h?.categories || []}
-                        height={250}
-                        colors={["#3B82F6", "#F59E0B"]}
-                        showGrid={true}
-                        showLegend={true}
-                        xaxisOptions={{
-                            title: { text: "시간", style: { fontSize: "12px", color: "#6B7280" } },
-                            labels: {
-                                rotate: 0, // 라벨을 수평으로 표시
-                                style: {
-                                    fontSize: "11px",
-                                    colors: "#6B7280"
-                                }
+                        // 데이터가 없거나 모두 0인 경우 안내 메시지 표시
+                        if (!hasData) {
+                            return (
+                                <div style={{
+                                    height: '250px',
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    justifyContent: 'center',
+                                    alignItems: 'center',
+                                    color: '#6B7280',
+                                    textAlign: 'center',
+                                    padding: '20px'
+                                }}>
+                                    <svg
+                                        style={{ width: '64px', height: '64px', marginBottom: '16px', opacity: 0.5 }}
+                                        fill="none"
+                                        stroke="currentColor"
+                                        viewBox="0 0 24 24"
+                                    >
+                                        <path
+                                            strokeLinecap="round"
+                                            strokeLinejoin="round"
+                                            strokeWidth={2}
+                                            d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                                        />
+                                    </svg>
+                                    <div style={{ fontSize: '16px', fontWeight: '500', marginBottom: '8px', color: '#7B61FF' }}>
+                                        현재 임시 파일 생성이 발생하지 않고 있습니다
+                                    </div>
+                                    <div style={{ fontSize: '14px', color: '#9CA3AF' }}>
+                                        work_mem 설정이 충분하여 디스크 임시 파일이 생성되지 않고 있습니다
+                                    </div>
+                                </div>
+                            );
+                        }
+
+                        // 시간 형식을 HH:MM으로 변환 (초 제거)
+                        const formattedCategories = (memoryData?.tempFileChart6h?.categories || []).map(time => {
+                            // "HH:MM:SS" 형식이면 "HH:MM"으로 변환
+                            if (time && time.includes(':')) {
+                                return time.substring(0, 5); // "HH:MM"만 추출
                             }
-                        }}
-                        yaxisOptions={{
-                            title: { text: "Wait Time (ms)", style: { fontSize: "12px", color: "#6B7280" } },
-                            labels: { formatter: (val: number) => `${val.toFixed(1)} ms` },
-                        }}
-                        tooltipFormatter={(value: number) => `${value.toFixed(2)} ms`}
-                        customOptions={{
-                            xaxis: {
-                                tickAmount: 6, // X축에 6개의 시간만 표시
-                                labels: {
-                                    showDuplicates: false, // 중복 라벨 제거
-                                    rotate: 0, // 라벨을 수평으로 표시
-                                    style: {
-                                        fontSize: "11px",
-                                        colors: "#6B7280"
+                            return time;
+                        });
+
+                        // 데이터가 있는 경우 차트 표시
+                        return (
+                            <Chart
+                                type="line"
+                                series={[
+                                    { name: "File Count", data: tempFileCount },
+                                    { name: "Size (MB)", data: tempFileSizeMB }
+                                ]}
+                                categories={formattedCategories}
+                                height={250}
+                                colors={["#8B5CF6", "#EC4899"]}
+                                showGrid={true}
+                                showLegend={true}
+                                xaxisOptions={{
+                                    title: { text: "시간", style: { fontSize: "12px", color: "#6B7280" } },
+                                    labels: {
+                                        rotate: 0,
+                                        style: { fontSize: "11px", colors: "#6B7280" },
+                                    },
+                                }}
+                                yaxisOptions={{
+                                    title: { text: "Count / MB", style: { fontSize: "12px", color: "#6B7280" } },
+                                    labels: {
+                                        formatter: (val: number) => {
+                                            // File Count는 정수, Size (MB)는 소수점 1자리로 표시
+                                            return val % 1 === 0 ? val.toString() : val.toFixed(1);
+                                        }
+                                    },
+                                }}
+                                tooltipFormatter={(value: number) => {
+                                    // 툴팁에서는 File Count는 정수, Size (MB)는 소수점 2자리
+                                    return value % 1 === 0 ? value.toString() : value.toFixed(2);
+                                }}
+                                customOptions={{
+                                    xaxis: {
+                                        tickAmount: 6, // X축에 6개의 시간만 표시
+                                        labels: {
+                                            showDuplicates: false, // 중복 라벨 제거
+                                            rotate: 0,
+                                            style: {
+                                                fontSize: "11px",
+                                                colors: "#6B7280"
+                                            }
+                                        }
                                     }
-                                }
-                            }
-                        }}
-                    />
+                                }}
+                            />
+                        );
+                    })()}
                 </WidgetCard>
 
+                {/* 차트 5: I/O Wait Time (15분) */}
+                <WidgetCard title="I/O 대기 시간 (최근 15분)" span={4}>
+                    {(() => {
+                        // 데이터 존재 여부 확인
+                        const readWaitMs = memoryData?.ioWaitTimeChart6h?.readWaitMs || [];
+                        const writeWaitMs = memoryData?.ioWaitTimeChart6h?.writeWaitMs || [];
+                        const hasData = readWaitMs.some(val => val > 0) || writeWaitMs.some(val => val > 0);
+
+                        // 데이터가 없거나 모두 0인 경우 안내 메시지 표시
+                        if (!hasData) {
+                            return (
+                                <div style={{
+                                    height: '250px',
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    justifyContent: 'center',
+                                    alignItems: 'center',
+                                    color: '#6B7280',
+                                    textAlign: 'center',
+                                    padding: '20px'
+                                }}>
+                                    <svg
+                                        style={{ width: '64px', height: '64px', marginBottom: '16px', opacity: 0.5 }}
+                                        fill="none"
+                                        stroke="currentColor"
+                                        viewBox="0 0 24 24"
+                                    >
+                                        <path
+                                            strokeLinecap="round"
+                                            strokeLinejoin="round"
+                                            strokeWidth={2}
+                                            d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                                        />
+                                    </svg>
+                                    <div style={{ fontSize: '16px', fontWeight: '500', marginBottom: '8px', color: '#7B61FF' }}>
+                                        현재 I/O 대기시간이 발생하지 않고 있습니다
+                                    </div>
+                                    <div style={{ fontSize: '14px', color: '#9CA3AF' }}>
+                                        모든 데이터가 메모리 캐시에 있어 디스크 I/O가 최소화되고 있습니다
+                                    </div>
+                                </div>
+                            );
+                        }
+
+                        // 데이터가 있는 경우 차트 표시
+                        return (
+                            <Chart
+                                type="line"
+                                series={[
+                                    { name: "Read Wait (ms)", data: readWaitMs },
+                                    { name: "Write Wait (ms)", data: writeWaitMs }
+                                ]}
+                                categories={memoryData?.ioWaitTimeChart6h?.categories || []}
+                                height={250}
+                                colors={["#3B82F6", "#F59E0B"]}
+                                showGrid={true}
+                                showLegend={true}
+                                xaxisOptions={{
+                                    title: { text: "시간", style: { fontSize: "12px", color: "#6B7280" } },
+                                    labels: {
+                                        rotate: 0,
+                                        style: {
+                                            fontSize: "11px",
+                                            colors: "#6B7280"
+                                        }
+                                    }
+                                }}
+                                yaxisOptions={{
+                                    title: { text: "Wait Time (ms)", style: { fontSize: "12px", color: "#6B7280" } },
+                                    labels: { formatter: (val: number) => `${val.toFixed(1)} ms` },
+                                }}
+                                tooltipFormatter={(value: number) => `${value.toFixed(2)} ms`}
+                                customOptions={{
+                                    xaxis: {
+                                        tickAmount: 6,
+                                        labels: {
+                                            showDuplicates: false,
+                                            rotate: 0,
+                                            style: {
+                                                fontSize: "11px",
+                                                colors: "#6B7280"
+                                            }
+                                        }
+                                    }
+                                }}
+                            />
+                        );
+                    })()}
+                </WidgetCard>
             </ChartGridLayout>
+
         </div>
     );
 }
