@@ -89,7 +89,7 @@ const getCheckpointRequestGaugeStatus = (
 /** 메인 컴포넌트 */
 export default function CheckPointPage() {
     const { selectedInstance } = useInstanceContext();
-    
+
     const { data, isLoading, isError, error } = useQuery({
         queryKey: ["checkpointDashboard", selectedInstance?.instanceId],
         queryFn: () => fetchCheckpointData(selectedInstance!.instanceId),
@@ -256,42 +256,76 @@ export default function CheckPointPage() {
 
             {/* 첫 번째 행: 3개 카드 */}
             <ChartGridLayout>
-                {/* Checkpoint 요청 비율 */}
-                <WidgetCard title="Checkpoint 요청 비율" span={2}>
-                    <div style={{
-                        display: 'flex',
-                        flexDirection: 'column',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        height: '100%',
-                        width: '100%',
-                        marginTop: '18px',
-                    }}>
-                        <GaugeChart
-                            value={dashboard.requestRatio.value}
-                            status={gaugeStatus}
-                            type="semi-circle"
-                            radius={100}
-                            strokeWidth={20}
-                            height={250}
-                            flattenRatio={0.89}
-                        />
-                        <div className="cpu-gauge-details">
-                            <div className="cpu-detail-item">
-                                <span className="cpu-detail-label">Requested</span>
-                                <span className="cpu-detail-value">{dashboard.requestRatio.requestedCount}</span>
-                            </div>
-                            <div className="cpu-detail-divider"></div>
-                            <div className="cpu-detail-item">
-                                <span className="cpu-detail-label">Timed</span>
-                                <span className="cpu-detail-value">{dashboard.requestRatio.timedCount}</span>
-                            </div>
-                        </div>
-                    </div>
+                {/* Checkpoint 간격 추이 */}
+                <WidgetCard title="Checkpoint 간격 추이 (Last 24 Hours)" span={4}>
+                    <Chart
+                        type="line"
+                        series={[{ name: "Interval (min)", data: dashboard.checkpointInterval.data }]}
+                        categories={dashboard.checkpointInterval.categories}
+                        colors={["#8E79FF"]}
+                        height={250}
+                        xaxisOptions={{
+                            title: { text: "시간", style: { fontSize: "12px", color: "#6B7280" } }
+                        }}
+                        yaxisOptions={{
+                            title: { text: "간격 (분)", style: { fontSize: "12px", color: "#6B7280" } }
+                        }}
+                        customOptions={{
+                            annotations: {
+                                yaxis: [
+                                    {
+                                        y: 3,
+                                        borderColor: "#FBBF24",
+                                        strokeDashArray: 4,
+                                        opacity: 0.7,
+                                        label: {
+                                            borderColor: "#FBBF24",
+                                            style: {
+                                                color: "#fff",
+                                                background: "#FBBF24",
+                                                fontSize: "11px",
+                                                fontWeight: 500,
+                                            },
+                                            text: "주의: 3분",
+                                            position: "right",
+                                        },
+                                    },
+                                    {
+                                        y: 5,
+                                        borderColor: "#60A5FA",
+                                        strokeDashArray: 4,
+                                        opacity: 0.6,
+                                        label: {
+                                            borderColor: "#60A5FA",
+                                            style: {
+                                                color: "#fff",
+                                                background: "#60A5FA",
+                                                fontSize: "11px",
+                                                fontWeight: 500,
+                                            },
+                                            text: "정상: 5분",
+                                            position: "right",
+                                        },
+                                    },
+                                ],
+                            },
+                            yaxis: {
+                                labels: {
+                                    style: {
+                                        colors: "#6B7280",
+                                        fontFamily: 'var(--font-family, "Pretendard", sans-serif)'
+                                    },
+                                    formatter: (val: number) => `${val.toFixed(1)}분`,
+                                },
+                                min: 0,
+                                // 데이터의 최대값에 여유를 더해서 Y축 범위 동적 조정
+                                max: Math.max(12, Math.ceil((dashboard.checkpointInterval.max || 0) * 1.2)),
+                            },
+                        }}
+                    />
                 </WidgetCard>
-
                 {/* Checkpoint 발생 추이 */}
-                <WidgetCard title="Checkpoint 발생 추이 (Last 24 Hours)" span={5}>
+                <WidgetCard title="Checkpoint 발생 추이 (Last 24 Hours)" span={4}>
                     <Chart
                         type="line"
                         series={[
@@ -312,7 +346,7 @@ export default function CheckPointPage() {
                 </WidgetCard>
 
                 {/* Checkpoint 처리 시간 추세 - 임계치 적용 */}
-                <WidgetCard title="Checkpoint 처리 시간 추세 (Last 1 Hour)" span={5}>
+                <WidgetCard title="Checkpoint 처리 시간 추세 (Last 1 Hour)" span={4}>
                     <Chart
                         type="line"
                         series={[
@@ -520,145 +554,8 @@ export default function CheckPointPage() {
                     />
                 </WidgetCard>
 
-                {/* Checkpoint 간격 추이 */}
-                <WidgetCard title="Checkpoint 간격 추이 (Last 24 Hours)" span={4}>
-                    <Chart
-                        type="line"
-                        series={[{ name: "Interval (min)", data: dashboard.checkpointInterval.data }]}
-                        categories={dashboard.checkpointInterval.categories}
-                        colors={["#8E79FF"]}
-                        height={250}
-                        xaxisOptions={{
-                            title: { text: "시간", style: { fontSize: "12px", color: "#6B7280" } }
-                        }}
-                        yaxisOptions={{
-                            title: { text: "간격 (분)", style: { fontSize: "12px", color: "#6B7280" } }
-                        }}
-                        customOptions={{
-                            annotations: {
-                                yaxis: [
-                                    {
-                                        y: 3,
-                                        borderColor: "#FBBF24",
-                                        strokeDashArray: 4,
-                                        opacity: 0.7,
-                                        label: {
-                                            borderColor: "#FBBF24",
-                                            style: {
-                                                color: "#fff",
-                                                background: "#FBBF24",
-                                                fontSize: "11px",
-                                                fontWeight: 500,
-                                            },
-                                            text: "주의: 3분",
-                                            position: "right",
-                                        },
-                                    },
-                                    {
-                                        y: 5,
-                                        borderColor: "#60A5FA",
-                                        strokeDashArray: 4,
-                                        opacity: 0.6,
-                                        label: {
-                                            borderColor: "#60A5FA",
-                                            style: {
-                                                color: "#fff",
-                                                background: "#60A5FA",
-                                                fontSize: "11px",
-                                                fontWeight: 500,
-                                            },
-                                            text: "정상: 5분",
-                                            position: "right",
-                                        },
-                                    },
-                                ],
-                            },
-                            yaxis: {
-                                labels: {
-                                    style: {
-                                        colors: "#6B7280",
-                                        fontFamily: 'var(--font-family, "Pretendard", sans-serif)'
-                                    },
-                                    formatter: (val: number) => `${val.toFixed(1)}분`,
-                                },
-                                min: 0,
-                                // 데이터의 최대값에 여유를 더해서 Y축 범위 동적 조정
-                                max: Math.max(12, Math.ceil((dashboard.checkpointInterval.max || 0) * 1.2)),
-                            },
-                        }}
-                    />
-                </WidgetCard>
+
             </ChartGridLayout>
-        <ChartGridLayout>
-            {/* Checkpoint 간격 추이 */}
-            <WidgetCard title="Checkpoint 간격 추이 (Last 24 Hours)" span={4}>
-                <Chart
-                    type="line"
-                    series={[{ name: "Interval (min)", data: dashboard.checkpointInterval.data }]}
-                    categories={dashboard.checkpointInterval.categories}
-                    colors={["#8E79FF"]}
-                    height={250}
-                    xaxisOptions={{
-                        title: { text: "시간", style: { fontSize: "12px", color: "#6B7280" } }
-                    }}
-                    yaxisOptions={{
-                        title: { text: "간격 (분)", style: { fontSize: "12px", color: "#6B7280" } }
-                    }}
-                    customOptions={{
-                        annotations: {
-                            yaxis: [
-                                {
-                                    y: 3,
-                                    borderColor: "#FBBF24",
-                                    strokeDashArray: 4,
-                                    opacity: 0.7,
-                                    label: {
-                                        borderColor: "#FBBF24",
-                                        style: {
-                                            color: "#fff",
-                                            background: "#FBBF24",
-                                            fontSize: "11px",
-                                            fontWeight: 500,
-                                        },
-                                        text: "주의: 3분",
-                                        position: "right",
-                                    },
-                                },
-                                {
-                                    y: 5,
-                                    borderColor: "#60A5FA",
-                                    strokeDashArray: 4,
-                                    opacity: 0.6,
-                                    label: {
-                                        borderColor: "#60A5FA",
-                                        style: {
-                                            color: "#fff",
-                                            background: "#60A5FA",
-                                            fontSize: "11px",
-                                            fontWeight: 500,
-                                        },
-                                        text: "정상: 5분",
-                                        position: "right",
-                                    },
-                                },
-                            ],
-                        },
-                        yaxis: {
-                            labels: {
-                                style: {
-                                    colors: "#6B7280",
-                                    fontFamily: 'var(--font-family, "Pretendard", sans-serif)'
-                                },
-                                formatter: (val: number) => `${val.toFixed(1)}분`,
-                            },
-                            min: 0,
-                            // 데이터의 최대값에 여유를 더해서 Y축 범위 동적 조정
-                            max: Math.max(12, Math.ceil((dashboard.checkpointInterval.max || 0) * 1.2)),
-                        },
-                    }}
-                />
-            </WidgetCard>
-        </ChartGridLayout>
         </div>
     );
 }
