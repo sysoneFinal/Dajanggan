@@ -1,130 +1,62 @@
-:root { --bg: #f3f5f7; --card: #ffffff; --text: #111827; --muted: #6b7280; --border: #e5e7eb; --shadow: 0 1.125rem 3.125rem rgba(8, 15, 23, 0.12); --color-normal: #7B61FF; --color-warn: #FFD66B; --color-danger: #FF928A; --color-success: #51DAA8; }
+:root { 
+  --bg: #f3f5f7; 
+  --card: #ffffff; 
+  --text: #111827; 
+  --muted: #6b7280; 
+  --border: #e5e7eb; 
+  --shadow: 0 1.125rem 3.125rem rgba(8, 15, 23, 0.12); 
+  --color-normal: #7B61FF; 
+  --color-warn: #FFD66B; 
+  --color-danger: #FF928A; 
+  --color-success: #51DAA8; 
+}
 
-/* ======================================== 메인 컨테이너 ======================================== */
+/* Main Container */
 .es-root { padding: 1.25rem; max-width: 100%; box-sizing: border-box; }
 
-/* ======================================== 2컬럼 레이아웃 (좌 넓게, 우 좁게) ======================================== */
+/* Two Column Layout (Left wider, Right narrower) */
 .es-layout { display: grid; grid-template-columns: 2.5fr 1fr; gap: 1rem; align-items: start; }
 
-/* ======================================== 좌측: 리스트 카드 ======================================== */
-.es-left-card { 
-  background: var(--card); 
-  border: 0.0625rem solid var(--border); 
-  border-radius: 1rem; 
-  box-shadow: var(--shadow); 
-  padding: 1.5rem; 
-  display: flex; 
-  flex-direction: column; 
-  height: fit-content;
-  overflow: visible; 
-}
-
+/* Left: List Card */
+.es-left-card { background: var(--card); border: 0.0625rem solid var(--border); border-radius: 1rem; box-shadow: var(--shadow); padding: 1.5rem; display: flex; flex-direction: column; height: fit-content; overflow: visible; }
 .es-card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem; flex-shrink: 0; }
 .es-card-title { margin: 0; font-size: 1.25rem; font-weight: 800; color: var(--text); letter-spacing: 0.01rem; }
+.es-subtitle { font-size: 0.75rem; color: var(--muted); margin: 0.25rem 0 0 0; font-weight: 400; letter-spacing: 0.01rem; }
 
-/* 테이블 */
-.es-table { 
-  background: rgba(255, 255, 255, 0.8); 
-  border: 0.0625rem solid var(--border); 
-  border-radius: 0.75rem; 
-  overflow: hidden; 
-  display: flex; 
-  flex-direction: column;
-}
+/* Table */
+.es-table { background: rgba(255, 255, 255, 0.8); border: 0.0625rem solid var(--border); border-radius: 0.75rem; overflow: hidden; display: flex; flex-direction: column; }
 
-/* 헤더 */
-.es-thead { 
-  display: grid; 
-  grid-template-columns: 1fr 3fr 1.2fr 1fr 1fr 1fr; 
-  align-items: center; 
-  text-align: center; 
-  padding: 1rem; 
-  font-size: 0.875rem; 
-  font-weight: 700; 
-  background: rgba(241, 239, 243, 0.8); 
-  color: #2e2f33; 
-  border-bottom: 0.0625rem solid var(--border); 
-}
-
-.es-thead .sortable { 
-  cursor: pointer; 
-  user-select: none; 
-  transition: all 0.2s ease; 
-  display: inline-flex; 
-  align-items: center; 
-  justify-content: center; 
-  gap: 0.25rem; 
-}
-
+/* Table Header */
+.es-thead { display: grid; grid-template-columns: 1fr 3fr 1.2fr 1fr 1fr 1fr; align-items: center; text-align: center; padding: 1rem; font-size: 0.875rem; font-weight: 700; background: rgba(241, 239, 243, 0.8); color: #2e2f33; border-bottom: 0.0625rem solid var(--border); }
+.es-thead .sortable { cursor: pointer; user-select: none; transition: all 0.2s ease; display: inline-flex; align-items: center; justify-content: center; gap: 0.25rem; }
 .es-thead .sortable:hover { color: var(--color-normal); }
 .es-thead .sort-icon { font-size: 0.75rem; opacity: 0.6; transition: opacity 0.2s ease; }
 .es-thead .sortable:hover .sort-icon { opacity: 1; }
 
-/* 바디 */
-.es-tbody { 
-  max-height: 52rem;
-  overflow-y: auto; 
-  overflow-x: hidden; 
-}
+/* Table Body */
+.es-tbody { max-height: 52rem; overflow-y: auto; overflow-x: hidden; }
 
-/* 행 */
-.es-row { 
-  display: grid; 
-  grid-template-columns: 1fr 3fr 1.2fr 1fr 1fr 1fr; 
-  align-items: center; 
-  text-align: center; 
-  padding: 1rem; 
-  font-size: 0.875rem; 
-  color: #2e2f33; 
-  border-top: 0.0625rem solid rgba(0, 0, 0, 0.04); 
-  cursor: pointer; 
-  transition: all 0.2s ease;
-  min-height: 3.5rem;
-}
-
+/* Table Row */
+.es-row { display: grid; grid-template-columns: 1fr 3fr 1.2fr 1fr 1fr 1fr; align-items: center; text-align: center; padding: 1rem; font-size: 0.875rem; color: #2e2f33; border-top: 0.0625rem solid rgba(0, 0, 0, 0.04); cursor: pointer; transition: all 0.2s ease; min-height: 3.5rem; }
 .es-row:nth-child(even) { background: rgba(255, 255, 255, 0.5); }
 .es-row:hover { background: rgba(127, 129, 242, 0.08); transform: translateX(0.125rem); }
 .es-row .cell-id { font-weight: 700; color: var(--color-normal); }
 .es-row .cell-q { font-weight: 600; color: #2e2f33; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 0 0.5rem; text-align: left; }
 
-/* 빈 상태 */
+/* Empty State */
 .es-empty { padding: 2.5rem 1.25rem; text-align: center; font-size: 0.875rem; color: var(--muted); }
 
-/* 페이지네이션 */
+/* Pagination */
 .es-pagination { margin-top: 1rem; display: flex; justify-content: center; flex: 0 0 auto; }
 
-/* ======================================== 우측: 차트 카드들 (독립적 크기) ======================================== */
+/* Right: Chart Cards */
 .es-right-cards { display: flex; flex-direction: column; gap: 1rem; }
 
-/* 차트 카드 */
+/* Chart Card */
 .es-chart-card { background: var(--card); border: 0.0625rem solid var(--border); border-radius: 1rem; box-shadow: var(--shadow); padding: 1.25rem; display: flex; flex-direction: column; overflow: visible; }
-
-/* 첫 번째 차트 (트랜잭션당 쿼리 수 분포) */
 .es-chart-card:first-child { height: 23.75rem; }
-
-/* 두 번째 차트 (쿼리 타입별 분포) */
-.es-chart-card:last-child { height: 18.125rem; }
-
 .es-chart-title { margin: 0 0 0.75rem 0; font-size: 0.9375rem; font-weight: 700; color: var(--muted); flex-shrink: 0; letter-spacing: 0.01rem; }
 .es-chart-body { flex: 1; min-height: 0; position: relative; }
 
-/* Apex 캔버스 */
+/* Apex Canvas */
 .es-chart-card .apexcharts-canvas { width: 100% !important; height: 100% !important; }
-
-/* ======================================== 반응형 ======================================== */
-@media (max-width: 1200px) {
-  .es-layout { grid-template-columns: 1fr; }
-  .es-tbody { max-height: 45rem; }
-  .es-chart-card:first-child { height: 25rem; }
-  .es-chart-card:last-child { height: 21.875rem; }
-}
-
-@media (max-width: 768px) {
-  .es-thead, .es-row { grid-template-columns: 0.8fr 2fr 1fr 1fr 1fr 1fr; font-size: 0.75rem; }
-  .es-card-title { font-size: 1.125rem; }
-  .es-chart-title { font-size: 0.875rem; }
-  .es-tbody { max-height: 38rem; }
-  .es-row { min-height: 3rem; padding: 0.75rem; }
-  .es-chart-card:first-child { height: 20rem; }
-  .es-chart-card:last-child { height: 18.75rem; }
-}

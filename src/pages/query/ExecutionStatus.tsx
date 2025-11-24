@@ -11,21 +11,20 @@ import type { QueryDetail } from "../query/QueryModal";
 import {
   getExecutionStats,
   type QueryExecutionStatDto,
-  getQueryMetricsByDatabaseId, // ✅ 추가
-  type QueryMetricsRawDto,      // ✅ 추가
-  postExplainAnalyze
+  getQueryMetricsByDatabaseId,
+  type QueryMetricsRawDto,
+  postExplainAnalyze,
+  getHourlyDistribution
 } from "../../api/query";
 import "/src/styles/query/execution-status.css";
 
 /**
  * 쿼리 실행 상태 페이지
  * - 실행 통계 테이블 및 차트 시각화
- * - 백엔드 API 연동
+ * - 최근 1시간 데이터 자동 조회
  * 
  * @author 이해든
  */
-
-type TimeFilter = "1h" | "6h" | "24h" | "7d";
 
 type QueryStat = {
   id: string;
@@ -39,10 +38,6 @@ type QueryStat = {
 };
 
 type DashboardData = {
-  transactionDistribution: {
-    data: number[];
-    labels: string[];
-  };
   queryTypeDistribution: { labels: string[]; data: number[] };
   stats: QueryStat[];
 };
@@ -57,14 +52,24 @@ const parseTimeMs = (timeStr: string): number => {
   return m[2] === "s" ? v * 1000 : v;
 };
 
-const getDaysFromFilter = (filter: TimeFilter): number => {
-  switch (filter) {
-    case "1h": return 1;
-    case "6h": return 1;
-    case "24h": return 1;
-    case "7d": return 7;
-    default: return 1;
-  }
+/**
+ *  쿼리 텍스트에서 타입 추출 (queryType이 없을 경우 대비)
+ */
+const extractQueryType = (queryText: string): string => {
+  if (!queryText) return "UNKNOWN";
+  
+  const upperQuery = queryText.trim().toUpperCase();
+  
+  if (upperQuery.startsWith('SELECT')) return 'SELECT';
+  if (upperQuery.startsWith('INSERT')) return 'INSERT';
+  if (upperQuery.startsWith('UPDATE')) return 'UPDATE';
+  if (upperQuery.startsWith('DELETE')) return 'DELETE';
+  if (upperQuery.startsWith('CREATE')) return 'CREATE';
+  if (upperQuery.startsWith('DROP')) return 'DROP';
+  if (upperQuery.startsWith('ALTER')) return 'ALTER';
+  if (upperQuery.startsWith('TRUNCATE')) return 'TRUNCATE';
+  
+  return 'OTHER';
 };
 
 export default function ExecutionStatus() {
@@ -82,78 +87,51 @@ export default function ExecutionStatus() {
 
   const [error, setError] = useState<string | null>(null);
   const [dashboardData, setDashboardData] = useState<DashboardData>({
-    transactionDistribution: { data: [], labels: [] },
     queryTypeDistribution: { labels: [], data: [] },
     stats: []
   });
   
   const [allAggregatedStats, setAllAggregatedStats] = useState<QueryExecutionStatDto[]>([]);
-  const [allRawMetrics, setAllRawMetrics] = useState<QueryMetricsRawDto[]>([]); // ✅ 원시 메트릭 추가
+  const [allRawMetrics, setAllRawMetrics] = useState<QueryMetricsRawDto[]>([]);
 
-  const [transactionChartData, setTransactionChartData] = useState<number[]>(Array(12).fill(0));
-  const [timeCategories, setTimeCategories] = useState<string[]>([]);
-  const [lastUpdateTime, setLastUpdateTime] = useState<string>('');
+  /**
+   *  시간대별 쿼리 수 분포 조회 (최근 5시간)
+   */
+  const { data: hourlyDistributionData } = useQuery({
+    queryKey: ["hourly-distribution", databaseId],
+    queryFn: async () => {
+      if (!databaseId) return null;
 
-  const generateTimeCategories = (): string[] => {
-    const now = new Date();
-    const currentMinutes = now.getMinutes();
-    const roundedMinutes = Math.floor(currentMinutes / 5) * 5;
-    now.setMinutes(roundedMinutes);
-    now.setSeconds(0);
-    now.setMilliseconds(0);
-    
-    const categories: string[] = [];
-    for (let i = 11; i >= 0; i--) {
-      const time = new Date(now.getTime() - i * 5 * 60 * 1000);
-      const hours = String(time.getHours()).padStart(2, '0');
-      const minutes = String(time.getMinutes()).padStart(2, '0');
-      categories.push(`${hours}:${minutes}`);
-    }
-    return categories;
-  };
+      console.log(" 시간대별 분포 데이터 로딩 시작...");
+      const response = await getHourlyDistribution(databaseId, 5);
+      
+      if (response.data.success && response.data.data) {
+        console.log(` 시간대별 데이터: ${response.data.data.length}개`);
+        return response.data.data;
+      }
+      
+      return [];
+    },
+    enabled: !!databaseId,
+    refetchInterval: intervalToMs(refreshInterval),
+  });
 
-  const getCurrentRoundedTime = (): string => {
-    const now = new Date();
-    const currentMinutes = now.getMinutes();
-    const roundedMinutes = Math.floor(currentMinutes / 5) * 5;
-    const hours = String(now.getHours()).padStart(2, '0');
-    const minutes = String(roundedMinutes).padStart(2, '0');
-    return `${hours}:${minutes}`;
-  };
-
-  useEffect(() => {
-    const categories = generateTimeCategories();
-    setTimeCategories(categories);
-    setLastUpdateTime(getCurrentRoundedTime());
-  }, []);
-
-  const timeFilter: TimeFilter = "24h";
-
-  const filterByTimeRange = (data: QueryExecutionStatDto[], filter: TimeFilter): QueryExecutionStatDto[] => {
-    if (filter === "24h" || filter === "7d") {
-      return data;
+  /**
+   *  시간대별 차트 데이터 변환
+   */
+  const hourlyChartData = useMemo(() => {
+    if (!hourlyDistributionData || hourlyDistributionData.length === 0) {
+      return {
+        categories: [],
+        series: [{ name: "쿼리 수", data: [] }]
+      };
     }
 
-    const now = new Date();
-    let timeAgo: Date;
-
-    switch (filter) {
-      case "1h":
-        timeAgo = new Date(now.getTime() - 60 * 60 * 1000);
-        break;
-      case "6h":
-        timeAgo = new Date(now.getTime() - 6 * 60 * 60 * 1000);
-        break;
-      default:
-        return data;
-    }
-
-    return data.filter(item => {
-      if (!item.lastExecutedAt) return false;
-      const lastExecuted = new Date(item.lastExecutedAt);
-      return lastExecuted >= timeAgo && lastExecuted <= now;
-    });
-  };
+    return {
+      categories: hourlyDistributionData.map((d: any) => d.timeSlot),
+      series: [{ name: "쿼리 수", data: hourlyDistributionData.map((d: any) => d.queryCount) }]
+    };
+  }, [hourlyDistributionData]);
 
   const convertToQueryStat = (item: QueryExecutionStatDto): QueryStat => {
     return {
@@ -172,47 +150,53 @@ export default function ExecutionStatus() {
     };
   };
 
+  /**
+   *  쿼리 타입별 분포 계산 (개선)
+   * - queryType이 없으면 fullQuery에서 직접 추출
+   * - 데이터가 없으면 빈 배열 반환
+   */
   const calculateQueryTypeDistribution = (data: QueryExecutionStatDto[]): { labels: string[]; data: number[] } => {
+    console.log(' 쿼리 타입 분포 계산 시작:', {
+      dataLength: data.length,
+      sampleData: data.slice(0, 3)
+    });
+
+    if (!data || data.length === 0) {
+      console.warn(' 집계 데이터가 비어있습니다');
+      return { labels: [], data: [] };
+    }
+
     const typeCount: Record<string, number> = {};
 
     data.forEach(item => {
-      const type = item.queryType || "UNKNOWN";
-      typeCount[type] = (typeCount[type] || 0) + item.executionCount;
+      // queryType이 있으면 사용, 없으면 쿼리 텍스트에서 추출
+      let type = item.queryType;
+      
+      if (!type || type === 'UNKNOWN' || type === '') {
+        type = extractQueryType(item.fullQuery || '');
+      }
+      
+      const normalizedType = type.toUpperCase();
+      const count = item.executionCount || 0;
+      
+      typeCount[normalizedType] = (typeCount[normalizedType] || 0) + count;
     });
 
+    console.log(' 집계된 타입별 개수:', typeCount);
+
+    // 상위 6개만 선택
     const sortedTypes = Object.entries(typeCount)
       .sort((a, b) => b[1] - a[1])
       .slice(0, 6);
 
-    return {
+    const result = {
       labels: sortedTypes.map(([type]) => type),
       data: sortedTypes.map(([, count]) => count)
     };
-  };
 
-  const calculateTransactionDistribution = (data: QueryExecutionStatDto[]): { data: number[]; labels: string[] } => {
-    const executionCounts = data.map(item => item.executionCount || 0);
-    
-    const bins = {
-      "1": 0,
-      "2-3": 0,
-      "4-7": 0,
-      "8-15": 0,
-      "16+": 0
-    };
+    console.log(' 차트 데이터 생성 완료:', result);
 
-    executionCounts.forEach(count => {
-      if (count === 1) bins["1"]++;
-      else if (count <= 3) bins["2-3"]++;
-      else if (count <= 7) bins["4-7"]++;
-      else if (count <= 15) bins["8-15"]++;
-      else bins["16+"]++;
-    });
-
-    return {
-      labels: Object.keys(bins),
-      data: Object.values(bins)
-    };
+    return result;
   };
 
   const calculateTimeSeriesData = (data: QueryExecutionStatDto[]): number[] => {
@@ -226,78 +210,105 @@ export default function ExecutionStatus() {
   };
 
   /**
-   * ✅ 데이터 로드 - 집계 데이터 + 원시 메트릭 데이터 모두 로드 (React Query로 자동 새로고침)
+   *  집계 데이터만 먼저 로드 (최근 1시간)
    */
   const { data: executionData, isLoading, error: queryError } = useQuery({
-    queryKey: ["execution-status", databaseId, timeFilter],
+    queryKey: ["execution-status", databaseId],
     queryFn: async () => {
       if (!databaseId) {
         return null;
       }
 
       console.log("==========================================");
-      console.log("📊 Execution Stats 데이터 로딩 시작...");
+      console.log(" Execution Stats 데이터 로딩 시작...");
       console.log(`  - Database ID: ${databaseId}`);
+      console.log(`  - 조회 기간: 최근 1시간`);
 
-      const days = getDaysFromFilter(timeFilter);
-
-      // 1️⃣ 집계 데이터 로드
-      const aggregatedResponse = await getExecutionStats(databaseId, days);
+      // 1시간 데이터 요청
+      const aggregatedResponse = await getExecutionStats(databaseId, 1);
       
       if (!aggregatedResponse.data.success || !aggregatedResponse.data.data) {
         throw new Error("집계 데이터를 불러오는데 실패했습니다.");
       }
 
       const aggregatedStats = aggregatedResponse.data.data;
-      console.log(`  ✅ 집계된 쿼리 수: ${aggregatedStats.length}개`);
-
-      // 2️⃣ 원시 메트릭 데이터 로드 (메모리/IO/CPU 정보 포함)
-      const rawMetricsResponse = await getQueryMetricsByDatabaseId(databaseId);
+      console.log(`   집계된 쿼리 수: ${aggregatedStats.length}개`);
       
-      let rawMetrics: QueryMetricsRawDto[] = [];
-      if (rawMetricsResponse.data.success && rawMetricsResponse.data.data) {
-        rawMetrics = rawMetricsResponse.data.data;
-        console.log(`  ✅ 원시 메트릭 수: ${rawMetrics.length}개`);
-      } else {
-        console.warn("  ⚠️ 원시 메트릭 데이터를 불러올 수 없습니다");
-      }
-
-      console.log("  ✅ 데이터 로딩 완료");
+      //  디버깅: queryType 확인
+      const typeCounts = aggregatedStats.reduce((acc: any, stat: any) => {
+        const type = stat.queryType || 'NULL';
+        acc[type] = (acc[type] || 0) + 1;
+        return acc;
+      }, {});
+      console.log('   queryType 분포:', typeCounts);
+      
+      console.log("   데이터 로딩 완료");
       console.log("==========================================");
 
       return {
         aggregatedStats,
-        rawMetrics
+        rawMetrics: []
       };
     },
     enabled: !!databaseId,
-    refetchInterval: intervalToMs(refreshInterval), // ** 중요 ** 새로고침 주기 적용
+    refetchInterval: intervalToMs(refreshInterval),
+  });
+
+  /**
+   *  원시 메트릭은 백그라운드에서 별도로 로드
+   */
+  const { data: rawMetricsData } = useQuery({
+    queryKey: ["raw-metrics", databaseId],
+    queryFn: async () => {
+      if (!databaseId) return [];
+
+      console.log("📦 원시 메트릭 백그라운드 로드 시작...");
+      
+      const rawMetricsResponse = await getQueryMetricsByDatabaseId(databaseId);
+      
+      if (rawMetricsResponse.data.success && rawMetricsResponse.data.data) {
+        console.log(`   원시 메트릭 수: ${rawMetricsResponse.data.data.length}개`);
+        return rawMetricsResponse.data.data;
+      }
+      
+      return [];
+    },
+    enabled: !!databaseId,
+    staleTime: 5 * 60 * 1000,
   });
 
   // 데이터 처리 및 상태 업데이트
   useEffect(() => {
     if (!executionData) return;
 
-    const { aggregatedStats, rawMetrics } = executionData;
+    const { aggregatedStats } = executionData;
+
+    console.log('🔄 데이터 처리 시작:', {
+      aggregatedStatsLength: aggregatedStats.length,
+      rawMetricsLength: rawMetricsData?.length || 0
+    });
 
     setAllAggregatedStats(aggregatedStats);
-    setAllRawMetrics(rawMetrics);
 
-    // 3️⃣ 나머지 처리
-    const filteredStats = filterByTimeRange(aggregatedStats, timeFilter);
-    const stats = filteredStats.map(convertToQueryStat);
-    const queryTypeDistribution = calculateQueryTypeDistribution(filteredStats);
-    const transactionDistribution = calculateTransactionDistribution(filteredStats);
-    const timeSeriesData = calculateTimeSeriesData(filteredStats);
+    if (rawMetricsData) {
+      setAllRawMetrics(rawMetricsData);
+    }
+
+    const stats = aggregatedStats.map(convertToQueryStat);
+    const queryTypeDistribution = calculateQueryTypeDistribution(aggregatedStats);
+
+    console.log(' 최종 대시보드 데이터:', {
+      statsCount: stats.length,
+      queryTypeLabels: queryTypeDistribution.labels,
+      queryTypeData: queryTypeDistribution.data,
+      hasData: queryTypeDistribution.labels.length > 0
+    });
 
     setDashboardData({
-      transactionDistribution,
       queryTypeDistribution,
       stats
     });
-
-    setTransactionChartData(timeSeriesData);
-  }, [executionData, timeFilter]);
+  }, [executionData, rawMetricsData]);
 
   // 로딩 상태 관리
   useEffect(() => {
@@ -316,34 +327,6 @@ export default function ExecutionStatus() {
       setError(null);
     }
   }, [queryError]);
-
-  useEffect(() => {
-    if (!databaseId || dashboardData.stats.length === 0) return;
-
-    const checkAndUpdate = () => {
-      const currentTime = getCurrentRoundedTime();
-      
-      if (currentTime !== lastUpdateTime && lastUpdateTime !== '') {
-        console.log('🔄 차트 슬라이딩 업데이트:', `${lastUpdateTime} → ${currentTime}`);
-        
-        setTimeCategories(generateTimeCategories());
-        
-        setTransactionChartData(prev => {
-          const newData = [...prev];
-          newData.shift();
-          const lastValue = prev[prev.length - 1];
-          const newValue = Math.max(1, Math.floor(lastValue * (0.85 + Math.random() * 0.3)));
-          newData.push(newValue);
-          return newData;
-        });
-        
-        setLastUpdateTime(currentTime);
-      }
-    };
-
-    const interval = setInterval(checkAndUpdate, 10000);
-    return () => clearInterval(interval);
-  }, [databaseId, dashboardData.stats.length, lastUpdateTime]);
 
   const sortedStats = useMemo(() => {
     if (!sortKey || !sortDir) return dashboardData.stats;
@@ -374,17 +357,14 @@ export default function ExecutionStatus() {
     currentPage * itemsPerPage
   );
 
-  const transactionChartSeries = useMemo(() => [{
-    name: "쿼리 수",
-    data: transactionChartData
-  }], [transactionChartData]);
-
-  const queryTypeSeries = useMemo(() => dashboardData.queryTypeDistribution.data, [dashboardData]);
+  const queryTypeSeries = useMemo(() => {
+    return dashboardData.queryTypeDistribution.data;
+  }, [dashboardData]);
 
   const executeExplainAnalyze = async (databaseId: number, query: string) => {
     try {
       showLoader("실행 계획 분석 중...");
-      console.log('🔍 EXPLAIN ANALYZE 요청 시작', { databaseId, query });
+      console.log(' EXPLAIN ANALYZE 요청 시작', { databaseId, query });
 
       const { data } = await postExplainAnalyze(databaseId, query);
 
@@ -392,26 +372,22 @@ export default function ExecutionStatus() {
         throw new Error(data?.message || "EXPLAIN ANALYZE 실패");
       }
 
-      console.log('✅ EXPLAIN ANALYZE 응답:', data);
+      console.log(' EXPLAIN ANALYZE 응답:', data);
       return data;
     } catch (error) {
-      console.error('❌ EXPLAIN ANALYZE 실패:', error);
+      console.error(' EXPLAIN ANALYZE 실패:', error);
       throw error;
     } finally {
       hideLoader();
     }
   };
 
-  /**
-   * ✅ 행 클릭 핸들러 - 원시 메트릭에서 리소스 정보 가져오기
-   */
   const onRowClick = async (row: QueryStat) => {
     if (!databaseId) {
-      console.error('❌ Database ID가 없습니다');
+      console.error(' Database ID가 없습니다');
       return;
     }
 
-    // 집계 데이터에서 해당 쿼리 찾기
     const aggregatedData = allAggregatedStats.find(item => item.queryHash === row.id);
     
     if (!aggregatedData) {
@@ -419,11 +395,9 @@ export default function ExecutionStatus() {
       return;
     }
 
-    // ✅ 원시 메트릭에서 동일한 queryHash를 가진 데이터 찾기 (가장 최근 것)
     const matchingRawMetrics = allRawMetrics
       .filter(m => m.queryHash === row.id)
       .sort((a, b) => {
-        // collectedAt 기준으로 내림차순 정렬 (최신 것이 먼저)
         const dateA = a.collectedAt ? new Date(a.collectedAt).getTime() : 0;
         const dateB = b.collectedAt ? new Date(b.collectedAt).getTime() : 0;
         return dateB - dateA;
@@ -431,7 +405,7 @@ export default function ExecutionStatus() {
 
     const rawMetricData = matchingRawMetrics.length > 0 ? matchingRawMetrics[0] : null;
 
-    console.log('🔍 매칭된 원시 메트릭:', {
+    console.log(' 매칭된 원시 메트릭:', {
       queryHash: row.id,
       found: !!rawMetricData,
       count: matchingRawMetrics.length,
@@ -445,13 +419,11 @@ export default function ExecutionStatus() {
                             queryText.includes("INSERT") || 
                             queryText.includes("DELETE");
 
-    // 1️⃣ 로딩 상태의 모달을 먼저 표시
     const loadingDetail: QueryDetail = {
       queryId: `Query ${row.id.substring(0, 8)}...`,
       status: "🔄 실행 계획 분석 중...",
       avgExecutionTime: row.avgTime,
       totalCalls: aggregatedData.executionCount || 0,
-      // ✅ 원시 메트릭에서 리소스 정보 가져오기
       memoryUsage: rawMetricData?.memoryUsageMb 
         ? `${Number(rawMetricData.memoryUsageMb).toFixed(1)}MB`
         : "N/A",
@@ -487,7 +459,6 @@ export default function ExecutionStatus() {
     setSelectedQueryDetail(loadingDetail);
     setIsModalOpen(true);
 
-    // 2️⃣ 백그라운드에서 EXPLAIN ANALYZE 실행
     try {
       const explainResult = await executeExplainAnalyze(
         databaseId, 
@@ -500,7 +471,6 @@ export default function ExecutionStatus() {
 
       const data = explainResult.data;
       
-      // 3️⃣ EXPLAIN ANALYZE 결과로 상세 정보 업데이트
       const updatedDetail: QueryDetail = {
         ...loadingDetail,
         status: data.executionMode === "실제 실행" ? "실제 실행" : "안전 모드",
@@ -520,14 +490,14 @@ export default function ExecutionStatus() {
       };
       
       setSelectedQueryDetail(updatedDetail);
-      console.log('✅ EXPLAIN ANALYZE 결과로 모달 업데이트 완료');
+      console.log(' EXPLAIN ANALYZE 결과로 모달 업데이트 완료');
 
     } catch (error: any) {
-      console.error('❌ EXPLAIN ANALYZE 실행 실패:', error);
+      console.error(' EXPLAIN ANALYZE 실행 실패:', error);
       
       const errorDetail: QueryDetail = {
         ...loadingDetail,
-        status: "⚠️ 분석 실패",
+        status: " 분석 실패",
         explainResult: `실행 계획을 가져오지 못했습니다.\n오류: ${error?.response?.data?.message || error?.message || '알 수 없는 오류'}\n\n기본 통계 정보:\n- 평균 실행 시간: ${row.avgTime}\n- 총 실행 횟수: ${aggregatedData.executionCount || 0}회\n- 총 실행 시간: ${row.totalTime}`,
         stats: {
           min: "N/A",
@@ -631,7 +601,10 @@ export default function ExecutionStatus() {
       <div className="es-layout">
         <section className="es-left-card">
           <div className="es-card-header">
-            <h3 className="es-card-title">실행 통계</h3>
+            <div>
+              <h3 className="es-card-title">실행 통계</h3>
+              <p className="es-subtitle">최근 1시간 데이터를 자동으로 불러옵니다</p>
+            </div>
             <CsvButton onClick={handleExport} />
           </div>
 
@@ -667,7 +640,7 @@ export default function ExecutionStatus() {
             <div className="es-tbody">
               {currentStats.map((stat, i) => (
                 <div key={i} className="es-row" onClick={() => onRowClick(stat)}>
-                  <div className="cell-id">{stat.id}</div>
+                  <div className="cell-id">{stat.id.substring(0, 8)}...</div>
                   <div className="cell-q">{stat.shortQuery}</div>
                   <div>{stat.executionCount.toLocaleString()}</div>
                   <div>{stat.avgTime}</div>
@@ -694,108 +667,74 @@ export default function ExecutionStatus() {
           <section className="es-chart-card">
             <h4 className="es-chart-title">시간별 쿼리 수 추이</h4>
             <div className="es-chart-body">
-              <Chart
-                type="column"
-                series={transactionChartSeries}
-                categories={timeCategories}
-                height="100%"
-                showLegend={false}
-                showToolbar={false}
-                colors={["var(--color-normal)"]}
-                customOptions={{
-                  chart: {
-                    animations: { enabled: false },
-                    redrawOnParentResize: true,
-                    redrawOnWindowResize: true,
-                  },
-                  plotOptions: {
-                    bar: {
-                      borderRadius: 4,
-                      columnWidth: "65%",
-                      dataLabels: {
-                        position: "top"
-                      }
-                    }
-                  },
-                  xaxis: {
-                    categories: timeCategories,
-                    title: { 
-                      text: "시간", 
-                      style: { fontSize: "11px", fontWeight: 600 } 
-                    },
-                    labels: {
-                      rotate: -45,
-                      style: { fontSize: "10px" }
-                    }
-                  },
-                  yaxis: {
-                    title: { 
-                      text: "쿼리 수", 
-                      style: { fontSize: "11px", fontWeight: 600 } 
-                    },
-                    labels: {
-                      formatter: (val: number) => Math.round(val).toString()
-                    }
-                  },
-                  grid: { borderColor: "var(--border)", strokeDashArray: 4 },
-                  tooltip: {
-                    enabled: true,
-                    y: {
-                      formatter: (val: number) => `${Math.round(val)} 쿼리`
-                    }
-                  },
-                  dataLabels: {
-                    enabled: false
-                  }
-                }}
-              />
+              {hourlyChartData.categories.length > 0 ? (
+                <Chart
+                  type="column"
+                  series={hourlyChartData.series}
+                  categories={hourlyChartData.categories}
+                  height="100%"
+                  showLegend={false}
+                  showToolbar={false}
+                  colors={["var(--color-normal)"]}
+                  customOptions={{
+    yaxis: {
+      labels: {
+        formatter: (val: number) => {
+          return Math.round(val).toString();  
+        }
+      }
+    }
+  }}
+/>
+              ) : (
+                <div style={{ 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  justifyContent: 'center', 
+                  height: '100%',
+                  color: 'var(--muted)',
+                  fontSize: '0.875rem'
+                }}>
+                  데이터를 불러오는 중...
+                </div>
+              )}
             </div>
           </section>
 
-          <section className="es-chart-card">
+          <section className="es-chart-card" style={{ height: "270px" }}>
             <h4 className="es-chart-title">쿼리 타입별 분포</h4>
             <div className="es-chart-body">
-              <Chart
-                type="pie"
-                series={queryTypeSeries}
-                categories={dashboardData.queryTypeDistribution.labels}
-                height="100%"
-                showLegend={true}
-                showToolbar={false}
-                showDonutTotal={false}
-                colors={[
-                  "var(--color-normal)",
-                  "var(--color-danger)",
-                  "var(--color-success)",
-                  "var(--color-warn)",
-                  "#9333EA",
-                  "#EC4899"
-                ]}
-                customOptions={{
-                  chart: {
-                    animations: { enabled: false },
-                    redrawOnParentResize: true,
-                    redrawOnWindowResize: true,
-                  },
-                  legend: { position: "right", fontSize: "11px", fontWeight: 600 },
-                  dataLabels: {
-                    enabled: true,
-                    formatter: (_: number, opts: any) => {
-                      const series = opts?.w?.config?.series || [];
-                      const total = series.reduce((s: number, n: number) => s + (n || 0), 0) || 1;
-                      const v = series[opts.seriesIndex] || 0;
-                      const pct = Math.round((v / total) * 100);
-                      return `${pct}%`;
-                    },
-                    style: { fontSize: "11px", fontWeight: 700 },
-                    dropShadow: { enabled: false },
-                  },
-                  stroke: { width: 0 },
-                  tooltip: {
-                    enabled: false
-                  },
-                }}
-              />
+              {queryTypeSeries.length > 0 && dashboardData.queryTypeDistribution.labels.length > 0 ? (
+                <Chart
+                  type="pie"
+                  series={queryTypeSeries as any}
+                  categories={dashboardData.queryTypeDistribution.labels}
+                  height="200px"
+                  showLegend={true}
+                  showToolbar={false}
+                  colors={[
+                    "#7B61FF",
+                    "#FF928A",
+                    "#34D399",
+                    "#FBBF24",
+                    "#9333EA",
+                    "#EC4899"
+                  ]}
+                />
+              ) : (
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    height: "100%",
+                    color: "var(--muted)",
+                    fontSize: "0.875rem",
+                  }}
+                >
+                  데이터를 불러오는 중...
+                </div>
+              )}
             </div>
           </section>
         </aside>

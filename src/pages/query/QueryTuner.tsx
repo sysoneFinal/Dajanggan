@@ -1,129 +1,112 @@
 import { useState } from "react";
 import { useLoader } from "../../context/LoaderContext";
+import { analyzeQueryWithAI } from "../../api/query";
+import type { QueryAnalysisResponse, QuerySuggestion, SuggestionLevel } from "../../api/suggestion";
 import "/src/styles/query/query-tuner.css";
 
 /**
- * Query Analysis 페이지
+ * Query Tuner 페이지 - 실제 API 연동
  * - SQL 쿼리 분석 및 최적화 제안
  * - EXPLAIN ANALYZE 실행
- * - AI 기반 개선 제안
+ * - OpenAI 기반 AI 개선 제안 (캐싱 적용)
  * 
- * @author 이해든
+ * @author 이해든 
  */
 
-/* ---------- 타입 ---------- */
-type ExecutionMode = "safe" | "dangerous";
+type ExecutionMode = "실제 실행" | "안전 모드";
 
-type ExecutionResult = {
-  executionTime: string;
-  ioReads: number;
-  bufferHitRate: number;
-  memoryUsage: string;
-};
+interface ExecutionResult {
+  executionTimeMs: number | null;
+  planningTimeMs: number | null;
+  rowsReturned?: number | null;
+}
 
-type ExplainPlan = {
-  plan: string;
-};
-
-type SuggestionLevel = "필수" | "권장" | "참고";
-
-type AISuggestion = {
-  level: SuggestionLevel;
-  title: string;
-  description: string;
-  sqlCode?: string;
-  improvement?: string;
-};
-
-type PerformanceComparison = {
-  before: string;
-  after: string;
-  improvementRate: number;
-};
-
-/* ---------- 데모 데이터 ---------- */
-const demoSafeQuery = `UPDATE orders
-SET status = 'completed'
-WHERE order_id = 12345;`;
-
-const demoExecutionResult: ExecutionResult = {
-  executionTime: "234ms",
-  ioReads: 1250,
-  bufferHitRate: 85,
-  memoryUsage: "48MB",
-};
-
-const demoExplainPlan: ExplainPlan = {
-  plan: `└─ Seq Scan on orders (cost=0..1250) [234ms]
-   └─ Filter: created_at > '2024-01-01'`,
-};
-
-const demoAISuggestions: AISuggestion[] = [
-  {
-    level: "필수",
-    title: "created_at 컬럼에 인덱스 추가",
-    description: "",
-    sqlCode: "CREATE INDEX idx_orders_created ON orders(created_at);",
-    improvement: "234ms → 15ms (약 93%)",
-  },
-  {
-    level: "권장",
-    title: "ORDER BY에 LIMIT 추가 고려",
-    description: "필요한 행 수만 정렬하면 불필요한 정렬 비용이 크게 줄어듭니다.",
-  },
-  {
-    level: "참고",
-    title: "날짜 기준 파티셔닝 검토",
-    description: "월/분기 단위 파티션으로 범위 스캔 범위를 축소하세요.",
-  },
-];
-
-const demoPerformance: PerformanceComparison = {
-  before: "234ms",
-  after: "15ms",
-  improvementRate: 93,
-};
-
-/* ---------- 메인 페이지 ---------- */
 export default function QueryTuner() {
   const { showLoader, hideLoader } = useLoader();
-  const [sqlQuery, setSqlQuery] = useState(demoSafeQuery);
-  const [executionMode, setExecutionMode] = useState<ExecutionMode>("dangerous");
-  const [hasExecuted, setHasExecuted] = useState(true);
+  
+  // State
+  const [databaseId, setDatabaseId] = useState<number>(1); // TODO: 실제 DB 선택 UI와 연동
+  const [sqlQuery, setSqlQuery] = useState("");
+  const [executionMode, setExecutionMode] = useState<ExecutionMode | null>(null);
+  const [hasExecuted, setHasExecuted] = useState(false);
+  
+  // 분석 결과
+  const [explainPlan, setExplainPlan] = useState<string>("");
+  const [executionResult, setExecutionResult] = useState<ExecutionResult | null>(null);
+  const [suggestions, setSuggestions] = useState<QuerySuggestion[]>([]);
+  
+  // 캐시 정보
+  const [isCachedResult, setIsCachedResult] = useState<boolean>(false);
+  
+  // 에러 처리
+  const [error, setError] = useState<string | null>(null);
 
-  // SQL 안전성 체크
+  // SQL 안전성 체크 (클라이언트 측 사전 검증)
   const checkQuerySafety = (query: string): ExecutionMode => {
     const dangerousKeywords = ["DELETE", "DROP", "TRUNCATE", "UPDATE", "INSERT"];
     const upperQuery = query.toUpperCase();
     
     for (const keyword of dangerousKeywords) {
       if (upperQuery.includes(keyword)) {
-        return "dangerous";
+        return "안전 모드";
       }
     }
-    return "safe";
+    return "실제 실행";
   };
 
   // 실행 버튼 클릭
   const handleExecute = async () => {
     if (!sqlQuery.trim()) {
+      setError("SQL 쿼리를 입력해주세요.");
       return;
     }
 
     try {
-      showLoader("쿼리를 실행하는 중...");
+      showLoader("AI 기반 쿼리 분석 중...");
+      setError(null);
+      
+      // 사전 안전성 체크
       const safety = checkQuerySafety(sqlQuery);
       setExecutionMode(safety);
       
-      // 실제 API 호출이 있다면 여기에 추가
-      // 예: await postExplainAnalyze(databaseId, sqlQuery);
+      // API 호출: EXPLAIN ANALYZE + AI 제안
+      const response = await analyzeQueryWithAI(databaseId, sqlQuery);
       
-      // 시뮬레이션을 위한 짧은 지연
-      await new Promise(resolve => setTimeout(resolve, 500));
+      if (response.data.success) {
+        const data: QueryAnalysisResponse = response.data.data;
+        
+        // 실행 계획 설정
+        setExplainPlan(data.explainResult.explainPlan);
+        
+        // 실행 결과 설정
+        setExecutionResult({
+          executionTimeMs: data.explainResult.executionTimeMs,
+          planningTimeMs: data.explainResult.planningTimeMs,
+          rowsReturned: data.explainResult.rowsReturned
+        });
+        
+        // 실행 모드 업데이트 (서버 응답 기준)
+        setExecutionMode(data.explainResult.executionMode as ExecutionMode);
+        
+        // AI 제안 설정
+        setSuggestions(data.suggestions || []);
+        
+        // 캐시 여부 확인
+        const hasCache = data.suggestions && data.suggestions.length > 0 
+          && data.suggestions[0].isFromCache === true;
+        setIsCachedResult(hasCache);
+        
+        setHasExecuted(true);
+      } else {
+        setError(response.data.message || "쿼리 분석에 실패했습니다.");
+      }
       
-      setHasExecuted(true);
-    } catch (error) {
-      console.error("쿼리 실행 실패:", error);
+    } catch (err: any) {
+      console.error("쿼리 분석 실패:", err);
+      setError(
+        err.response?.data?.message || 
+        "쿼리 분석 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요."
+      );
     } finally {
       hideLoader();
     }
@@ -133,18 +116,74 @@ export default function QueryTuner() {
   const handleReset = () => {
     setSqlQuery("");
     setHasExecuted(false);
+    setExplainPlan("");
+    setExecutionResult(null);
+    setSuggestions([]);
+    setError(null);
+    setExecutionMode(null);
+    setIsCachedResult(false);
   };
 
   // 제안 레벨별 색상
   const getSuggestionColor = (level: SuggestionLevel): string => {
     switch (level) {
-      case "필수":
+      case "높음":
         return "#EF4444";
-      case "권장":
+      case "경고":
         return "#F59E0B";
-      case "참고":
+      case "정보":
         return "#10B981";
     }
+  };
+
+  // 성능 개선율 계산 (소수점 2자리 표시로 수정)
+  const calculatePerformance = (): { before: number; after: number; improvement: number } | null => {
+    if (!executionResult?.executionTimeMs || suggestions.length === 0) {
+      return null;
+    }
+
+    const beforeMs = executionResult.executionTimeMs;
+    
+    // 가장 높은 개선율을 가진 제안 찾기
+    const maxImprovement = Math.max(
+      ...suggestions
+        .filter(s => s.expectedImprovementPercent)
+        .map(s => s.expectedImprovementPercent!)
+    );
+
+    if (maxImprovement === -Infinity || maxImprovement === 0) {
+      return null;
+    }
+
+    const afterMs = beforeMs * (1 - maxImprovement / 100);
+
+    return {
+      before: beforeMs,
+      after: afterMs,
+      improvement: maxImprovement
+    };
+  };
+
+  const performance = calculatePerformance();
+
+  // I/O 블록 수 추출 (explainPlan에서 파싱)
+  const extractIOBlocks = (plan: string): number => {
+    // "blocks=1234" 형태 찾기
+    const match = plan.match(/blocks[=\s]+(\d+)/i);
+    return match ? parseInt(match[1]) : 0;
+  };
+
+  // 버퍼 히트율 계산
+  const calculateBufferHitRate = (plan: string): number => {
+    // PostgreSQL EXPLAIN (ANALYZE, BUFFERS) 결과에서 계산
+    const sharedHitMatch = plan.match(/shared hit=(\d+)/);
+    const sharedReadMatch = plan.match(/shared read=(\d+)/);
+    
+    const hits = sharedHitMatch ? parseInt(sharedHitMatch[1]) : 0;
+    const reads = sharedReadMatch ? parseInt(sharedReadMatch[1]) : 0;
+    const total = hits + reads;
+    
+    return total > 0 ? Math.round((hits / total) * 100) : 0;
   };
 
   return (
@@ -157,78 +196,113 @@ export default function QueryTuner() {
           <section className="qt-card">
             <div className="qt-card-header">
               <h3>SQL 입력 에디터</h3>
+              {isCachedResult && (
+                <div className="qt-cache-badge">
+                  💰 캐시됨 (비용 절감)
+                </div>
+              )}
             </div>
             <textarea
               className="qt-textarea"
               value={sqlQuery}
               onChange={(e) => setSqlQuery(e.target.value)}
-              placeholder="SELECT * FROM ..."
+              placeholder="SELECT * FROM orders WHERE ..."
             />
             <div className="qt-editor-actions">
-              <button className="qt-btn qt-btn--primary" onClick={handleExecute}>
+              <button 
+                className="qt-btn qt-btn--primary" 
+                onClick={handleExecute}
+                disabled={!sqlQuery.trim()}
+              >
                 실행
               </button>
-              <button className="qt-btn qt-btn--secondary" onClick={handleReset}>
+              <button 
+                className="qt-btn qt-btn--secondary" 
+                onClick={handleReset}
+              >
                 초기화
               </button>
             </div>
+            
+            {/* 에러 메시지 */}
+            {error && (
+              <div className="qt-error-message">
+                 {error}
+              </div>
+            )}
           </section>
 
           {/* 실행 결과 */}
-          {hasExecuted && (
+          {hasExecuted && executionResult && (
             <section className="qt-card">
               <div className="qt-card-header">
                 <h3>실행 결과</h3>
                 <div className="qt-execution-badges">
-                  <div className={`qt-mode-badge ${executionMode === "safe" ? "qt-mode-badge--safe" : "qt-mode-badge--estimate"}`}>
-                    {executionMode === "safe" ? "실제 실행" : "추정 결과"}
+                  <div 
+                    className={`qt-mode-badge ${
+                      executionMode === "실제 실행" 
+                        ? "qt-mode-badge--safe" 
+                        : "qt-mode-badge--estimate"
+                    }`}
+                  >
+                    {executionMode}
                   </div>
-                  {executionMode === "dangerous" && (
-                    <div className="qt-mode-badge qt-mode-badge--danger">
-                      안전모드
-                    </div>
-                  )}
                 </div>
               </div>
 
               <div className="qt-metrics-grid">
-                <div className="qt-metric">
-                  <div className="qt-metric-label">실행 시간</div>
-                  <div className="qt-metric-value">{demoExecutionResult.executionTime}</div>
-                </div>
+                {executionResult.executionTimeMs !== null && (
+                  <div className="qt-metric">
+                    <div className="qt-metric-label">실행 시간</div>
+                    <div className="qt-metric-value">
+                      {executionResult.executionTimeMs.toFixed(2)}
+                      <span className="qt-metric-unit">ms</span>
+                    </div>
+                  </div>
+                )}
+                
+                {executionResult.planningTimeMs !== null && (
+                  <div className="qt-metric">
+                    <div className="qt-metric-label">계획 시간</div>
+                    <div className="qt-metric-value">
+                      {executionResult.planningTimeMs.toFixed(2)}
+                      <span className="qt-metric-unit">ms</span>
+                    </div>
+                  </div>
+                )}
+                
                 <div className="qt-metric">
                   <div className="qt-metric-label">I/O 읽기</div>
                   <div className="qt-metric-value">
-                    {demoExecutionResult.ioReads.toLocaleString()}
+                    {extractIOBlocks(explainPlan).toLocaleString()}
                     <span className="qt-metric-unit">blocks</span>
                   </div>
                 </div>
+                
                 <div className="qt-metric">
                   <div className="qt-metric-label">버퍼 히트율</div>
-                  <div className="qt-metric-value">{demoExecutionResult.bufferHitRate}%</div>
-                </div>
-                <div className="qt-metric">
-                  <div className="qt-metric-label">메모리 사용</div>
-                  <div className="qt-metric-value">{demoExecutionResult.memoryUsage}</div>
+                  <div className="qt-metric-value">
+                    {calculateBufferHitRate(explainPlan)}%
+                  </div>
                 </div>
               </div>
             </section>
           )}
 
           {/* 실행 계획 */}
-          {hasExecuted && (
+          {hasExecuted && explainPlan && (
             <section className="qt-card">
               <div className="qt-card-header">
                 <h3>실행 계획 (EXPLAIN ANALYZE)</h3>
               </div>
               <div className="qt-explain-plan">
-                <pre>{demoExplainPlan.plan}</pre>
+                <pre>{explainPlan}</pre>
               </div>
               
               {/* 안전모드 경고 */}
-              {executionMode === "dangerous" && (
+              {executionMode === "안전 모드" && (
                 <div className="qt-safety-warning">
-                  <div className="qt-safety-warning-icon">⚠️</div>
+                  <div className="qt-safety-warning-icon"></div>
                   <div className="qt-safety-warning-content">
                     <div className="qt-safety-warning-title">
                       데이터 변경 명령이 포함되어 있어 실제 실행 없이 추정치만 표시됩니다.
@@ -246,39 +320,39 @@ export default function QueryTuner() {
         {/* 오른쪽 열 */}
         <div className="qt-right-column">
           {/* AI 개선 제안 */}
-          {hasExecuted && (
+          {hasExecuted && suggestions.length > 0 && (
             <section className="qt-card">
               <div className="qt-card-header">
                 <h3>AI 개선 제안</h3>
               </div>
               <div className="qt-suggestions">
-                {demoAISuggestions.map((suggestion, index) => (
-                  <div key={index} className="qt-suggestion-card">
+                {suggestions.map((suggestion, index) => (
+                  <div key={suggestion.suggestionId || index} className="qt-suggestion-card">
                     <div className="qt-suggestion-header">
                       <div
                         className="qt-suggestion-badge"
-                        style={{ backgroundColor: getSuggestionColor(suggestion.level) }}
+                        style={{ backgroundColor: getSuggestionColor(suggestion.suggestionLevel) }}
                       >
-                        {suggestion.level}
+                        {suggestion.suggestionLevel}
                       </div>
-                      <div className="qt-suggestion-title">{suggestion.title}</div>
+                      <div className="qt-suggestion-title">{suggestion.suggestionTitle}</div>
                     </div>
                     
-                    {suggestion.sqlCode && (
+                    {suggestion.suggestionSql && (
                       <div className="qt-suggestion-code">
-                        <code>{suggestion.sqlCode}</code>
+                        <code>{suggestion.suggestionSql}</code>
                       </div>
                     )}
                     
-                    {suggestion.description && (
+                    {suggestion.suggestionDescription && (
                       <div className="qt-suggestion-description">
-                        {suggestion.description}
+                        {suggestion.suggestionDescription}
                       </div>
                     )}
                     
-                    {suggestion.improvement && (
+                    {suggestion.expectedImprovementPercent && (
                       <div className="qt-suggestion-improvement">
-                        예상 개선: {suggestion.improvement}
+                        예상 개선: 약 {suggestion.expectedImprovementPercent}%
                       </div>
                     )}
                   </div>
@@ -287,8 +361,21 @@ export default function QueryTuner() {
             </section>
           )}
 
-          {/* Before/After 예상 성능 */}
-          {hasExecuted && (
+          {/* 제안 없음 메시지 */}
+          {hasExecuted && suggestions.length === 0 && (
+            <section className="qt-card">
+              <div className="qt-card-header">
+                <h3>AI 개선 제안</h3>
+              </div>
+              <div className="qt-no-suggestions">
+                <p>🎉 이 쿼리는 이미 최적화되어 있습니다!</p>
+                <p>특별한 개선 제안이 없습니다.</p>
+              </div>
+            </section>
+          )}
+
+          {/* Before/After 예상 성능 (소수점 2자리로 수정) */}
+          {hasExecuted && performance && (
             <section className="qt-card qt-card--performance">
               <div className="qt-card-header">
                 <h3>Before / After 예상 성능</h3>
@@ -297,19 +384,19 @@ export default function QueryTuner() {
                 <div className="qt-performance-section">
                   <div className="qt-performance-label">Before</div>
                   <div className="qt-performance-value qt-performance-value--before">
-                    {demoPerformance.before}
+                    {performance.before.toFixed(2)}ms
                   </div>
                 </div>
                 <div className="qt-performance-arrow">→</div>
                 <div className="qt-performance-section">
                   <div className="qt-performance-label">After</div>
                   <div className="qt-performance-value qt-performance-value--after">
-                    {demoPerformance.after}
+                    {performance.after.toFixed(2)}ms
                   </div>
                 </div>
               </div>
               <div className="qt-performance-improvement">
-                예상 개선율 약 {demoPerformance.improvementRate}%
+                예상 개선율 약 {performance.improvement}%
               </div>
             </section>
           )}

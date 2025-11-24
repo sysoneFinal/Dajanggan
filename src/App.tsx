@@ -36,7 +36,7 @@ export const queryClient = new QueryClient({
 
 function App() {
   const location = useLocation();
-  const noLayoutRoutes = ["/"];
+  const noLayoutRoutes = ["/", "/home"];
   const hideLayout = noLayoutRoutes.includes(location.pathname);
 
   const [breadcrumb, setBreadcrumb] = useState(() =>

@@ -12,6 +12,43 @@
   padding: 20px;
   z-index: 200;
   margin: 24px 24px 24px 0;
+  position: relative;
+}
+
+/* 가이드 도움말 버튼 */
+.guide-help-btn {
+  position: absolute;
+  bottom: 2rem;
+  right: 2rem;
+  width: 3rem;
+  height: 3rem;
+  border-radius: 50%;
+  background: rgba(123, 97, 255, 0.1);
+  border: 1px solid rgba(123, 97, 255, 0.2);
+  color: #7B61FF;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  z-index: 10;
+  font-size: 2rem;
+}
+
+.guide-help-btn:hover {
+  background: rgba(123, 97, 255, 0.15);
+  border-color: rgba(123, 97, 255, 0.3);
+  transform: scale(1.1);
+}
+
+.guide-help-btn:active {
+  transform: scale(0.95);
+}
+
+.guide-help-btn i {
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 /* 기본 css 삭제 */
@@ -254,7 +291,7 @@
   background: rgba(99, 102, 241, 0.06);
   border: 1px solid rgba(99, 102, 241, 0.15);
   border-radius: 12px;
-  padding: 12px 14px;
+  padding: 0.8rem 0.9rem;
   margin-bottom: 16px;
   font-size: 0.9rem;
   line-height: 1.5;

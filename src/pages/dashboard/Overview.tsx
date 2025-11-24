@@ -35,7 +35,6 @@ export default function OverviewPage() {
   const { data: dashboardData, isLoading, error: queryError, dataUpdatedAt } = useQuery({
     queryKey: ['overview-dashboard', selectedInstance?.instanceId],
     queryFn: async () => {
-      console.log('API 호출 시작:', new Date().toLocaleTimeString());
       
       if (!selectedInstance?.instanceId) return null;
       
@@ -63,21 +62,19 @@ export default function OverviewPage() {
   // 데이터가 업데이트될 때마다 로그
   useEffect(() => {
     if (dataUpdatedAt) {
-      console.log('🔁 데이터 갱신됨:', new Date(dataUpdatedAt).toLocaleTimeString());
+     // console.log('데이터 갱신됨:', new Date(dataUpdatedAt).toLocaleTimeString());
     }
   }, [dataUpdatedAt]);
 
   /** === 대시보드 데이터가 로드되면 레이아웃 업데이트 === */
   useEffect(() => {
     if (!dashboardData?.widgets) return;
-
-    console.log('대시보드 데이터 조회 ----->>>', dashboardData);
     
     const normalizedLayout = dashboardData.widgets.map((item: any) => {
       // databases는 item.databases 또는 item.options?.databases에 있을 수 있음
       const databases = item.databases ?? item.options?.databases ?? [];
       
-      console.log(`📊 위젯 ${item.id} - databases:`, databases);
+     // console.log(`📊 위젯 ${item.id} - databases:`, databases);
       
       return {
         i: item.id,

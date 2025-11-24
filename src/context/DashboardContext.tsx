@@ -59,7 +59,7 @@ export const DashboardProvider = ({ children }: DashboardProviderProps) => {
     if (cached) {
       try {
         const parsed = JSON.parse(cached);
-        console.log(">>>>> 캐시에서 metricMap 로드:", parsed);
+       // console.log(">>>>> 캐시에서 metricMap 로드:", parsed);
 
         setMetricMap(parsed);
       } catch (err) {
@@ -73,8 +73,6 @@ export const DashboardProvider = ({ children }: DashboardProviderProps) => {
         const res = await apiClient.get(`/metric/list`, {
           params: { instanceId: selectedInstance.instanceId },
         });
-
-        console.log("지표 정보 불러오기 :", res.data);
 
         const parsed = res.data.reduce((acc: Record<string, any>, item: any) => {
           const key = `${item.category}.${item.name}`;
@@ -99,7 +97,6 @@ export const DashboardProvider = ({ children }: DashboardProviderProps) => {
 
         setMetricMap(parsed);
         localStorage.setItem(cacheKey, JSON.stringify(parsed));
-        console.log(`metricMap API 로드 및 캐시 저장 완료 (${Object.keys(parsed).length}개)`);
         
       } catch (err) {
         console.error("metricMap 로드 실패:", err);
@@ -121,7 +118,6 @@ export const DashboardProvider = ({ children }: DashboardProviderProps) => {
         if (Array.isArray(parsed.layout)) {
           setLayout(parsed.layout);
           setThemeId(parsed.themeId ?? "default");
-          console.log(`[Dashboard] ${key} 로드 완료`);
           return;
         }
       }
@@ -136,7 +132,6 @@ export const DashboardProvider = ({ children }: DashboardProviderProps) => {
     }));
     setLayout(defaultLayout);
     setThemeId("default");
-    console.log(`[Dashboard] ${key} 기본 테마로 초기화`);
   }, [selectedInstance?.instanceId]);
 
   /** 편집 모드 시작  */

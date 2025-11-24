@@ -164,6 +164,13 @@ export default function Chart({
     if (!Array.isArray(series) || series.length === 0) {
       return [{ name: 'No Data', data: [] }];
     }
+      //  Pie/Donut 차트는 숫자 배열 [100, 200, 300]을 그대로 사용
+  const normalizedType = type === "column" ? "bar" : type;
+  const isPieOrDonut = normalizedType === "pie" || normalizedType === "donut";
+  
+  if (isPieOrDonut && typeof series[0] === 'number') {
+    return series as number[];
+  }
     
     return series.map((s: any) => ({
       ...s,
@@ -450,73 +457,82 @@ export default function Chart({
         break;
 
       /** 파이 / 도넛 */
-      case "pie":
-      case "donut":
-        options.labels = safeCategories as string[];      
-        options.plotOptions = {
-          pie: {
-            donut: {
-              size: "55%",
-              labels: {
-                show: true,
-                value: {
-                  show: true,
-                  fontSize: "20px",
-                  fontWeight: 700,
-                  color: "#1F2937",
-                  offsetY: 5,
-                },
-                total: {
-                  show: showDonutTotal,
-                  label: donutTitle || "Total",
-                  fontSize: "14px",
-                  fontWeight: 600,
-                  color: "#6B7280",
-                  formatter: (w) => {
-                    const total = w.globals.seriesTotals.reduce(
-                      (a: any, b: any) => a + b,
-                      0
-                    );
-                    return total ? total.toString() : "0";
-                  },
-                },
-              },
+case "pie":
+case "donut":
+  options.labels = safeCategories as string[];      
+  options.plotOptions = {
+    pie: {
+      donut: {
+        size: normalizedType === "donut" ? "55%" : "0%",
+        labels: {
+          show: normalizedType === "donut",
+          value: {
+            show: true,
+            fontSize: "20px",
+            fontWeight: 700,
+            color: "#1F2937",
+            offsetY: 5,
+          },
+          total: {
+            show: showDonutTotal,
+            label: donutTitle || "Total",
+            fontSize: "14px",
+            fontWeight: 600,
+            color: "#6B7280",
+            formatter: (w) => {
+              const total = w.globals.seriesTotals.reduce(
+                (a: any, b: any) => a + b,
+                0
+              );
+              return total ? total.toString() : "0";
             },
           },
-        };
+        },
+      },
+    },
+  };
 
-        options.chart = {
-          ...options.chart,
-          dropShadow: enableDonutShadow
-            ? {
-                enabled: true,
-                top: 5,
-                blur: 6,
-                opacity: 0.25,
-                color: "#707070ff",
-              }
-            : { enabled: false },
-        };
-
-        options.fill = { type: "solid" };
-        options.dataLabels = {
+  options.chart = {
+    ...options.chart,
+    dropShadow: enableDonutShadow
+      ? {
           enabled: true,
-          style: {
-            fontSize: "13px",
-            fontWeight: 600,
-            colors: ["#111827"],
-          },
-          dropShadow: { enabled: false },
-          offsetY: 10,
-          textAnchor: "middle",
-          distributed: true,
-          formatter: (_val: number, opts: any) => {
-            const label = opts.w.globals.labels[opts.seriesIndex];
-            const rawValue = opts.w.globals.series[opts.seriesIndex];
-            return rawValue === 0 ? "" : `${label} ${rawValue}`;
-          },
-        };
-        break;
+          top: 5,
+          blur: 6,
+          opacity: 0.25,
+          color: "#707070ff",
+        }
+      : { enabled: false },
+  };
+
+  options.fill = { type: "solid" };
+  options.dataLabels = {
+    enabled: true,
+    style: {
+      fontSize: "12px",
+      fontWeight: 700,
+      colors: ["#fff"],
+    },
+    dropShadow: { 
+      enabled: true,
+      top: 1,
+      left: 1,
+      blur: 1,
+      opacity: 0.45
+    },
+    formatter: (val: number) => {
+      return `${Math.round(val)}%`;
+    },
+  };
+  
+  options.legend = {
+    ...options.legend,
+    position: "right",
+    fontSize: "11px",
+    fontWeight: 600,
+  };
+  
+  break;
 
       /** BoxPlot */
       case "boxPlot":

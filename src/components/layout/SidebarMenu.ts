@@ -58,7 +58,6 @@ export const SIDEBAR_MENU = [
         label: "Vacuum",
         children: [
           { label: "Maintenance", path: "/database/vacuum/maintenance" },
-          { label: "History", path: "/database/vacuum/history" },
           { label: "Risk", path: "/database/vacuum/risk" },
           { label: "Bloat", path: "/database/vacuum/bloat" },
         ],
