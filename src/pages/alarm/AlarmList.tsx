@@ -31,6 +31,9 @@ type RuleThreshold = {
   minDurationMin: number | null;
   occurCount: number | null;
   windowMin: number | null;
+  resolveThreshold: number | null;
+  resolveDurationMin: number | null;
+  cooldownMin: number | null;
 };
 
 type ServerCreatePayload = {
@@ -41,8 +44,8 @@ type ServerCreatePayload = {
   operator: "gt" | "gte" | "lt" | "lte" | "eq";
   enabled: boolean;
   levels: {
-    notice: RuleThreshold;
-    warning: RuleThreshold;
+    info: RuleThreshold;
+    warn: RuleThreshold;
     critical: RuleThreshold;
   };
 };
@@ -55,13 +58,13 @@ type ServerUpdatePayload = {
   operator?: "gt" | "gte" | "lt" | "lte" | "eq";
   enabled: boolean;
   levels: {
-    notice: RuleThreshold;
-    warning: RuleThreshold;
+    info: RuleThreshold;
+    warn: RuleThreshold;
     critical: RuleThreshold;
   };
 };
 
-/** FE 생성 페이로드(내부 키: warn/danger) -> 서버 JSONB 페이로드(키: warning/critical) */
+/** FE 생성 페이로드(내부 키: warn/danger) -> 서버 JSONB 페이로드(키: warn/critical) */
 function toServerCreateJSONB(p: AlarmRulePayload): ServerCreatePayload {
   return {
     instanceId: p.instanceId,
@@ -71,20 +74,20 @@ function toServerCreateJSONB(p: AlarmRulePayload): ServerCreatePayload {
     operator: p.operator || "gt",
     enabled: p.enabled,
     levels: {
-      notice: p.levels.notice,
-      warning: p.levels.warn,      // warn -> warning
+      info: p.levels.info,
+      warn: p.levels.warn,      // warn -> warn
       critical: p.levels.danger,   // danger -> critical
     },
   };
 }
 
 /** 편집 페이로드를 유연하게 서버 JSONB로 정규화
- *  - EditModal에서 이미 서버형을 줄 수도 있고( warning/critical ),
+ *  - EditModal에서 이미 서버형을 줄 수도 있고( warn/critical ),
  *  - 프론트형(warn/danger)일 수도 있어서 둘 다 처리
  */
 function toServerUpdateJSONB(p: any): ServerUpdatePayload {
   const lv = p.levels || {};
-  const hasServerKeys = lv.warning && lv.critical;
+  const hasServerKeys = lv.warn && lv.critical;
   const hasClientKeys = lv.warn && lv.danger;
 
   return {
@@ -96,14 +99,14 @@ function toServerUpdateJSONB(p: any): ServerUpdatePayload {
     enabled: p.enabled,
     levels: hasServerKeys
       ? {
-          notice: lv.notice,
-          warning: lv.warning,
+          info: lv.info,
+          warn: lv.warn,
           critical: lv.critical,
         }
       : hasClientKeys
       ? {
-          notice: lv.notice,
-          warning: lv.warn,
+          info: lv.info,
+          warn: lv.warn,
           critical: lv.danger,
         }
       : lv, // 마지막 fallback (이미 서버 포맷이라고 가정)
@@ -612,8 +615,8 @@ export default function AlarmRuleList() {
       <SlackSettingsModal
         open={openSlack}
         onClose={() => setOpenSlack(false)}
-        onSave={(v) => console.log("Slack 설정 저장:", v)}
-        initialValue={{ instance: "postgres", enabled: true }}
+        instanceId={selectedInstance?.instanceId ?? null}
+        instanceName={selectedInstance?.instanceName}
       />
 
       <AlarmRuleModal

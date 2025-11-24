@@ -1,4 +1,5 @@
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import Chart from "../../components/chart/ChartComponent";
 import ChartGridLayout from "../../components/layout/ChartGridLayout";
 import WidgetCard from "../../components/util/WidgetCard";
@@ -6,6 +7,7 @@ import SummaryCard from "../../components/util/SummaryCard";
 import VacuumTableMenu from "./VacuumTableMenu";
 import apiClient from "../../api/apiClient";
 import { useInstanceContext } from "../../context/InstanceContext";
+import { intervalToMs } from "../../utils/time";
 import "/src/styles/vacuum/VacuumPage.css";
 
 type Props = {
@@ -15,7 +17,11 @@ type Props = {
 
 /* ---------- 타입 정의 ---------- */
 type BloatDetailData = {
-  kpi: { bloatPct: string; tableSize: string; wastedSpace: string };
+  kpi: { 
+    bloatPct: string; 
+    tableSize: string; 
+    wastedSpace: string;
+  };
   bloatTrend: { data: number[]; labels: string[] };
   deadTuplesTrend: { data: number[]; labels: string[] };
   indexBloatTrend: { data: number[][]; labels: string[]; names: string[] };
@@ -50,133 +56,156 @@ type ApiDashboardResponse = {
   indexBloatTrend: ApiIndexBloatTrendResponse;
 };
 
+/* ---------- Severity 유틸 함수 ---------- */
+// Bloat % 값에서 숫자 추출 (예: "45%" -> 45)
+const extractBloatPercentage = (bloatPct: string): number => {
+  if (!bloatPct) return 0;
+  // "45%" 또는 "45.5%" 같은 형식에서 숫자만 추출
+  const match = bloatPct.match(/[\d.]+/);
+  return match ? parseFloat(match[0]) : 0;
+};
+
+// 0-20%: 정상 (NORMAL)
+// 20-40%: 주의 (WARNING)
+// 40%+: 경고 (CRITICAL)
+const calculateBloatSeverity = (bloatPct: string): "NORMAL" | "WARNING" | "CRITICAL" => {
+  const percentage = extractBloatPercentage(bloatPct);
+  
+  if (percentage >= 40) {
+    return "CRITICAL";
+  } else if (percentage >= 20) {
+    return "WARNING";
+  } else {
+    return "NORMAL";
+  }
+};
+
+// ✅ Severity를 SummaryCard status로 변환
+const severityToStatus = (severity: "NORMAL" | "WARNING" | "CRITICAL"): "info" | "warning" | "critical" => {
+  switch (severity) {
+    case "CRITICAL":
+      return "critical";
+    case "WARNING":
+      return "warning";
+    case "NORMAL":
+      return "info";
+    default:
+      return "info";
+  }
+};
+
 /* ---------- 페이지 컴포넌트 ---------- */
 export default function BloatDetailPage({ onToggle, expanded = true }: Props) {
-  const { selectedInstance, selectedDatabase } = useInstanceContext();
-  const [data, setData] = useState<BloatDetailData | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const { selectedInstance, selectedDatabase, refreshInterval } = useInstanceContext();
   const [selectedTable, setSelectedTable] = useState<string>("");
-  const [tableList, setTableList] = useState<string[]>([]);
-  const [tableListLoading, setTableListLoading] = useState(false);
 
   // ========================================
-  // 📌 테이블 목록 조회 (Database 변경 시)
+  // 📌 테이블 목록 조회 (React Query로 자동 새로고침)
   // ========================================
-  useEffect(() => {
-    if (!selectedInstance || !selectedDatabase) {
-      setTableList([]);
-      setSelectedTable("");
-      return;
-    }
+  const { data: tableList = [], isLoading: tableListLoading } = useQuery<string[]>({
+    queryKey: ["vacuum-bloat-tables", selectedInstance?.instanceId, selectedDatabase?.databaseId],
+    queryFn: async () => {
+      if (!selectedInstance || !selectedDatabase) return [];
 
-    const fetchTableList = async () => {
-      try {
-        setTableListLoading(true);
-        const databaseId = selectedDatabase.databaseId;
-        const instanceId = selectedInstance.instanceId;
-        
-        console.log('🔍 Fetching table list for database:', {
-          instanceId,
-          instanceName: selectedInstance.instanceName,
-          databaseId,
-          databaseName: selectedDatabase.databaseName,
-        });
-        
-        const response = await apiClient.get<string[]>('/vacuum/bloat/detail/tables', {
-          params: { 
-            databaseId: Number(databaseId),
-            instanceId: Number(instanceId)
-          }
-        });
-        
-        console.log('✅ Table list response:', response.data);
-        
-        if (response.data && response.data.length > 0) {
-          setTableList(response.data);
-          // 첫 번째 테이블을 자동 선택
-          setSelectedTable(response.data[0]);
-        } else {
-          console.warn('⚠️ No tables found in database');
-          setTableList([]);
-          setSelectedTable("");
+      const databaseId = selectedDatabase.databaseId;
+      const instanceId = selectedInstance.instanceId;
+      
+      console.log('🔍 Fetching table list for database:', {
+        instanceId,
+        instanceName: selectedInstance.instanceName,
+        databaseId,
+        databaseName: selectedDatabase.databaseName,
+      });
+      
+      const response = await apiClient.get<string[]>('/vacuum/bloat/detail/tables', {
+        params: { 
+          databaseId: Number(databaseId),
+          instanceId: Number(instanceId)
         }
-      } catch (err: any) {
-        console.error('❌ Failed to fetch table list:', err);
-        console.error('Error details:', {
-          message: err.message,
-          response: err.response?.data,
-          status: err.response?.status
-        });
-        
-        // API 실패 시 빈 목록으로 설정
-        setTableList([]);
-        setSelectedTable("");
-        setError(err.response?.data?.message || 'Failed to load table list');
-      } finally {
-        setTableListLoading(false);
+      });
+      
+      console.log('✅ Table list response:', response.data);
+      
+      if (response.data && response.data.length > 0) {
+        // 첫 번째 테이블을 자동 선택
+        if (!selectedTable) {
+          setSelectedTable(response.data[0]);
+        }
+        return response.data;
+      } else {
+        console.warn('⚠️ No tables found in database');
+        return [];
       }
-    };
-
-    fetchTableList();
-  }, [selectedInstance, selectedDatabase]); // Instance와 Database 변경 시마다 테이블 목록 새로 조회
+    },
+    enabled: !!selectedInstance && !!selectedDatabase,
+    refetchInterval: intervalToMs(refreshInterval), // ** 중요 ** 새로고침 주기 적용
+  });
 
   // ========================================
-  // 📌 대시보드 데이터 조회 (테이블 선택 시)
+  // 📌 대시보드 데이터 조회 (React Query로 자동 새로고침)
   // ========================================
-  useEffect(() => {
-    if (!selectedInstance || !selectedDatabase || !selectedTable) {
-      setData(null);
-      setLoading(false);
-      setError(null);
-      return;
-    }
+  const { data, isLoading: loading, error: queryError } = useQuery<BloatDetailData>({
+    queryKey: ["vacuum-bloat-detail", selectedInstance?.instanceId, selectedDatabase?.databaseId, selectedTable],
+    queryFn: async () => {
+      if (!selectedInstance || !selectedDatabase || !selectedTable) return null;
 
-    const fetchDashboardData = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-        
-        const databaseId = selectedDatabase.databaseId;
-        const instanceId = selectedInstance.instanceId;
-        
-        console.log('🔍 Fetching bloat detail dashboard...', {
-          instanceId,
-          instanceName: selectedInstance.instanceName,
-          databaseId,
-          databaseName: selectedDatabase.databaseName,
-          tableName: selectedTable
-        });
-        
-        const response = await apiClient.get<ApiDashboardResponse>(
-          '/vacuum/bloat/detail/dashboard',
-          {
-            params: {
-              databaseId: Number(databaseId),
-              instanceId: Number(instanceId),
-              tableName: selectedTable
-            }
+      const databaseId = selectedDatabase.databaseId;
+      const instanceId = selectedInstance.instanceId;
+      
+      console.log('🔍 Fetching bloat detail dashboard...', {
+        instanceId,
+        instanceName: selectedInstance.instanceName,
+        databaseId,
+        databaseName: selectedDatabase.databaseName,
+        tableName: selectedTable
+      });
+      
+      const response = await apiClient.get<ApiDashboardResponse>(
+        '/vacuum/bloat/detail/dashboard',
+        {
+          params: {
+            databaseId: Number(databaseId),
+            instanceId: Number(instanceId),
+            tableName: selectedTable
           }
-        );
-        
-        console.log('✅ Bloat detail API response:', response.data);
-        
-        setData(response.data);
-      } catch (err: any) {
-        console.error('❌ Failed to fetch bloat detail:', err);
-        console.error('Error details:', {
-          message: err.message,
-          response: err.response?.data,
-          status: err.response?.status
-        });
-        setError(err.response?.data?.message || err.message || 'Failed to load data');
-      } finally {
-        setLoading(false);
+        }
+      );
+      
+      console.log('✅ Bloat detail API response:', response.data);
+      
+      // ✅ 데이터 검증 및 기본값 설정
+      if (!response.data) {
+        throw new Error("응답 데이터가 없습니다.");
       }
-    };
 
-    fetchDashboardData();
-  }, [selectedInstance, selectedDatabase, selectedTable]); // 테이블 변경 시마다 데이터 새로 조회
+      const validated: BloatDetailData = {
+        kpi: {
+          bloatPct: response.data.kpi?.bloatPct || "0%",
+          tableSize: response.data.kpi?.tableSize || "0B",
+          wastedSpace: response.data.kpi?.wastedSpace || "0B",
+        },
+        bloatTrend: {
+          data: response.data.bloatTrend?.data || [],
+          labels: response.data.bloatTrend?.labels || []
+        },
+        deadTuplesTrend: {
+          data: response.data.deadTuplesTrend?.data || [],
+          labels: response.data.deadTuplesTrend?.labels || []
+        },
+        indexBloatTrend: {
+          data: response.data.indexBloatTrend?.data || [[]],
+          labels: response.data.indexBloatTrend?.labels || [],
+          names: response.data.indexBloatTrend?.names || []
+        }
+      };
+
+      return validated;
+    },
+    enabled: !!selectedInstance && !!selectedDatabase && !!selectedTable,
+    refetchInterval: intervalToMs(refreshInterval), // ** 중요 ** 새로고침 주기 적용
+  });
+
+  const error = queryError ? (queryError instanceof Error ? queryError.message : "대시보드 로딩 실패") : null;
 
   // ========================================
   // 차트 데이터 변환
@@ -324,6 +353,12 @@ export default function BloatDetailPage({ onToggle, expanded = true }: Props) {
             <SummaryCard
               label="Bloat %"
               value={data.kpi.bloatPct}
+              status={severityToStatus(calculateBloatSeverity(data.kpi.bloatPct))}
+              desc={
+                calculateBloatSeverity(data.kpi.bloatPct) === "CRITICAL" 
+                  ? ""
+                  : undefined
+              }
             />
             <SummaryCard
               label="Table Size"
@@ -337,7 +372,7 @@ export default function BloatDetailPage({ onToggle, expanded = true }: Props) {
 
           {/* ---------- 차트 ---------- */}
           <ChartGridLayout>
-            <WidgetCard title="Bloat 추이(Last 30 Days)" span={4}>
+            <WidgetCard title="Bloat 추이 (최근 30일 내)" span={4}>
               <Chart
                 type="line"
                 series={bloatTrendSeries}
@@ -350,15 +385,54 @@ export default function BloatDetailPage({ onToggle, expanded = true }: Props) {
                   grid: { borderColor: "#E5E7EB", strokeDashArray: 4 },
                   yaxis: { 
                     min: 0, 
+                    max: 100,
                     title: { text: "Bloat %" },
                     labels: {
                       formatter: (value: number) => value.toFixed(2)
                     } 
                   },
+                  // ✅ Bloat % 임계값 선 추가
+                  // 0-20%: 정상 (NORMAL)
+                  // 20-40%: 주의 (WARNING)
+                  // 40%+: 경고 (CRITICAL)
+                  annotations: {
+                    yaxis: [
+                      {
+                        y: 20,
+                        borderColor: "#f59e0b", // green (정상)
+                        strokeDashArray: 4,
+                        label: {
+                          text: "정상 (20%)",
+                          position: "right",
+                          style: {
+                            background: "transparent",
+                            color: "#f59e0b",
+                            fontSize: "11px",
+                            fontWeight: 500
+                          }
+                        },
+                      },
+                      {
+                        y: 40,
+                        borderColor: "#ef4444", // amber (주의)
+                        strokeDashArray: 8,
+                        label: {
+                          text: "주의 (40%)",
+                          position: "right",
+                          style: {
+                            background: "transparent",
+                            color: "#ef4444",
+                            fontSize: "11px",
+                            fontWeight: 500
+                          }
+                        },
+                      },
+                    ],
+                  },
                 }}
               />
             </WidgetCard>
-            <WidgetCard title="Dead Tuples 추이 (Last 30 Days)" span={4}>
+            <WidgetCard title="Dead Tuples 추이 (최근 30일 내)" span={4}>
               <Chart
                 type="line"
                 series={deadTuplesSeries}
@@ -367,7 +441,7 @@ export default function BloatDetailPage({ onToggle, expanded = true }: Props) {
               />
             </WidgetCard>
 
-            <WidgetCard title="Index Bloat 추이 (Last 30 Days)" span={4}>
+            <WidgetCard title="Index Bloat 추이 (최근 30일 내)" span={4}>
               <Chart
                 type="line"
                 series={indexBloatSeries}

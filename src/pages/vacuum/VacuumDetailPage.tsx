@@ -1,7 +1,9 @@
-import { useMemo, useEffect, useState } from "react";
+import { useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
 import Chart from "../../components/chart/ChartComponent";
 import apiClient from "../../api/apiClient";
 import { useInstanceContext } from "../../context/InstanceContext";
+import { intervalToMs } from "../../utils/time";
 import "/src/styles/vacuum/VacuumPage.css";
 
 /* ---------- 타입 정의 ---------- */
@@ -51,69 +53,52 @@ type Props = {
 
 /* ---------- 페이지 ---------- */
 export default function VacuumDetailPage({ tableName: propTableName }: Props) {
-  const { selectedInstance, selectedDatabase } = useInstanceContext();
-  const [data, setData] = useState<VacuumDetail | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const { selectedInstance, selectedDatabase, refreshInterval } = useInstanceContext();
 
   // URL state 또는 props에서 테이블명 가져오기
   const tableName = propTableName || 
     (typeof window !== 'undefined' && window.history.state?.usr?.tableName) || 
     "";
+  const executedAt = 
+  (typeof window !== 'undefined' && window.history.state?.usr?.executedAt) || null;
+
+  // 데이터 조회 (React Query로 자동 새로고침)
+  const { data, isLoading: loading, error: queryError } = useQuery<VacuumDetail>({
+    queryKey: ["vacuum-detail", selectedInstance?.instanceId, selectedDatabase?.databaseId, tableName, executedAt],
+    queryFn: async () => {
+      if (!selectedInstance || !selectedDatabase || !tableName) return null;
+
+      const databaseId = selectedDatabase.databaseId;
+      
+      console.log('Fetching vacuum detail...', {
+        instanceId: selectedInstance.instanceId,
+        databaseId,
+        tableName
+      });
+      
+      const response = await apiClient.get<ApiVacuumDetailResponse>(
+        '/vacuum/detail',
+        {
+          params: {
+            databaseId: Number(databaseId),
+            tableName: tableName,
+            executedAt: executedAt 
+          }
+        }
+      );
+      
+      console.log('API Response:', response.data);
+      
+      return response.data;
+    },
+    enabled: !!selectedInstance && !!selectedDatabase && !!tableName,
+    refetchInterval: intervalToMs(refreshInterval), // ** 중요 ** 새로고침 주기 적용
+  });
+
+  const error = queryError ? (queryError instanceof Error ? queryError.message : "데이터 로딩 실패") : null;
 
   // 진행 중 여부 판단
   const isOngoing = data?.endTime === null || data?.endTime === undefined || data?.endTime === "N/A";
-
-  // 데이터 조회
-  useEffect(() => {
-    if (!selectedInstance || !selectedDatabase || !tableName) {
-      setData(null);
-      setLoading(false);
-      setError(null);
-      return;
-    }
-
-    const fetchVacuumDetail = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-        
-        const databaseId = selectedDatabase.databaseId;
-        
-        console.log('Fetching vacuum detail...', {
-          instanceId: selectedInstance.instanceId,
-          databaseId,
-          tableName
-        });
-        
-        const response = await apiClient.get<ApiVacuumDetailResponse>(
-          '/vacuum/detail',
-          {
-            params: {
-              databaseId: Number(databaseId),
-              tableName: tableName
-            }
-          }
-        );
-        
-        console.log('API Response:', response.data);
-        
-        setData(response.data);
-      } catch (err: any) {
-        console.error('Failed to fetch vacuum detail:', err);
-        console.error('Error details:', {
-          message: err.message,
-          response: err.response?.data,
-          status: err.response?.status
-        });
-        setError(err.response?.data?.message || err.message || 'Failed to load data');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchVacuumDetail();
-  }, [selectedInstance, selectedDatabase, tableName]);
 
   const progressSeries = useMemo(
     () => data ? [
@@ -269,33 +254,34 @@ export default function VacuumDetailPage({ tableName: propTableName }: Props) {
         </section>
       </div>
 
-      {/* Progress 차트 */}
-      <div className="vd-grid5">
-        <section className="vd-card vd-chart2">
-          <header className="vd-card__header">
-            <h3>Progress</h3>
-          </header>
-          <Chart
-            type="line"
-            series={progressSeries}
-            categories={data.progress.labels}
-            height={520}
-            showLegend={true}
-            showToolbar={false}
-            colors={["#6366F1", "#10B981", "#FBBF24"]}
-            customOptions={{
-              chart: {   redrawOnParentResize: false,
-          redrawOnWindowResize: false },
-              stroke: { curve: "smooth", width: 2 },
-              grid: { borderColor: "#E5E7EB", strokeDashArray: 4 },
-              legend: { position: "bottom" },
-              yaxis: { title: { text: "GB" }, min: 0 },
-            }}
-          />
-        </section>
-
+      {/* Progress 차트 - 실행 중이고 데이터가 있을 때만 표시 */}
+      {isOngoing && data.progress.labels.length > 1 && (
+        <div className="vd-grid5">
+          <section className="vd-card vd-chart2">
+            <header className="vd-card__header">
+              <h3>Progress</h3>
+            </header>
+            <Chart
+              type="line"
+              series={progressSeries}
+              categories={data.progress.labels}
+              height={520}
+              showLegend={true}
+              showToolbar={false}
+              colors={["#6366F1", "#10B981", "#FBBF24"]}
+              customOptions={{
+                chart: { redrawOnParentResize: false, redrawOnWindowResize: false },
+                stroke: { curve: "smooth", width: 2 },
+                grid: { borderColor: "#E5E7EB", strokeDashArray: 4 },
+                legend: { position: "bottom" },
+                yaxis: { title: { text: "GB" }, min: 0 },
+              }}
+            />
+          </section>
+        </div>
+      )}
       {/* 성능 및 데이터 I/O */}
-      <div className="vd-grid3">
+      <div className="vd-grid2">
         <section className="vd-card">
           <header className="vd-card__header">
             <h3>성능 지표</h3>
@@ -373,8 +359,6 @@ export default function VacuumDetailPage({ tableName: propTableName }: Props) {
           </div>
         </section>
       </div>
-    </div>
-    
-    </div>
+    </div>    
   );
 }

@@ -1,10 +1,12 @@
-import React, { useEffect, useMemo, useState, useRef } from "react";
+import React, { useMemo, useState, useRef } from "react";
+import { useQuery } from "@tanstack/react-query";
 import Chart from "../../components/chart/ChartComponent";
 import WidgetCard from "../../components/util/WidgetCard";
 import SummaryCard from "../../components/util/SummaryCard";
-import BloatDetailPage from "./VacuumBloatDetail"; // 임포트 추가
+import BloatDetailPage from "./VacuumBloatDetail"; 
 import "/src/styles/vacuum/VacuumPage.css";
 import apiClient from "../../api/apiClient";
+import { intervalToMs } from "../../utils/time";
 import { useInstanceContext } from "../../context/InstanceContext";
 
 // ====== 서버 DTO 타입 ======
@@ -14,7 +16,18 @@ type XminHorizonMonitor = {
 };
 type BloatTrend = { data: number[]; labels: string[] };
 type BloatDistribution = { data: number[]; labels: string[] };
-type Kpi = { tableBloat: string; criticalTable: number; bloatGrowth: string };
+type Kpi = {
+  tableBloat: string;
+  criticalTable: number;
+  bloatGrowth: string;
+  // ✅ 추가된 필드
+  tableBloatSeverity: "NORMAL" | "WARNING" | "CRITICAL";
+  criticalTableSeverity: "NORMAL" | "WARNING" | "CRITICAL";
+  bloatGrowthSeverity: "NORMAL" | "WARNING" | "CRITICAL";
+  // ✅ 메타데이터 (필요시 사용)
+  totalDatabaseSizeBytes?: number;
+  totalTableCount?: number;
+};
 type DashboardResponse = {
   xminHorizonMonitor: XminHorizonMonitor;
   bloatTrend: BloatTrend;
@@ -23,18 +36,32 @@ type DashboardResponse = {
 };
 
 // ====== 상수 ======
-const WARN_H = 4;
-const ALERT_H = 6;
+const WARN_M = 4;
+const ALERT_M = 6;
+
+// ====== Severity 유틸 함수 ======
+// ✅ Severity를 SummaryCard status로 변환
+const severityToStatus = (severity: "NORMAL" | "WARNING" | "CRITICAL"): "info" | "warning" | "critical" => {
+  switch (severity) {
+    case "CRITICAL":
+      return "critical";
+    case "WARNING":
+      return "warning";
+    case "NORMAL":
+      return "info";
+    default:
+      return "info";
+  }
+};
+
 
 const VacuumBloatPage: React.FC = () => {
-  const { selectedInstance, selectedDatabase } = useInstanceContext();
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [resp, setResp] = useState<DashboardResponse | null>(null);
+  const { selectedInstance, selectedDatabase, refreshInterval } = useInstanceContext();
   
   // 드릴다운 상태 추가
   const [expanded, setExpanded] = useState(true);
   const detailRef = useRef<HTMLDivElement>(null);
+  
 
   const toggle = () => {
     setExpanded((prev) => {
@@ -44,95 +71,78 @@ const VacuumBloatPage: React.FC = () => {
     });
   };
 
-  useEffect(() => {
-    // Instance가 선택되지 않으면 초기화
-    if (!selectedInstance) {
-      setResp(null);
-      setLoading(false);
-      setError(null);
-      return;
-    }
+  // 대시보드 데이터 조회 (React Query로 자동 새로고침)
+  const { data: resp, isLoading: loading, error: queryError } = useQuery<DashboardResponse>({
+    queryKey: ["vacuum-bloat-dashboard", selectedInstance?.instanceId, selectedDatabase?.databaseId],
+    queryFn: async () => {
+      if (!selectedInstance) return null;
 
-    const ac = new AbortController();
-    
-    (async () => {
-      try {
-        setLoading(true);
-        setError(null);
+      const databaseId = selectedDatabase?.databaseId;
+      const instanceId = selectedInstance?.instanceId; 
 
-        const databaseId = selectedDatabase?.databaseId;
-        const instanceId = selectedInstance?.instanceId; 
+      console.log('Fetching bloat dashboard...', {
+        instanceId: selectedInstance.instanceId,
+        instanceName: selectedInstance.instanceName,
+        databaseId,
+        databaseName: selectedDatabase?.databaseName
+      });
 
+      const res = await apiClient.get<DashboardResponse>("/vacuum/bloat/dashboard", {
+        params: {
+          databaseId: databaseId,
+          instanceId: instanceId
+        },
+      });
 
-        console.log('Fetching bloat dashboard...', {
-          instanceId: selectedInstance.instanceId,
-          instanceName: selectedInstance.instanceName,
-          databaseId,
-          databaseName: selectedDatabase?.databaseName
-        });
+      console.log('Bloat API Response:', res.data);
 
-        // API 호출 - databaseId가 있으면 파라미터로 전달
-        const params: any = {};
-        if (databaseId) {
-          params.databaseId = databaseId;
-        }
-
-        const res = await apiClient.get<DashboardResponse>("/vacuum/bloat/dashboard", {
-          params: {
-            databaseId: databaseId,
-            instanceId: instanceId
-          },
-          signal: ac.signal,
-        });
-
-        console.log('Bloat API Response:', res.data);
-
-        // 데이터 검증 및 기본값 설정
-        if (!res.data) {
-          throw new Error("응답 데이터가 없습니다.");
-        }
-
-        const validated: DashboardResponse = {
-          xminHorizonMonitor: {
-            data: res.data.xminHorizonMonitor?.data || [[], []],
-            labels: res.data.xminHorizonMonitor?.labels || []
-          },
-          bloatTrend: {
-            data: res.data.bloatTrend?.data || [],
-            labels: res.data.bloatTrend?.labels || []
-          },
-          bloatDistribution: {
-            data: res.data.bloatDistribution?.data || [],
-            labels: res.data.bloatDistribution?.labels || []
-          },
-          kpi: {
-            tableBloat: res.data.kpi?.tableBloat || "0B",
-            criticalTable: res.data.kpi?.criticalTable || 0,
-            bloatGrowth: res.data.kpi?.bloatGrowth || "+0B"
-          }
-        };
-
-        console.log('Validated Bloat Data:', {
-          xminDataLength: validated.xminHorizonMonitor.data?.[0]?.length || 0,
-          xminLabelsLength: validated.xminHorizonMonitor.labels.length,
-          bloatTrendLength: validated.bloatTrend.data.length,
-          bloatDistLength: validated.bloatDistribution.data.length,
-          kpi: validated.kpi
-        });
-
-        setResp(validated);
-      } catch (e: any) {
-        if (e?.name !== "CanceledError") {
-          console.error('Failed to fetch bloat dashboard:', e);
-          setError(e?.response?.data?.message ?? e?.message ?? "대시보드 로딩 실패");
-        }
-      } finally {
-        setLoading(false);
+      // 데이터 검증 및 기본값 설정
+      if (!res.data) {
+        throw new Error("응답 데이터가 없습니다.");
       }
-    })();
 
-    return () => ac.abort();
-  }, [selectedInstance, selectedDatabase]); // Instance 또는 Database 변경 시 재조회
+      const validated: DashboardResponse = {
+        xminHorizonMonitor: {
+          data: res.data.xminHorizonMonitor?.data || [[], []],
+          labels: res.data.xminHorizonMonitor?.labels || []
+        },
+        bloatTrend: {
+          data: res.data.bloatTrend?.data || [],
+          labels: res.data.bloatTrend?.labels || []
+        },
+        bloatDistribution: {
+          data: res.data.bloatDistribution?.data || [],
+          labels: res.data.bloatDistribution?.labels || []
+        },
+        kpi: {
+          tableBloat: res.data.kpi?.tableBloat || "0B",
+          criticalTable: res.data.kpi?.criticalTable || 0,
+          bloatGrowth: res.data.kpi?.bloatGrowth || "+0B",
+          // ✅ 추가된 severity 필드들
+          tableBloatSeverity: res.data.kpi?.tableBloatSeverity || "NORMAL",
+          criticalTableSeverity: res.data.kpi?.criticalTableSeverity || "NORMAL",
+          bloatGrowthSeverity: res.data.kpi?.bloatGrowthSeverity || "NORMAL",
+          // ✅ 메타데이터 (선택적)
+          totalDatabaseSizeBytes: res.data.kpi?.totalDatabaseSizeBytes,
+          totalTableCount: res.data.kpi?.totalTableCount,
+        }
+      };
+
+      console.log('Validated Bloat Data:', {
+        xminDataLength: validated.xminHorizonMonitor.data?.[0]?.length || 0,
+        xminLabelsLength: validated.xminHorizonMonitor.labels.length,
+        bloatTrendLength: validated.bloatTrend.data.length,
+        bloatDistLength: validated.bloatDistribution.data.length,
+        kpi: validated.kpi
+      });
+
+      return validated;
+    },
+    enabled: !!selectedInstance && !!selectedDatabase,
+    refetchInterval: intervalToMs(refreshInterval), // ** 중요 ** 새로고침 주기 적용
+  });
+
+  const error = queryError ? (queryError instanceof Error ? queryError.message : "대시보드 로딩 실패") : null;
 
   // ====== 차트 시리즈 ======
   const xminSeries = useMemo(() => {
@@ -152,13 +162,13 @@ const VacuumBloatPage: React.FC = () => {
       return [];
     }
 
-    const warn = Array(ageHoursConverted.length).fill(WARN_H);
-    const alert = Array(ageHoursConverted.length).fill(ALERT_H);
+    const warn = Array(ageHoursConverted.length).fill(WARN_M);
+    const alert = Array(ageHoursConverted.length).fill(ALERT_M);
 
     return [
       { name: "Xmin Horizon Age", data: ageHoursConverted },
-      { name: `Warning Threshold (${WARN_H}h)`, data: warn },
-      { name: `Alert Threshold (${ALERT_H}h)`, data: alert },
+      { name: `Warning Threshold (${WARN_M}m)`, data: warn },
+      { name: `Alert Threshold (${ALERT_M}m)`, data: alert },
     ];
   }, [resp?.xminHorizonMonitor]);
 
@@ -266,15 +276,16 @@ const VacuumBloatPage: React.FC = () => {
       <div className="vd-main-layout">
         {/* 좌측: Xmin Horizon Monitor */}
         <div className="vd-left-large">
-          <WidgetCard title="Xmin Horizon 모니터링 (last 7d)" height="clamp(320px, 38.8vh, 520px)">
+          <WidgetCard title="Xmin Horizon 모니터링 (최근 24시간 내)">
             {xminSeries.length > 0 ? (
               <Chart
                 type="line"
                 series={xminSeries}
                 categories={resp.xminHorizonMonitor.labels}
                 width="100%"
-                height="350px"
+                height="400px"
                 showToolbar={false}
+                colors={["#6366F1", "#F59E0B", "#EF4444"]}
                 customOptions={{
                   chart: {
                     redrawOnParentResize: true,
@@ -285,7 +296,8 @@ const VacuumBloatPage: React.FC = () => {
                   stroke: {
                     curve: "smooth",
                     width: [2, 2, 2],
-                    dashArray: [0, 8, 8]
+                    dashArray: [0, 8, 8],
+                    colors: ["#6366F1", "#F59E0B", "#EF4444"]
                   },
                   markers: { size: 0 },
                   grid: { borderColor: "#E5E7EB", strokeDashArray: 4 },
@@ -299,16 +311,17 @@ const VacuumBloatPage: React.FC = () => {
                   yaxis: {
                     min: 0,
                     tickAmount: 4,
-                    labels: { formatter: (v: number) => `${v}h` },
+                    labels: { formatter: (v: number) => `${v}m` },
                   },
                   annotations: {
                     yaxis: [
                       {
-                        y: WARN_H,
+                        y: WARN_M,
                         borderColor: "#F59E0B",
+                        borderWidth: 2,
                         strokeDashArray: 8,
                         label: {
-                          text: `Warn (${WARN_H}h)`,
+                          text: `Warn (${WARN_M}m)`,
                           position: "right",
                           style: {
                             background: "transparent",
@@ -318,11 +331,12 @@ const VacuumBloatPage: React.FC = () => {
                         },
                       },
                       {
-                        y: ALERT_H,
+                        y: ALERT_M,
                         borderColor: "#EF4444",
+                        borderWidth: 2,
                         strokeDashArray: 8,
                         label: {
-                          text: `Alert (${ALERT_H}h)`,
+                          text: `Alert (${ALERT_M}m)`,
                           position: "right",
                           style: {
                             background: "transparent",
@@ -335,7 +349,7 @@ const VacuumBloatPage: React.FC = () => {
                   },
                   tooltip: {
                     shared: true,
-                    y: { formatter: (val: number) => `${val.toFixed(2)}h` }
+                    y: { formatter: (val: number) => `${val.toFixed(2)}m` }
                   },
                 }}
               />
@@ -364,22 +378,25 @@ const VacuumBloatPage: React.FC = () => {
             <SummaryCard
               label="Table Bloat 예상치"
               value={resp.kpi.tableBloat}
+              status={severityToStatus(resp.kpi.tableBloatSeverity)}
             />
             <SummaryCard
               label="Critical Tables"
               value={resp.kpi.criticalTable}
+              status={severityToStatus(resp.kpi.criticalTableSeverity)}
             />
             <SummaryCard
               label="Bloat 증가량"
               value={resp.kpi.bloatGrowth}
-              desc="30d"
+              desc="7일 전 기준"
+              status={severityToStatus(resp.kpi.bloatGrowthSeverity)}
             />
           </div>
 
           {/* 차트 행 */}
           <div className="vd-chart-row">
             {/* Bloat Trend */}
-            <WidgetCard title="전체 Bloat 추이  (Last 30 Days)">
+            <WidgetCard title="전체 Bloat 추이 (최근 30일 내)">
               {bloatTrendSeries.length > 0 && resp.bloatTrend.labels.length > 0 ? (
                 <Chart
                   type="line"
@@ -411,7 +428,7 @@ const VacuumBloatPage: React.FC = () => {
                     yaxis: {
                       title: { text: "Bloat (GB)" },
                       labels: {
-                        formatter: (val: number) => `${val.toFixed(1)}GB`
+                        formatter: (val: number) => `${val.toFixed(2)}GB`
                       }
                     },
                     tooltip: {
@@ -432,7 +449,7 @@ const VacuumBloatPage: React.FC = () => {
             </WidgetCard>
 
             {/* Bloat Distribution */}
-            <WidgetCard title="Bloat 비율별 분포 (24h)">
+            <WidgetCard title="Bloat 비율별 분포 (최근 24시간 내)">
               {bloatDistSeries.length > 0 && resp.bloatDistribution.labels.length > 0 ? (
                 <Chart
                   type="bar"
