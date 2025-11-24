@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useCallback, useState } from "react";
+import { createContext, useContext, useEffect, useCallback, useState, useMemo } from "react";
 import { useInstanceContext } from "./InstanceContext";
 import { useQueryClient, useQuery } from "@tanstack/react-query";
 
@@ -118,9 +118,11 @@ class SseConnectionManager {
         if (!this.queryClient) return;
 
         const now = new Date();
+        // 시간 형식: HH:MM:SS (초 단위까지 포함하여 같은 분 내에서도 구분 가능)
         const realtimeTimeLabel = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
 
-        // CPU 히스토리 업데이트 (최대 60개, 5분간)
+        // CPU 히스토리 업데이트 (최대 60개, 5분간 - 5초 간격 × 60개 = 약 5분)
+        // 실시간 모니터링은 최근 5분 정도면 충분하며, 60개 데이터 포인트로 적절한 해상도 제공
         if (metrics.cpu !== null) {
             const cpuQueryKey = ["realtimeCpuHistory", instanceId];
             const currentCpuHistory = (this.queryClient.getQueryData(cpuQueryKey) as CpuHistoryItem[]) || [];
@@ -128,7 +130,7 @@ class SseConnectionManager {
             this.queryClient.setQueryData(cpuQueryKey, newCpuHistory);
         }
 
-        // Load Average 히스토리 업데이트
+        // Load Average 히스토리 업데이트 (HH:MM 형식)
         if (metrics.loadAverage && metrics.loadAverage.length >= 3) {
             const loadAvgQueryKey = ["realtimeLoadAverageHistory", instanceId];
             const currentLoadAvgHistory = (this.queryClient.getQueryData(loadAvgQueryKey) as LoadAverageHistoryItem[]) || [];
@@ -499,11 +501,12 @@ export const OsMetricSseProvider = ({ children }: { children: React.ReactNode })
         return sseManager.subscribe(selectedInstance.instanceId, callback);
     }, [selectedInstance?.instanceId]);
 
-    const value: OsMetricSseContextType = {
+    // Context value를 useMemo로 메모이제이션하여 불필요한 리렌더링 방지
+    const value: OsMetricSseContextType = useMemo(() => ({
         metrics,
         subscribe,
         isConnected,
-    };
+    }), [metrics, subscribe, isConnected]);
 
     return (
         <OsMetricSseContext.Provider value={value}>
