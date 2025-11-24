@@ -24,8 +24,6 @@ import ExecutionStatus from "../pages/query/ExecutionStatus";
 import QueryOverview from "../pages/query/QueryOverview";
 import QueryTuner from "../pages/query/QueryTuner";
 import BGWriterPage from "../pages/engine/BGWriterPage";
-import HotTablePage from "../pages/engine/HotTablePage";
-import HotIndexPage from "../pages/engine/HotIndexPage.tsx";
 import MemoryPage from "../pages/system/MemoryPage.tsx";
 import DiskPage from "../pages/system/DiskPage.tsx";
 import AlarmList from "../pages/alarm/AlarmList";
@@ -34,8 +32,6 @@ import BGWriterListPage from "../pages/engine/BGWriterListPage.tsx";
 import DiskListPage from "../pages/system/DiskListPage.tsx";
 import CPUListPage from "../pages/system/CpuListPage.tsx";
 import MemoryListPage from "../pages/system/MemoryListPage.tsx";
-import HotIndexListPage from "../pages/engine/HotIndexListPage.tsx";
-import HotTableListPage from "../pages/engine/HotTableListPage.tsx";
 
 
 interface AppRoutesProps {
@@ -77,14 +73,6 @@ const routeList = [
 
   // Database 단위
   { path: "/database/summary", element: <DatabaseDashboard /> },
-
-  // Hot Table
-    { path: "/database/hottable/details", element: <HotTablePage /> },
-    { path: "/database/hottable/detail", element: <HotTableListPage /> },
-
-  // Hot Index
-  { path: "/database/hotindex/details", element: <HotIndexPage /> },
-  { path: "/database/hotindex/detail", element: <HotIndexListPage /> },
 
   // 세션
   { path: "/database/session/details", element: <SessionDashboard /> },
