@@ -18,6 +18,9 @@ export interface RuleThreshold {
   minDurationMin: number | null;
   occurCount: number | null;
   windowMin: number | null;
+  resolveThreshold: number | null;
+  resolveDurationMin: number | null;
+  cooldownMin: number | null;
 }
 
 export default function AlarmRuleDetailModal({
@@ -39,15 +42,23 @@ export default function AlarmRuleDetailModal({
   const [metric, setMetric] = useState<Metric | null>(null);
   const [aggregation, setAggregation] = useState<Aggregation | null>(null);
   const [operator, setOperator] = useState<Operator>("gt");
-  const emptyLevel: RuleThreshold = { threshold: null, minDurationMin: null, occurCount: null, windowMin: null };
+  const emptyLevel: RuleThreshold = { 
+    threshold: null, 
+    minDurationMin: null, 
+    occurCount: null, 
+    windowMin: null,
+    resolveThreshold: null,
+    resolveDurationMin: null,
+    cooldownMin: null
+  };
 
   const [levels, setLevels] = useState<{
-    notice: RuleThreshold;
-    warning: RuleThreshold;
+    info: RuleThreshold;
+    warn: RuleThreshold;
     critical: RuleThreshold;
   }>({
-    notice: { ...emptyLevel },
-    warning: { ...emptyLevel },
+    info: { ...emptyLevel },
+    warn: { ...emptyLevel },
     critical: { ...emptyLevel },
   });
 
@@ -116,8 +127,8 @@ export default function AlarmRuleDetailModal({
         // levels 매핑
         if (detail.levels) {
           setLevels({
-            notice: detail.levels.notice || { ...emptyLevel },
-            warning: detail.levels.warning || { ...emptyLevel },
+            info: detail.levels.info || { ...emptyLevel },
+            warn: detail.levels.warn || { ...emptyLevel },
             critical: detail.levels.critical || { ...emptyLevel },
           });
         }
@@ -241,8 +252,8 @@ export default function AlarmRuleDetailModal({
                   <tbody>
                     <tr className="ar-row">
                       <td className="ar-td-strong">임계치</td>
-                      <td>{formatValue(levels.notice.threshold, true)}</td>
-                      <td>{formatValue(levels.warning.threshold, true)}</td>
+                      <td>{formatValue(levels.info.threshold, true)}</td>
+                      <td>{formatValue(levels.warn.threshold, true)}</td>
                       <td>{formatValue(levels.critical.threshold, true)}</td>
                       <td className="ar-right"></td>
                     </tr>
@@ -257,25 +268,49 @@ export default function AlarmRuleDetailModal({
 
                     <tr className="ar-row">
                       <td className="ar-td-strong">지속 시간</td>
-                      <td>{formatValue(levels.notice.minDurationMin)}</td>
-                      <td>{formatValue(levels.warning.minDurationMin)}</td>
+                      <td>{formatValue(levels.info.minDurationMin)}</td>
+                      <td>{formatValue(levels.warn.minDurationMin)}</td>
                       <td>{formatValue(levels.critical.minDurationMin)}</td>
                       <td className="ar-right">분</td>
                     </tr>
 
                     <tr className="ar-row">
                       <td className="ar-td-strong">발생 횟수</td>
-                      <td>{formatValue(levels.notice.occurCount)}</td>
-                      <td>{formatValue(levels.warning.occurCount)}</td>
+                      <td>{formatValue(levels.info.occurCount)}</td>
+                      <td>{formatValue(levels.warn.occurCount)}</td>
                       <td>{formatValue(levels.critical.occurCount)}</td>
                       <td className="ar-right">회</td>
                     </tr>
 
                     <tr className="ar-row">
                       <td className="ar-td-strong">윈도우</td>
-                      <td>{formatValue(levels.notice.windowMin)}</td>
-                      <td>{formatValue(levels.warning.windowMin)}</td>
+                      <td>{formatValue(levels.info.windowMin)}</td>
+                      <td>{formatValue(levels.warn.windowMin)}</td>
                       <td>{formatValue(levels.critical.windowMin)}</td>
+                      <td className="ar-right">분</td>
+                    </tr>
+
+                    <tr className="ar-row">
+                      <td className="ar-td-strong">복구 임계치</td>
+                      <td>{formatValue(levels.info.resolveThreshold, true)}</td>
+                      <td>{formatValue(levels.warn.resolveThreshold, true)}</td>
+                      <td>{formatValue(levels.critical.resolveThreshold, true)}</td>
+                      <td className="ar-right"></td>
+                    </tr>
+
+                    <tr className="ar-row">
+                      <td className="ar-td-strong">복구 지속 시간</td>
+                      <td>{formatValue(levels.info.resolveDurationMin)}</td>
+                      <td>{formatValue(levels.warn.resolveDurationMin)}</td>
+                      <td>{formatValue(levels.critical.resolveDurationMin)}</td>
+                      <td className="ar-right">분</td>
+                    </tr>
+
+                    <tr className="ar-row">
+                      <td className="ar-td-strong">쿨다운</td>
+                      <td>{formatValue(levels.info.cooldownMin)}</td>
+                      <td>{formatValue(levels.warn.cooldownMin)}</td>
+                      <td>{formatValue(levels.critical.cooldownMin)}</td>
                       <td className="ar-right">분</td>
                     </tr>
                   </tbody>

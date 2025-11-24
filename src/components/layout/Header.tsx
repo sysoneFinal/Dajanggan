@@ -2,11 +2,14 @@ import { useEffect, useState, useRef } from "react";
 import {  useMatch } from "react-router-dom";
 import "../../styles/layout/header.css";
 import { createPortal } from "react-dom";
+import { useQuery } from "@tanstack/react-query";
 import { useDashboard } from "../../context/DashboardContext";
 import { useInstanceContext } from "../../context/InstanceContext";
-import AlertDetailModal, { type AlertDetailData } from "../../pages/alarm/AlarmFeedModal";
+import AlarmDetailModal from "../../pages/alarm/AlarmFeedModal";
 import type { Instance } from "../../types/instance";
 import type { Database } from "../../types/database";
+import apiClient from "../../api/apiClient";
+import { intervalToMs } from "../../utils/time";
 
 
 interface HeaderProps {
@@ -31,7 +34,7 @@ const Header = ({ breadcrumb }: HeaderProps) => {
 
   /** === Local state === */
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
-  const [selectedAlert, setSelectedAlert] = useState<AlertDetailData | null>(null);
+  const [openAlarmModal, setOpenAlarmModal] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const [dropdownPos, setDropdownPos] = useState({ top: 0, left: 0, width: 0 });
 
@@ -64,6 +67,29 @@ const Header = ({ breadcrumb }: HeaderProps) => {
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
+
+  /** === 안읽은 알람 개수 조회 (React Query로 자동 새로고침) === */
+  const { data: unreadCount = 0 } = useQuery<number>({
+    queryKey: ["unread-alarm-count", selectedInstance?.instanceId, selectedDatabase?.databaseId],
+    queryFn: async () => {
+      if (!selectedInstance) return 0;
+
+      try {
+        const params: any = { instanceId: selectedInstance.instanceId };
+        if (selectedDatabase) params.databaseId = selectedDatabase.databaseId;
+
+        const res = await apiClient.get("/alarms/feeds", { params });
+        const alarms = res.data?.alarms || [];
+        const unread = alarms.filter((alarm: any) => !alarm.isRead).length;
+        return unread;
+      } catch (e: any) {
+        console.error("Failed to fetch unread alarm count:", e);
+        return 0;
+      }
+    },
+    enabled: !!selectedInstance,
+    refetchInterval: intervalToMs(refreshInterval), // ** 중요 ** 새로고침 주기 적용
+  });
 
   /** === 공통 드롭다운 렌더링 === */
   const renderDropdown = (
@@ -152,21 +178,6 @@ const Header = ({ breadcrumb }: HeaderProps) => {
     );
   };
 
-  /** === 예시 알림 데이터 === */
-  const demoAlert: AlertDetailData = {
-    id: "alert-123",
-    title: "Autovacuum Backlog — prod-a",
-    severity: "CRITICAL",
-    occurredAt: "2025-10-12 14:22",
-    description:
-      "자동 청소가 중단되었습니다. 지연 18.6시간, 미처리 Dead Tuples ≈ 120만.",
-    latency: {
-      data: [300, 400, 280, 600, 320, 290, 410],
-      labels: ["00", "01", "02", "03", "04", "05", "06"],
-    },
-    summary: { current: 18.6, threshold: 6, duration: "15m" },
-    related: [{ type: "table", name: "orders", metric: "Dead 780K", level: "경고" }],
-  };
 
   return (
     <header className="header">
@@ -218,22 +229,20 @@ const Header = ({ breadcrumb }: HeaderProps) => {
         )}
 
 
-        <button className="header-notification-btn" onClick={() => setSelectedAlert(demoAlert)}>
-          🔔
-        </button>
+        <div className="notification-wrapper">
+          <button className="header-notification-btn" onClick={() => setOpenAlarmModal(true)}>
+            🔔
+          </button>
+          {unreadCount > 0 && (
+            <span className="notification-badge">{unreadCount > 99 ? "99+" : unreadCount}</span>
+          )}
+        </div>
       </div>
 
-      {selectedAlert && (
-        <AlertDetailModal
-          open={true}
-          data={selectedAlert}
-          onClose={() => setSelectedAlert(null)}
-          onAcknowledge={(id) => {
-            console.log("ack:", id);
-            setSelectedAlert(null);
-          }}
-        />
-      )}
+      <AlarmDetailModal
+        open={openAlarmModal}
+        onClose={() => setOpenAlarmModal(false)}
+      />
     </header>
   );
 };

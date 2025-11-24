@@ -5,10 +5,8 @@ import Home from "../pages/Home";
 import Overview from "../pages/dashboard/Overview";
 import EventPage from "../pages/eventlog/EventLogPage";
 import InstancePage from "../pages/instance/InstancePage";
-import VacuumOverview from "../pages/vacuum/VacuumOverview";
 import VacuumMaintenance from "../pages/vacuum/VacuumMaintenance";
 import VacuumDetailPage from "../pages/vacuum/VacuumDetailPage";
-import VacuumHistory from "../pages/vacuum/VacuumHistory";
 import VacuumRisk from "../pages/vacuum/VacuumRisk";
 import VacuumBloat from "../pages/vacuum/VacuumBloat";
 import VacuumBloatDetail from "../pages/vacuum/VacuumBloatDetail";
@@ -96,10 +94,8 @@ const routeList = [
   { path: "/database/query/query-analysis", element: <QueryTuner /> },
 
   // Vacuum
-  { path: "/database/vacuum/overview", element: <VacuumOverview /> },
   { path: "/database/vacuum/maintenance", element: <VacuumMaintenance /> },
-  { path: "/database/vacuum/detail", element: <VacuumDetailPage /> },
-  { path: "/database/vacuum/history", element: <VacuumHistory /> },
+  { path: "/database/vacuum/detail", element: <VacuumDetailPage /> }, 
   { path: "/database/vacuum/risk", element: <VacuumRisk /> },
   { path: "/database/vacuum/bloat", element: <VacuumBloat /> },
   { path: "/database/vacuum/bloat-detail", element: <VacuumBloatDetail /> },
