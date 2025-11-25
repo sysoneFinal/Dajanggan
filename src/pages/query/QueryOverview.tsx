@@ -771,7 +771,7 @@ export default function QueryOverview() {
       </section>
 
       <ChartGridLayout>
-        <WidgetCard title="TPS/QPS 실시간 그래프" span={9}>
+        <WidgetCard title="TPS/QPS 추이 그래프" span={9}>
           <div style={{ width: '100%', height: '100%', paddingBottom: '1rem' }}>
             <div className="qo-legend" style={{ marginBottom: '0.75rem', display: 'flex', justifyContent: 'flex-end', gap: '1.25rem' }}>
               <div className="qo-legend-item">
