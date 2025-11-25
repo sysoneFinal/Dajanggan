@@ -1,4 +1,5 @@
 // components/alarm/AlarmDetailModal.tsx
+
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { createPortal } from "react-dom";
 import Chart from "../../components/chart/ChartComponent";
@@ -8,10 +9,8 @@ import { useInstanceContext } from "../../context/InstanceContext";
 import {
   CATEGORY_LABELS,
   METRIC_BY_CATEGORY,
-  AGGREGATION_OPTIONS,
   type MetricCategory,
   type Metric,
-  type Aggregation,
 } from "./AlarmRuleModal";
 
 type RelatedItem = {
@@ -43,7 +42,7 @@ export type AlarmDetailData = {
   related: RelatedItem[];
   category?: MetricCategory;
   metricType?: Metric;
-  aggregationType?: Aggregation;
+  isGenerating?: boolean;  // 관련 객체 생성 중 여부
 };
 
 type AlarmListItem = {
@@ -68,25 +67,34 @@ export default function AlarmDetailModal({ open, onClose }: Props) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const firstLoadRef = useRef(true);
+  
+  // 자동 폴링 interval 관리용 ref (브라우저에서는 number 타입)
+  const pollingIntervalRef = useRef<number | null>(null);
+  const pollingCountRef = useRef<number>(0);  // ✅ 추가: 폴링 횟수 추적
+  const MAX_POLLING_COUNT = 6;
+
+  // metricType으로부터 카테고리 찾기
+  const findCategoryByMetric = useCallback((metricType: string): MetricCategory | undefined => {
+    for (const [cat, metrics] of Object.entries(METRIC_BY_CATEGORY)) {
+      if (metrics.some((m) => m.value === metricType)) {
+        return cat as MetricCategory;
+      }
+    }
+    return undefined;
+  }, []);
 
   /** 상세 선택 */
   const handleSelectAlarm = useCallback(async (id: number) => {
-    if (!id) return; // 잘못된 id 클릭 방지
+    if (!id) return;
 
     setLoading(true);
+
+    pollingCountRef.current = 0;
+
+   
     try {
       const res = await apiClient.get(`/alarms/feeds/${id}`);
-      const detail = res.data; // 서버 DetailResponse (id, title, severity, occurredAt, ...)
-
-      // metricType으로부터 카테고리 찾기
-      const findCategoryByMetric = (metricType: string): MetricCategory | undefined => {
-        for (const [cat, metrics] of Object.entries(METRIC_BY_CATEGORY)) {
-          if (metrics.some((m) => m.value === metricType)) {
-            return cat as MetricCategory;
-          }
-        }
-        return undefined;
-      };
+      const detail = res.data;
 
       const alarmDetail: AlarmDetailData = {
         id: detail.id,
@@ -115,10 +123,91 @@ export default function AlarmDetailModal({ open, onClose }: Props) {
           ? findCategoryByMetric(detail.metricType)
           : undefined,
         metricType: detail.metricType as Metric | undefined,
-        aggregationType: detail.aggregationType as Aggregation | undefined,
+        isGenerating: detail.isGenerating ?? false,
       };
 
       setCurrentData(alarmDetail);
+
+      // 기존 폴링이 있으면 정리
+      if (pollingIntervalRef.current !== null) {
+        clearInterval(pollingIntervalRef.current);
+        pollingIntervalRef.current = null;
+      }
+
+      // isGenerating이 true이면 자동 폴링 시작
+      if (detail.isGenerating === true) {
+        pollingIntervalRef.current = window.setInterval(async () => {
+            pollingCountRef.current += 1;
+          if (pollingCountRef.current > MAX_POLLING_COUNT) {
+            console.warn(`⏰ 폴링 타임아웃: alarmFeedId=${id}, 최대 횟수 초과`);
+            if (pollingIntervalRef.current !== null) {
+              clearInterval(pollingIntervalRef.current);
+              pollingIntervalRef.current = null;
+            }
+            // 타임아웃 시에도 isGenerating을 false로 설정하여 "관련 객체 없음" 표시
+            setCurrentData(prev => prev ? { ...prev, isGenerating: false } : null);
+            pollingCountRef.current = 0;
+            return;
+          }
+          try {
+            const pollRes = await apiClient.get(`/alarms/feeds/${id}`);
+            const pollDetail = pollRes.data;
+
+            const updatedDetail: AlarmDetailData = {
+              id: pollDetail.id,
+              title: pollDetail.title,
+              severity: (pollDetail.severity || "INFO") as AlarmSeverity,
+              occurredAt: pollDetail.occurredAt,
+              description: pollDetail.description,
+              latency: {
+                data: (pollDetail.latency?.data ?? []).map((v: any) => Number(v)),
+                labels: pollDetail.latency?.labels ?? [],
+              },
+              summary: {
+                current: pollDetail.summary?.current ?? 0,
+                threshold: pollDetail.summary?.threshold ?? 0,
+                duration: pollDetail.summary?.duration ?? "N/A",
+              },
+              related: (pollDetail.related ?? []).map((obj: any) => ({
+                type: (obj.type ?? "table") as RelatedItem["type"],
+                name: obj.name,
+                metric: String(obj.metric ?? "N/A"),
+                level: (obj.level ?? "정상") as RelatedItem["level"],
+              })),
+              category: pollDetail.metricCategory
+                ? (pollDetail.metricCategory as MetricCategory)
+                : pollDetail.metricType
+                ? findCategoryByMetric(pollDetail.metricType)
+                : undefined,
+              metricType: pollDetail.metricType as Metric | undefined,
+              isGenerating: pollDetail.isGenerating ?? false,
+            };
+
+            setCurrentData(updatedDetail);
+
+            // 생성 완료되면 폴링 중지
+            if (!pollDetail.isGenerating || (pollDetail.related?.length ?? 0) > 0) {
+              if (pollingIntervalRef.current !== null) {
+                clearInterval(pollingIntervalRef.current);
+                pollingIntervalRef.current = null;
+              }
+              pollingCountRef.current = 0;  // ✅ 추가: 카운터 리셋
+       
+            }
+          } catch (e: any) {
+            if (e?.name !== "CanceledError" && e?.code !== "ERR_CANCELED") {
+              console.error("Failed to poll alarm detail:", e);
+              // 폴링 실패 시에도 중지
+              if (pollingIntervalRef.current !== null) {
+                clearInterval(pollingIntervalRef.current);
+                pollingIntervalRef.current = null;
+              }
+                 pollingCountRef.current = 0;  // ✅ 추가: 카운터 리셋
+          
+            }
+          }
+        }, 1000); // 1초마다 재조회
+      }
 
       // 읽음 처리: 서버에 반영하고 클라이언트 상태 업데이트
       const currentAlarm = alarms.find((a) => a.id === id);
@@ -128,10 +217,8 @@ export default function AlarmDetailModal({ open, onClose }: Props) {
           setAlarms((prev) => prev.map((a) => (a.id === id ? { ...a, isRead: true } : a)));
         } catch (e: any) {
           console.error("Failed to mark as read:", e);
-          // 읽음 처리 실패해도 상세는 표시
         }
       } else {
-        // 이미 읽음 상태면 클라이언트 상태만 업데이트
         setAlarms((prev) => prev.map((a) => (a.id === id ? { ...a, isRead: true } : a)));
       }
     } catch (e: any) {
@@ -143,11 +230,32 @@ export default function AlarmDetailModal({ open, onClose }: Props) {
     } finally {
       setLoading(false);
     }
-  }, [alarms]);
+  }, [alarms, findCategoryByMetric]);
+
+   // 컴포넌트 언마운트 시 폴링 정리 및 카운터 리셋
+  useEffect(() => {
+    return () => {
+      if (pollingIntervalRef.current !== null) {
+        clearInterval(pollingIntervalRef.current);
+        pollingIntervalRef.current = null;
+      }
+      pollingCountRef.current = 0;  // 카운터 리셋
+    };
+  }, []);
+
+  // 모달이 닫히거나 다른 알람 선택 시 폴링 정리 및 카운터 리셋
+  useEffect(() => {
+    if (!open && pollingIntervalRef.current !== null) {
+      clearInterval(pollingIntervalRef.current);
+      pollingIntervalRef.current = null;
+      pollingCountRef.current = 0;  // 카운터 리셋
+    }
+  }, [open]);
 
   /** 알림 목록 조회 */
   useEffect(() => {
     if (!open || !selectedInstance) return;
+
     const ac = new AbortController();
     firstLoadRef.current = true;
 
@@ -161,7 +269,6 @@ export default function AlarmDetailModal({ open, onClose }: Props) {
 
         const res = await apiClient.get("/alarms/feeds", { params, signal: ac.signal });
 
-        // 서버 ListResponse.alarms: id, title, severity, occurredAt, description, isRead
         const items: AlarmListItem[] =
           res.data?.alarms?.map((item: any) => ({
             id: item.id,
@@ -173,8 +280,6 @@ export default function AlarmDetailModal({ open, onClose }: Props) {
           })) ?? [];
 
         setAlarms(items);
-        
-        // 첫 번째 자동 선택 제거 - 클릭할 때만 상세 표시
         firstLoadRef.current = false;
       } catch (e: any) {
         if (e?.name === "CanceledError" || e?.code === "ERR_CANCELED") {
@@ -191,11 +296,31 @@ export default function AlarmDetailModal({ open, onClose }: Props) {
     return () => ac.abort();
   }, [open, selectedInstance, selectedDatabase]);
 
+  /** 컴포넌트 언마운트 시 폴링 정리 */
+  useEffect(() => {
+    return () => {
+      if (pollingIntervalRef.current !== null) {
+        clearInterval(pollingIntervalRef.current);
+        pollingIntervalRef.current = null;
+      }
+    };
+  }, []);
+
+  /** 모달이 닫히거나 다른 알람 선택 시 폴링 정리 */
+  useEffect(() => {
+    if (!open && pollingIntervalRef.current !== null) {
+      clearInterval(pollingIntervalRef.current);
+      pollingIntervalRef.current = null;
+    }
+  }, [open]);
+
   /** Body 스크롤 제어 */
   useEffect(() => {
     if (!open) return;
+
     const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
+
     return () => {
       document.body.style.overflow = prev;
     };
@@ -204,7 +329,9 @@ export default function AlarmDetailModal({ open, onClose }: Props) {
   /** ESC 닫기 */
   useEffect(() => {
     if (!open) return;
+
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [open, onClose]);
@@ -263,7 +390,16 @@ export default function AlarmDetailModal({ open, onClose }: Props) {
           </button>
         </header>
 
-        {currentData && <p className="am-modal__subtitle">{currentData.occurredAt} · {currentData.description}</p>}
+        {currentData && (
+          <p className="am-modal__subtitle">
+            {currentData.occurredAt} · {currentData.description}
+            {currentData.isGenerating && (
+              <span style={{ marginLeft: "12px", color: "#6366F1", fontSize: "0.875rem" }}>
+                관련 객체 생성 중...
+              </span>
+            )}
+          </p>
+        )}
 
         <div className="am-modal__layout">
           {/* 좌: 알림 리스트 */}
@@ -275,9 +411,17 @@ export default function AlarmDetailModal({ open, onClose }: Props) {
 
             <div className="am-alarms-list__body">
               {loading && <div className="am-alarms-empty">로딩 중...</div>}
-              {!loading && error && <div className="am-alarms-empty" style={{ color: "#EF4444" }}>{error}</div>}
-              {!loading && !error && alarms.length === 0 && <div className="am-alarms-empty">알림이 없습니다</div>}
-              {!loading && !error && alarms.length > 0 &&
+              {!loading && error && (
+                <div className="am-alarms-empty" style={{ color: "#EF4444" }}>
+                  {error}
+                </div>
+              )}
+              {!loading && !error && alarms.length === 0 && (
+                <div className="am-alarms-empty">알림이 없습니다</div>
+              )}
+              {!loading &&
+                !error &&
+                alarms.length > 0 &&
                 alarms.map((alarm, i) => (
                   <div
                     key={alarm.id ?? `alarm-fallback-${i}-${alarm.occurredAt}`}
@@ -372,15 +516,6 @@ export default function AlarmDetailModal({ open, onClose }: Props) {
                           </dd>
                         </>
                       )}
-                      {currentData.aggregationType && (
-                        <>
-                          <dt>집계</dt>
-                          <dd>
-                            {AGGREGATION_OPTIONS.find((opt) => opt.value === currentData.aggregationType)?.label ??
-                              currentData.aggregationType}
-                          </dd>
-                        </>
-                      )}
                     </dl>
                     <h4 style={{ marginTop: "24px" }}>요약</h4>
                     <dl>
@@ -442,6 +577,42 @@ export default function AlarmDetailModal({ open, onClose }: Props) {
                   </div>
                 </section>
               )}
+
+              {/* 관련 객체 생성 중일 때 표시 */}
+              {currentData.isGenerating && currentData.related.length === 0 && (
+                <section className="am-card">
+                  <header className="am-card__header">
+                    <h3>관련 객체</h3>
+                  </header>
+                  <div style={{ textAlign: "center", color: "#6366F1", padding: "40px" }}>
+                    관련 객체를 생성하는 중입니다...
+                  </div>
+                </section>
+              )}
+                  {/* ✅ 수정: 관련 객체 생성 중일 때 표시 */}
+              {currentData.isGenerating && currentData.related.length === 0 && (
+                <section className="am-card">
+                  <header className="am-card__header">
+                    <h3>관련 객체</h3>
+                  </header>
+                  <div style={{ textAlign: "center", color: "#6366F1", padding: "40px" }}>
+                    관련 객체를 생성하는 중입니다...
+                  </div>
+                </section>
+              )}
+
+              {/* ✅ 추가: 관련 객체 없음 표시 (생성 완료되었지만 결과가 0개) */}
+              {!currentData.isGenerating && currentData.related.length === 0 && (
+                <section className="am-card">
+                  <header className="am-card__header">
+                    <h3>관련 객체</h3>
+                  </header>
+                  <div style={{ textAlign: "center", color: "#9CA3AF", padding: "40px" }}>
+                    관련 객체가 없습니다.
+                  </div>
+                </section>
+              )}
+          
             </div>
           )}
         </div>
