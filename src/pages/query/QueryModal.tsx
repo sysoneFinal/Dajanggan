@@ -368,9 +368,12 @@ export default function QueryModal({ open, onClose, detail }: Props) {
                         </h4>
                         
                         <p className="query-modal__ai-card-desc">
-                          {suggestion.suggestionDescription}
-                        </p>
-                        
+{suggestion.suggestionDescription && suggestion.suggestionDescription !== "0" && (
+  <p className="query-modal__ai-card-desc">
+    {suggestion.suggestionDescription}
+  </p>
+)}
+        </p>                
                         {suggestion.suggestionSql && suggestion.suggestionSql !== "N/A" && (
                           <div className="query-modal__ai-sql">
                             <div className="query-modal__ai-sql-header">
