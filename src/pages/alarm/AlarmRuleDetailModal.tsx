@@ -5,10 +5,8 @@ import apiClient from "../../api/apiClient";
 import {
   CATEGORY_LABELS,
   METRIC_BY_CATEGORY,
-  AGGREGATION_OPTIONS,
   OPERATOR_OPTIONS,
   type Metric,
-  type Aggregation,
   type MetricCategory,
   type Operator,
 } from "./AlarmRuleModal";
@@ -40,7 +38,6 @@ export default function AlarmRuleDetailModal({
   const [databaseName, setDatabaseName] = useState<string>("");
   const [category, setCategory] = useState<MetricCategory | null>(null);
   const [metric, setMetric] = useState<Metric | null>(null);
-  const [aggregation, setAggregation] = useState<Aggregation | null>(null);
   const [operator, setOperator] = useState<Operator>("gt");
   const emptyLevel: RuleThreshold = { 
     threshold: null, 
@@ -86,12 +83,6 @@ export default function AlarmRuleDetailModal({
     return allMetrics.find((m) => m.value === metricType)?.label ?? metricType;
   };
 
-  // 집계 라벨 가져오기
-  const getAggregationLabel = (aggType: Aggregation | null): string => {
-    if (!aggType) return "-";
-    return AGGREGATION_OPTIONS.find((opt) => opt.value === aggType)?.label ?? aggType;
-  };
-
   // 규칙 상세 조회
   useEffect(() => {
     if (!open || !ruleId) return;
@@ -113,7 +104,6 @@ export default function AlarmRuleDetailModal({
         setDatabaseName(detail.databaseName || "Unknown");
         const metricType = detail.metricType as Metric;
         setMetric(metricType);
-        setAggregation(detail.aggregationType as Aggregation);
         setOperator((detail.operator as Operator) || "gt");
         
         // 카테고리 찾기
@@ -220,13 +210,6 @@ export default function AlarmRuleDetailModal({
                   <div className="ar-kicker">지표</div>
                   <div className="ar-select" style={{ backgroundColor: '#F9FAFB', padding: '10px 12px', border: '1px solid #E5E7EB', borderRadius: '6px' }}>
                     {getMetricLabel(metric)}
-                  </div>
-                </div>
-
-                <div>
-                  <div className="ar-kicker">집계</div>
-                  <div className="ar-select" style={{ backgroundColor: '#F9FAFB', padding: '10px 12px', border: '1px solid #E5E7EB', borderRadius: '6px' }}>
-                    {getAggregationLabel(aggregation)}
                   </div>
                 </div>
 

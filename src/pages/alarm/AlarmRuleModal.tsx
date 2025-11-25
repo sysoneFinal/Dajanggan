@@ -4,7 +4,7 @@ import "/src/styles/alarm/alarm-modal-root.css";
 import { useInstanceContext } from "../../context/InstanceContext";
 
 // 카테고리 타입
-export type MetricCategory = "vacuum" | "session" | "query";
+export type MetricCategory = "vacuum" | "session" | "query" | "cpu";
 
 // 지표 타입 확장
 export type Metric = 
@@ -20,7 +20,10 @@ export type Metric =
   // Query
   | "slow_query_spike"
   | "avg_execution_spike"
-  | "qps_spike";
+  | "qps_spike"
+  // CPU
+  | "cpu_usage_high";
+
 
 export type Aggregation = "latest_avg" | "avg_5m" | "avg_15m" | "p95_15m";
 
@@ -52,6 +55,9 @@ export const METRIC_BY_CATEGORY: Record<MetricCategory, { value: Metric; label: 
     { value: "avg_execution_spike", label: "평균 실행 시간 급증" },
     { value: "qps_spike", label: "QPS 급증" },
   ],
+  cpu: [
+    { value: "cpu_usage_high", label: "CPU 사용량" },
+  ],
 };
 
 // 카테고리 라벨
@@ -59,6 +65,7 @@ export const CATEGORY_LABELS: Record<MetricCategory, string> = {
   vacuum: "Vacuum",
   session: "Session",
   query: "Query",
+  cpu: "CPU"
 };
 
 export const AGGREGATION_OPTIONS: { value: Aggregation; label: string }[] = [
@@ -333,60 +340,6 @@ export default function AlarmRuleModal({
                         }}
                       >
                         {m.label}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-
-            <div>
-              <div className="ar-kicker">집계</div>
-              <div
-                className="dropdown-wrapper"
-                ref={aggregationDropdownRef}
-                style={{ position: "relative" }}
-              >
-                <button
-                  type="button"
-                  className="header-btn"
-                  onClick={() =>
-                    setOpenDropdown((prev) => (prev === "aggregation" ? null : "aggregation"))
-                  }
-                  style={{
-                    width: "100%",
-                    justifyContent: "space-between",
-                    padding: "10px 14px",
-                  }}
-                >
-                  <span className="header-btn-text" style={{ fontWeight: 400 }}>
-                    {AGGREGATION_OPTIONS.find((opt) => opt.value === aggregation)?.label ??
-                      "집계 선택"}
-                  </span>
-                  <span className="dropdown-arrow">▼</span>
-                </button>
-                {openDropdown === "aggregation" && (
-                  <div
-                    className="dropdown-menu"
-                    style={{
-                      position: "absolute",
-                      top: "calc(100% + 8px)",
-                      left: 0,
-                      width: "100%",
-                      zIndex: 20,
-                    }}
-                  >
-                    {AGGREGATION_OPTIONS.map((opt) => (
-                      <button
-                        key={opt.value}
-                        className={`dropdown-item ${aggregation === opt.value ? "active" : ""}`}
-                        style={{ fontWeight: 400 }}
-                        onClick={() => {
-                          setAggregation(opt.value);
-                          setOpenDropdown(null);
-                        }}
-                      >
-                        {opt.label}
                       </button>
                     ))}
                   </div>

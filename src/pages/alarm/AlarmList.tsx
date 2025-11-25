@@ -16,7 +16,7 @@ import SlackSettingsModal from "./SlackSetting";
 import AlarmRuleModal from "./AlarmRuleModal";
 import AlarmRuleEditModal from "./AlarmRuleEditModal";
 import AlarmRuleDetailModal from "../alarm/AlarmRuleDetailModal";
-import type { Metric, Aggregation, MetricCategory, AlarmRulePayload } from "./AlarmRuleModal";
+import type { Metric, MetricCategory, AlarmRulePayload } from "./AlarmRuleModal";
 import { CATEGORY_LABELS } from "./AlarmRuleModal";
 import "/src/styles/alarm/alarm-list.css";
 import apiClient from "../../api/apiClient";
@@ -41,7 +41,6 @@ type ServerCreatePayload = {
   instanceId: number | null;
   databaseId: number | null;
   metricType: Metric;
-  aggregationType: Aggregation;
   operator: "gt" | "gte" | "lt" | "lte" | "eq";
   enabled: boolean;
   levels: {
@@ -55,7 +54,6 @@ type ServerUpdatePayload = {
   alarmRuleId?: number; // 서버가 path param으로 받으면 생략 가능
   metricCategory?: MetricCategory;
   metricType?: Metric;
-  aggregationType: Aggregation;
   operator?: "gt" | "gte" | "lt" | "lte" | "eq";
   enabled: boolean;
   levels: {
@@ -71,7 +69,6 @@ function toServerCreateJSONB(p: AlarmRulePayload): ServerCreatePayload {
     instanceId: p.instanceId,
     databaseId: p.databaseId,
     metricType: p.metricType,
-    aggregationType: p.aggregationType,
     operator: p.operator || "gt",
     enabled: p.enabled,
     levels: {
@@ -95,7 +92,6 @@ function toServerUpdateJSONB(p: any): ServerUpdatePayload {
     alarmRuleId: p.alarmRuleId,
     metricCategory: p.metricCategory,
     metricType: p.metricType,
-    aggregationType: p.aggregationType,
     operator: p.operator,
     enabled: p.enabled,
     levels: hasServerKeys
