@@ -1,3 +1,4 @@
+// 작성자 : 김동현
 import Chart from "../../components/chart/ChartComponent";
 import SummaryCard from "../../components/util/SummaryCard";
 import WidgetCard from "../../components/util/WidgetCard";
@@ -17,11 +18,6 @@ function timeToSeconds(timeStr: string): number {
     return hours * 3600 + minutes * 60 + seconds;
 }
 
-/**
- * 최근 1분 동안 5초 간격으로 12개 데이터 포인트를 샘플링
- * @param history 히스토리 데이터 배열 (time 속성을 가진 객체)
- * @returns 5초 간격으로 샘플링된 최대 12개 데이터 (오래된 순서부터)
- */
 function sampleLast60Seconds<T extends { time: string }>(history: T[]): T[] {
     if (history.length === 0) return [];
     

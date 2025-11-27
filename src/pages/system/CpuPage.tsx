@@ -1,3 +1,4 @@
+// 작성자 : 김동현
 import { useState, useEffect, useMemo } from "react";
 import Chart from "../../components/chart/ChartComponent";
 import SummaryCard from "../../components/util/SummaryCard";
