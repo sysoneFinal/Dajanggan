@@ -321,7 +321,7 @@ export default function QueryOverview() {
       setSummaryMetrics([
         { label: "현재 TPS", value: "0", status: "info", desc: "데이터 없음" },
         { label: "현재 QPS", value: "0", status: "info", desc: "데이터 없음" },
-        { label: "활성 세션 수", value: 0, status: "info", desc: "데이터 없음" },
+        { label: "총 쿼리 수", value: 0, status: "info", desc: "데이터 없음" },
         { label: "평균 응답 시간", value: "0ms", status: "info", desc: "데이터 없음" },
       ]);
       setTpsQpsData({ tps: Array(12).fill(0), qps: Array(12).fill(0) });
