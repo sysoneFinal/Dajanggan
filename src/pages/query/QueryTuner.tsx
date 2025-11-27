@@ -10,7 +10,7 @@ import "/src/styles/query/query-tuner.css";
  * - EXPLAIN ANALYZE 실행
  * - OpenAI 기반 AI 개선 제안 (캐싱 적용)
  * 
- * @author 이해든 
+ * 작성자: 이해든
  */
 
 type ExecutionMode = "실제 실행" | "안전 모드";
