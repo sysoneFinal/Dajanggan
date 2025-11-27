@@ -1,3 +1,5 @@
+/** 작성자 : 서샘이  */
+
 import { useState } from "react";
 import arrowDown from "../../assets/icon/arrow-down.svg";
 

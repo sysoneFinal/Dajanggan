@@ -1,3 +1,5 @@
+/** 작성자 : 서샘이 */ 
+
 import axios, {
   AxiosError,
   type AxiosResponse,

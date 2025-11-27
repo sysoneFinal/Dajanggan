@@ -1,3 +1,5 @@
+/** 작성자 : 서샘이  */
+
 import { useEffect, useRef } from "react";
 import "../../styles/session/deadlock-modal.css";
 import Clock from "../../assets/icon/clock.svg"

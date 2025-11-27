@@ -1,3 +1,5 @@
+/** 작성자 : 서샘이 */ 
+
 import "../../styles/util/circle-gauge-chart.css"
 
 interface CircleGaugeChartProps {

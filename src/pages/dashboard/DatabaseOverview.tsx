@@ -1,4 +1,6 @@
-import React, { useMemo, useTransition, useEffect } from "react";
+/** 작성자 : 서샘이  */
+
+import { useMemo, useTransition, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useInstanceContext } from "../../context/InstanceContext";
 import { useLoader } from "../../context/LoaderContext";

@@ -1,4 +1,6 @@
-import React, { createContext, useContext, useState } from 'react';
+/** 작성자 : 서샘이  */
+
+import { createContext, useContext, useState } from 'react';
 import "../styles/util/loader.css";
 
 // 전역 로더 Context 생성
