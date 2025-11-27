@@ -47,6 +47,7 @@ export interface QueryAnalysisResponse {
     executionTimeMs: number | null;
     planningTimeMs: number | null;
     rowsReturned?: number | null;
+    ioBlocks?: number | null; 
   };
   suggestions: QuerySuggestion[];
 }

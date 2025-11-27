@@ -3,13 +3,12 @@ import "/src/styles/alarm/alarm-rule.css";
 import "/src/styles/alarm/alarm-modal-root.css";
 import apiClient from "../../api/apiClient";
 import {
-  AGGREGATION_OPTIONS,
   METRIC_BY_CATEGORY,
   CATEGORY_LABELS,
   OPERATOR_OPTIONS,
   type Metric,
 } from "./AlarmRuleModal";
-import type { Aggregation, MetricCategory, Operator } from "./AlarmRuleModal";
+import type { MetricCategory, Operator } from "./AlarmRuleModal";
 
 export interface RuleThreshold {
   threshold: number | null;
@@ -26,7 +25,6 @@ export interface ServerRuleDetail {
   instanceName: string;
   databaseName: string | null;
   metricType: Metric;
-  aggregationType: Aggregation;
   operator: string;
   enabled: boolean;
   levels: {
@@ -40,7 +38,6 @@ export interface ServerUpdatePayload {
   alarmRuleId: number;
   metricCategory?: MetricCategory;
   metricType?: Metric;
-  aggregationType: Aggregation;
   operator?: Operator;
   enabled: boolean;
   levels: {
@@ -70,8 +67,7 @@ export default function AlarmRuleEditModal({
   const [instanceName, setInstanceName] = useState<string>("");
   const [databaseName, setDatabaseName] = useState<string>("");
   const [category, setCategory] = useState<MetricCategory>("vacuum");
-  const [metric, setMetric] = useState<Metric>("dead_tuples");
-  const [aggregation, setAggregation] = useState<Aggregation>("latest_avg");
+  const [metric, setMetric] = useState<Metric>("autovacuum_worker_utilization");
   const [operator, setOperator] = useState<Operator>("gt");
   const [levels, setLevels] = useState<{
     info: RuleThreshold;// 프론트 내부 키
@@ -134,7 +130,6 @@ export default function AlarmRuleEditModal({
         const detectedCategory = findCategoryByMetric(detail.metricType as Metric);
         setCategory(detectedCategory);
         setMetric(detail.metricType as Metric);
-        setAggregation(detail.aggregationType as Aggregation);
         setOperator((detail.operator as Operator) || "gt");
 
         // 서버 -> 프론트 내부 키로 매핑 (warn -> warn, critical -> danger)
@@ -206,7 +201,6 @@ export default function AlarmRuleEditModal({
     alarmRuleId: ruleId!,
     metricCategory: category,
     metricType: metric,
-    aggregationType: aggregation,
     operator,
     enabled,
     levels: {
@@ -250,7 +244,7 @@ export default function AlarmRuleEditModal({
           </div>
         </header>
 
-        <div className="amr-modal__body" style={{ maxHeight: '50vh', overflowY: 'auto' }}>
+        <div className="amr-modal__body" style={{ maxHeight: '75vh', overflowY: 'auto' }}>
           {loading ? (
             <div style={{ textAlign: 'center', color: '#9CA3AF', padding: '40px' }}>로딩 중...</div>
           ) : (
@@ -366,61 +360,6 @@ export default function AlarmRuleEditModal({
                             style={{ fontWeight: 400 }}
                             onClick={() => {
                               setMetric(opt.value);
-                              setOpenDropdown(null);
-                            }}
-                          >
-                            {opt.label}
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                <div>
-                  <div className="ar-kicker">집계</div>
-                  <div
-                    className="dropdown-wrapper"
-                    ref={aggregationDropdownRef}
-                    style={{ position: "relative" }}
-                  >
-                    <button
-                      type="button"
-                      className="header-btn"
-                      onClick={() =>
-                        setOpenDropdown((prev) => (prev === "aggregation" ? null : "aggregation"))
-                      }
-                      style={{
-                        width: "100%",
-                        justifyContent: "space-between",
-                        padding: "10px 14px",
-                        fontWeight: 400,
-                      }}
-                    >
-                      <span className="header-btn-text" style={{ fontWeight: 400 }}>
-                        {AGGREGATION_OPTIONS.find((opt) => opt.value === aggregation)?.label ??
-                          "집계 선택"}
-                      </span>
-                      <span className="dropdown-arrow">▼</span>
-                    </button>
-                    {openDropdown === "aggregation" && (
-                      <div
-                        className="dropdown-menu"
-                        style={{
-                          position: "absolute",
-                          top: "calc(100% + 8px)",
-                          left: 0,
-                          width: "100%",
-                          zIndex: 20,
-                        }}
-                      >
-                        {AGGREGATION_OPTIONS.map((opt) => (
-                          <button
-                            key={opt.value}
-                            className={`dropdown-item ${aggregation === opt.value ? "active" : ""}`}
-                            style={{ fontWeight: 400 }}
-                            onClick={() => {
-                              setAggregation(opt.value);
                               setOpenDropdown(null);
                             }}
                           >

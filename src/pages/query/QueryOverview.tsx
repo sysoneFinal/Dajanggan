@@ -430,7 +430,12 @@ export default function QueryOverview() {
       
       // Top 5 설정
       const top5Fixed = [...transformedSlowQueries]
-        .sort((a, b) => new Date(b.occurredAt).getTime() - new Date(a.occurredAt).getTime())
+ .sort((a, b) => {
+          // avgExecutionTimeMs가 있으면 사용, 없으면 executionTime에서 파싱
+          const aTime = a.avgExecutionTimeMs ?? parseFloat(a.executionTime.replace(/[^\d.]/g, ''));
+          const bTime = b.avgExecutionTimeMs ?? parseFloat(b.executionTime.replace(/[^\d.]/g, ''));
+          return bTime - aTime;
+        })
         .slice(0, 5);
       setSlowQueriesTop5(top5Fixed);
     }
@@ -766,7 +771,7 @@ export default function QueryOverview() {
       </section>
 
       <ChartGridLayout>
-        <WidgetCard title="TPS/QPS 실시간 그래프" span={9}>
+        <WidgetCard title="TPS/QPS 추이 그래프" span={9}>
           <div style={{ width: '100%', height: '100%', paddingBottom: '1rem' }}>
             <div className="qo-legend" style={{ marginBottom: '0.75rem', display: 'flex', justifyContent: 'flex-end', gap: '1.25rem' }}>
               <div className="qo-legend-item">
