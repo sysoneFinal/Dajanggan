@@ -6,7 +6,7 @@ import type { QueryAnalysisRequest, QueryAnalysisResponse, QuerySuggestion } fro
  * 쿼리 메트릭스 API 클라이언트
  * - 쿼리 메트릭스 관련 API 호출 함수들
  * 
- * @author 이해든
+ * 작성자: 이해든
  */
 
 export const getRecentQueryMetrics = (databaseId: number, minutes: number = 5) => {

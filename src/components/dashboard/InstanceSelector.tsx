@@ -1,3 +1,5 @@
+/** 작성자 : 서샘이 */ 
+
 import React from "react";
 import "../../styles/dashboard/InstanceSelector.css";
 import NextIcon from "../../assets/icon/next.svg";

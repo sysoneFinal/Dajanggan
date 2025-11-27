@@ -1,3 +1,6 @@
+ /** 
+ * 작성자: 이해든
+ */
 import { useEffect, useRef, useState } from "react";
 import { analyzeQueryWithAI } from "../../api/query";
 import type { QuerySuggestion } from "../../api/suggestion";
