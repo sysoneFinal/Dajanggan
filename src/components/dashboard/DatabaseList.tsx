@@ -1,3 +1,5 @@
+/** 작성자 : 서샘이 */ 
+
 import "@/styles/dashboard/database-list.css";
 import rightArrowIcon from "../../assets/icon/right-arrow.svg";
 

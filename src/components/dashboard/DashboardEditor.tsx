@@ -1,3 +1,5 @@
+/** 작성자 : 서샘이 */ 
+
 import { useState, useEffect } from "react";
 import Joyride, { STATUS } from "react-joyride";
 import type { CallBackProps, Step } from "react-joyride";

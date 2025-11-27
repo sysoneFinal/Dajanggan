@@ -1,4 +1,4 @@
-// 작성자: 김민서
+/** 작성자 : 서샘이  */
 
 import { createContext, useContext, useState, useEffect, useCallback, useRef } from "react";
 import apiClient from "../api/apiClient";

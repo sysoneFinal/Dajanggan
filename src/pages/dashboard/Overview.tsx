@@ -1,3 +1,5 @@
+/** 작성자 : 서샘이  */
+
 import React, { useState, useEffect } from "react";
 import { Responsive, WidthProvider, type Layout } from "react-grid-layout";
 import { useQuery } from "@tanstack/react-query";

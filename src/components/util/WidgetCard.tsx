@@ -1,3 +1,5 @@
+/** 작성자 : 서샘이  */
+
 import "../../styles/util/widget-card.css";
 
 interface WidgetCardProps {

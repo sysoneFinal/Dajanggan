@@ -1,7 +1,7 @@
 /**
  * AI 쿼리 제안 관련 타입 정의
  * 
- * @author 이해든
+ * 작성자: 이해든
  */
 
 export type SuggestionLevel = "높음" | "경고" | "정보";

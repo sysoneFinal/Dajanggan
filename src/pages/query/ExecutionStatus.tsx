@@ -23,7 +23,7 @@ import "/src/styles/query/execution-status.css";
  * - 실행 통계 테이블 및 차트 시각화
  * - 최근 1시간 데이터 자동 조회
  * 
- * @author 이해든
+ * 작성자: 이해든
  */
 
 type QueryStat = {

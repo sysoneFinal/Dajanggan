@@ -1,3 +1,5 @@
+/** 작성자 : 서샘이  */
+
 import { useQuery } from "@tanstack/react-query";
 import { useState, useEffect } from "react";
 import Chart from "../../components/chart/ChartComponent";

@@ -1,3 +1,6 @@
+ /** 
+ * 작성자: 이해든
+ */
 import { useEffect, useRef, useState } from "react";
 import { analyzeQueryWithAI } from "../../api/query";
 import type { QuerySuggestion } from "../../api/suggestion";
@@ -368,9 +371,12 @@ export default function QueryModal({ open, onClose, detail }: Props) {
                         </h4>
                         
                         <p className="query-modal__ai-card-desc">
-                          {suggestion.suggestionDescription}
-                        </p>
-                        
+{suggestion.suggestionDescription && suggestion.suggestionDescription !== "0" && (
+  <p className="query-modal__ai-card-desc">
+    {suggestion.suggestionDescription}
+  </p>
+)}
+        </p>                
                         {suggestion.suggestionSql && suggestion.suggestionSql !== "N/A" && (
                           <div className="query-modal__ai-sql">
                             <div className="query-modal__ai-sql-header">
