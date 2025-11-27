@@ -1,3 +1,5 @@
+/** 작성자 : 서샘이  */
+
 import "../../styles/session/session-detail-modal.css";
 import { formatDateTime } from "../../utils/formatDateTime";
 

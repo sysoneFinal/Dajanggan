@@ -1,3 +1,5 @@
+/** 작성자 : 서샘이 */ 
+
 import "/src/styles/layout/gaugeChart.css";
 
 export type GaugeType = "semi-circle" | "bar";

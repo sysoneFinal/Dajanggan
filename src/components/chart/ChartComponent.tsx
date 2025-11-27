@@ -1,3 +1,5 @@
+/** 작성자 : 서샘이 */ 
+
 import { useMemo, useRef, useEffect, useState } from "react";
 import ReactApexChart from "react-apexcharts";
 
