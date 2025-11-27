@@ -4,11 +4,11 @@ import apiClient from './apiClient';
 
 export type NewInstance = {
   host: string;
-  instance: string;   // → instanceName
-  database: string;   // → dbname
+  instance: string;   
+  database: string;   
   port: number | string;
   username: string;
-  password: string;   // → secretRef
+  password: string;   
 };
 
 // 백엔드 DTO에 맞춰 변환
@@ -19,7 +19,6 @@ const toInstanceDto = (f: NewInstance) => ({
   port: Number(f.port),
   username: f.username,
   secretRef: f.password,
-  // 옵션 필드 기본값(백엔드 default와 맞추거나 필요 시 조정)
   sslmode: 'require',
   isEnabled: true,
   slackEnabled: false,
@@ -31,12 +30,12 @@ const toInstanceDto = (f: NewInstance) => ({
 
 export async function registerInstance(form: NewInstance) {
   const payload = toInstanceDto(form);
-  // 백엔드 컨트롤러: POST /api/instances  (201 Created + { id })
+  // 백엔드 컨트롤러: POST /api/instances  
   const res = await apiClient.post('/instances', payload);
   return res.data as { id: number };
 }
 
 export async function fetchInstances() {
   const res = await apiClient.get('/instances');
-  return res.data; // Instance[]
+  return res.data;
 }

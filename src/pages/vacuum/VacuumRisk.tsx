@@ -1,4 +1,6 @@
-// src/pages/vacuum/VacuumPage.tsx
+// 작성자: 김민서
+
+
 import { useMemo, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useInstanceContext } from "../../context/InstanceContext";

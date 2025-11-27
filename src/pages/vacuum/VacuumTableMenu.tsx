@@ -1,3 +1,5 @@
+// 작성자: 김민서
+
 import { useEffect, useMemo, useRef, useState } from "react";
 import "/src/styles/vacuum/VacuumPage.css";
 

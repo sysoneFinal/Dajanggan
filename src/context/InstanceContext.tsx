@@ -130,7 +130,7 @@ export const InstanceProvider = ({ children }: { children: React.ReactNode }) =>
 
   /** refreshInterval 변경 시 로컬 저장 */
   useEffect(() => {
-    localStorage.setItem("refreshInterval", refreshInterval); // ✅ 문자열로 저장
+    localStorage.setItem("refreshInterval", refreshInterval);
   }, [refreshInterval]);
 
   return (
