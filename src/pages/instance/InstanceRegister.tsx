@@ -1,3 +1,7 @@
+// 작성자: 김민서
+// 인스턴스 등록/수정 모달 컴포넌트
+// 역할: 인스턴스 정보 입력, 유효성 검증, 연결 테스트, 등록/수정 처리
+
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import "/src/styles/instance/instance.css";
 import "/src/styles/instance/instance-register.css";
@@ -5,6 +9,8 @@ import "/src/styles/instance/instance-modal.css";
 
 import apiClient from "../../api/apiClient";
 
+
+// ============= Types =============
 export type NewInstance = {
   host: string;
   instance: string;
@@ -18,11 +24,28 @@ type Props = {
   onClose: () => void;
   initialValue?: Partial<NewInstance>;
   onSubmit?: (payload: NewInstance) => Promise<void> | void;
-  mode?: 'create' | 'edit';
+  mode?: "create" | "edit";
   instanceId?: string | number;
 };
 
-const fieldLabel = {
+type ValidationErrors = Partial<Record<keyof NewInstance, string>>;
+
+type TestResult = {
+  ok: boolean;
+  message?: string;
+};
+
+type InstancePayload = {
+  host: string;
+  instanceName: string;
+  port: number;
+  userName: string;
+  isEnabled: boolean;
+  secretRef?: string;
+};
+
+// ============= Constants =============
+const FIELD_LABELS = {
   host: "Host",
   instance: "Instance",
   port: "Port",
@@ -30,24 +53,83 @@ const fieldLabel = {
   password: "Password",
 } as const;
 
-const requiredMsg = (k: keyof typeof fieldLabel) => `${fieldLabel[k]} 값이 필요합니다.`;
+const ERROR_MESSAGES = {
+  REQUIRED: (label: string) => `${label} 값이 필요합니다.`,
+  INVALID_PORT: "1~65535 사이 정수를 입력하세요.",
+  TEST_REQUIRED: "먼저 연결 테스트를 완료해주세요.",
+  TEST_FAILED: "연결 테스트 실패",
+} as const;
 
-const toInstanceDto = (f: NewInstance) => ({
-  host: f.host,
-  instanceName: f.instance,
-  port: Number(f.port),
-  userName: f.userName,
-  secretRef: f.password,
+const SUCCESS_MESSAGES = {
+  CREATE: (id: string) => `등록 성공! ID: ${id}`,
+  UPDATE: "수정 성공!",
+  TEST_SUCCESS: "✓ 연결 테스트 성공",
+  TEST_FAILED: "✗ 연결 테스트 실패",
+} as const;
+
+const PORT_RANGE = {
+  MIN: 1,
+  MAX: 65535,
+} as const;
+
+const MODAL_CONFIG = {
+  create: {
+    title: "New Instance",
+    submitLabel: "Submit",
+    description: "Instance 등록을 위한 정보를 입력해주세요.",
+    testRequiredNote: "* 등록 전 연결 테스트를 완료해야 합니다.",
+  },
+  edit: {
+    title: "Edit Instance",
+    submitLabel: "Update",
+    description: "Instance 수정을 위한 정보를 입력해주세요.",
+    testRequiredNote: "",
+  },
+} as const;
+
+// ============= Utilities =============
+const getRequiredMessage = (key: keyof typeof FIELD_LABELS): string =>
+  ERROR_MESSAGES.REQUIRED(FIELD_LABELS[key]);
+
+const toInstanceDto = (form: NewInstance) => ({
+  host: form.host,
+  instanceName: form.instance,
+  port: Number(form.port),
+  userName: form.userName,
+  secretRef: form.password,
 });
+
+const buildConnectionString = (
+  userName: string,
+  host: string,
+  port: number | string
+): string => {
+  const user = encodeURIComponent(userName);
+  return `postgresql://${user}:@${host || ""}:${port}`;
+};
+
+const isValidPort = (port: number | string): boolean => {
+  const portNum = Number(port);
+  return portNum >= PORT_RANGE.MIN && portNum <= PORT_RANGE.MAX;
+};
+
+const sanitizePortInput = (value: string): number => {
+  return Number(value.replace(/[^0-9]/g, ""));
+};
+
+// ============================================================================
+// 메인 컴포넌트
+// ============================================================================
 
 export default function NewInstanceModal({
   open,
   onClose,
   initialValue,
   onSubmit,
-  mode = 'create',
+  mode = "create",
   instanceId,
 }: Props) {
+  // 상태 관리
   const [form, setForm] = useState<NewInstance>({
     host: initialValue?.host ?? "",
     instance: initialValue?.instance ?? "",
@@ -56,13 +138,19 @@ export default function NewInstanceModal({
     password: initialValue?.password ?? "",
   });
 
-  const [errors, setErrors] = useState<Partial<Record<keyof NewInstance, string>>>({});
+  const [errors, setErrors] = useState<ValidationErrors>({});
   const [submitting, setSubmitting] = useState(false);
   const [testing, setTesting] = useState(false);
-  const [testResult, setTestResult] = useState<null | { ok: boolean; message?: string }>(null);
-  const [connectionTested, setConnectionTested] = useState(false); // 연결 테스트 완료 여부
+  const [testResult, setTestResult] = useState<TestResult | null>(null);
+  const [connectionTested, setConnectionTested] = useState(false);
+
   const overlayRef = useRef<HTMLDivElement>(null);
 
+  // ============================================================================
+  // Effects
+  // ============================================================================
+
+  // initialValue 변경 시 폼 업데이트
   useEffect(() => {
     if (initialValue) {
       setForm({
@@ -75,171 +163,217 @@ export default function NewInstanceModal({
     }
   }, [initialValue]);
 
+  // ESC 키 핸들러
   useEffect(() => {
     if (!open) return;
 
-    const onKey = (e: KeyboardEvent) => {
+    const handleEscapeKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
     };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+
+    window.addEventListener("keydown", handleEscapeKey);
+    return () => window.removeEventListener("keydown", handleEscapeKey);
   }, [open, onClose]);
 
-  const handleOutside = (e: React.MouseEvent) => {
-    if (e.target === overlayRef.current) onClose();
-  };
+  // ============================================================================
+  // 계산된 값
+  // ============================================================================
+
+  const connectionString = useMemo(
+    () => buildConnectionString(form.userName, form.host, form.port),
+    [form.userName, form.host, form.port]
+  );
+
+  const modalConfig = MODAL_CONFIG[mode];
+  const canSubmit = mode === "edit" || connectionTested;
+
+  // ============================================================================
+  // 유효성 검증
+  // ============================================================================
 
   const validate = (): boolean => {
-    const next: Partial<Record<keyof NewInstance, string>> = {};
-    if (!form.host.trim()) next.host = requiredMsg("host");
-    if (!form.instance.trim()) next.instance = requiredMsg("instance");
-    if (!form.port || Number(form.port) < 1 || Number(form.port) > 65535)
-      next.port = "1~65535 사이 정수를 입력하세요.";
-    if (!form.userName.trim()) next.userName = requiredMsg("userName");
-    if (mode === 'create' && !form.password) {
-      next.password = requiredMsg("password");
+    const nextErrors: ValidationErrors = {};
+
+    if (!form.host.trim()) {
+      nextErrors.host = getRequiredMessage("host");
     }
-    setErrors(next);
-    return Object.keys(next).length === 0;
+
+    if (!form.instance.trim()) {
+      nextErrors.instance = getRequiredMessage("instance");
+    }
+
+    if (!form.port || !isValidPort(form.port)) {
+      nextErrors.port = ERROR_MESSAGES.INVALID_PORT;
+    }
+
+    if (!form.userName.trim()) {
+      nextErrors.userName = getRequiredMessage("userName");
+    }
+
+    if (mode === "create" && !form.password) {
+      nextErrors.password = getRequiredMessage("password");
+    }
+
+    setErrors(nextErrors);
+    return Object.keys(nextErrors).length === 0;
   };
 
-  const connectionString = useMemo(() => {
-    const user = encodeURIComponent(form.userName);
-    const host = form.host || "";
-    return `postgresql://${user}:@${host}:${form.port}`;
-  }, [form]);
+ 
+// ============= Event handler =============
+  const handleOutsideClick = (e: React.MouseEvent) => {
+    if (e.target === overlayRef.current) onClose();
+  };
 
   const handleChange = (key: keyof NewInstance, value: string) => {
     setForm((prev) => ({
       ...prev,
-      [key]: key === "port" ? Number(value.replace(/[^0-9]/g, "")) : value,
+      [key]: key === "port" ? sanitizePortInput(value) : value,
     }));
+
     setErrors((prev) => ({ ...prev, [key]: undefined }));
-    // 폼이 변경되면 다시 테스트해야 함
     setConnectionTested(false);
     setTestResult(null);
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!validate()) return;
-    
-    // 생성 모드에서는 연결 테스트 필수
-    if (mode === 'create' && !connectionTested) {
-      alert('먼저 연결 테스트를 완료해주세요.');
-      return;
-    }
-    
-    try {
-      setSubmitting(true);
-
-      if (onSubmit) {
-        await onSubmit(form);
-      } else {
-        if (mode === 'edit' && instanceId) {
-          // 편집 모드
-          const payload: any = {
-            host: form.host,
-            instanceName: form.instance,
-            port: Number(form.port),
-            userName: form.userName,
-            isEnabled: true,
-          };
-          if (form.password && form.password.trim()) {
-            payload.secretRef = form.password;
-          }
-          await apiClient.put(`/instances/${instanceId}`, payload);
-          alert(`수정 성공!`);
-        } else {
-          const payload = toInstanceDto(form);
-          const res = await apiClient.post("/instances", payload);
-          alert(`등록 성공! ID: ${res.data?.instanceId ?? "unknown"}`);
-        }
-      }
-      onClose();
-    } catch (err: any) {
-      console.error(err);
-      const action = mode === 'edit' ? '수정' : '등록';
-      alert(`${action} 실패: ${err?.response?.data?.message ?? err.message}`);
-    } finally {
-      setSubmitting(false);
-    }
   };
 
   const handleTest = async () => {
     setTestResult(null);
     setConnectionTested(false);
-    
+
     if (!validate()) return;
-    
+
     try {
       setTesting(true);
 
-      // 백엔드 연결 테스트 API 호출
-      const payload = {
-        host: form.host,
-        instanceName: form.instance,
-        port: Number(form.port),
-        userName: form.userName,
-        secretRef: form.password,
-      };
-      
+      const payload = toInstanceDto(form);
       const res = await apiClient.post("/instances/test-connection", payload);
-      
+
       if (res.data.success) {
-        setTestResult({ 
-          ok: true, 
-          message: res.data.message + (res.data.version ? ` (PostgreSQL ${res.data.version})` : '')
-        });
+        const message =
+          res.data.message +
+          (res.data.version ? ` (PostgreSQL ${res.data.version})` : "");
+        setTestResult({ ok: true, message });
         setConnectionTested(true);
       } else {
-        setTestResult({ 
-          ok: false, 
-          message: res.data.message 
-        });
+        setTestResult({ ok: false, message: res.data.message });
         setConnectionTested(false);
       }
-    } catch (e: any) {
-      console.error('연결 테스트 실패:', e);
-      setTestResult({ 
-        ok: false, 
-        message: e?.response?.data?.message ?? e?.message ?? "연결 테스트 실패" 
-      });
+    } catch (error: any) {
+      console.error("연결 테스트 실패:", error);
+      const message =
+        error?.response?.data?.message ||
+        error?.message ||
+        ERROR_MESSAGES.TEST_FAILED;
+      setTestResult({ ok: false, message });
       setConnectionTested(false);
     } finally {
       setTesting(false);
     }
   };
 
-  if (!open) return null;
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
 
-  const title = mode === 'edit' ? 'Edit Instance' : 'New Instance';
-  const submitLabel = mode === 'edit' ? 'Update' : 'Submit';
-  const canSubmit = mode === 'edit' || connectionTested; // 편집 모드이거나 연결 테스트 성공
+    if (!validate()) return;
+
+    if (mode === "create" && !connectionTested) {
+      alert(ERROR_MESSAGES.TEST_REQUIRED);
+      return;
+    }
+
+    try {
+      setSubmitting(true);
+
+      if (onSubmit) {
+        await onSubmit(form);
+      } else {
+        if (mode === "edit" && instanceId) {
+          await handleEditInstance();
+        } else {
+          await handleCreateInstance();
+        }
+      }
+
+      onClose();
+    } catch (error: any) {
+      console.error(error);
+      const action = mode === "edit" ? "수정" : "등록";
+      const message =
+        error?.response?.data?.message || error.message || `${action} 실패`;
+      alert(`${action} 실패: ${message}`);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleEditInstance = async () => {
+    if (!instanceId) return;
+
+    const payload: InstancePayload = {
+      host: form.host,
+      instanceName: form.instance,
+      port: Number(form.port),
+      userName: form.userName,
+      isEnabled: true,
+    };
+
+    if (form.password?.trim()) {
+      payload.secretRef = form.password;
+    }
+
+    await apiClient.put(`/instances/${instanceId}`, payload);
+    alert(SUCCESS_MESSAGES.UPDATE);
+  };
+
+  const handleCreateInstance = async () => {
+    const payload = toInstanceDto(form);
+    const res = await apiClient.post("/instances", payload);
+    const id = res.data?.instanceId ?? "unknown";
+    alert(SUCCESS_MESSAGES.CREATE(id));
+  };
+
+  
+// ============= randering =============
+  if (!open) return null;
 
   return (
     <div
       ref={overlayRef}
-      onMouseDown={handleOutside}
+      onMouseDown={handleOutsideClick}
       className="im-overlay"
       aria-modal="true"
       role="dialog"
     >
-      <div className="im-modal" onMouseDown={(e) => e.stopPropagation()} style={{ maxWidth: 700 }}>
+      <div
+        className="im-modal"
+        onMouseDown={(e) => e.stopPropagation()}
+        style={{ maxWidth: 700 }}
+      >
         <header className="im-modal__header">
-          <div className="im-modal__title">{title}</div>
+          <div className="im-modal__title">{modalConfig.title}</div>
           <button className="im-btn" onClick={onClose} aria-label="닫기">
             ✕
           </button>
         </header>
 
         <div className="im-modal__body">
-          <p style={{ marginBottom: "24px", color: "#6b7280", fontSize: "14px" }}>
-            Instance {mode === 'edit' ? '수정' : '등록'}을 위한 정보를 입력해주세요.
-            {mode === 'create' && (
-              <span style={{ display: 'block', marginTop: '4px', fontSize: '13px', color: '#9ca3af' }}>
-                * 등록 전 연결 테스트를 완료해야 합니다.
+          <p
+            style={{
+              marginBottom: "24px",
+              color: "#6b7280",
+              fontSize: "14px",
+            }}
+          >
+            {modalConfig.description}
+            {modalConfig.testRequiredNote && (
+              <span
+                style={{
+                  display: "block",
+                  marginTop: "4px",
+                  fontSize: "13px",
+                  color: "#9ca3af",
+                }}
+              >
+                {modalConfig.testRequiredNote}
               </span>
             )}
           </p>
@@ -248,7 +382,7 @@ export default function NewInstanceModal({
             <div className="nif-grid">
               <Field label="Host" error={errors.host}>
                 <input
-                  className={inputCls(!!errors.host)}
+                  className={getInputClassName(!!errors.host)}
                   placeholder="호스트 명을 입력하세요"
                   value={form.host}
                   onChange={(e) => handleChange("host", e.target.value)}
@@ -257,7 +391,7 @@ export default function NewInstanceModal({
 
               <Field label="Instance" error={errors.instance}>
                 <input
-                  className={inputCls(!!errors.instance)}
+                  className={getInputClassName(!!errors.instance)}
                   value={form.instance}
                   onChange={(e) => handleChange("instance", e.target.value)}
                 />
@@ -265,7 +399,7 @@ export default function NewInstanceModal({
 
               <Field label="Port" error={errors.port}>
                 <input
-                  className={inputCls(!!errors.port)}
+                  className={getInputClassName(!!errors.port)}
                   inputMode="numeric"
                   pattern="[0-9]*"
                   value={String(form.port)}
@@ -275,7 +409,7 @@ export default function NewInstanceModal({
 
               <Field label="Username" error={errors.userName}>
                 <input
-                  className={inputCls(!!errors.userName)}
+                  className={getInputClassName(!!errors.userName)}
                   value={form.userName}
                   onChange={(e) => handleChange("userName", e.target.value)}
                 />
@@ -284,15 +418,18 @@ export default function NewInstanceModal({
               <Field label="Password" error={errors.password}>
                 <input
                   type="password"
-                  className={inputCls(!!errors.password)}
-                  placeholder={mode === 'edit' ? "반드시 비밀번호를 입력하세요" : ""}
+                  className={getInputClassName(!!errors.password)}
+                  placeholder={
+                    mode === "edit" ? "반드시 비밀번호를 입력하세요" : ""
+                  }
                   value={form.password}
                   onChange={(e) => handleChange("password", e.target.value)}
                 />
               </Field>
 
               <div className="nif-hint">
-                연결 문자열 미리보기: <span className="nif-code">{connectionString}</span>
+                연결 문자열 미리보기:{" "}
+                <span className="nif-code">{connectionString}</span>
               </div>
 
               {testResult && (
@@ -302,7 +439,9 @@ export default function NewInstanceModal({
                     testResult.ok ? "is-ok" : "is-error",
                   ].join(" ")}
                 >
-                  {testResult.ok ? "✓ 연결 테스트 성공" : "✗ 연결 테스트 실패"}
+                  {testResult.ok
+                    ? SUCCESS_MESSAGES.TEST_SUCCESS
+                    : SUCCESS_MESSAGES.TEST_FAILED}
                   {testResult.message ? ` — ${testResult.message}` : null}
                 </div>
               )}
@@ -324,9 +463,15 @@ export default function NewInstanceModal({
             onClick={handleSubmit}
             className="im-btn im-btn--primary"
             disabled={submitting || testing || !canSubmit}
-            title={mode === 'create' && !connectionTested ? '먼저 연결 테스트를 완료해주세요' : ''}
+            title={
+              mode === "create" && !connectionTested
+                ? ERROR_MESSAGES.TEST_REQUIRED
+                : ""
+            }
           >
-            {submitting ? `${submitLabel}ting…` : submitLabel}
+            {submitting
+              ? `${modalConfig.submitLabel}ting…`
+              : modalConfig.submitLabel}
           </button>
         </footer>
       </div>
@@ -334,6 +479,8 @@ export default function NewInstanceModal({
   );
 }
 
+
+// ============= Sub components =============
 function Field({
   label,
   error,
@@ -352,6 +499,6 @@ function Field({
   );
 }
 
-function inputCls(hasError?: boolean) {
+function getInputClassName(hasError?: boolean): string {
   return ["nif-input", hasError ? "has-error" : ""].join(" ");
 }

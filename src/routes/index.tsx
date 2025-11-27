@@ -24,7 +24,7 @@ import QueryTuner from "../pages/query/QueryTuner";
 import BGWriterPage from "../pages/engine/BGWriterPage";
 import MemoryPage from "../pages/system/MemoryPage.tsx";
 import DiskPage from "../pages/system/DiskPage.tsx";
-import AlarmList from "../pages/alarm/AlarmList";
+import AlarmList from "../pages/alarm/AlarmRulePage.tsx";
 import CheckPointListPage from "../pages/engine/CheckPointListPage.tsx";
 import BGWriterListPage from "../pages/engine/BGWriterListPage.tsx";
 import DiskListPage from "../pages/system/DiskListPage.tsx";
